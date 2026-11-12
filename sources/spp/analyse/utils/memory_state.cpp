@@ -22,59 +22,73 @@ use_alias(spp::asts, Ast);
 use_alias(spp::asts, ExpressionAst);
 
 namespace spp::analyse::utils::memory_state {
-  namespace {
-    /// What a borrow is compared by across paths: its place (the
-    /// root variable and steps, so a shadowed name is another
-    /// place), or what it was written as if it names none. Each
-    /// branch of a "case" builds its own asts, so the same borrow
-    /// written in two branches is two pointers but one place.
-    using BorrowKey = Variant<regions::Place, Str>;
-    auto BorrowKeyOf(
-      regions::PlaceAt const &borrow) -> BorrowKey {
-      return borrow.Of.has_value()
-        ? BorrowKey(*borrow.Of)
-        : BorrowKey(borrow.Site->ToString());
-    }
+  /// What a borrow is compared by across paths: its place (the
+  /// root variable and steps, so a shadowed name is another
+  /// place), or what it was written as if it names none. Each
+  /// branch of a "case" builds its own asts, so the same borrow
+  /// written in two branches is two pointers but one place.
+  using BorrowKey = Variant<regions::Place, Str>;
 
-    /// A loan, compared across paths: its holder, the place
-    /// borrowed, and how.
-    auto KeyOf(Loan const &loan) -> Tup<VariableSymbol const*, BorrowKey, bool, bool> {
-      return {loan.Holder, BorrowKeyOf(loan.Borrowed), loan.IsMut, loan.Yielded};
-    }
+  static auto BorrowKeyOf(
+    regions::PlaceAt const &borrow) -> BorrowKey;
 
-    /// The loan in "loans" that is "loan", if any.
-    auto FindLoan(LoanSet &loans, Loan const &loan) -> Loan* {
-      const auto key = KeyOf(loan);
-      for (auto &x : loans) {
-        if (KeyOf(x) == key) { return &x; }
-      }
-      return nullptr;
-    }
+  /// A loan, compared across paths: its holder, the place
+  /// borrowed, and how.
+  static auto KeyOf(Loan const &loan) -> Tup<VariableSymbol const*, BorrowKey, bool, bool>;
 
-    /// Whether two partial moves took the same part: the same
-    /// place ("PartMovedBy" records none without one).
-    auto SamePart(regions::PlaceAt const &lhs, regions::PlaceAt const &rhs) -> bool {
-      return *lhs.Of == *rhs.Of;
-    }
+  /// The loan in "loans" that is "loan", if any.
+  static auto FindLoan(LoanSet &loans, Loan const &loan) -> Loan*;
 
-    /// [CHECKED]
-    /// Whether "parts" holds "part". A "contains" function with
-    /// a custom equality test ("SamePart").
-    auto HoldsPart(
-      Vec<regions::PlaceAt> const &parts, regions::PlaceAt const &part) -> bool {
-      return genex::any_of(parts, [&](auto const &x) { return SamePart(x, part); });
-    }
+  /// Whether two partial moves took the same part: the same
+  /// place ("PartMovedBy" records none without one).
+  static auto SamePart(regions::PlaceAt const &lhs, regions::PlaceAt const &rhs) -> bool;
 
-    /// [CHECKED]
-    /// Record "part" as maybe moved, between "paths", unless
-    /// it already is. An "add element if unique", with a custom
-    /// equality test ("SamePart").
-    auto AddMaybePart(
-      Vec<MaybeMovedPart> &maybe, regions::PlaceAt const &part, PathsDisagree const &paths) -> void {
-      if (genex::any_of(maybe, [&](auto const &x) { return SamePart(x.Part, part); })) { return; }
-      maybe.emplace_back(MaybeMovedPart{.Part = part, .Paths = paths});
-    }
+  /// Whether "parts" holds "part". A "contains" function with
+  /// a custom equality test ("SamePart").
+  static auto HoldsPart(
+    Vec<regions::PlaceAt> const &parts, regions::PlaceAt const &part) -> bool;
+
+  /// Record "part" as maybe moved, between "paths", unless
+  /// it already is. An "add element if unique", with a custom
+  /// equality test ("SamePart").
+  static auto AddMaybePart(
+    Vec<MaybeMovedPart> &maybe, regions::PlaceAt const &part, PathsDisagree const &paths) -> void;
+}
+
+auto spp::analyse::utils::memory_state::BorrowKeyOf(
+  regions::PlaceAt const &borrow) -> BorrowKey {
+  return borrow.Of.has_value()
+    ? BorrowKey(*borrow.Of)
+    : BorrowKey(borrow.Site->ToString());
+}
+
+auto spp::analyse::utils::memory_state::KeyOf(Loan const &loan) -> Tup<VariableSymbol const*, BorrowKey, bool, bool> {
+  return {loan.Holder, BorrowKeyOf(loan.Borrowed), loan.IsMut, loan.Yielded};
+}
+
+auto spp::analyse::utils::memory_state::FindLoan(LoanSet &loans, Loan const &loan) -> Loan* {
+  const auto key = KeyOf(loan);
+  for (auto &x : loans) {
+    if (KeyOf(x) == key) { return &x; }
   }
+  return nullptr;
+}
+
+auto spp::analyse::utils::memory_state::SamePart(regions::PlaceAt const &lhs, regions::PlaceAt const &rhs) -> bool {
+  return *lhs.Of == *rhs.Of;
+}
+
+/// [CHECKED]
+auto spp::analyse::utils::memory_state::HoldsPart(
+  Vec<regions::PlaceAt> const &parts, regions::PlaceAt const &part) -> bool {
+  return genex::any_of(parts, [&](auto const &x) { return SamePart(x, part); });
+}
+
+/// [CHECKED]
+auto spp::analyse::utils::memory_state::AddMaybePart(
+  Vec<MaybeMovedPart> &maybe, regions::PlaceAt const &part, PathsDisagree const &paths) -> void {
+  if (genex::any_of(maybe, [&](auto const &x) { return SamePart(x.Part, part); })) { return; }
+  maybe.emplace_back(MaybeMovedPart{.Part = part, .Paths = paths});
 }
 
 SPP_MOD_BEGIN

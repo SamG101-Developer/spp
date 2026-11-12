@@ -41,15 +41,17 @@ use_alias(spp::asts, SpreadExpressionAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);
 
-SPP_MOD_BEGIN
-namespace {
+namespace spp::asts {
   /// The value an element gives: a spread's tuple, or the element itself.
-  auto ValueOf(ExpressionAst &elem) -> ExpressionAst& {
-    auto spread = elem.To<SpreadExpressionAst>();
-    return spread != nullptr ? *spread->Expr : elem;
-  }
+  static auto ValueOf(ExpressionAst &elem) -> ExpressionAst&;
 }
 
+auto spp::asts::ValueOf(ExpressionAst &elem) -> ExpressionAst& {
+  auto spread = elem.To<SpreadExpressionAst>();
+  return spread != nullptr ? *spread->Expr : elem;
+}
+
+SPP_MOD_BEGIN
 spp::asts::TupleLiteralAst::TupleLiteralAst(
   decltype(TokL) &&tok_l,
   decltype(Elems) &&elements,

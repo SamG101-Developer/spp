@@ -65,46 +65,48 @@ use_alias(spp::asts, TokenAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::operator_desugaring {
-  namespace {
-    auto CombineCompOpsImpl(
-      BinaryExpressionAst &bin_expr, ScopeManager *sm, CompilerMetaData *meta,
-      Vec<Unique<LetStatementInitializedAst>> *temps) -> Unique<BinaryExpressionAst> {
-      // Check the left-hand-side is a binary expression with a
-      // comparison operator. If there isn't a chaining combination
-      // to do, hand the operands to a new bin expression.
-      const auto bin_lhs = bin_expr.Lhs->To<BinaryExpressionAst>();
-      if (
-        bin_lhs == nullptr or
-        not genex::contains(kBinComparisonOps, bin_expr.TokOp->TokenType) or
-        not genex::contains(kBinComparisonOps, bin_lhs->TokOp->TokenType)) {
-        return MakeUnique<BinaryExpressionAst>(
-          std::move(bin_expr.Lhs),
-          AstClone(bin_expr.TokOp),
-          std::move(bin_expr.Rhs));
-      }
+  static auto CombineCompOpsImpl(
+    BinaryExpressionAst &bin_expr, ScopeManager *sm, CompilerMetaData *meta,
+    Vec<Unique<LetStatementInitializedAst>> *temps) -> Unique<BinaryExpressionAst>;
+}
 
-      // The middle operand is read by both comparisons, so is evaluated once
-      // via hoisting. The caller keeps the hoisted "let", as nothing else would
-      // give it storage.
-      auto hoisted = expr_utils::HoistOnce(*bin_lhs->Rhs, "$cmp", sm, meta);
-      if (hoisted.Let != nullptr) {
-        bin_lhs->Rhs = AstClone(hoisted.Name);
-        if (temps != nullptr) { temps->emplace_back(std::move(hoisted.Let)); }
-      }
-
-      // Otherwise, re-arrange the ASTs, with an "and" combinator
-      // binary expression.
-      auto lhs = AstClone(bin_lhs->Rhs);
-      auto rhs = std::move(bin_expr.Rhs);
-      auto op_pos = bin_expr.TokOp->PosStart();
-      bin_expr.Rhs = MakeUnique<BinaryExpressionAst>(
-        std::move(lhs), std::move(bin_expr.TokOp), std::move(rhs));
-      bin_expr.TokOp = MakeUnique<TokenAst>(
-        op_pos, lex::SppTokenType::KW_AND, "and");
-
-      return CombineCompOpsImpl(bin_expr, sm, meta, temps);
-    }
+auto spp::analyse::utils::operator_desugaring::CombineCompOpsImpl(
+  BinaryExpressionAst &bin_expr, ScopeManager *sm, CompilerMetaData *meta,
+  Vec<Unique<LetStatementInitializedAst>> *temps) -> Unique<BinaryExpressionAst> {
+  // Check the left-hand-side is a binary expression with a
+  // comparison operator. If there isn't a chaining combination
+  // to do, hand the operands to a new bin expression.
+  const auto bin_lhs = bin_expr.Lhs->To<BinaryExpressionAst>();
+  if (
+    bin_lhs == nullptr or
+    not genex::contains(kBinComparisonOps, bin_expr.TokOp->TokenType) or
+    not genex::contains(kBinComparisonOps, bin_lhs->TokOp->TokenType)) {
+    return MakeUnique<BinaryExpressionAst>(
+      std::move(bin_expr.Lhs),
+      AstClone(bin_expr.TokOp),
+      std::move(bin_expr.Rhs));
   }
+
+  // The middle operand is read by both comparisons, so is evaluated once
+  // via hoisting. The caller keeps the hoisted "let", as nothing else would
+  // give it storage.
+  auto hoisted = expr_utils::HoistOnce(*bin_lhs->Rhs, "$cmp", sm, meta);
+  if (hoisted.Let != nullptr) {
+    bin_lhs->Rhs = AstClone(hoisted.Name);
+    if (temps != nullptr) { temps->emplace_back(std::move(hoisted.Let)); }
+  }
+
+  // Otherwise, re-arrange the ASTs, with an "and" combinator
+  // binary expression.
+  auto lhs = AstClone(bin_lhs->Rhs);
+  auto rhs = std::move(bin_expr.Rhs);
+  auto op_pos = bin_expr.TokOp->PosStart();
+  bin_expr.Rhs = MakeUnique<BinaryExpressionAst>(
+    std::move(lhs), std::move(bin_expr.TokOp), std::move(rhs));
+  bin_expr.TokOp = MakeUnique<TokenAst>(
+    op_pos, lex::SppTokenType::KW_AND, "and");
+
+  return CombineCompOpsImpl(bin_expr, sm, meta, temps);
 }
 
 auto spp::analyse::utils::operator_desugaring::CombineComparisonChain(

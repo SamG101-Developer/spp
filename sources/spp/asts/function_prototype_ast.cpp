@@ -85,32 +85,34 @@ use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 use_alias(spp::codegen, LlvmFnWrapper);
 
-namespace {
+namespace spp::asts {
   /// The instantiation whose body is being analysed.
-  thread_local auto analysing_gn_substitution =
+  static thread_local auto analysing_gn_substitution =
     static_cast<FunctionPrototypeAst::GenericSubstitution const*>(nullptr);
 
-  /// Marks one instantiation's body as being analysed,
-  /// for as long as it lives, then restores the outer
-  /// one.
-  struct AnalysingGnSubstitutionGuard {
-    FunctionPrototypeAst::GenericSubstitution const *Outer;
+  namespace {
+    /// Marks one instantiation's body as being analysed,
+    /// for as long as it lives, then restores the outer
+    /// one.
+    struct AnalysingGnSubstitutionGuard {
+      FunctionPrototypeAst::GenericSubstitution const *Outer;
 
-    explicit AnalysingGnSubstitutionGuard(
-      FunctionPrototypeAst::GenericSubstitution const &sub) :
-      Outer(analysing_gn_substitution) {
-      analysing_gn_substitution = &sub;
-    }
+      explicit AnalysingGnSubstitutionGuard(
+        FunctionPrototypeAst::GenericSubstitution const &sub) :
+        Outer(analysing_gn_substitution) {
+        analysing_gn_substitution = &sub;
+      }
 
-    ~AnalysingGnSubstitutionGuard() { analysing_gn_substitution = Outer; }
+      ~AnalysingGnSubstitutionGuard() { analysing_gn_substitution = Outer; }
 
-    AnalysingGnSubstitutionGuard(
-      AnalysingGnSubstitutionGuard const &) = delete;
+      AnalysingGnSubstitutionGuard(
+        AnalysingGnSubstitutionGuard const &) = delete;
 
-    auto operator=(
-      AnalysingGnSubstitutionGuard const &)
-      -> AnalysingGnSubstitutionGuard& = delete;
-  };
+      auto operator=(
+        AnalysingGnSubstitutionGuard const &)
+        -> AnalysingGnSubstitutionGuard& = delete;
+    };
+  }
 }
 
 SPP_MOD_BEGIN

@@ -36,12 +36,12 @@ use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
-SPP_MOD_BEGIN
-namespace {
+namespace spp::asts {
   /// "PackElementCloneGuard": the closed packs whose elements a clone renames, by name, to their element counts.
-  thread_local auto pack_elements = spp::Map<spp::Str, std::size_t>();
+  static thread_local auto pack_elements = spp::Map<spp::Str, std::size_t>();
 }
 
+SPP_MOD_BEGIN
 spp::asts::PackElementCloneGuard::PackElementCloneGuard(
   Map<Str, std::size_t> packs) :
   _Outer(std::exchange(pack_elements, std::move(packs))) {

@@ -61,78 +61,85 @@ use_alias(spp::asts::meta, SubjectOnMatch);
 use_alias(spp::codegen, LlvmCtx);
 
 namespace spp::analyse::utils::case_utils {
-  namespace {
-    using pattern_solver::PathStep;
+  using pattern_solver::PathStep;
 
-    /// The address of the value at "path" in the subject at
-    /// "subject_ptr": a payload behind its variant's discriminant; a
-    /// field indexed through the type holding it (an array through
-    /// itself, a tuple by position, anything else through its layout's
-    /// field map, which reorders fields); and a field holding a borrow
-    /// read through to what it borrows.
-    auto AddressAt(
-      llvm::Value * const subject_ptr, Vec<PathStep> const &path, Scope const &scope,
-      LlvmCtx * const ctx)
-    ->
-    llvm::Value * {
-      const auto uid = "." + spp::utils::Uid();
-      const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
-      auto ptr = subject_ptr;
-      for (auto const &step : path) {
-        SPP_ASSERT(step.Of.Symbol != nullptr);
-        const auto llvm_of_ty = codegen::GetLlvmTypeOf(
-          step.Of.WithoutConvention(), ctx);
-        if (step.K == PathStep::Kind::Payload) {
-          ptr = codegen::GetVariantPayloadPtr(ptr, llvm_of_ty, "case.pattern.payload" + uid, ctx);
-          continue;
-        }
+  /// The address of the value at "path" in the subject at
+  /// "subject_ptr": a payload behind its variant's discriminant; a
+  /// field indexed through the type holding it (an array through
+  /// itself, a tuple by position, anything else through its layout's
+  /// field map, which reorders fields); and a field holding a borrow
+  /// read through to what it borrows.
+  static auto AddressAt(
+    llvm::Value * const subject_ptr, Vec<PathStep> const &path, Scope const &scope,
+    LlvmCtx * const ctx)
+  ->
+  llvm::Value *;
 
-        const auto index = static_cast<std::uint32_t>(step.Index);
-        if (type_predicates::IsTypeArray(step.Of, scope)) {
-          ptr = ctx->Builder.CreateGEP(
-            llvm_of_ty, ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
-            "case.pattern.elem_ptr" + uid);
-        }
-        else if (std::isdigit(static_cast<unsigned char>(step.Name->Val[0]))) {
-          ptr = ctx->Builder.CreateStructGEP(llvm_of_ty, ptr, index, "case.pattern.elem_ptr" + uid);
-        }
-        else {
-          const auto decl_index = type_members::GetFieldIndexInType(*step.Of.Symbol, *step.Name);
-          const auto field_index = codegen::GetPhysicalFieldIndex(*step.Of.Symbol->LlvmInfo, decl_index);
-          ptr = ctx->Builder.CreateStructGEP(llvm_of_ty, ptr, field_index, "case.pattern.field_ptr" + uid);
-        }
-        if (step.Through) {
-          ptr = ctx->Builder.CreateLoad(llvm::PointerType::get(*ctx->Context, 0), ptr, "case.pattern.through" + uid);
-        }
-      }
-      return ptr;
+  /// The comptime value at "path" in the comptime value "value": a
+  /// payload is the member's value itself; a field is read out of a
+  /// tuple, an array or an object. None when "value" does not have
+  /// the field (it holds another member of a variant).
+  static auto CompTimeValueAt(
+    Ast const &value, Vec<PathStep> const &path) -> Unique<Ast>;
+}
+
+auto spp::analyse::utils::case_utils::AddressAt(
+  llvm::Value * const subject_ptr, Vec<PathStep> const &path, Scope const &scope,
+  LlvmCtx * const ctx)
+->
+llvm::Value * {
+  const auto uid = "." + spp::utils::Uid();
+  const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
+  auto ptr = subject_ptr;
+  for (auto const &step : path) {
+    SPP_ASSERT(step.Of.Symbol != nullptr);
+    const auto llvm_of_ty = codegen::GetLlvmTypeOf(
+      step.Of.WithoutConvention(), ctx);
+    if (step.K == PathStep::Kind::Payload) {
+      ptr = codegen::GetVariantPayloadPtr(ptr, llvm_of_ty, "case.pattern.payload" + uid, ctx);
+      continue;
     }
 
-    /// The comptime value at "path" in the comptime value "value": a
-    /// payload is the member's value itself; a field is read out of a
-    /// tuple, an array or an object. None when "value" does not have
-    /// the field (it holds another member of a variant).
-    auto CompTimeValueAt(
-      Ast const &value, Vec<PathStep> const &path) -> Unique<Ast> {
-      auto out = AstClone(&value);
-      for (auto const &step : path) {
-        if (step.K == PathStep::Kind::Payload) { continue; }
-        if (const auto tup = out->To<TupleLiteralAst>(); tup != nullptr and step.Index < tup->Elems.size()) {
-          out = AstClone(tup->Elems[step.Index]);
-        }
-        else if (const auto arr = out->To<ArrayLiteralExplicitElementsAst>();
-          arr != nullptr and step.Index < arr->Elems.size()) {
-          out = AstClone(arr->Elems[step.Index]);
-        }
-        else if (const auto obj = out->To<ObjectInitializerAst>(); obj != nullptr) {
-          out = comp_time_intrinsics::GetCompTimeAttrValue(obj, step.Name.get());
-        }
-        else { return nullptr; }
-        if (out == nullptr) { return nullptr; }
-      }
-      return out;
+    const auto index = static_cast<std::uint32_t>(step.Index);
+    if (type_predicates::IsTypeArray(step.Of, scope)) {
+      ptr = ctx->Builder.CreateGEP(
+        llvm_of_ty, ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
+        "case.pattern.elem_ptr" + uid);
+    }
+    else if (std::isdigit(static_cast<unsigned char>(step.Name->Val[0]))) {
+      ptr = ctx->Builder.CreateStructGEP(llvm_of_ty, ptr, index, "case.pattern.elem_ptr" + uid);
+    }
+    else {
+      const auto decl_index = type_members::GetFieldIndexInType(*step.Of.Symbol, *step.Name);
+      const auto field_index = codegen::GetPhysicalFieldIndex(*step.Of.Symbol->LlvmInfo, decl_index);
+      ptr = ctx->Builder.CreateStructGEP(llvm_of_ty, ptr, field_index, "case.pattern.field_ptr" + uid);
+    }
+    if (step.Through) {
+      ptr = ctx->Builder.CreateLoad(llvm::PointerType::get(*ctx->Context, 0), ptr, "case.pattern.through" + uid);
     }
   }
+  return ptr;
+}
+
+auto spp::analyse::utils::case_utils::CompTimeValueAt(
+  Ast const &value, Vec<PathStep> const &path) -> Unique<Ast> {
+  auto out = AstClone(&value);
+  for (auto const &step : path) {
+    if (step.K == PathStep::Kind::Payload) { continue; }
+    if (const auto tup = out->To<TupleLiteralAst>(); tup != nullptr and step.Index < tup->Elems.size()) {
+      out = AstClone(tup->Elems[step.Index]);
+    }
+    else if (const auto arr = out->To<ArrayLiteralExplicitElementsAst>();
+      arr != nullptr and step.Index < arr->Elems.size()) {
+      out = AstClone(arr->Elems[step.Index]);
+    }
+    else if (const auto obj = out->To<ObjectInitializerAst>(); obj != nullptr) {
+      out = comp_time_intrinsics::GetCompTimeAttrValue(obj, step.Name.get());
+    }
+    else { return nullptr; }
+    if (out == nullptr) { return nullptr; }
+  }
+  return out;
 }
 
 auto spp::analyse::utils::case_utils::BindSubjectValue(

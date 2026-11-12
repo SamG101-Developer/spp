@@ -28,6 +28,40 @@ use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);
 
+namespace spp::asts {
+  /// Moves the captures out as call arguments, so the argument
+  /// group's analysis can run over them.
+  static auto CapturesAsArgs(
+    Vec<Unique<ClosureExpressionCaptureAst>> &captures)
+    -> Vec<Unique<FunctionCallArgumentAst>>;
+
+  /// Moves the call arguments made by "CapturesAsArgs" back out
+  /// as captures.
+  static auto ArgsAsCaptures(
+    Vec<Unique<FunctionCallArgumentAst>> &args)
+    -> Vec<Unique<ClosureExpressionCaptureAst>>;
+}
+
+auto spp::asts::CapturesAsArgs(
+  Vec<Unique<ClosureExpressionCaptureAst>> &captures)
+  -> Vec<Unique<FunctionCallArgumentAst>> {
+  //
+  return captures
+    | genex::views::move
+    | genex::views::transform([](auto &&x) { return spp::unique_cast<FunctionCallArgumentAst>(std::move(x)); })
+    | genex::to<Vec>();
+}
+
+auto spp::asts::ArgsAsCaptures(
+  Vec<Unique<FunctionCallArgumentAst>> &args)
+  -> Vec<Unique<ClosureExpressionCaptureAst>> {
+  //
+  return args
+    | genex::views::move
+    | genex::views::transform([](auto &&x) { return spp::unique_cast<ClosureExpressionCaptureAst>(std::move(x)); })
+    | genex::to<Vec>();
+}
+
 SPP_MOD_BEGIN
 spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParameterAndCaptureGroupAst(
   decltype(TokL) &&tok_l,
@@ -69,34 +103,6 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ToString() const -
   SPP_STRING_APPEND(CaptureGroup);
   SPP_STRING_APPEND(TokR);
   SPP_STRING_END;
-}
-
-namespace spp::asts {
-  namespace {
-    /// Moves the captures out as call arguments, so the argument
-    /// group's analysis can run over them.
-    auto CapturesAsArgs(
-      Vec<Unique<ClosureExpressionCaptureAst>> &captures)
-      -> Vec<Unique<FunctionCallArgumentAst>> {
-      //
-      return captures
-        | genex::views::move
-        | genex::views::transform([](auto &&x) { return spp::unique_cast<FunctionCallArgumentAst>(std::move(x)); })
-        | genex::to<Vec>();
-    }
-
-    /// Moves the call arguments made by "CapturesAsArgs" back out
-    /// as captures.
-    auto ArgsAsCaptures(
-      Vec<Unique<FunctionCallArgumentAst>> &args)
-      -> Vec<Unique<ClosureExpressionCaptureAst>> {
-      //
-      return args
-        | genex::views::move
-        | genex::views::transform([](auto &&x) { return spp::unique_cast<ClosureExpressionCaptureAst>(std::move(x)); })
-        | genex::to<Vec>();
-    }
-  }
 }
 
 auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSemantics(

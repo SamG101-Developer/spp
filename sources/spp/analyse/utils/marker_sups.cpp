@@ -52,56 +52,67 @@ use_alias(spp::asts, TypeAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::marker_sups {
-  namespace {
-    /**
-     * The type itself, then each class it is superimposed as, that is a marker: "Gen", "Try" and the like are
-     * superimposed as often as they are the type written. The type itself is judged as it is held (a borrow is no
-     * marker), its super classes as the classes they are.
-     * @param ref The type, as it is held.
-     * @param scope The scope the type and its super classes are read in.
-     * @param is_marker Whether a type is the marker being searched for.
-     * @return Every match, the type itself first.
-     */
-    auto FindMarkerSups(
-      TypeRef const &ref,
-      Scope const &scope,
-      FuncRef<bool(TypeRef const &)> is_marker)
-      -> Vec<TypeRef> {
-      auto found = Vec<TypeRef>();
-      if (is_marker(ref)) { found.emplace_back(ref); }
-      for (auto const &sup : type_members::SuperClsRefs(ref, scope)) {
-        if (is_marker(sup)) { found.emplace_back(sup); }
-      }
-      return found;
-    }
+  /**
+   * The type itself, then each class it is superimposed as, that is a marker: "Gen", "Try" and the like are
+   * superimposed as often as they are the type written. The type itself is judged as it is held (a borrow is no
+   * marker), its super classes as the classes they are.
+   * @param ref The type, as it is held.
+   * @param scope The scope the type and its super classes are read in.
+   * @param is_marker Whether a type is the marker being searched for.
+   * @return Every match, the type itself first.
+   */
+  static auto FindMarkerSups(
+    TypeRef const &ref,
+    Scope const &scope,
+    FuncRef<bool(TypeRef const &)> is_marker)
+    -> Vec<TypeRef>;
 
-    /**
-     * Whether a member reached through a forward needs the forwarded-to value borrowed mutably: a method every
-     * overload of which takes "&mut self" ("index_mut", reached by "v[mut i]"). A field, or a method with any other
-     * overload, is reached through an immutable borrow.
-     * @param member The member reached through the forward, or @c nullptr when the forward is not a member access.
-     * @param target The type "FwdMut" forwards to.
-     * @param sm The scope manager, for the overload lookup.
-     * @param meta The compiler meta data, for the overload lookup.
-     * @return Whether the member needs "fwd_mut".
-     */
-    auto MemberNeedsMut(
-      IdentifierAst const *member,
-      TypeRef const &target,
-      ScopeManager *sm,
-      CompilerMetaData *meta)
-      -> bool {
-      if (member == nullptr or target.Symbol == nullptr or target.Symbol->LinkedScope == nullptr) { return false; }
-      auto any_self = false;
-      for (auto const &overload : overload_resolution::GetAllFnScopes(*member, target.Symbol->LinkedScope, *sm, meta)) {
-        auto const *const self_param = overload.Proto->FnParamGroup->GetSelfParam();
-        if (self_param == nullptr) { continue; }
-        if (self_param->Conv == nullptr or *self_param->Conv != ConventionTag::MUT) { return false; }
-        any_self = true;
-      }
-      return any_self;
-    }
+  /**
+   * Whether a member reached through a forward needs the forwarded-to value borrowed mutably: a method every
+   * overload of which takes "&mut self" ("index_mut", reached by "v[mut i]"). A field, or a method with any other
+   * overload, is reached through an immutable borrow.
+   * @param member The member reached through the forward, or @c nullptr when the forward is not a member access.
+   * @param target The type "FwdMut" forwards to.
+   * @param sm The scope manager, for the overload lookup.
+   * @param meta The compiler meta data, for the overload lookup.
+   * @return Whether the member needs "fwd_mut".
+   */
+  static auto MemberNeedsMut(
+    IdentifierAst const *member,
+    TypeRef const &target,
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> bool;
+}
+
+auto spp::analyse::utils::marker_sups::FindMarkerSups(
+  TypeRef const &ref,
+  Scope const &scope,
+  FuncRef<bool(TypeRef const &)> is_marker)
+  -> Vec<TypeRef> {
+  auto found = Vec<TypeRef>();
+  if (is_marker(ref)) { found.emplace_back(ref); }
+  for (auto const &sup : type_members::SuperClsRefs(ref, scope)) {
+    if (is_marker(sup)) { found.emplace_back(sup); }
   }
+  return found;
+}
+
+auto spp::analyse::utils::marker_sups::MemberNeedsMut(
+  IdentifierAst const *member,
+  TypeRef const &target,
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> bool {
+  if (member == nullptr or target.Symbol == nullptr or target.Symbol->LinkedScope == nullptr) { return false; }
+  auto any_self = false;
+  for (auto const &overload : overload_resolution::GetAllFnScopes(*member, target.Symbol->LinkedScope, *sm, meta)) {
+    auto const *const self_param = overload.Proto->FnParamGroup->GetSelfParam();
+    if (self_param == nullptr) { continue; }
+    if (self_param->Conv == nullptr or *self_param->Conv != ConventionTag::MUT) { return false; }
+    any_self = true;
+  }
+  return any_self;
 }
 
 auto spp::analyse::utils::marker_sups::IsCopyMarker(

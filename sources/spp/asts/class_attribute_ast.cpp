@@ -36,36 +36,40 @@ use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, CompilerStage);
 use_alias(spp::codegen, LlvmCtx);
 
-SPP_MOD_BEGIN
-namespace {
+namespace spp::asts {
   /// The first borrow written in "type" or, at any depth, its generic arguments (a variant's too, once analysed into
   /// its "Var[Variants=...]"); null for none.
-  auto FirstWrittenBorrow(TypeAst const &type) -> TypeAst const* {
-    if (type.GetConvention() != nullptr) { return &type; }
-    for (auto const *part : type.TypeParts()) {
-      for (auto const *arg : part->GnArgGroup->GetTypeArgs()) {
-        if (auto const *found = FirstWrittenBorrow(*arg->TypeVal); found != nullptr) { return found; }
-      }
-    }
-    return nullptr;
-  }
+  static auto FirstWrittenBorrow(TypeAst const &type) -> TypeAst const*;
 
   /// A field's type is never a borrow. One that is only by substitution ("val: T" in the "Some[&Str]" that
   /// "Opt[&Str]" makes) is reported at the borrow written where the instantiation was asked for ("InstantiatedFrom"),
   /// with the field as context: the template is not where the mistake is.
-  auto RequireFieldNotBorrowed(ClassAttributeAst const &attr, ScopeManager const &sm) -> void {
-    if (not spp::analyse::utils::type_predicates::IsTypeBorrowed(*attr.Type, *sm.CurrentScope)) { return; }
-    auto const *const site = attr.Source.OriginalType->GetConvention() == nullptr ? spp::analyse::errors::InstantiatedFrom() : nullptr;
-    auto const *const site_type = site != nullptr ? site->To<TypeAst>() : nullptr;
-    if (auto const *const written = site_type != nullptr ? FirstWrittenBorrow(*site_type) : nullptr) {
-      spp::analyse::utils::common_errors::RequireNotBorrowed(
-        *attr.Type, *written, *attr.Source.OriginalType, "class field type", sm);
-    }
-    spp::analyse::utils::common_errors::RequireNotBorrowed(
-      *attr.Type, *attr.Source.OriginalType, "class field type", sm);
-  }
+  static auto RequireFieldNotBorrowed(ClassAttributeAst const &attr, ScopeManager const &sm) -> void;
 }
 
+auto spp::asts::FirstWrittenBorrow(TypeAst const &type) -> TypeAst const* {
+  if (type.GetConvention() != nullptr) { return &type; }
+  for (auto const *part : type.TypeParts()) {
+    for (auto const *arg : part->GnArgGroup->GetTypeArgs()) {
+      if (auto const *found = FirstWrittenBorrow(*arg->TypeVal); found != nullptr) { return found; }
+    }
+  }
+  return nullptr;
+}
+
+auto spp::asts::RequireFieldNotBorrowed(ClassAttributeAst const &attr, ScopeManager const &sm) -> void {
+  if (not spp::analyse::utils::type_predicates::IsTypeBorrowed(*attr.Type, *sm.CurrentScope)) { return; }
+  auto const *const site = attr.Source.OriginalType->GetConvention() == nullptr ? spp::analyse::errors::InstantiatedFrom() : nullptr;
+  auto const *const site_type = site != nullptr ? site->To<TypeAst>() : nullptr;
+  if (auto const *const written = site_type != nullptr ? FirstWrittenBorrow(*site_type) : nullptr) {
+    spp::analyse::utils::common_errors::RequireNotBorrowed(
+      *attr.Type, *written, *attr.Source.OriginalType, "class field type", sm);
+  }
+  spp::analyse::utils::common_errors::RequireNotBorrowed(
+    *attr.Type, *attr.Source.OriginalType, "class field type", sm);
+}
+
+SPP_MOD_BEGIN
 spp::asts::ClassAttributeAst::ClassAttributeAst(
   decltype(Annotations) &&annotations,
   decltype(Name) &&name,

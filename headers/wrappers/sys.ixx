@@ -201,13 +201,19 @@ export namespace sys {
   inline auto use_utf8_console() -> void {
 #if SPP_PLATFORM_WINDOWS
     ::SetConsoleOutputCP(CP_UTF8);
-    for (const auto which : {STD_OUTPUT_HANDLE, STD_ERROR_HANDLE}) {
+
+    // Once per stream, through a lambda rather than a loop over a braced list:
+    // this module imports no std, so std::initializer_list is not declared on
+    // Windows (Linux's C headers happen to bring it in).
+    const auto enable_vt = [](const ::DWORD which) {
       const auto handle = ::GetStdHandle(which);
       auto mode = ::DWORD{};
       if (handle != spp_sys_legacy::InvalidHandleValue() and ::GetConsoleMode(handle, &mode)) {
         ::SetConsoleMode(handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
       }
-    }
+    };
+    enable_vt(STD_OUTPUT_HANDLE);
+    enable_vt(STD_ERROR_HANDLE);
 #endif
   }
 

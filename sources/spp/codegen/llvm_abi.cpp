@@ -13,94 +13,6 @@ import std;
 
 namespace spp::codegen {
   namespace {
-    /// Whether @p type is a C struct, as a by-value parameter: a
-    /// struct of two or more fields. One of a single field is the
-    /// scalar inside it, however deeply wrapped.
-    auto IsCStruct(llvm::Type const *type) -> bool {
-      while (const auto st = llvm::dyn_cast<llvm::StructType>(type)) {
-        if (st->getNumElements() != 1) { return st->getNumElements() > 1; }
-        type = st->getElementType(0);
-      }
-      return false;
-    }
-
-    /// The C scalar a struct of one field stands for (the field,
-    /// however deeply wrapped), or null for anything else.
-    auto CScalarOf(llvm::Type *type) -> llvm::Type* {
-      if (not llvm::isa<llvm::StructType>(type)) { return nullptr; }
-      while (const auto st = llvm::dyn_cast<llvm::StructType>(type)) {
-        if (st->getNumElements() != 1) { return nullptr; }
-        type = st->getElementType(0);
-      }
-      return type;
-    }
-
-    /// The indices from a one-field struct chain of @p type down to
-    /// its scalar: one 0 per level.
-    auto CScalarPath(llvm::Type const *type) -> Vec<unsigned> {
-      auto path = Vec<unsigned>();
-      while (const auto st = llvm::dyn_cast<llvm::StructType>(type)) {
-        path.emplace_back(0u);
-        type = st->getElementType(0);
-      }
-      return path;
-    }
-
-    /// Whether the target's C convention extends an integer of
-    /// @p type (signed if @p is_signed) to the register it is
-    /// passed or returned in, and how; "None" for no integer or no
-    /// need. Every target extends "char", "short" and "bool"; 64-bit
-    /// PowerPC, s390x and SPARC extend "int" by its signedness, and
-    /// RISC-V, LoongArch and MIPS sign-extend it either way. A
-    /// caller that leaves the upper half as it was hands a callee
-    /// that reads the whole register a wrong value.
-    auto CExtendOf(llvm::Type const *type, const bool is_signed) -> llvm::Attribute::AttrKind {
-      // As clang marks a C prototype's integers for each target.
-      const auto integer = llvm::dyn_cast<llvm::IntegerType>(type);
-      if (integer == nullptr) { return llvm::Attribute::None; }
-      const auto by_sign = is_signed ? llvm::Attribute::SExt : llvm::Attribute::ZExt;
-      const auto width = integer->getBitWidth();
-      if (width == 1) { return llvm::Attribute::ZExt; }
-      if (width < 32) { return by_sign; }
-      if (width > 32) { return llvm::Attribute::None; }
-
-      switch (TargetTriple().getArch()) {
-        case llvm::Triple::ppc64:
-        case llvm::Triple::ppc64le:
-        case llvm::Triple::systemz:
-        case llvm::Triple::sparcv9:
-          return by_sign;
-        case llvm::Triple::riscv64:
-        case llvm::Triple::loongarch64:
-        case llvm::Triple::mips:
-        case llvm::Triple::mipsel:
-        case llvm::Triple::mips64:
-        case llvm::Triple::mips64el:
-          return llvm::Attribute::SExt;
-        default:
-          return llvm::Attribute::None;
-      }
-    }
-
-    /// Lay "fields" out in declaration order, natural padding
-    /// between them ("packed" would drop it): the C order. An
-    /// empty field map means the declaration order was kept
-    /// outright, which it only is when nothing was dropped.
-    auto LayOutInOrder(
-      llvm::StructType &type, Vec<llvm::Type*> const &fields,
-      LlvmTypeSymbolInfo &info, const bool packed) -> void {
-      const auto kept = DropValuelessFields(fields);
-      auto kept_types = Vec<llvm::Type*>();
-      auto kept_map = Map<std::size_t, std::size_t>();
-      for (auto new_idx = 0uz; new_idx < kept.size(); ++new_idx) {
-        kept_types.emplace_back(fields[kept[new_idx]]);
-        kept_map[kept[new_idx]] = new_idx;
-      }
-      if (type.isOpaque()) { type.setBody(kept_types, packed); }
-      if (kept.size() != fields.size()) { info.FieldIndexMap = std::move(kept_map); }
-      else { info.FieldIndexMap.clear(); }
-    }
-
     /// The S++ convention: fields re-ordered to minimise padding,
     /// and parameters and returns passed as their LLVM values are.
     class SppAbiImpl final : public Abi {
@@ -135,7 +47,42 @@ namespace spp::codegen {
       }
       auto AdaptReturn(llvm::Value *result, llvm::Type *, LlvmCtx *) const -> llvm::Value* override { return result; }
     };
+  }
 
+  static constexpr auto kSppAbi = SppAbiImpl();
+
+  /// Whether @p type is a C struct, as a by-value parameter: a
+  /// struct of two or more fields. One of a single field is the
+  /// scalar inside it, however deeply wrapped.
+  static auto IsCStruct(llvm::Type const *type) -> bool;
+
+  /// The C scalar a struct of one field stands for (the field,
+  /// however deeply wrapped), or null for anything else.
+  static auto CScalarOf(llvm::Type *type) -> llvm::Type*;
+
+  /// The indices from a one-field struct chain of @p type down to
+  /// its scalar: one 0 per level.
+  static auto CScalarPath(llvm::Type const *type) -> Vec<unsigned>;
+
+  /// Whether the target's C convention extends an integer of
+  /// @p type (signed if @p is_signed) to the register it is
+  /// passed or returned in, and how; "None" for no integer or no
+  /// need. Every target extends "char", "short" and "bool"; 64-bit
+  /// PowerPC, s390x and SPARC extend "int" by its signedness, and
+  /// RISC-V, LoongArch and MIPS sign-extend it either way. A
+  /// caller that leaves the upper half as it was hands a callee
+  /// that reads the whole register a wrong value.
+  static auto CExtendOf(llvm::Type const *type, const bool is_signed) -> llvm::Attribute::AttrKind;
+
+  /// Lay "fields" out in declaration order, natural padding
+  /// between them ("packed" would drop it): the C order. An
+  /// empty field map means the declaration order was kept
+  /// outright, which it only is when nothing was dropped.
+  static auto LayOutInOrder(
+    llvm::StructType &type, Vec<llvm::Type*> const &fields,
+    LlvmTypeSymbolInfo &info, const bool packed) -> void;
+
+  namespace {
     /// The target's C convention, as clang lowers a C prototype for
     /// it (checked against "clang --target=<t> -S -emit-llvm"):
     /// fields in declaration order; a struct parameter "byval", as
@@ -249,13 +196,81 @@ namespace spp::codegen {
         return ctx->Builder.CreateInsertValue(llvm::PoisonValue::get(expected), result, CScalarPath(expected), "cabi.ret");
       }
     };
-
-    const auto kSppAbi = SppAbiImpl();
-    const auto kCAbi = CAbiImpl();
-
-    /// Every convention "!conv" can name.
-    constexpr auto kAbis = std::to_array<Abi const*>({&kSppAbi, &kCAbi});
   }
+
+  static constexpr auto kCAbi = CAbiImpl();
+
+  /// Every convention "!conv" can name.
+  static constexpr auto kAbis = std::to_array<Abi const*>({&kSppAbi, &kCAbi});
+}
+
+auto spp::codegen::IsCStruct(llvm::Type const *type) -> bool {
+  while (const auto st = llvm::dyn_cast<llvm::StructType>(type)) {
+    if (st->getNumElements() != 1) { return st->getNumElements() > 1; }
+    type = st->getElementType(0);
+  }
+  return false;
+}
+
+auto spp::codegen::CScalarOf(llvm::Type *type) -> llvm::Type* {
+  if (not llvm::isa<llvm::StructType>(type)) { return nullptr; }
+  while (const auto st = llvm::dyn_cast<llvm::StructType>(type)) {
+    if (st->getNumElements() != 1) { return nullptr; }
+    type = st->getElementType(0);
+  }
+  return type;
+}
+
+auto spp::codegen::CScalarPath(llvm::Type const *type) -> Vec<unsigned> {
+  auto path = Vec<unsigned>();
+  while (const auto st = llvm::dyn_cast<llvm::StructType>(type)) {
+    path.emplace_back(0u);
+    type = st->getElementType(0);
+  }
+  return path;
+}
+
+auto spp::codegen::CExtendOf(llvm::Type const *type, const bool is_signed) -> llvm::Attribute::AttrKind {
+  // As clang marks a C prototype's integers for each target.
+  const auto integer = llvm::dyn_cast<llvm::IntegerType>(type);
+  if (integer == nullptr) { return llvm::Attribute::None; }
+  const auto by_sign = is_signed ? llvm::Attribute::SExt : llvm::Attribute::ZExt;
+  const auto width = integer->getBitWidth();
+  if (width == 1) { return llvm::Attribute::ZExt; }
+  if (width < 32) { return by_sign; }
+  if (width > 32) { return llvm::Attribute::None; }
+
+  switch (TargetTriple().getArch()) {
+    case llvm::Triple::ppc64:
+    case llvm::Triple::ppc64le:
+    case llvm::Triple::systemz:
+    case llvm::Triple::sparcv9:
+      return by_sign;
+    case llvm::Triple::riscv64:
+    case llvm::Triple::loongarch64:
+    case llvm::Triple::mips:
+    case llvm::Triple::mipsel:
+    case llvm::Triple::mips64:
+    case llvm::Triple::mips64el:
+      return llvm::Attribute::SExt;
+    default:
+      return llvm::Attribute::None;
+  }
+}
+
+auto spp::codegen::LayOutInOrder(
+  llvm::StructType &type, Vec<llvm::Type*> const &fields,
+  LlvmTypeSymbolInfo &info, const bool packed) -> void {
+  const auto kept = DropValuelessFields(fields);
+  auto kept_types = Vec<llvm::Type*>();
+  auto kept_map = Map<std::size_t, std::size_t>();
+  for (auto new_idx = 0uz; new_idx < kept.size(); ++new_idx) {
+    kept_types.emplace_back(fields[kept[new_idx]]);
+    kept_map[kept[new_idx]] = new_idx;
+  }
+  if (type.isOpaque()) { type.setBody(kept_types, packed); }
+  if (kept.size() != fields.size()) { info.FieldIndexMap = std::move(kept_map); }
+  else { info.FieldIndexMap.clear(); }
 }
 
 auto spp::codegen::FindAbi(

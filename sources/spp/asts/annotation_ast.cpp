@@ -48,21 +48,25 @@ use_alias(spp::codegen, Abi);
 use_alias(spp::codegen, LlvmCtx);
 
 namespace spp::asts {
-  namespace {
-    using namespace spp::asts::utils;
+  using namespace spp::asts::utils;
 
-    /// The visibility a visibility annotation names, or Nullopt
-    /// for any other annotation.
-    auto VisibilityOf(const analyse::utils::annotation_utils::BuiltinAnnotation builtin) -> Opt<Visibility> {
-      using A = analyse::utils::annotation_utils::BuiltinAnnotation;
-      switch (builtin) {
-        case A::kPublic: return Visibility::kPublic;
-        case A::kPackage: return Visibility::kPackage;
-        case A::kProtected: return Visibility::kProtected;
-        case A::kPrivate: return Visibility::kPrivate;
-        default: return Nullopt;
-      }
-    }
+  /// The visibility a visibility annotation names, or Nullopt for any other
+  /// annotation.
+  static auto VisibilityOf(
+    analyse::utils::annotation_utils::BuiltinAnnotation builtin)
+    -> Opt<Visibility>;
+}
+
+auto spp::asts::VisibilityOf(
+  const analyse::utils::annotation_utils::BuiltinAnnotation builtin)
+  -> Opt<Visibility> {
+  using A = analyse::utils::annotation_utils::BuiltinAnnotation;
+  switch (builtin) {
+    case A::kPublic: return Visibility::kPublic;
+    case A::kPackage: return Visibility::kPackage;
+    case A::kProtected: return Visibility::kProtected;
+    case A::kPrivate: return Visibility::kPrivate;
+    default: return Nullopt;
   }
 }
 

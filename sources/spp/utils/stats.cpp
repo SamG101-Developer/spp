@@ -7,11 +7,38 @@ import spp.utils.types;
 import std;
 import sys;
 
-namespace {
+namespace spp::utils::stats {
   using Clock = std::chrono::steady_clock;
+  using CounterArr = spp::Arr<std::uint64_t, spp::utils::stats::kCounterCount>;
+
+  namespace {
+    /// One closed phase: how long it took, the high-water mark of memory at its
+    /// end, and how much of each counter it used. Effectively a span of "begin
+    /// here ... keep recording ... end here".
+    struct Phase {
+      spp::Str Name;
+      std::uint64_t WallNs;
+      std::uint64_t PeakRssBytes;
+      CounterArr Deltas;
+    };
+
+    /// The master state of all statistic management.
+    struct State {
+      bool Enabled = false;
+      spp::Path File;
+      spp::Func<void()> Sampler;
+      spp::Vec<Phase> Phases;
+      spp::Vec<spp::Tup<spp::Str, std::uint64_t>> Records;
+
+      spp::Opt<spp::Str> OpenName; /// The open phase, if "OpenName" has a value.
+      Clock::time_point OpenAt;
+      CounterArr OpenCounts{};
+      Clock::time_point StartedAt;
+    };
+  }
 
   /// What each counter is called in the report, by "Counter".
-  constexpr auto kCounterNames = spp::Arr<
+  static constexpr auto kCounterNames = spp::Arr<
     spp::StrView, spp::utils::stats::kCounterCount>{
     "ast_nodes_created",
     "scopes_created",
@@ -32,86 +59,70 @@ namespace {
     "sup_instances_made",
   };
 
-  using CounterArr = spp::Arr<std::uint64_t, spp::utils::stats::kCounterCount>;
-
-  /// One closed phase: how long it took, the high-water mark of memory at its
-  /// end, and how much of each counter it used. Effectively a span of "begin
-  /// here ... keep recording ... end here".
-  struct Phase {
-    spp::Str Name;
-    std::uint64_t WallNs;
-    std::uint64_t PeakRssBytes;
-    CounterArr Deltas;
-  };
-
-  /// The master state of all statistic management.
-  struct State {
-    bool Enabled = false;
-    spp::Path File;
-    spp::Func<void()> Sampler;
-    spp::Vec<Phase> Phases;
-    spp::Vec<spp::Tup<spp::Str, std::uint64_t>> Records;
-
-    spp::Opt<spp::Str> OpenName; /// The open phase, if "OpenName" has a value.
-    Clock::time_point OpenAt;
-    CounterArr OpenCounts{};
-    Clock::time_point StartedAt;
-  };
-
   /// Get the state as a static singleton borrow, for all state modification and
   /// reading.
-  auto TheState() -> State& {
-    static auto state = State();
-    return state;
-  }
+  static auto TheState() -> State&;
 
   ///
-  auto Sample() -> CounterArr {
-    auto &state = TheState();
-    if (state.Sampler) { state.Sampler(); }
-    return spp::utils::stats::Counts;
-  }
+  static auto Sample() -> CounterArr;
 
-  auto ClosePhase() -> void {
-    auto &state = TheState();
-    if (not state.OpenName.has_value()) { return; }
+  static auto ClosePhase() -> void;
 
-    const auto now = Clock::now();
-    const auto counts = Sample();
-    auto phase = Phase{
-      .Name = std::move(*state.OpenName),
-      .WallNs = static_cast<std::uint64_t>(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(
-          now - state.OpenAt).count()),
-      .PeakRssBytes = sys::peak_rss_bytes(),
-      .Deltas = {}
-    };
-    for (auto i = 0uz; i < counts.size(); ++i) {
-      phase.Deltas[i] = counts[i] - state.OpenCounts[i];
-    }
-    state.Phases.emplace_back(std::move(phase));
-    state.OpenName.reset();
-  }
-
-  auto JsonCounters(CounterArr const &counts) -> spp::Str {
-    auto out = spp::Str("{");
-    for (auto i = 0uz; i < counts.size(); ++i) {
-      out += std::format(
-        "{}\"{}\":{}", i > 0 ? "," : "", kCounterNames[i], counts[i]);
-    }
-    return out + "}";
-  }
+  static auto JsonCounters(CounterArr const &counts) -> spp::Str;
 
   /// The mode and target are names the compiler chose, but a target triple is
   /// still escaped rather than trusted.
-  auto JsonString(const spp::StrView text) -> spp::Str {
-    auto out = spp::Str("\"");
-    for (const auto c : text) {
-      if (c == '"' or c == '\\') { out += '\\'; }
-      out += c;
-    }
-    return out + "\"";
+  static auto JsonString(const spp::StrView text) -> spp::Str;
+}
+
+auto spp::utils::stats::TheState() -> State& {
+  static auto state = State();
+  return state;
+}
+
+auto spp::utils::stats::Sample() -> CounterArr {
+  auto &state = TheState();
+  if (state.Sampler) { state.Sampler(); }
+  return spp::utils::stats::Counts;
+}
+
+auto spp::utils::stats::ClosePhase() -> void {
+  auto &state = TheState();
+  if (not state.OpenName.has_value()) { return; }
+
+  const auto now = Clock::now();
+  const auto counts = Sample();
+  auto phase = Phase{
+    .Name = std::move(*state.OpenName),
+    .WallNs = static_cast<std::uint64_t>(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+        now - state.OpenAt).count()),
+    .PeakRssBytes = sys::peak_rss_bytes(),
+    .Deltas = {}
+  };
+  for (auto i = 0uz; i < counts.size(); ++i) {
+    phase.Deltas[i] = counts[i] - state.OpenCounts[i];
   }
+  state.Phases.emplace_back(std::move(phase));
+  state.OpenName.reset();
+}
+
+auto spp::utils::stats::JsonCounters(CounterArr const &counts) -> spp::Str {
+  auto out = spp::Str("{");
+  for (auto i = 0uz; i < counts.size(); ++i) {
+    out += std::format(
+      "{}\"{}\":{}", i > 0 ? "," : "", kCounterNames[i], counts[i]);
+  }
+  return out + "}";
+}
+
+auto spp::utils::stats::JsonString(const spp::StrView text) -> spp::Str {
+  auto out = spp::Str("\"");
+  for (const auto c : text) {
+    if (c == '"' or c == '\\') { out += '\\'; }
+    out += c;
+  }
+  return out + "\"";
 }
 
 spp::Arr<std::uint64_t, spp::utils::stats::kCounterCount> spp::utils::stats::Counts{};

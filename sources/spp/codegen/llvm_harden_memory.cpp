@@ -7,11 +7,10 @@ import llvm;
 import std;
 
 namespace spp::codegen {
-  namespace {
-    /// Attributes for probing stacks.
-    constexpr auto kProbeStackAttr = llvm::StringLiteral("probe-stack");
-    constexpr auto kProbeStackInlineAsm = llvm::StringLiteral("inline-asm");
-  }
+  /// Attributes for probing stacks.
+  static constexpr auto kProbeStackAttr = llvm::StringLiteral("probe-stack");
+
+  static constexpr auto kProbeStackInlineAsm = llvm::StringLiteral("inline-asm");
 }
 
 auto spp::codegen::ApplyStackProtector(

@@ -75,207 +75,275 @@ use_alias(spp::asts::mixins, VisibilityAst);
 use_alias(spp::asts::utils, Visibility);
 use_alias(spp::codegen, LlvmTypeSymbolInfo);
 
-namespace {
+namespace spp::analyse::scopes {
   using spp::analyse::scopes::Scope;
   using spp::analyse::scopes::TypeSymbol;
 
-  auto NextTypeSymbolSerial() -> std::uint64_t {
-    static auto serial = static_cast<std::uint64_t>(0);
-    return ++serial;
+  /// The aliases a chain of them has passed through, to stop on
+  /// one it comes back to. Inline: a chain is short.
+  template <typename S = TypeSymbol>
+  using PassedAliases = spp::SmallVec<S const*, 4>;
+
+  namespace {
+    /// The variadic packs given a parameter identity ("GnPackParamId"): by pack, and each identity's name.
+    struct GnPackParams {
+      spp::Map<void const*, std::uint64_t> Ids;
+      spp::Map<std::uint64_t, spp::Str> Names;
+    };
   }
+
+  static auto NextTypeSymbolSerial() -> std::uint64_t;
 
   /// The one place reading a type makes an instantiation:
   /// "id" (already read where "scope" reads it), standing
   /// for "open", an open instantiation (of a class or an
   /// alias).
-  auto MakeOnRead(
+  static auto MakeOnRead(
     Scope const &scope, TypeSymbol const &open,
-    const TypeId id) -> TypeSymbol* {
-    using spp::analyse::scopes::TypeKind;
-    // Check that the id is valid, and that the open type
-    // symbol is an instantiation of a template. For an
-    // unformed alias, ignore too.
-    if (id == nullptr or open.InstanceOf == nullptr) { return nullptr; }
-    if (open.Kind != TypeKind::Cls and open.Alias == nullptr) { return nullptr; }
-
-    // Create the monomorphised version of the type symbol
-    // for "id" within "scope".
-    return spp::analyse::utils::monomorphization::InstantiateForScope(
-      id, scope);
-  }
+    const TypeId id) -> TypeSymbol*;
 
   /// An instantiation's argument for its template's parameter "name" ("TypeSymbol::TypeArgRef",
   /// "TypeSymbol::CompArgId"): the name is read against the template's own parameters, once, and the argument found by
   /// that parameter's identity ("FindArgOf"). A variadic parameter finds nothing: its elements are positional, and no
   /// one argument is its value. The kind is as found, so a caller reads the field it wants, and gets null from a name
   /// of the other kind (each parameter's name has one kind).
-  auto IdArgNamed(
-    TypeSymbol const &inst, spp::Str const &name) -> spp::Opt<TypeIdArg> {
-    using namespace spp::analyse::scopes;
-    if (inst.Id == nullptr or inst.LinkedScope == nullptr or HeaderOf(inst.Id).Kind != TypeKey::Tag::Inst) {
-      return spp::Nullopt;
-    }
-    auto const *const tmpl = HeaderOf(inst.Id).Symbol();
-    auto const *const params = tmpl != nullptr ? tmpl->GnParams() : nullptr;
-    if (params == nullptr) { return spp::Nullopt; }
-    for (auto const *param : params->GetAllParams()) {
-      if (param->Name->ToString() == name and param->ParamId() != 0) {
-        return FindArgOf(HeaderOf(inst.Id).Args, param->ParamId());
-      }
-    }
-    return spp::Nullopt;
-  }
+  static auto IdArgNamed(
+    TypeSymbol const &inst, spp::Str const &name) -> spp::Opt<TypeIdArg>;
 
   /// What a written type names here ("Scope::FindTypeSymbol");
   /// else, for a name written as an open instantiation not
   /// made from here yet, the one its arguments name here,
   /// made now ("MakeOnRead").
-  auto FindOrMakeTypeSymbol(
-    Scope const &scope, TypeAst const &type) -> TypeSymbol* {
-    // Find the type symbol. If there is type symbol for the
-    // type name, then return it.
-    if (const auto sym = scope.FindTypeSymbol(&type); sym != nullptr) {
-      return sym;
-    }
-
-    // The open instantiation the type was stamped with, read
-    // raw from its template's instances (not re-read through
-    // this scope's bindings, which is what found nothing); the
-    // stamps are read in the order "FindTypeSymbol" reads them.
-    // Make the instantiation its identity names here.
-    auto const *const last = type.LastTypePart();
-    auto open = scope.FindTypeSymbolById(type.StampedTypeId());
-    if (open == nullptr and last != &type) { open = scope.FindTypeSymbolById(last->StampedTypeId()); }
-    if (open != nullptr) { return MakeOnRead(scope, *open, scope.ReadIn(open->Id)); }
-
-    // Stamped before a part of it could be read ("A[Self::n]"
-    // stamped while "Self::n" was still the member, keyed now
-    // as "A[4_uz]"), the stamp names nothing, and not what the
-    // type keys to now: that instantiation is made, from its
-    // template. A stamp that reads as the same identity is an
-    // instantiation not made yet, left to whoever makes it.
-    using namespace spp::analyse::scopes;
-    const auto id = scope.TypeIdOf(type);
-    if (not IsClosedTypeId(id) or HeaderOf(id).Kind != TypeKey::Tag::Inst) { return nullptr; }
-    const auto stamp = last->StampedTypeId();
-    if (stamp == nullptr or scope.ReadIn(stamp) == id) { return nullptr; }
-    auto const *const tmpl = HeaderOf(id).Symbol();
-    if (tmpl == nullptr or tmpl->Kind != TypeKind::Cls) { return nullptr; }
-    return spp::analyse::utils::monomorphization::InstantiateForScope(id, scope);
-  }
+  static auto FindOrMakeTypeSymbol(
+    Scope const &scope, TypeAst const &type) -> TypeSymbol*;
 
   /// Whether a marker annotation was written on this type, or
   /// on the template it substitutes. An instantiation is built
   /// fresh rather than copied from its template, so "!thread_hazard"
   /// on "Rc" only reaches "Rc[S32]" along the "DerivesFromSymbol"
   /// chain - the same route "IsZeroType" takes.
-  auto DirectThreadMarker(
-    TypeSymbol const *sym, bool TypeSymbol::*flag) -> bool {
-    // Look at a symbol and move through its derivations to check
-    // the "flag", such as thread safety etc.
-    for (auto const *s = sym; s != nullptr; s = s->DerivesFromSymbol.get()) {
-      if (s->*flag) { return true; }
-    }
-    return false;
-  }
+  static auto DirectThreadMarker(
+    TypeSymbol const *sym, bool TypeSymbol::*flag) -> bool;
 
   /// Whether a generic parameter was declared as "T: ThreadSafe"
   /// constrained, which is the only thing that can make an
   /// unbound generic safe.
-  auto HasThreadSafeConstraint(
-    TypeSymbol const &sym) -> bool {
-    using spp::asts::generate::common_types_precompiled::THREAD_SAFE;
+  static auto HasThreadSafeConstraint(
+    TypeSymbol const &sym) -> bool;
 
-    const auto scope = sym.ScopeDefinedIn != nullptr
-      ? sym.ScopeDefinedIn
-      : sym.LinkedScope;
-    if (scope == nullptr) { return false; }
-
-    // A constraint naming the special "ThreadSafe" type (or an
-    // alias of it), as the template it stands for.
-    return genex::any_of(sym.TypeConstraints, [&](auto const &c) {
-      const auto head = TypeRef::ForKindCheck(*c, *scope);
-      return head.KindSymbol() != nullptr and head.IsA(*THREAD_SAFE, *scope);
-    });
-  }
-
-  auto IsThreadSafeRec(
+  static auto IsThreadSafeRec(
     TypeSymbol const *sym,
     spp::Set<TypeSymbol const*> &seen)
-    -> bool {
-    using spp::analyse::utils::type_members::GetAllAttrs;
-    using namespace spp::asts::generate::common_types_precompiled;
+    -> bool;
 
-    // A symbol that could not be resolved is not evidence
-    // of a hazard. A type reached twice ie via a cycle,
-    // adds nothing the first visit did not already account for.
-    if (sym == nullptr) { return true; }
-    if (not seen.insert(sym).second) { return true; }
+  static auto GnTypeParams() -> spp::Map<std::uint64_t, spp::analyse::scopes::TypeSymbol*>&;
 
-    // A hazard stays one however it is wrapped.
-    if (DirectThreadMarker(sym, &TypeSymbol::IsDirectlyThreadHazard)) {
-      return false;
-    }
+  static auto GnCompParams() -> spp::Map<std::uint64_t, spp::analyse::scopes::VariableSymbol*>&;
 
-    // A generic bound to a real type answers with whatever it
-    // was bound to; an unbound one is safe only where it was
-    // constrained to be, because nothing else stops it being
-    // instantiated with a hazard.
-    if (sym->IsGn()) {
-      const auto bound = sym->LinkedSymbol();
-      if (bound != sym and not bound->IsGn()) { return IsThreadSafeRec(bound, seen); }
-      const auto ok = HasThreadSafeConstraint(*sym);
-      return ok;
-    }
+  static auto GnPacks() -> GnPackParams&;
 
-    // The arguments are resolved through the instantiation's own
-    // scope, which lives as long as the symbol. "ScopeDefinedIn"
-    // is where the type was first written, which can be a body
-    // scope of a generic function instantiation that is later
-    // discarded. The arguments are qualified by then.
-    const auto arg_scope = sym->LinkedScope;
+  template <typename S>
+  static auto WasPassed(PassedAliases<S> const &passed, S const *const sym) -> bool;
+}
 
-    // There are some types that don't hold attributes in the
-    // std library, but are representative of internal values,
-    // lowered directly from LLVM, such as a NonNull owning a
-    // T value, but not written in the compiler. Each is known by
-    // its class, not its name, so a user's own "Arr" is not one;
-    // an instantiation shares its template's class.
-    const auto compiler_special_type = [&] {
-      if (sym->Name == nullptr or arg_scope == nullptr or sym->Type == nullptr) { return false; }
-      return genex::any_of(
-        spp::Vec{TUP, VAR, ARR, NON_NULL, GEN, GEN_ONCE, FUT},
-        [&](auto const &known) {
-          const auto known_sym = arg_scope->FindTypeSymbol(known.get());
-          return known_sym != nullptr and known_sym->Type == sym->Type;
-        });
-    }();
+auto spp::analyse::scopes::NextTypeSymbolSerial() -> std::uint64_t {
+  static auto serial = static_cast<std::uint64_t>(0);
+  return ++serial;
+}
 
-    // Its arguments as its identity holds them: its name spells them as they were written where it was made, which
-    // they need not mean here.
-    if (compiler_special_type and sym->Id != nullptr) {
-      auto const &head = HeaderOf(sym->Id);
-      auto arg_ids = spp::Vec<TypeId>();
-      if (head.Kind == TypeKey::Tag::Inst) {
-        for (auto const &arg : ArgsOf(head.Args)) { if (arg.TypeVal != nullptr) { arg_ids.emplace_back(arg.TypeVal); } }
-      }
-      else if (head.Kind == TypeKey::Tag::Variant) { arg_ids.append_range(head.VariantMembers); }
-      for (const auto arg_id : arg_ids) {
-        if (not IsThreadSafeRec(arg_scope->FindTypeSymbolById(arg_id), seen)) { return false; }
-      }
-    }
+auto spp::analyse::scopes::MakeOnRead(
+  Scope const &scope, TypeSymbol const &open,
+  const TypeId id) -> TypeSymbol* {
+  using spp::analyse::scopes::TypeKind;
+  // Check that the id is valid, and that the open type
+  // symbol is an instantiation of a template. For an
+  // unformed alias, ignore too.
+  if (id == nullptr or open.InstanceOf == nullptr) { return nullptr; }
+  if (open.Kind != TypeKind::Cls and open.Alias == nullptr) { return nullptr; }
 
-    // Recurse into the attributes of the type; if there is a
-    // unsafe attribute type, then the overall type is also
-    // unsafe.
-    if (sym->LinkedScope != nullptr and sym->Type != nullptr) {
-      for (auto const &attr : GetAllAttrs(*sym)) {
-        if (not IsThreadSafeRec(spp::get<1>(attr).Symbol, seen)) { return false; }
-      }
-    }
+  // Create the monomorphised version of the type symbol
+  // for "id" within "scope".
+  return spp::analyse::utils::monomorphization::InstantiateForScope(
+    id, scope);
+}
 
-    return true;
+auto spp::analyse::scopes::IdArgNamed(
+  TypeSymbol const &inst, spp::Str const &name) -> spp::Opt<TypeIdArg> {
+  using namespace spp::analyse::scopes;
+  if (inst.Id == nullptr or inst.LinkedScope == nullptr or HeaderOf(inst.Id).Kind != TypeKey::Tag::Inst) {
+    return spp::Nullopt;
   }
+  auto const *const tmpl = HeaderOf(inst.Id).Symbol();
+  auto const *const params = tmpl != nullptr ? tmpl->GnParams() : nullptr;
+  if (params == nullptr) { return spp::Nullopt; }
+  for (auto const *param : params->GetAllParams()) {
+    if (param->Name->ToString() == name and param->ParamId() != 0) {
+      return FindArgOf(HeaderOf(inst.Id).Args, param->ParamId());
+    }
+  }
+  return spp::Nullopt;
+}
+
+auto spp::analyse::scopes::FindOrMakeTypeSymbol(
+  Scope const &scope, TypeAst const &type) -> TypeSymbol* {
+  // Find the type symbol. If there is type symbol for the
+  // type name, then return it.
+  if (const auto sym = scope.FindTypeSymbol(&type); sym != nullptr) {
+    return sym;
+  }
+
+  // The open instantiation the type was stamped with, read
+  // raw from its template's instances (not re-read through
+  // this scope's bindings, which is what found nothing); the
+  // stamps are read in the order "FindTypeSymbol" reads them.
+  // Make the instantiation its identity names here.
+  auto const *const last = type.LastTypePart();
+  auto open = scope.FindTypeSymbolById(type.StampedTypeId());
+  if (open == nullptr and last != &type) { open = scope.FindTypeSymbolById(last->StampedTypeId()); }
+  if (open != nullptr) { return MakeOnRead(scope, *open, scope.ReadIn(open->Id)); }
+
+  // Stamped before a part of it could be read ("A[Self::n]"
+  // stamped while "Self::n" was still the member, keyed now
+  // as "A[4_uz]"), the stamp names nothing, and not what the
+  // type keys to now: that instantiation is made, from its
+  // template. A stamp that reads as the same identity is an
+  // instantiation not made yet, left to whoever makes it.
+  using namespace spp::analyse::scopes;
+  const auto id = scope.TypeIdOf(type);
+  if (not IsClosedTypeId(id) or HeaderOf(id).Kind != TypeKey::Tag::Inst) { return nullptr; }
+  const auto stamp = last->StampedTypeId();
+  if (stamp == nullptr or scope.ReadIn(stamp) == id) { return nullptr; }
+  auto const *const tmpl = HeaderOf(id).Symbol();
+  if (tmpl == nullptr or tmpl->Kind != TypeKind::Cls) { return nullptr; }
+  return spp::analyse::utils::monomorphization::InstantiateForScope(id, scope);
+}
+
+auto spp::analyse::scopes::DirectThreadMarker(
+  TypeSymbol const *sym, bool TypeSymbol::*flag) -> bool {
+  // Look at a symbol and move through its derivations to check
+  // the "flag", such as thread safety etc.
+  for (auto const *s = sym; s != nullptr; s = s->DerivesFromSymbol.get()) {
+    if (s->*flag) { return true; }
+  }
+  return false;
+}
+
+auto spp::analyse::scopes::HasThreadSafeConstraint(
+  TypeSymbol const &sym) -> bool {
+  using spp::asts::generate::common_types_precompiled::THREAD_SAFE;
+
+  const auto scope = sym.ScopeDefinedIn != nullptr
+    ? sym.ScopeDefinedIn
+    : sym.LinkedScope;
+  if (scope == nullptr) { return false; }
+
+  // A constraint naming the special "ThreadSafe" type (or an
+  // alias of it), as the template it stands for.
+  return genex::any_of(sym.TypeConstraints, [&](auto const &c) {
+    const auto head = TypeRef::ForKindCheck(*c, *scope);
+    return head.KindSymbol() != nullptr and head.IsA(*THREAD_SAFE, *scope);
+  });
+}
+
+auto spp::analyse::scopes::IsThreadSafeRec(
+  TypeSymbol const *sym,
+  spp::Set<TypeSymbol const*> &seen)
+  -> bool {
+  using spp::analyse::utils::type_members::GetAllAttrs;
+  using namespace spp::asts::generate::common_types_precompiled;
+
+  // A symbol that could not be resolved is not evidence
+  // of a hazard. A type reached twice ie via a cycle,
+  // adds nothing the first visit did not already account for.
+  if (sym == nullptr) { return true; }
+  if (not seen.insert(sym).second) { return true; }
+
+  // A hazard stays one however it is wrapped.
+  if (DirectThreadMarker(sym, &TypeSymbol::IsDirectlyThreadHazard)) {
+    return false;
+  }
+
+  // A generic bound to a real type answers with whatever it
+  // was bound to; an unbound one is safe only where it was
+  // constrained to be, because nothing else stops it being
+  // instantiated with a hazard.
+  if (sym->IsGn()) {
+    const auto bound = sym->LinkedSymbol();
+    if (bound != sym and not bound->IsGn()) { return IsThreadSafeRec(bound, seen); }
+    const auto ok = HasThreadSafeConstraint(*sym);
+    return ok;
+  }
+
+  // The arguments are resolved through the instantiation's own
+  // scope, which lives as long as the symbol. "ScopeDefinedIn"
+  // is where the type was first written, which can be a body
+  // scope of a generic function instantiation that is later
+  // discarded. The arguments are qualified by then.
+  const auto arg_scope = sym->LinkedScope;
+
+  // There are some types that don't hold attributes in the
+  // std library, but are representative of internal values,
+  // lowered directly from LLVM, such as a NonNull owning a
+  // T value, but not written in the compiler. Each is known by
+  // its class, not its name, so a user's own "Arr" is not one;
+  // an instantiation shares its template's class.
+  const auto compiler_special_type = [&] {
+    if (sym->Name == nullptr or arg_scope == nullptr or sym->Type == nullptr) { return false; }
+    return genex::any_of(
+      spp::Vec{TUP, VAR, ARR, NON_NULL, GEN, GEN_ONCE, FUT},
+      [&](auto const &known) {
+        const auto known_sym = arg_scope->FindTypeSymbol(known.get());
+        return known_sym != nullptr and known_sym->Type == sym->Type;
+      });
+  }();
+
+  // Its arguments as its identity holds them: its name spells them as they were written where it was made, which
+  // they need not mean here.
+  if (compiler_special_type and sym->Id != nullptr) {
+    auto const &head = HeaderOf(sym->Id);
+    auto arg_ids = spp::Vec<TypeId>();
+    if (head.Kind == TypeKey::Tag::Inst) {
+      for (auto const &arg : ArgsOf(head.Args)) { if (arg.TypeVal != nullptr) { arg_ids.emplace_back(arg.TypeVal); } }
+    }
+    else if (head.Kind == TypeKey::Tag::Variant) { arg_ids.append_range(head.VariantMembers); }
+    for (const auto arg_id : arg_ids) {
+      if (not IsThreadSafeRec(arg_scope->FindTypeSymbolById(arg_id), seen)) { return false; }
+    }
+  }
+
+  // Recurse into the attributes of the type; if there is a
+  // unsafe attribute type, then the overall type is also
+  // unsafe.
+  if (sym->LinkedScope != nullptr and sym->Type != nullptr) {
+    for (auto const &attr : GetAllAttrs(*sym)) {
+      if (not IsThreadSafeRec(spp::get<1>(attr).Symbol, seen)) { return false; }
+    }
+  }
+
+  return true;
+}
+
+auto spp::analyse::scopes::GnTypeParams() -> spp::Map<std::uint64_t, spp::analyse::scopes::TypeSymbol*>& {
+  static auto params = spp::Map<std::uint64_t, spp::analyse::scopes::TypeSymbol*>();
+  return params;
+}
+
+auto spp::analyse::scopes::GnCompParams() -> spp::Map<std::uint64_t, spp::analyse::scopes::VariableSymbol*>& {
+  static auto params = spp::Map<std::uint64_t, spp::analyse::scopes::VariableSymbol*>();
+  return params;
+}
+
+auto spp::analyse::scopes::GnPacks() -> GnPackParams& {
+  static auto packs = GnPackParams();
+  return packs;
+}
+
+template <typename S>
+auto spp::analyse::scopes::WasPassed(PassedAliases<S> const &passed, S const *const sym) -> bool {
+  for (auto i = 0uz; i < passed.size(); ++i) {
+    if (passed[i] == sym) { return true; }
+  }
+  return false;
 }
 
 SPP_MOD_BEGIN
@@ -354,13 +422,6 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
 
 spp::analyse::scopes::VariableSymbol::~VariableSymbol() = default;
 
-namespace {
-  auto GnTypeParams() -> spp::Map<std::uint64_t, spp::analyse::scopes::TypeSymbol*>& {
-    static auto params = spp::Map<std::uint64_t, spp::analyse::scopes::TypeSymbol*>();
-    return params;
-  }
-}
-
 auto spp::analyse::scopes::RegisterGnTypeParam(TypeSymbol &param) -> void {
   GnTypeParams()[param.OwnParamId] = &param;
 }
@@ -370,13 +431,6 @@ auto spp::analyse::scopes::FindGnTypeParamById(const std::uint64_t id) -> TypeSy
   return hit != GnTypeParams().end() ? hit->second : nullptr;
 }
 
-namespace {
-  auto GnCompParams() -> spp::Map<std::uint64_t, spp::analyse::scopes::VariableSymbol*>& {
-    static auto params = spp::Map<std::uint64_t, spp::analyse::scopes::VariableSymbol*>();
-    return params;
-  }
-}
-
 auto spp::analyse::scopes::RegisterGnCompParam(VariableSymbol &param) -> void {
   GnCompParams()[param.OwnParamId] = &param;
 }
@@ -384,19 +438,6 @@ auto spp::analyse::scopes::RegisterGnCompParam(VariableSymbol &param) -> void {
 auto spp::analyse::scopes::FindGnCompParamById(const std::uint64_t id) -> VariableSymbol* {
   const auto hit = GnCompParams().find(id);
   return hit != GnCompParams().end() ? hit->second : nullptr;
-}
-
-namespace {
-  /// The variadic packs given a parameter identity ("GnPackParamId"): by pack, and each identity's name.
-  struct GnPackParams {
-    spp::Map<void const*, std::uint64_t> Ids;
-    spp::Map<std::uint64_t, spp::Str> Names;
-  };
-
-  auto GnPacks() -> GnPackParams& {
-    static auto packs = GnPackParams();
-    return packs;
-  }
 }
 
 auto spp::analyse::scopes::ClearGnParams() -> void {
@@ -719,21 +760,6 @@ auto spp::analyse::scopes::TypeSymbol::AsBound() const -> TypeSymbol* {
 auto spp::analyse::scopes::AliasInfo::DeclaredIn() const -> Scope* {
   if (WrittenIn == nullptr) { Ice("alias has no scope it was written in"); }
   return WrittenIn->AstNode != nullptr and WrittenIn->AstNode == Stmt ? WrittenIn->Parent : WrittenIn;
-}
-
-namespace {
-  /// The aliases a chain of them has passed through, to stop on
-  /// one it comes back to. Inline: a chain is short.
-  template <typename S = TypeSymbol>
-  using PassedAliases = spp::SmallVec<S const*, 4>;
-
-  template <typename S>
-  auto WasPassed(PassedAliases<S> const &passed, S const *const sym) -> bool {
-    for (auto i = 0uz; i < passed.size(); ++i) {
-      if (passed[i] == sym) { return true; }
-    }
-    return false;
-  }
 }
 
 auto spp::analyse::scopes::VariableSymbol::UseTarget() const -> VariableSymbol* {

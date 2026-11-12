@@ -33,14 +33,16 @@ use_alias(spp::asts, FunctionCallArgumentAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::borrows {
-  namespace {
-    /// Check if one scope is the descendant of another (and not
-    /// the same as the other), with a reverse ancestor lookup.
-    auto StrictlyInside(Scope const *scope, Scope const *outer) -> bool {
-      if (scope == nullptr or outer == nullptr or scope == outer) { return false; }
-      return genex::position(scope->GetAncestors(), genex::operations::eq_fixed{outer}).has_value();
-    }
-  }
+  /// Check if one scope is the descendant of another (and not
+  /// the same as the other), with a reverse ancestor lookup.
+  static auto StrictlyInside(Scope const *scope, Scope const *outer) -> bool;
+}
+
+auto spp::analyse::utils::borrows::StrictlyInside(
+  Scope const *scope, Scope const *outer) -> bool {
+  if (scope == nullptr or outer == nullptr or scope == outer) { return false; }
+  return genex::position(
+    scope->GetAncestors(), genex::operations::eq_fixed{outer}).has_value();
 }
 
 /// [CHECKED]

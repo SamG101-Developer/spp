@@ -49,33 +49,41 @@ use_alias(spp::asts::meta, IsBindingsScope);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
-namespace {
+namespace spp::asts {
   /// The runtime's allocator. A coroutine frame is allocated
   /// and released by the coroutine itself rather then through
   /// the S++ allocator types.
   /// Todo: Move to stack only coroutine frame allocation?
-  auto CoroFrameAllocFn(
+  static auto CoroFrameAllocFn(
     spp::codegen::LlvmCtx const *ctx)
-    -> llvm::Function* {
-    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-    const auto size_ty = spp::codegen::TargetSizeType(*ctx->Context);
-    const auto fn_ty = llvm::FunctionType::get(ptr_ty, {size_ty}, false);
-    return llvm::cast<llvm::Function>(
-      ctx->Module->getOrInsertFunction("sppc_malloc", fn_ty).getCallee());
-  }
+    -> llvm::Function*;
 
   /// The runtime's release. Provides the other half of the above
   /// allocation function.
   /// Todo: Remove once the stack allocation is in place.
-  auto CoroFrameFreeFn(
+  static auto CoroFrameFreeFn(
     spp::codegen::LlvmCtx const *ctx)
-    -> llvm::Function* {
-    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-    const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
-    const auto fn_ty = llvm::FunctionType::get(void_ty, {ptr_ty}, false);
-    return llvm::cast<llvm::Function>(
-      ctx->Module->getOrInsertFunction("sppc_free", fn_ty).getCallee());
-  }
+    -> llvm::Function*;
+}
+
+auto spp::asts::CoroFrameAllocFn(
+  spp::codegen::LlvmCtx const *ctx)
+  -> llvm::Function* {
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto size_ty = spp::codegen::TargetSizeType(*ctx->Context);
+  const auto fn_ty = llvm::FunctionType::get(ptr_ty, {size_ty}, false);
+  return llvm::cast<llvm::Function>(
+    ctx->Module->getOrInsertFunction("sppc_malloc", fn_ty).getCallee());
+}
+
+auto spp::asts::CoroFrameFreeFn(
+  spp::codegen::LlvmCtx const *ctx)
+  -> llvm::Function* {
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
+  const auto fn_ty = llvm::FunctionType::get(void_ty, {ptr_ty}, false);
+  return llvm::cast<llvm::Function>(
+    ctx->Module->getOrInsertFunction("sppc_free", fn_ty).getCallee());
 }
 
 SPP_MOD_BEGIN

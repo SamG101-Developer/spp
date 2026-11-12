@@ -8,18 +8,23 @@ import spp.asts.utils.ast_utils;
 spp::Map<spp::asts::TypeAst const*, spp::Pair<spp::Shared<spp::asts::TypeAst const>, spp::analyse::scopes::TypeSymbol*>>
 spp::asts::generate::common_types_precompiled::TEMPLATE_SYMBOLS;
 
-namespace {
+namespace spp::asts::generate::common_types_precompiled {
   /// "fresh" recording what "like", its precompiled constant,
   /// records.
-  auto StampedLike(
+  static auto StampedLike(
     spp::Shared<spp::asts::TypeAst> fresh,
     spp::asts::TypeAst const &like)
-    -> spp::Shared<spp::asts::TypeAst> {
-    // Create a new type ast instance, but make the stamped
-    // identity that of a precompiled type.
-    fresh->LastTypePart()->StampTypeId(like.LastTypePart()->StampedTypeId());
-    return fresh;
-  }
+    -> spp::Shared<spp::asts::TypeAst>;
+}
+
+auto spp::asts::generate::common_types_precompiled::StampedLike(
+  spp::Shared<spp::asts::TypeAst> fresh,
+  spp::asts::TypeAst const &like)
+  -> spp::Shared<spp::asts::TypeAst> {
+  // Create a new type ast instance, but make the stamped
+  // identity that of a precompiled type.
+  fresh->LastTypePart()->StampTypeId(like.LastTypePart()->StampedTypeId());
+  return fresh;
 }
 
 auto spp::asts::generate::common_types_precompiled::ClearTypes() -> void {

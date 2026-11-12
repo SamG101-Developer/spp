@@ -40,90 +40,95 @@ use_alias(spp::asts, LoopConditionalExpressionAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::linear_utils {
-  namespace {
-    /**
-     * Whether this symbol still owns a value that nothing has consumed. S++ ownership is linear: a value of a
-     * non-@c Copy type must be used exactly once, so a symbol reaching the end of its scope while still holding one is
-     * an error.
-     * @param sym The symbol being checked.
-     * @param sm The scope manager, positioned where the symbol's type resolves from.
-     * @return Whether the symbol still owns an unconsumed value.
-     */
-    auto IsLive(
-      VariableSymbol const &sym, ScopeManager const &sm) -> bool {
-      // Only a local owns a value it has to answer for. A generic or a constant has no runtime existence, a
-      // flow-narrowing symbol is a view of another symbol's value (which keeps the obligation), and a capture belongs
-      // to the closure's environment, which is read again on every call - it is the closure value that is held to
-      // being consumed. A "$" temporary a desugaring made is a local like any other: the desugaring consumes it.
-      if (sym.Kind != VariableKind::Local and sym.Kind != VariableKind::Temporary) { return false; }
+  /**
+   * Whether this symbol still owns a value that nothing has consumed. S++ ownership is linear: a value of a
+   * non-@c Copy type must be used exactly once, so a symbol reaching the end of its scope while still holding one is
+   * an error.
+   * @param sym The symbol being checked.
+   * @param sm The scope manager, positioned where the symbol's type resolves from.
+   * @return Whether the symbol still owns an unconsumed value.
+   */
+  static auto IsLive(
+    VariableSymbol const &sym, ScopeManager const &sm) -> bool;
 
-      // A closed pack holds nothing itself: its elements are parameters of their own, each answering for its value.
-      // An open one holds what its elements are: nothing owed when each is copied ("..xs: S32", "..xs: Ts" with
-      // "Ts: Copy"), whatever its tuple of unknown length says.
-      if (sym.Pack.has_value() and not sym.Pack->Open) { return false; }
-      if (sym.Pack.has_value()) {
-        const auto element = sm.CurrentScope->FindTypeSymbol(
-          sym.Pack->Element->WithoutConvention().get());
-        if (element != nullptr and element->IsCopyable()) { return false; }
-      }
-      if (sym.Type == nullptr or sym.MemInfo == nullptr) {
-        Ice(*sym.Name, *sm.CurrentScope, "local variable has no type");
-      }
+  /// Leaving "scope" by "exit_point", when it is the scope of a
+  /// "case" branch that keeps a linear temporary, drops it.
+  static auto CheckKeptTemporaries(
+    Scope const &scope, Ast const &exit_point,
+    ScopeManager &sm, CompilerMetaData *meta) -> void;
+}
 
-      // A "!" value never exists: the code binding it cannot finish.
-      if (sym.Type->IsNeverType()) { return false; }
+auto spp::analyse::utils::linear_utils::IsLive(
+  VariableSymbol const &sym, ScopeManager const &sm) -> bool {
+  // Only a local owns a value it has to answer for. A generic or a constant has no runtime existence, a
+  // flow-narrowing symbol is a view of another symbol's value (which keeps the obligation), and a capture belongs
+  // to the closure's environment, which is read again on every call - it is the closure value that is held to
+  // being consumed. A "$" temporary a desugaring made is a local like any other: the desugaring consumes it.
+  if (sym.Kind != VariableKind::Local and sym.Kind != VariableKind::Temporary) { return false; }
 
-      // A borrow points at a value that belongs to someone else, so
-      // consuming it is not this scope's job.
-      if (sym.MemInfo->AstBorrowed != nullptr) { return false; }
-      if (sym.Type->GetConvention() != nullptr) { return false; }
+  // A closed pack holds nothing itself: its elements are parameters of their own, each answering for its value.
+  // An open one holds what its elements are: nothing owed when each is copied ("..xs: S32", "..xs: Ts" with
+  // "Ts: Copy"), whatever its tuple of unknown length says.
+  if (sym.Pack.has_value() and not sym.Pack->Open) { return false; }
+  if (sym.Pack.has_value()) {
+    const auto element = sm.CurrentScope->FindTypeSymbol(
+      sym.Pack->Element->WithoutConvention().get());
+    if (element != nullptr and element->IsCopyable()) { return false; }
+  }
+  if (sym.Type == nullptr or sym.MemInfo == nullptr) {
+    Ice(*sym.Name, *sm.CurrentScope, "local variable has no type");
+  }
 
-      // What it holds on every path is "Copy" (a "case" narrowed it to "None"), or it was moved on the others.
-      auto const &state = memory_state::StateOf(*sm.CurrentScope, sym);
-      if (state.OwesNothing) { return false; }
+  // A "!" value never exists: the code binding it cannot finish.
+  if (sym.Type->IsNeverType()) { return false; }
 
-      // Consumed on some of the paths that met and not on others, whole or in part: a path that did not take a part
-      // still owns it. The witnesses kept are the first path's, so the value can read as consumed while another path
-      // still owns it.
-      const auto owned_on_some_path = state.MaybeInit.has_value() or not state.MaybePartialMoves.empty();
+  // A borrow points at a value that belongs to someone else, so
+  // consuming it is not this scope's job.
+  if (sym.MemInfo->AstBorrowed != nullptr) { return false; }
+  if (sym.Type->GetConvention() != nullptr) { return false; }
 
-      // The value already left, whole.
-      if (state.AstInitialization == nullptr and not owned_on_some_path) { return false; }
+  // What it holds on every path is "Copy" (a "case" narrowed it to "None"), or it was moved on the others.
+  auto const &state = memory_state::StateOf(*sm.CurrentScope, sym);
+  if (state.OwesNothing) { return false; }
 
-      // A holder of loans (a "&mut"-capturing closure, a borrowing generator or future) is owed like any other
-      // value: it owns its environment or frame. It cannot be moved away, but a drop ends it and its loans together.
+  // Consumed on some of the paths that met and not on others, whole or in part: a path that did not take a part
+  // still owns it. The witnesses kept are the first path's, so the value can read as consumed while another path
+  // still owns it.
+  const auto owned_on_some_path = state.MaybeInit.has_value() or not state.MaybePartialMoves.empty();
 
-      // Copying leaves the original in place, so a copyable value
-      // is never owed to anyone.
-      const auto type = scopes::TypeRef::Of(*sym.Type, *sm.CurrentScope);
-      if (type.Symbol == nullptr or type.Symbol->IsCopyable()) { return false; }
+  // The value already left, whole.
+  if (state.AstInitialization == nullptr and not owned_on_some_path) { return false; }
 
-      // Taking every non-copyable part off a value leaves nothing
-      // left to consume. A destructure is the usual way that happens,
-      // and a case pattern's destructure only ever records the parts
-      // it bound, never the value itself, so the parts are all there
-      // is to go on.
-      if (state.PartialMoves.empty() or owned_on_some_path) { return true; }
-      return not regions::RegionConsumed(
-        regions::Place{.Root = const_cast<VariableSymbol*>(&sym), .Steps = {}}, type, *sm.CurrentScope,
-        state.PartialMoves);
-    }
+  // A holder of loans (a "&mut"-capturing closure, a borrowing generator or future) is owed like any other
+  // value: it owns its environment or frame. It cannot be moved away, but a drop ends it and its loans together.
 
-    /// Leaving "scope" by "exit_point", when it is the scope of a
-    /// "case" branch that keeps a linear temporary, drops it.
-    auto CheckKeptTemporaries(
-      Scope const &scope, Ast const &exit_point,
-      ScopeManager &sm, CompilerMetaData *meta) -> void {
-      // Leaving the scope of a branch that keeps a "case"'s
-      // temporary leaves the "case" with it unconsumed.
-      auto const *const flow = memory_state::FlowOf(scope);
-      if (flow == nullptr) { return; }
-      for (auto const &kept : flow->KeptTemporaries) {
-        if (scope.AstNode != kept.Branch) { continue; }
-        RaiseTemporaryNotConsumed(
-          *kept.Temporary, exit_point, "This branch keeps it and leaves here, so nothing owns it after", sm, meta);
-      }
-    }
+  // Copying leaves the original in place, so a copyable value
+  // is never owed to anyone.
+  const auto type = scopes::TypeRef::Of(*sym.Type, *sm.CurrentScope);
+  if (type.Symbol == nullptr or type.Symbol->IsCopyable()) { return false; }
+
+  // Taking every non-copyable part off a value leaves nothing
+  // left to consume. A destructure is the usual way that happens,
+  // and a case pattern's destructure only ever records the parts
+  // it bound, never the value itself, so the parts are all there
+  // is to go on.
+  if (state.PartialMoves.empty() or owned_on_some_path) { return true; }
+  return not regions::RegionConsumed(
+    regions::Place{.Root = const_cast<VariableSymbol*>(&sym), .Steps = {}}, type, *sm.CurrentScope,
+    state.PartialMoves);
+}
+
+auto spp::analyse::utils::linear_utils::CheckKeptTemporaries(
+  Scope const &scope, Ast const &exit_point,
+  ScopeManager &sm, CompilerMetaData *meta) -> void {
+  // Leaving the scope of a branch that keeps a "case"'s
+  // temporary leaves the "case" with it unconsumed.
+  auto const *const flow = memory_state::FlowOf(scope);
+  if (flow == nullptr) { return; }
+  for (auto const &kept : flow->KeptTemporaries) {
+    if (scope.AstNode != kept.Branch) { continue; }
+    RaiseTemporaryNotConsumed(
+      *kept.Temporary, exit_point, "This branch keeps it and leaves here, so nothing owns it after", sm, meta);
   }
 }
 

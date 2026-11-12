@@ -9,352 +9,407 @@ import genex;
 import tomlpp;
 
 namespace spp::utils::features {
-  namespace {
-    /// [CHECKED]
-    /// The settings currently applied, populated from the schema's defaults and
-    /// then from the config. The map is structured as {"feature" : "enabled"},
-    /// and the static instance is borrowed and mutated.
-    auto CurrentFlags() -> auto& {
-      static auto flags = Map<ConfigKey, bool>();
-      return flags;
+  /// The settings currently applied, populated from the schema's defaults and
+  /// then from the config. The map is structured as {"feature" : "enabled"},
+  /// and the static instance is borrowed and mutated.
+  static auto CurrentFlags() -> auto&;
+
+  /// The values of string and version keys, defaulted from the schema and
+  /// also borrowed and mutated.
+  static auto CurrentTexts() -> auto&;
+
+  /// Every key the loaded config sets itself, whatever its value. Effectively
+  /// all the overridden keys.
+  static auto CurrentSet() -> auto&;
+
+  /// The linkers "[target.linkers]" names, by target folder.
+  static auto CurrentLinkers() -> auto&;
+
+  /// The measures this build found it cannot have (the toolchain cannot keep
+  /// them), with why: on by default, so left out rather than refused.
+  static auto CurrentLeftOut() -> auto&;
+
+  /// Whether the defaults have been put in place yet, so that a query before
+  /// any load still answers correctly. Once set to true, it will always be
+  /// true until the program ends.
+  static auto FlagsReady() -> auto&;
+
+  /// Whether the loaded config sets the key itself, rather than leaving it to
+  /// its default.
+  static auto IsManuallySet(const ConfigKey key) -> bool;
+
+  /// Return the key, by "key" from the schema. This is a "key spec", and
+  /// contains associated key information.
+  static auto FindKey(const ConfigKey key) -> KeySpec const*;
+
+  /// Return the section, by "name" from the schema. This is a "section spec",
+  /// and contains allowed keys, helptext etc.
+  static auto FindSection(const StrView name) -> SectionSpec const*;
+
+  /// [CHECKED] [TIDY]
+  /// Whether version "a" is older than version "b", compared part by part, a
+  /// missing part being 0.
+  static auto VersionLess(const StrView a, const StrView b) -> bool;
+
+  /// Why a run-time measure that is turned on manually, must actually be off:
+  /// it needs a newer Linux than "[target.floor] linux", or the target is not
+  /// Linux.
+  static auto IsFlagIncompatibleWithSystem(
+    const ConfigKey key, const bool target_linux) -> Pair<bool, Str>;
+
+  /// Set all the feature flags to their default values, and mark all flags as
+  /// "ready".
+  static auto ApplyDefaults() -> void;
+
+  /**
+   * Whether a string is a dotted version, "major.minor" or longer, every part digits.
+   */
+  static auto IsVersion(
+    const spp::StrView text)
+    -> bool;
+
+  /**
+   * Provide a "did you mean" for a name that is not in the schema (empty when nothing is close enough to suggest). It
+   * reuses the compiler's string comparison usually reserved for "unidentified symbol" within the compilation process.
+   */
+  static auto Suggest(
+    const spp::StrView name,
+    spp::Vec<spp::Str> const &choices)
+    -> spp::Str;
+
+  /**
+   * String format the "kind" for error reporting.
+   * @param kind The enum "value kind" that a key must contain a value of.
+   * @return The stringified value.
+   */
+  static auto KindName(
+    const spp::utils::features::ValueKind kind)
+    -> spp::StrView;
+
+  /// Walk the config, reporting anything the schema does not describe, into
+  /// the "errors" vector.
+  static auto WalkTable(
+    auto const &table, Str const &prefix, Vec<Str> &errors) -> void;
+
+  /// Leave out the split stack, on by default, and "pac_ret" with it where the
+  /// split stack is what stands in for it, unless the project set that itself
+  /// (then the return-signing pass refuses it, naming the key).
+  static auto LeaveOutSplitStack(
+    spp::utils::features::TargetFacts const &target, const spp::StrView why) -> void;
+}
+
+/// [CHECKED]
+auto spp::utils::features::CurrentFlags() -> auto& {
+  static auto flags = Map<ConfigKey, bool>();
+  return flags;
+}
+
+/// [CHECKED]
+auto spp::utils::features::CurrentTexts() -> auto& {
+  static auto texts = Map<ConfigKey, Str>();
+  return texts;
+}
+
+/// [CHECKED]
+auto spp::utils::features::CurrentSet() -> auto& {
+  static auto set = Set<ConfigKey>();
+  return set;
+}
+
+/// [CHECKED]
+auto spp::utils::features::CurrentLinkers() -> auto& {
+  static auto linkers = Map<Str, Str>();
+  return linkers;
+}
+
+auto spp::utils::features::CurrentLeftOut() -> auto& {
+  static auto left_out = Map<ConfigKey, Str>();
+  return left_out;
+}
+
+/// [CHECKED]
+auto spp::utils::features::FlagsReady() -> auto& {
+  static auto ready = false;
+  return ready;
+}
+
+/// [CHECKED]
+auto spp::utils::features::IsManuallySet(const ConfigKey key) -> bool {
+  return CurrentSet().contains(key);
+}
+
+auto spp::utils::features::FindKey(const ConfigKey key) -> KeySpec const* {
+  for (auto const &section : Schema()) {
+    for (auto const &k : section.Keys) {
+      if (k.Key == key) { return &k; }
     }
+  }
+  Ice("config key missing from the schema");
+}
 
-    /// [CHECKED]
-    /// The values of string and version keys, defaulted from the schema and
-    /// also borrowed and mutated.
-    auto CurrentTexts() -> auto& {
-      static auto texts = Map<ConfigKey, Str>();
-      return texts;
-    }
+/// [CHECKED]
+auto spp::utils::features::FindSection(const StrView name) -> SectionSpec const* {
+  for (auto const &section : Schema()) {
+    if (section.Name == name) { return &section; }
+  }
+  return nullptr; // Todo: Ice?
+}
 
-    /// [CHECKED]
-    /// Every key the loaded config sets itself, whatever its value. Effectively
-    /// all the overridden keys.
-    auto CurrentSet() -> auto& {
-      static auto set = Set<ConfigKey>();
-      return set;
-    }
-
-    /// [CHECKED]
-    /// The linkers "[target.linkers]" names, by target folder.
-    auto CurrentLinkers() -> auto& {
-      static auto linkers = Map<Str, Str>();
-      return linkers;
-    }
-
-    /// The measures this build found it cannot have (the toolchain cannot keep
-    /// them), with why: on by default, so left out rather than refused.
-    auto CurrentLeftOut() -> auto& {
-      static auto left_out = Map<ConfigKey, Str>();
-      return left_out;
-    }
-
-    /// [CHECKED]
-    /// Whether the defaults have been put in place yet, so that a query before
-    /// any load still answers correctly. Once set to true, it will always be
-    /// true until the program ends.
-    auto FlagsReady() -> auto& {
-      static auto ready = false;
-      return ready;
-    }
-
-    /// [CHECKED]
-    /// Whether the loaded config sets the key itself, rather than leaving it to
-    /// its default.
-    auto IsManuallySet(const ConfigKey key) -> bool {
-      return CurrentSet().contains(key);
-    }
-
-    /// Return the key, by "key" from the schema. This is a "key spec", and
-    /// contains associated key information.
-    auto FindKey(const ConfigKey key) -> KeySpec const* {
-      for (auto const &section : Schema()) {
-        for (auto const &k : section.Keys) {
-          if (k.Key == key) { return &k; }
-        }
-      }
-      Ice("config key missing from the schema");
-    }
-
-    /// [CHECKED]
-    /// Return the section, by "name" from the schema. This is a "section spec",
-    /// and contains allowed keys, helptext etc.
-    auto FindSection(const StrView name) -> SectionSpec const* {
-      for (auto const &section : Schema()) {
-        if (section.Name == name) { return &section; }
-      }
-      return nullptr; // Todo: Ice?
-    }
-
-    /// [CHECKED] [TIDY]
-    /// Whether version "a" is older than version "b", compared part by part, a
-    /// missing part being 0.
-    auto VersionLess(const StrView a, const StrView b) -> bool {
-      // Define the helper to convert the version into an extended integer. For
-      // example, "1.2.3" becomes [1, 0, 2, 0, 3]
-      const auto parts = [](const StrView v) {
-        auto out = Vec<std::uint64_t>{0};
-        for (const auto c : v) {
-          if (c == '.') { out.emplace_back(0); }
-          else {
-            out.back() = out.back() * 10 + static_cast<std::uint64_t>(c - '0');
-          }
-        }
-        return out;
-      };
-
-      // Convert the two versions into vectors of numbers, and get the largest
-      // size.
-      auto pa = parts(a);
-      auto pb = parts(b);
-      const auto size = std::max(pa.size(), pb.size());
-
-      // Resize the number vectors to the largest size, with "0" as the
-      // placeholder, then do a normal comparison.
-      pa.resize(size, 0);
-      pb.resize(size, 0);
-      return pa < pb;
-    }
-
-    /// [CHECKED]
-    /// Why a run-time measure that is turned on manually, must actually be off:
-    /// it needs a newer Linux than "[target.floor] linux", or the target is not
-    /// Linux.
-    auto IsFlagIncompatibleWithSystem(
-      const ConfigKey key, const bool target_linux) -> Pair<bool, Str> {
-      // Find the key specification from the schema/section based off of the key
-      // name (as enum entry). If there is no linux base, or the key is not
-      // enabled, then return (never a compatibility conflict).
-      const auto spec = FindKey(key);
-      if (spec->MinLinux.empty() or not IsEnabled(key)) { return {false, Str()}; }
-
-      // If we have a non-linux target, then this is the reason the flag must be
-      // disabled. Return the error.
-      if (not target_linux) {
-        return {true, "Linux only, and the target is not Linux"};
-      }
-
-      // If the current linux version is lower than the floor for that key, then
-      // that is the error.
-      const auto floor = Text(ConfigKey::TargetFloorLinux);
-      if (VersionLess(floor, spec->MinLinux)) {
-        return {
-          true,
-          "needs Linux " + Str(spec->MinLinux) + ", above the floor " + floor
-        };
-      }
-      return {false, Str()};
-    }
-
-    /// [CHECKED]
-    /// Set all the feature flags to their default values, and mark all flags as
-    /// "ready".
-    auto ApplyDefaults() -> void {
-      auto &flags = CurrentFlags();
-      auto &texts = CurrentTexts();
-
-      // Iterate the full possible schema, and then within each schema section,
-      // the set of possible keys.
-      for (auto const &section : Schema()) {
-        for (auto const &k : section.Keys) {
-          if (k.Kind == ValueKind::Bool) { flags[k.Key] = k.Default; }
-          if (not k.DefaultText.empty()) { texts[k.Key] = Str(k.DefaultText); }
-        }
-      }
-      FlagsReady() = true;
-    }
-
-    /**
-     * Whether a string is a dotted version, "major.minor" or longer, every part digits.
-     */
-    auto IsVersion(
-      const spp::StrView text)
-      -> bool {
-      auto parts = 0uz;
-      auto digits = 0uz;
-      for (const auto c : text) {
-        if (c == '.') {
-          if (digits == 0) { return false; }
-          parts += 1;
-          digits = 0;
-        }
-        else if (c >= '0' and c <= '9') { digits += 1; }
-        else { return false; }
-      }
-      return digits > 0 and parts >= 1;
-    }
-
-    /**
-     * Provide a "did you mean" for a name that is not in the schema (empty when nothing is close enough to suggest). It
-     * reuses the compiler's string comparison usually reserved for "unidentified symbol" within the compilation process.
-     */
-    auto Suggest(
-      const spp::StrView name,
-      spp::Vec<spp::Str> const &choices)
-      -> spp::Str {
-      const auto closest = spp::utils::strings::ClosestMatch(name, choices);
-      return closest.has_value() ? " (did you mean '" + *closest + "'?)" : spp::Str();
-    }
-
-    /**
-     * String format the "kind" for error reporting.
-     * @param kind The enum "value kind" that a key must contain a value of.
-     * @return The stringified value.
-     */
-    auto KindName(
-      const spp::utils::features::ValueKind kind)
-      -> spp::StrView {
-      switch (kind) {
-        case spp::utils::features::ValueKind::Bool: return "a boolean";
-        case spp::utils::features::ValueKind::String: return "a string";
-        case spp::utils::features::ValueKind::Version: return "a version like '4.18'";
-        case spp::utils::features::ValueKind::Table: return "a table";
-        default: spp::Ice("unknown config value kind");
+auto spp::utils::features::VersionLess(const StrView a, const StrView b) -> bool {
+  // Define the helper to convert the version into an extended integer. For
+  // example, "1.2.3" becomes [1, 0, 2, 0, 3]
+  const auto parts = [](const StrView v) {
+    auto out = Vec<std::uint64_t>{0};
+    for (const auto c : v) {
+      if (c == '.') { out.emplace_back(0); }
+      else {
+        out.back() = out.back() * 10 + static_cast<std::uint64_t>(c - '0');
       }
     }
+    return out;
+  };
 
-    /// Walk the config, reporting anything the schema does not describe, into
-    /// the "errors" vector.
-    auto WalkTable(
-      auto const &table, Str const &prefix, Vec<Str> &errors) -> void {
-      // Every section name, and every one that is a section or a step on the
-      // way to one, so that "[memory]" on its own is a container rather than a
-      // mistake.
-      auto section_names = spp::Vec<Str>();
-      for (auto const &section : Schema()) {
-        section_names.emplace_back(Str(section.Name));
-      }
+  // Convert the two versions into vectors of numbers, and get the largest
+  // size.
+  auto pa = parts(a);
+  auto pb = parts(b);
+  const auto size = std::max(pa.size(), pb.size());
 
-      // Iterate all the values in the provided config. The key is grabbed per
-      // row and the prefix prepended, should it exist. The prefix from
-      // inspecting inner blocks recursively (from this function).
-      for (auto &&[raw_key, node] : table) {
-        const auto key = Str(raw_key.str());
-        const auto path = prefix.empty() ? key : prefix + "." + key;
+  // Resize the number vectors to the largest size, with "0" as the
+  // placeholder, then do a normal comparison.
+  pa.resize(size, 0);
+  pb.resize(size, 0);
+  return pa < pb;
+}
 
-        if (const auto section_sp = FindSection(path); section_sp != nullptr) {
-          // For a section, every key present must be in the schema (section
-          // spec), and all the section's required keys must be present.
-          const auto inner = node.as_table();
-          if (inner == nullptr) {
-            errors.emplace_back(
-              "'[" + path + "]' must be a section, not a value");
-            continue;
-          }
+/// [CHECKED]
+auto spp::utils::features::IsFlagIncompatibleWithSystem(
+  const ConfigKey key, const bool target_linux) -> Pair<bool, Str> {
+  // Find the key specification from the schema/section based off of the key
+  // name (as enum entry). If there is no linux base, or the key is not
+  // enabled, then return (never a compatibility conflict).
+  const auto spec = FindKey(key);
+  if (spec->MinLinux.empty() or not IsEnabled(key)) { return {false, Str()}; }
 
-          // Record the valid keys for the section spec. These will be used to
-          // detect invalid keys.
-          auto key_names = spp::Vec<Str>();
-          for (auto const &k : section_sp->Keys) {
-            key_names.emplace_back(Str(k.Name));
-          }
+  // If we have a non-linux target, then this is the reason the flag must be
+  // disabled. Return the error.
+  if (not target_linux) {
+    return {true, "Linux only, and the target is not Linux"};
+  }
 
-          for (auto &&[raw_inner_key, inner_node] : *inner) {
-            // Get the "key spec" for each user provided key, by iterating the
-            // section spec and checking for a matching key name.
-            const auto inner_key = Str(raw_inner_key.str());
-            auto key_sp = static_cast<KeySpec const*>(nullptr);
-            for (auto const &k : section_sp->Keys) {
-              if (k.Name == inner_key) {
-                key_sp = &k;
-                break;
-              }
-            }
+  // If the current linux version is lower than the floor for that key, then
+  // that is the error.
+  const auto floor = Text(ConfigKey::TargetFloorLinux);
+  if (VersionLess(floor, spec->MinLinux)) {
+    return {
+      true,
+      "needs Linux " + Str(spec->MinLinux) + ", above the floor " + floor
+    };
+  }
+  return {false, Str()};
+}
 
-            // If the key is nullptr, then nothing in the section spec matched
-            // it. This is an error, unless the section accepts free form args.
-            if (key_sp == nullptr) {
-              if (section_sp->FreeForm) { continue; }
-              errors.emplace_back(
-                "unknown key '" + inner_key + "' in [" + path + "]"
-                + Suggest(inner_key, key_names)
-                + "\n    [" + path + "] accepts: " + (key_names.empty()
-                  ? Str("(nothing)")
-                  : [&] {
-                    auto joined = Str();
-                    for (auto const &n : key_names) {
-                      joined += (joined.empty() ? "" : ", ") + n;
-                    }
-                    return joined;
-                  }()));
-              continue;
-            }
+/// [CHECKED]
+auto spp::utils::features::ApplyDefaults() -> void {
+  auto &flags = CurrentFlags();
+  auto &texts = CurrentTexts();
 
-            // Do a type check on the value: bool, string and version checks,
-            // otherwise a table itself.
-            const auto ok =
-              key_sp->Kind == ValueKind::Bool
-              ? inner_node.is_boolean()
-              : key_sp->Kind == ValueKind::String
-              ? inner_node.is_string()
-              : key_sp->Kind == ValueKind::Version
-              ? inner_node.is_string() and IsVersion(
-                *inner_node.template value<Str>())
-              : inner_node.is_table();
-            if (not ok) {
-              errors.emplace_back(
-                "'" + inner_key + "' in [" + path + "] must be "
-                + Str(KindName(key_sp->Kind)));
-            }
-            else if (not key_sp->Choices.empty()
-              and not genex::contains(key_sp->Choices, StrView(*inner_node.template value<Str>()))) {
-              auto choices = Str();
-              for (auto const &c : key_sp->Choices) { choices += (choices.empty() ? "\"" : ", \"") + Str(c) + "\""; }
-              errors.emplace_back("'" + inner_key + "' in [" + path + "] must be one of " + choices);
-            }
-          }
+  // Iterate the full possible schema, and then within each schema section,
+  // the set of possible keys.
+  for (auto const &section : Schema()) {
+    for (auto const &k : section.Keys) {
+      if (k.Kind == ValueKind::Bool) { flags[k.Key] = k.Default; }
+      if (not k.DefaultText.empty()) { texts[k.Key] = Str(k.DefaultText); }
+    }
+  }
+  FlagsReady() = true;
+}
 
-          // If nothing in the user provided section gave a value for a required
-          // key, throw an error.
-          for (auto const &k : section_sp->Keys) {
-            if (k.Required and not inner->contains(k.Name)) {
-              errors.emplace_back(
-                "[" + path + "] is missing the required key '"
-                + Str(k.Name) + "'");
-            }
-          }
-          continue;
-        }
+auto spp::utils::features::IsVersion(
+  const spp::StrView text)
+  -> bool {
+  auto parts = 0uz;
+  auto digits = 0uz;
+  for (const auto c : text) {
+    if (c == '.') {
+      if (digits == 0) { return false; }
+      parts += 1;
+      digits = 0;
+    }
+    else if (c >= '0' and c <= '9') { digits += 1; }
+    else { return false; }
+  }
+  return digits > 0 and parts >= 1;
+}
 
-        // Not a section itself. It is fine only as a step towards one, and only
-        // if it is a table to step into.
-        const auto is_prefix = genex::any_of(section_names, [&](Str const &n) {
-          return n.size() > path.size()
-            and n.starts_with(path)
-            and n[path.size()] == '.';
-        });
-        if (is_prefix and node.is_table()) {
-          WalkTable(*node.as_table(), path, errors);
-          continue;
-        }
+auto spp::utils::features::Suggest(
+  const spp::StrView name,
+  spp::Vec<spp::Str> const &choices)
+  -> spp::Str {
+  const auto closest = spp::utils::strings::ClosestMatch(name, choices);
+  return closest.has_value() ? " (did you mean '" + *closest + "'?)" : spp::Str();
+}
 
-        // Report the path as it was written. Toml nests, so "[memry.stack]"
-        // arrives as an unknown "memry" holding a "stack", and naming only the
-        // outer half describes something the author never typed.
-        auto written = path;
-        auto walk = node.as_table();
-        while (walk != nullptr and walk->size() == 1) {
-          auto descend = static_cast<toml::table const*>(nullptr);
-          for (auto &&[only_key, only_node] : *walk) {
-            if (not only_node.is_table()) { break; }
-            written += "." + Str(only_key.str());
-            descend = only_node.as_table();
-          }
-          walk = descend;
-        }
+auto spp::utils::features::KindName(
+  const spp::utils::features::ValueKind kind)
+  -> spp::StrView {
+  switch (kind) {
+    case spp::utils::features::ValueKind::Bool: return "a boolean";
+    case spp::utils::features::ValueKind::String: return "a string";
+    case spp::utils::features::ValueKind::Version: return "a version like '4.18'";
+    case spp::utils::features::ValueKind::Table: return "a table";
+    default: spp::Ice("unknown config value kind");
+  }
+}
 
+auto spp::utils::features::WalkTable(
+  auto const &table, Str const &prefix, Vec<Str> &errors) -> void {
+  // Every section name, and every one that is a section or a step on the
+  // way to one, so that "[memory]" on its own is a container rather than a
+  // mistake.
+  auto section_names = spp::Vec<Str>();
+  for (auto const &section : Schema()) {
+    section_names.emplace_back(Str(section.Name));
+  }
+
+  // Iterate all the values in the provided config. The key is grabbed per
+  // row and the prefix prepended, should it exist. The prefix from
+  // inspecting inner blocks recursively (from this function).
+  for (auto &&[raw_key, node] : table) {
+    const auto key = Str(raw_key.str());
+    const auto path = prefix.empty() ? key : prefix + "." + key;
+
+    if (const auto section_sp = FindSection(path); section_sp != nullptr) {
+      // For a section, every key present must be in the schema (section
+      // spec), and all the section's required keys must be present.
+      const auto inner = node.as_table();
+      if (inner == nullptr) {
         errors.emplace_back(
-          "unknown section '[" + written + "]'"
-          + Suggest(written, section_names)
-          + "\n    known sections: " + [&] {
-            auto joined = Str();
-            for (auto const &n : section_names) {
-              joined += (joined.empty() ? "" : ", ") + n;
-            }
-            return joined;
-          }());
+          "'[" + path + "]' must be a section, not a value");
+        continue;
       }
+
+      // Record the valid keys for the section spec. These will be used to
+      // detect invalid keys.
+      auto key_names = spp::Vec<Str>();
+      for (auto const &k : section_sp->Keys) {
+        key_names.emplace_back(Str(k.Name));
+      }
+
+      for (auto &&[raw_inner_key, inner_node] : *inner) {
+        // Get the "key spec" for each user provided key, by iterating the
+        // section spec and checking for a matching key name.
+        const auto inner_key = Str(raw_inner_key.str());
+        auto key_sp = static_cast<KeySpec const*>(nullptr);
+        for (auto const &k : section_sp->Keys) {
+          if (k.Name == inner_key) {
+            key_sp = &k;
+            break;
+          }
+        }
+
+        // If the key is nullptr, then nothing in the section spec matched
+        // it. This is an error, unless the section accepts free form args.
+        if (key_sp == nullptr) {
+          if (section_sp->FreeForm) { continue; }
+          errors.emplace_back(
+            "unknown key '" + inner_key + "' in [" + path + "]"
+            + Suggest(inner_key, key_names)
+            + "\n    [" + path + "] accepts: " + (key_names.empty()
+              ? Str("(nothing)")
+              : [&] {
+                auto joined = Str();
+                for (auto const &n : key_names) {
+                  joined += (joined.empty() ? "" : ", ") + n;
+                }
+                return joined;
+              }()));
+          continue;
+        }
+
+        // Do a type check on the value: bool, string and version checks,
+        // otherwise a table itself.
+        const auto ok =
+          key_sp->Kind == ValueKind::Bool
+          ? inner_node.is_boolean()
+          : key_sp->Kind == ValueKind::String
+          ? inner_node.is_string()
+          : key_sp->Kind == ValueKind::Version
+          ? inner_node.is_string() and IsVersion(
+            *inner_node.template value<Str>())
+          : inner_node.is_table();
+        if (not ok) {
+          errors.emplace_back(
+            "'" + inner_key + "' in [" + path + "] must be "
+            + Str(KindName(key_sp->Kind)));
+        }
+        else if (not key_sp->Choices.empty()
+          and not genex::contains(key_sp->Choices, StrView(*inner_node.template value<Str>()))) {
+          auto choices = Str();
+          for (auto const &c : key_sp->Choices) { choices += (choices.empty() ? "\"" : ", \"") + Str(c) + "\""; }
+          errors.emplace_back("'" + inner_key + "' in [" + path + "] must be one of " + choices);
+        }
+      }
+
+      // If nothing in the user provided section gave a value for a required
+      // key, throw an error.
+      for (auto const &k : section_sp->Keys) {
+        if (k.Required and not inner->contains(k.Name)) {
+          errors.emplace_back(
+            "[" + path + "] is missing the required key '"
+            + Str(k.Name) + "'");
+        }
+      }
+      continue;
     }
+
+    // Not a section itself. It is fine only as a step towards one, and only
+    // if it is a table to step into.
+    const auto is_prefix = genex::any_of(section_names, [&](Str const &n) {
+      return n.size() > path.size()
+        and n.starts_with(path)
+        and n[path.size()] == '.';
+    });
+    if (is_prefix and node.is_table()) {
+      WalkTable(*node.as_table(), path, errors);
+      continue;
+    }
+
+    // Report the path as it was written. Toml nests, so "[memry.stack]"
+    // arrives as an unknown "memry" holding a "stack", and naming only the
+    // outer half describes something the author never typed.
+    auto written = path;
+    auto walk = node.as_table();
+    while (walk != nullptr and walk->size() == 1) {
+      auto descend = static_cast<toml::table const*>(nullptr);
+      for (auto &&[only_key, only_node] : *walk) {
+        if (not only_node.is_table()) { break; }
+        written += "." + Str(only_key.str());
+        descend = only_node.as_table();
+      }
+      walk = descend;
+    }
+
+    errors.emplace_back(
+      "unknown section '[" + written + "]'"
+      + Suggest(written, section_names)
+      + "\n    known sections: " + [&] {
+        auto joined = Str();
+        for (auto const &n : section_names) {
+          joined += (joined.empty() ? "" : ", ") + n;
+        }
+        return joined;
+      }());
+  }
+}
+
+auto spp::utils::features::LeaveOutSplitStack(
+  spp::utils::features::TargetFacts const &target, const spp::StrView why) -> void {
+  using namespace spp::utils::features;
+  LeaveOut(ConfigKey::MemoryStackSplit, why);
+  if (not target.PacRet and IsEnabled(ConfigKey::BinaryCodegenPacRet)
+    and not IsExplicit(ConfigKey::BinaryCodegenPacRet)) {
+    LeaveOut(ConfigKey::BinaryCodegenPacRet, "the target cannot sign return addresses, and 'split' is left out");
   }
 }
 
@@ -851,21 +906,6 @@ auto spp::utils::features::CheckFloor(
   // Only if the number of errors has incremented, did this function record any
   // new errors.
   return errors.size() == before;
-}
-
-namespace {
-  /// Leave out the split stack, on by default, and "pac_ret" with it where the
-  /// split stack is what stands in for it, unless the project set that itself
-  /// (then the return-signing pass refuses it, naming the key).
-  auto LeaveOutSplitStack(
-    spp::utils::features::TargetFacts const &target, const spp::StrView why) -> void {
-    using namespace spp::utils::features;
-    LeaveOut(ConfigKey::MemoryStackSplit, why);
-    if (not target.PacRet and IsEnabled(ConfigKey::BinaryCodegenPacRet)
-      and not IsExplicit(ConfigKey::BinaryCodegenPacRet)) {
-      LeaveOut(ConfigKey::BinaryCodegenPacRet, "the target cannot sign return addresses, and 'split' is left out");
-    }
-  }
 }
 
 auto spp::utils::features::LeaveOutForDebugger(

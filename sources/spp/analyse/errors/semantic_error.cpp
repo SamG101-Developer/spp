@@ -74,104 +74,112 @@ use_alias(spp::asts, TypeAst);
 /// How to write help lines:
 /// - Describe exactly what to do by token or keyword.
 
-SPP_MOD_BEGIN
 namespace spp::analyse::errors {
   namespace {
-    /// "InstantiatedFrom".
-    Ast const *instantiated_from = nullptr;
-
-    /// [CHECKED]
-    /// Owned text for the `INLINE_*` macros. A function rather
-    /// than `Str(...)` at the splice: the argument is as often
-    /// a `Str` already, which `useless-cast` rejects.
-    auto AsStr(const StrView text) -> Str {
-      return Str(text);
-    }
-
-    /// [CHECKED]
-    /// Name a type for an error message. Allows for the written
-    /// name, and its qualified type as an "aka": "S32 (aka
-    /// std::num::sized_integer::SizedInteger[...])".
-    auto TypeForMessage(Ast const &ast) -> Str {
-      // Stringify the ast; one that is not a type (an expression
-      // some errors name in the same slot) is named as written.
-      auto full = ast.ToString();
-      const auto type = ast.To<TypeAst>();
-      if (type == nullptr) { return full; }
-
-      // Get the written text, ie how the type was written in the
-      // source code, like "S32", and provide the written type
-      // alongside the qualified type, if they are different.
-      auto const &written = type->WrittenText();
-      if (written.empty() or written == full) { return full; }
-      return written + " (aka " + full + ")";
-    }
-
-    /// [CHECKED]
-    /// Follow a call expression back to the ast that was actually
-    /// written (not transformed). Postfix expressions move into
-    /// the rhs to test for an mapped function call. Allows for the
-    /// highlighting of the correct tokens in the error.
-    auto UnwrapFunctionCallAst(Ast const *ast) -> Ast const* {
-      // For function call asts that have a different source call,
-      // recursively move into it: "S32::add(1, 2)" might have been
-      // "1.add(2)".
-      if (const auto fn_call = ast->To<PostfixExpressionOperatorFunctionCallAst>()) {
-        return fn_call->Source.OriginalExpr != fn_call
-          ? UnwrapFunctionCallAst(fn_call->Source.OriginalExpr)
-          : fn_call;
-      }
-
-      // For postfix expressions (whose rhs might be the function
-      // call, move into the operator to get the original function
-      // call that might exist.
-      if (const auto pf = ast->To<PostfixExpressionAst>()) {
-        return UnwrapFunctionCallAst(pf->Op.get());
-      }
-
-      // Otherwise, just return the ast as-is (non-function-call
-      // rhs of the postfix expression),
-      return ast;
-    }
-
     /// The message lines for one not-yet-supported feature, in
     /// the order the error reads them.
     struct NotYetSupportedText {
       Str Ctx, Site, Note, Help;
     };
-
-    /// [CHECKED]
-    /// The text for every @c NotYetSupportedFeature. A function
-    /// static so the colour constants are initialised first.
-    auto NotYetSupportedTexts() -> Map<NotYetSupportedFeature, NotYetSupportedText> const& {
-      static const auto texts = Map<NotYetSupportedFeature, NotYetSupportedText>{
-        {
-          NotYetSupportedFeature::NestedTypeBeforeSupScopes, {
-            .Ctx = "Type named here",
-            .Site = "Nested type not available this early",
-            .Note = "A nested type is declared inside a " + INLINE_NOTE("sup") +
-            " block, which only becomes part of its owner once superimposition scopes are attached - and that happens"
-            " in the same pass that resolves the types written in a signature. Naming one here would need that pass"
-            " split in two, which is not done yet.",
-            .Help = "Name the type the alias resolves to, or move the use into a function body, where it does work."
-          }
-        },
-
-        {
-          NotYetSupportedFeature::CoroutineClosure, {
-            .Ctx = "Closure defined here",
-            .Site = "Coroutine closure not supported yet",
-            .Note = "A " + INLINE_NOTE("cor") + " closure parses, but its body is generated as a plain function: the "
-            "generator state a coroutine needs is only set up for " + INLINE_NOTE("cor") + " functions.",
-            .Help = "Move the body into a " + INLINE_NOTE("cor") + " function and call that instead."
-          }
-        },
-      };
-      return texts;
-    }
   }
+
+  /// "InstantiatedFrom".
+  static Ast const *instantiated_from = nullptr;
+
+  /// Owned text for the `INLINE_*` macros. A function rather
+  /// than `Str(...)` at the splice: the argument is as often
+  /// a `Str` already, which `useless-cast` rejects.
+  static auto AsStr(const StrView text) -> Str;
+
+  /// Name a type for an error message. Allows for the written
+  /// name, and its qualified type as an "aka": "S32 (aka
+  /// std::num::sized_integer::SizedInteger[...])".
+  static auto TypeForMessage(Ast const &ast) -> Str;
+
+  /// Follow a call expression back to the ast that was actually
+  /// written (not transformed). Postfix expressions move into
+  /// the rhs to test for an mapped function call. Allows for the
+  /// highlighting of the correct tokens in the error.
+  static auto UnwrapFunctionCallAst(Ast const *ast) -> Ast const*;
+
+  /// The text for every @c NotYetSupportedFeature. A function
+  /// static so the colour constants are initialised first.
+  static auto NotYetSupportedTexts() -> Map<NotYetSupportedFeature, NotYetSupportedText> const&;
 }
 
+/// [CHECKED]
+auto spp::analyse::errors::AsStr(const StrView text) -> Str {
+  return Str(text);
+}
+
+/// [CHECKED]
+auto spp::analyse::errors::TypeForMessage(Ast const &ast) -> Str {
+  // Stringify the ast; one that is not a type (an expression
+  // some errors name in the same slot) is named as written.
+  auto full = ast.ToString();
+  const auto type = ast.To<TypeAst>();
+  if (type == nullptr) { return full; }
+
+  // Get the written text, ie how the type was written in the
+  // source code, like "S32", and provide the written type
+  // alongside the qualified type, if they are different.
+  auto const &written = type->WrittenText();
+  if (written.empty() or written == full) { return full; }
+  return written + " (aka " + full + ")";
+}
+
+/// [CHECKED]
+auto spp::analyse::errors::UnwrapFunctionCallAst(Ast const *ast) -> Ast const* {
+  // For function call asts that have a different source call,
+  // recursively move into it: "S32::add(1, 2)" might have been
+  // "1.add(2)".
+  if (const auto fn_call = ast->To<PostfixExpressionOperatorFunctionCallAst>()) {
+    return fn_call->Source.OriginalExpr != fn_call
+      ? UnwrapFunctionCallAst(fn_call->Source.OriginalExpr)
+      : fn_call;
+  }
+
+  // For postfix expressions (whose rhs might be the function
+  // call, move into the operator to get the original function
+  // call that might exist.
+  if (const auto pf = ast->To<PostfixExpressionAst>()) {
+    return UnwrapFunctionCallAst(pf->Op.get());
+  }
+
+  // Otherwise, just return the ast as-is (non-function-call
+  // rhs of the postfix expression),
+  return ast;
+}
+
+/// [CHECKED]
+auto spp::analyse::errors::NotYetSupportedTexts() -> Map<NotYetSupportedFeature, NotYetSupportedText> const& {
+  static const auto texts = Map<NotYetSupportedFeature, NotYetSupportedText>{
+    {
+      NotYetSupportedFeature::NestedTypeBeforeSupScopes, {
+        .Ctx = "Type named here",
+        .Site = "Nested type not available this early",
+        .Note = "A nested type is declared inside a " + INLINE_NOTE("sup") +
+        " block, which only becomes part of its owner once superimposition scopes are attached - and that happens"
+        " in the same pass that resolves the types written in a signature. Naming one here would need that pass"
+        " split in two, which is not done yet.",
+        .Help = "Name the type the alias resolves to, or move the use into a function body, where it does work."
+      }
+    },
+
+    {
+      NotYetSupportedFeature::CoroutineClosure, {
+        .Ctx = "Closure defined here",
+        .Site = "Coroutine closure not supported yet",
+        .Note = "A " + INLINE_NOTE("cor") + " closure parses, but its body is generated as a plain function: the "
+        "generator state a coroutine needs is only set up for " + INLINE_NOTE("cor") + " functions.",
+        .Help = "Move the body into a " + INLINE_NOTE("cor") + " function and call that instead."
+      }
+    },
+  };
+  return texts;
+}
+
+SPP_MOD_BEGIN
 auto spp::analyse::errors::InstantiatedFrom() -> asts::Ast const* {
   return instantiated_from;
 }

@@ -6,42 +6,44 @@ import std;
 import sys;
 
 namespace spp::utils::env {
-  namespace {
-    constexpr auto kOwnPrefix = StrView("SPP_");
-    constexpr auto kCiPrefix = StrView("SPP_CI_");
+  static constexpr auto kOwnPrefix = StrView("SPP_");
+  static constexpr auto kCiPrefix = StrView("SPP_CI_");
 
-    auto ParseCount(const StrView value) -> Opt<std::uint64_t> {
-      auto count = std::uint64_t{0};
-      auto const *const end = value.data() + value.size();
-      const auto [stop, ec] = std::from_chars(value.data(), end, count);
-      if (ec != std::errc{} or stop != end) { return Nullopt; }
-      return count;
-    }
+  static auto ParseCount(const StrView value) -> Opt<std::uint64_t>;
 
-    /// What is wrong with a variable's value, if anything.
-    auto ProblemWith(VarSpec const &spec, const StrView value) -> Opt<Str> {
-      const auto name = Str(spec.Name);
-      const auto given = ", not '" + Str(value) + "'";
-      switch (spec.Kind) {
-      case ValueKind::Flag:
-        if (value == "0" or value == "1") { return Nullopt; }
-        return name + " must be '0' or '1'" + given;
-      case ValueKind::Count:
-        if (ParseCount(value).has_value()) { return Nullopt; }
-        return name + " must be a whole number" + given;
-      case ValueKind::Choice: {
-        auto listing = Str();
-        for (const auto choice : spec.Choices) {
-          if (value == choice) { return Nullopt; }
-          listing += (listing.empty() ? "'" : ", '") + Str(choice) + "'";
-        }
-        return name + " must be one of " + listing + given;
-      }
-      case ValueKind::Text:
-      default:
-        return Nullopt;
-      }
+  /// What is wrong with a variable's value, if anything.
+  static auto ProblemWith(VarSpec const &spec, const StrView value) -> Opt<Str>;
+}
+
+auto spp::utils::env::ParseCount(const StrView value) -> Opt<std::uint64_t> {
+  auto count = std::uint64_t{0};
+  auto const *const end = value.data() + value.size();
+  const auto [stop, ec] = std::from_chars(value.data(), end, count);
+  if (ec != std::errc{} or stop != end) { return Nullopt; }
+  return count;
+}
+
+auto spp::utils::env::ProblemWith(VarSpec const &spec, const StrView value) -> Opt<Str> {
+  const auto name = Str(spec.Name);
+  const auto given = ", not '" + Str(value) + "'";
+  switch (spec.Kind) {
+  case ValueKind::Flag:
+    if (value == "0" or value == "1") { return Nullopt; }
+    return name + " must be '0' or '1'" + given;
+  case ValueKind::Count:
+    if (ParseCount(value).has_value()) { return Nullopt; }
+    return name + " must be a whole number" + given;
+  case ValueKind::Choice: {
+    auto listing = Str();
+    for (const auto choice : spec.Choices) {
+      if (value == choice) { return Nullopt; }
+      listing += (listing.empty() ? "'" : ", '") + Str(choice) + "'";
     }
+    return name + " must be one of " + listing + given;
+  }
+  case ValueKind::Text:
+  default:
+    return Nullopt;
   }
 }
 

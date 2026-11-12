@@ -98,13 +98,15 @@ use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
-namespace {
+namespace spp::asts {
   /// The convention a parameter is declared with: a "self"
   /// parameter keeps it in "Conv", rather than in its type.
-  auto ParamConvention(spp::asts::FunctionParameterAst const &param) -> spp::asts::ConventionAst const* {
-    if (const auto self = param.To<spp::asts::FunctionParameterSelfAst>(); self != nullptr) { return self->Conv.get(); }
-    return param.Type->GetConvention();
-  }
+  static auto ParamConvention(spp::asts::FunctionParameterAst const &param) -> spp::asts::ConventionAst const*;
+}
+
+auto spp::asts::ParamConvention(spp::asts::FunctionParameterAst const &param) -> spp::asts::ConventionAst const* {
+  if (const auto self = param.To<spp::asts::FunctionParameterSelfAst>(); self != nullptr) { return self->Conv.get(); }
+  return param.Type->GetConvention();
 }
 
 SPP_MOD_BEGIN

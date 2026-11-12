@@ -13,193 +13,212 @@ import genex;
 import std;
 
 namespace spp::analyse::scopes {
-  namespace {
-    /// [CHECKED]
-    /// The inverse of the string-to-word interner. This allows
-    /// for strings to be re-created off of interning, once all
-    /// processing with interning has been completed.
-    auto TextOfWord(const Word word) -> StrView {
-      // Call the low level reverse intern function with a word
-      // cast to an InternId type, to recreate the string (view).
-      return spp::utils::InternedText(static_cast<spp::utils::InternedId>(word));
-    }
+  using Words = Span<std::uint64_t const>;
 
-    /// Convert a "word" into a "comp id", by inverting the cast.
-    auto CompIdOfWord(const Word word) -> CompId {
-      return reinterpret_cast<CompId>(static_cast<std::uintptr_t>(word));
-    }
+  /// The inverse of the string-to-word interner. This allows
+  /// for strings to be re-created off of interning, once all
+  /// processing with interning has been completed.
+  static auto TextOfWord(const Word word) -> StrView;
 
-    using Words = Span<std::uint64_t const>;
+  /// Convert a "word" into a "comp id", by inverting the cast.
+  static auto CompIdOfWord(const Word word) -> CompId;
 
-    /// [CHECKED]
-    auto TagOf(const std::uint64_t word) -> TypeKey::Tag {
-      return static_cast<TypeKey::Tag>(word >> 56);
-    }
+  static auto TagOf(const std::uint64_t word) -> TypeKey::Tag;
 
-    /// [CHECKED]
-    auto PayloadOf(const std::uint64_t word) -> std::uint64_t {
-      return word & ((std::uint64_t{1} << 56) - 1);
-    }
+  static auto PayloadOf(const std::uint64_t word) -> std::uint64_t;
 
-    /// [CHECKED]
-    /// Whether raw key words name a "Self" anywhere. Check
-    /// the different type key tags, and perform the required
-    /// behaviour.
-    auto WordsNameSelf(const Words words) -> bool {
-      for (auto i = 0uz; i < words.size(); ++i) {
-        switch (TagOf(words[i])) {
-          // "Self" is parameter 0: the root truth.
-          case TypeKey::Tag::TypeParam:
-            if (PayloadOf(words[i]) == 0) { return true; }
-            break;
+  /// Whether raw key words name a "Self" anywhere. Check
+  /// the different type key tags, and perform the required
+  /// behaviour.
+  static auto WordsNameSelf(const Words words) -> bool;
 
-          // For a type id, use the "HasSelf" flag to check
-          // as its been set during construction.
-          case TypeKey::Tag::TypeId:
-            if (i + 1 < words.size() and TypeIdOfWord(words[i + 1])->HasSelf) { return true; }
-            ++i;
-            break;
+  /// "StableKeyLess" for two interned types, and for two type
+  /// words.
+  static auto StableCompareIds(
+    const TypeId lhs, const TypeId rhs) -> Ordering;
 
-          // For a comp id, check its members (static access)
-          // for a "Self" owner type (ie Self::n).
-          case TypeKey::Tag::CompId:
-            if (i + 1 < words.size()) {
-              if (const auto comp = CompIdOfWord(words[i + 1]); comp != nullptr) {
-                for (auto const &[type, name] : MembersNamedBy(comp)) {
-                  if (TypeIdOfWord(type)->HasSelf) { return true; }
-                }
-              }
+  /// "StableKeyLess" for two comp identities: part by part,
+  /// a value by its value and a constant's type by its own
+  /// order. Interned, so two that are alike in all of that
+  /// are one node, unless a type in them ties on its name.
+  static auto StableCompareNodes(
+    CompKey const &lhs, CompKey const &rhs) -> Ordering;
+
+  /// Two symbol words by what is fixed when the symbols are
+  /// made: the name, then which was made first. Not the
+  /// qualified name, which changes when a scope is re-parented:
+  /// a variant keyed before and after would split into two
+  /// identities. Every pointer a key holds after "Symbol" is
+  /// a type symbol's.
+  static auto StableCompareSymbols(
+    const std::uint64_t lhs, const std::uint64_t rhs) -> Ordering;
+
+  /// Stable comparison for the words (list of interned words),
+  /// which maps into the other two stable sorting functions.
+  static auto StableCompare(const Words lhs, const Words rhs) -> Ordering;
+
+  /// What "HeaderOf" has read off each type id.
+  static auto HeadMemo() -> StableMap<TypeId, TypeKeyHeader>&;
+
+  /// What "ParamsNamedBy" has read off each type id.
+  static auto ParamsMemo() -> StableMap<TypeId, TypeIdParams>&;
+}
+
+/// [CHECKED]
+auto spp::analyse::scopes::TextOfWord(const Word word) -> StrView {
+  // Call the low level reverse intern function with a word
+  // cast to an InternId type, to recreate the string (view).
+  return spp::utils::InternedText(static_cast<spp::utils::InternedId>(word));
+}
+
+auto spp::analyse::scopes::CompIdOfWord(const Word word) -> CompId {
+  return reinterpret_cast<CompId>(static_cast<std::uintptr_t>(word));
+}
+
+/// [CHECKED]
+auto spp::analyse::scopes::TagOf(const std::uint64_t word) -> TypeKey::Tag {
+  return static_cast<TypeKey::Tag>(word >> 56);
+}
+
+/// [CHECKED]
+auto spp::analyse::scopes::PayloadOf(const std::uint64_t word) -> std::uint64_t {
+  return word & ((std::uint64_t{1} << 56) - 1);
+}
+
+/// [CHECKED]
+auto spp::analyse::scopes::WordsNameSelf(const Words words) -> bool {
+  for (auto i = 0uz; i < words.size(); ++i) {
+    switch (TagOf(words[i])) {
+      // "Self" is parameter 0: the root truth.
+      case TypeKey::Tag::TypeParam:
+        if (PayloadOf(words[i]) == 0) { return true; }
+        break;
+
+      // For a type id, use the "HasSelf" flag to check
+      // as its been set during construction.
+      case TypeKey::Tag::TypeId:
+        if (i + 1 < words.size() and TypeIdOfWord(words[i + 1])->HasSelf) { return true; }
+        ++i;
+        break;
+
+      // For a comp id, check its members (static access)
+      // for a "Self" owner type (ie Self::n).
+      case TypeKey::Tag::CompId:
+        if (i + 1 < words.size()) {
+          if (const auto comp = CompIdOfWord(words[i + 1]); comp != nullptr) {
+            for (auto const &[type, name] : MembersNamedBy(comp)) {
+              if (TypeIdOfWord(type)->HasSelf) { return true; }
             }
-            ++i;
-            break;
-
-          // No work needed for a symbol.
-          case TypeKey::Tag::Symbol:
-            ++i;
-            break;
-          default:
-            break;
-        }
-      }
-      return false;
-    }
-
-    /// [CHECKED]
-    auto StableCompare(
-      Words lhs, Words rhs) -> Ordering;
-
-    /// [CHECKED]
-    /// "StableKeyLess" for two interned types, and for two type
-    /// words.
-    auto StableCompareIds(
-      const TypeId lhs, const TypeId rhs) -> Ordering {
-      return lhs == rhs
-        ? Ordering::equal
-        : StableCompare(lhs->ViewWords(), rhs->ViewWords());
-    }
-
-    /// [CHECKED]
-    /// "StableKeyLess" for two comp identities: part by part,
-    /// a value by its value and a constant's type by its own
-    /// order. Interned, so two that are alike in all of that
-    /// are one node, unless a type in them ties on its name.
-    auto StableCompareNodes(
-      CompKey const &lhs, CompKey const &rhs) -> Ordering {
-      if (&lhs == &rhs) { return Ordering::equal; }
-      if (const auto c = lhs.Kind <=> rhs.Kind; std::is_neq(c)) { return c; }
-      if (const auto c = lhs.Text <=> rhs.Text; std::is_neq(c)) { return c; }
-      if (const auto c = lhs.ParamId <=> rhs.ParamId; std::is_neq(c)) { return c; }
-      if (lhs.Type != rhs.Type) {
-        if (const auto c = StableCompareIds(TypeIdOfWord(lhs.Type), TypeIdOfWord(rhs.Type)); std::is_neq(c)) { return c; }
-      }
-      if (const auto c = lhs.Val.index() <=> rhs.Val.index(); std::is_neq(c)) { return c; }
-      if (const auto l = lhs.AsInt(); l != nullptr) {
-        if (const auto c = *l <=> *rhs.AsInt(); std::is_neq(c)) { return c; }
-      }
-      if (const auto l = lhs.AsFloat(); l != nullptr) {
-        if (const auto c = *l <=> *rhs.AsFloat(); std::is_neq(c)) { return c; }
-      }
-      if (const auto l = lhs.AsBool(); l != nullptr) {
-        if (const auto c = *l <=> *rhs.AsBool(); std::is_neq(c)) { return c; }
-      }
-      for (auto i = 0uz; i < lhs.Kids.size() and i < rhs.Kids.size(); ++i) {
-        if (const auto c = StableCompareNodes(*lhs.Kids[i], *rhs.Kids[i]); std::is_neq(c)) { return c; }
-      }
-      return lhs.Kids.size() <=> rhs.Kids.size();
-    }
-
-    /// [CHECKED]
-    /// Two symbol words by what is fixed when the symbols are
-    /// made: the name, then which was made first. Not the
-    /// qualified name, which changes when a scope is re-parented:
-    /// a variant keyed before and after would split into two
-    /// identities. Every pointer a key holds after "Symbol" is
-    /// a type symbol's.
-    auto StableCompareSymbols(
-      const std::uint64_t lhs, const std::uint64_t rhs) -> Ordering {
-      const auto l = reinterpret_cast<TypeSymbol const*>(static_cast<std::uintptr_t>(lhs));
-      const auto r = reinterpret_cast<TypeSymbol const*>(static_cast<std::uintptr_t>(rhs));
-      const auto l_name = l->Name != nullptr ? l->Name->ToView() : StrView();
-      const auto r_name = r->Name != nullptr ? r->Name->ToView() : StrView();
-      if (const auto c = l_name <=> r_name; std::is_neq(c)) { return c; }
-      return l->Serial <=> r->Serial;
-    }
-
-    /// [CHECKED]
-    /// Stable comparison for the words (list of interned words),
-    /// which maps into the other two stable sorting functions.
-    auto StableCompare(const Words lhs, const Words rhs) -> Ordering {
-      // The two keys are walked together while they are alike,
-      // so their raw words line up: a pointer follows only a
-      // "Symbol", "TypeId" or "CompId" tag.
-      for (auto i = 0uz; i < lhs.size() and i < rhs.size(); ++i) {
-        const auto tag = TagOf(lhs[i]);
-        // When the two numbers don't line up, then compare the
-        // text if they are both spellable, otherwise the original
-        // number comparison.
-        if (lhs[i] != rhs[i]) {
-          if (tag == TypeKey::Tag::Unresolved and TagOf(rhs[i]) == tag) {
-            return TextOfWord(PayloadOf(lhs[i])) <=> TextOfWord(PayloadOf(rhs[i]));
           }
-          // An argument's parameter is ordered by its name, as it was when keys spelled it: a "ParamId" is minted in
-          // the order things were analysed, which is no order to give a variant's members.
-          if (tag == TypeKey::Tag::Arg and TagOf(rhs[i]) == tag) {
-            return spp::analyse::scopes::ParamNameOf(PayloadOf(lhs[i])) <=> spp::analyse::scopes::ParamNameOf(PayloadOf(rhs[i]));
-          }
-          return lhs[i] <=> rhs[i];
         }
+        ++i;
+        break;
 
-        // Only symbols, type ids and comp ids are comparable, so
-        // if the tags aren't one of those, then continue to the
-        // next part.
-        if (tag != TypeKey::Tag::Symbol and tag != TypeKey::Tag::TypeId and tag != TypeKey::Tag::CompId) { continue; }
-        if (++i == lhs.size() or i == rhs.size() or lhs[i] == rhs[i]) { continue; }
-        const auto c = tag == TypeKey::Tag::Symbol
-          ? StableCompareSymbols(lhs[i], rhs[i])
-          : tag == TypeKey::Tag::TypeId
-          ? StableCompareIds(TypeIdOfWord(lhs[i]), TypeIdOfWord(rhs[i]))
-          : StableCompareNodes(*CompIdOfWord(lhs[i]), *CompIdOfWord(rhs[i]));
-        if (std::is_neq(c)) { return c; }
-      }
-
-      // The shorter first, and then, as a last resort, the raw
-      // words.
-      if (const auto c = lhs.size() <=> rhs.size(); std::is_neq(c)) { return c; }
-      return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
-    }
-
-    /// What "HeaderOf" has read off each type id.
-    auto HeadMemo() -> StableMap<TypeId, TypeKeyHeader>& {
-      static auto memo = StableMap<TypeId, TypeKeyHeader>();
-      return memo;
-    }
-
-    /// What "ParamsNamedBy" has read off each type id.
-    auto ParamsMemo() -> StableMap<TypeId, TypeIdParams>& {
-      static auto memo = StableMap<TypeId, TypeIdParams>();
-      return memo;
+      // No work needed for a symbol.
+      case TypeKey::Tag::Symbol:
+        ++i;
+        break;
+      default:
+        break;
     }
   }
+  return false;
+}
+
+/// [CHECKED]
+auto spp::analyse::scopes::StableCompareIds(
+  const TypeId lhs, const TypeId rhs) -> Ordering {
+  return lhs == rhs
+    ? Ordering::equal
+    : StableCompare(lhs->ViewWords(), rhs->ViewWords());
+}
+
+/// [CHECKED]
+auto spp::analyse::scopes::StableCompareNodes(
+  CompKey const &lhs, CompKey const &rhs) -> Ordering {
+  if (&lhs == &rhs) { return Ordering::equal; }
+  if (const auto c = lhs.Kind <=> rhs.Kind; std::is_neq(c)) { return c; }
+  if (const auto c = lhs.Text <=> rhs.Text; std::is_neq(c)) { return c; }
+  if (const auto c = lhs.ParamId <=> rhs.ParamId; std::is_neq(c)) { return c; }
+  if (lhs.Type != rhs.Type) {
+    if (const auto c = StableCompareIds(TypeIdOfWord(lhs.Type), TypeIdOfWord(rhs.Type)); std::is_neq(c)) { return c; }
+  }
+  if (const auto c = lhs.Val.index() <=> rhs.Val.index(); std::is_neq(c)) { return c; }
+  if (const auto l = lhs.AsInt(); l != nullptr) {
+    if (const auto c = *l <=> *rhs.AsInt(); std::is_neq(c)) { return c; }
+  }
+  if (const auto l = lhs.AsFloat(); l != nullptr) {
+    if (const auto c = *l <=> *rhs.AsFloat(); std::is_neq(c)) { return c; }
+  }
+  if (const auto l = lhs.AsBool(); l != nullptr) {
+    if (const auto c = *l <=> *rhs.AsBool(); std::is_neq(c)) { return c; }
+  }
+  for (auto i = 0uz; i < lhs.Kids.size() and i < rhs.Kids.size(); ++i) {
+    if (const auto c = StableCompareNodes(*lhs.Kids[i], *rhs.Kids[i]); std::is_neq(c)) { return c; }
+  }
+  return lhs.Kids.size() <=> rhs.Kids.size();
+}
+
+/// [CHECKED]
+auto spp::analyse::scopes::StableCompareSymbols(
+  const std::uint64_t lhs, const std::uint64_t rhs) -> Ordering {
+  const auto l = reinterpret_cast<TypeSymbol const*>(static_cast<std::uintptr_t>(lhs));
+  const auto r = reinterpret_cast<TypeSymbol const*>(static_cast<std::uintptr_t>(rhs));
+  const auto l_name = l->Name != nullptr ? l->Name->ToView() : StrView();
+  const auto r_name = r->Name != nullptr ? r->Name->ToView() : StrView();
+  if (const auto c = l_name <=> r_name; std::is_neq(c)) { return c; }
+  return l->Serial <=> r->Serial;
+}
+
+/// [CHECKED]
+auto spp::analyse::scopes::StableCompare(const Words lhs, const Words rhs) -> Ordering {
+  // The two keys are walked together while they are alike,
+  // so their raw words line up: a pointer follows only a
+  // "Symbol", "TypeId" or "CompId" tag.
+  for (auto i = 0uz; i < lhs.size() and i < rhs.size(); ++i) {
+    const auto tag = TagOf(lhs[i]);
+    // When the two numbers don't line up, then compare the
+    // text if they are both spellable, otherwise the original
+    // number comparison.
+    if (lhs[i] != rhs[i]) {
+      if (tag == TypeKey::Tag::Unresolved and TagOf(rhs[i]) == tag) {
+        return TextOfWord(PayloadOf(lhs[i])) <=> TextOfWord(PayloadOf(rhs[i]));
+      }
+      // An argument's parameter is ordered by its name, as it was when keys spelled it: a "ParamId" is minted in
+      // the order things were analysed, which is no order to give a variant's members.
+      if (tag == TypeKey::Tag::Arg and TagOf(rhs[i]) == tag) {
+        return spp::analyse::scopes::ParamNameOf(PayloadOf(lhs[i])) <=> spp::analyse::scopes::ParamNameOf(PayloadOf(rhs[i]));
+      }
+      return lhs[i] <=> rhs[i];
+    }
+
+    // Only symbols, type ids and comp ids are comparable, so
+    // if the tags aren't one of those, then continue to the
+    // next part.
+    if (tag != TypeKey::Tag::Symbol and tag != TypeKey::Tag::TypeId and tag != TypeKey::Tag::CompId) { continue; }
+    if (++i == lhs.size() or i == rhs.size() or lhs[i] == rhs[i]) { continue; }
+    const auto c = tag == TypeKey::Tag::Symbol
+      ? StableCompareSymbols(lhs[i], rhs[i])
+      : tag == TypeKey::Tag::TypeId
+      ? StableCompareIds(TypeIdOfWord(lhs[i]), TypeIdOfWord(rhs[i]))
+      : StableCompareNodes(*CompIdOfWord(lhs[i]), *CompIdOfWord(rhs[i]));
+    if (std::is_neq(c)) { return c; }
+  }
+
+  // The shorter first, and then, as a last resort, the raw
+  // words.
+  if (const auto c = lhs.size() <=> rhs.size(); std::is_neq(c)) { return c; }
+  return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+}
+
+auto spp::analyse::scopes::HeadMemo() -> StableMap<TypeId, TypeKeyHeader>& {
+  static auto memo = StableMap<TypeId, TypeKeyHeader>();
+  return memo;
+}
+
+auto spp::analyse::scopes::ParamsMemo() -> StableMap<TypeId, TypeIdParams>& {
+  static auto memo = StableMap<TypeId, TypeIdParams>();
+  return memo;
 }
 
 #define WORD_CAST(x) \

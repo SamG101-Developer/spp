@@ -12,43 +12,47 @@ import std;
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::asts, Ast);
 
-SPP_MOD_BEGIN
 namespace spp::utils::errors {
-  namespace {
-    /// How many UTF-16 code units a run of UTF-8 encodes to: one for
-    /// everything inside the basic multilingual plane, and two for
-    /// anything above it, which UTF-16 spells as a surrogate pair.
-    /// An editor counts columns in these.
-    auto Utf16Length(const StrView text) -> std::size_t {
-      auto units = 0uz;
-      for (auto const c : text) {
-        const auto byte = static_cast<unsigned char>(c);
-        if ((byte & 0xC0u) == 0x80u) { continue; }
-        units += byte >= 0xF0u ? 2uz : 1uz;
-      }
-      return units;
-    }
+  /// How far apart two files' positions start: more tokens than
+  /// any file has, so ranges never overlap.
+  static constexpr auto kFilePositionStride = 1uz << 24;
 
-    /// How far apart two files' positions start: more tokens than
-    /// any file has, so ranges never overlap.
-    constexpr auto kFilePositionStride = 1uz << 24;
+  /// How many UTF-16 code units a run of UTF-8 encodes to: one for
+  /// everything inside the basic multilingual plane, and two for
+  /// anything above it, which UTF-16 spells as a surrogate pair.
+  /// An editor counts columns in these.
+  static auto Utf16Length(const StrView text) -> std::size_t;
 
-    /// The formatters that own positions, in the order they were
-    /// made; each removes itself when it goes.
-    auto Registered() -> Vec<ErrorFormatter*>& {
-      static auto formatters = Vec<ErrorFormatter*>();
-      return formatters;
-    }
+  /// The formatters that own positions, in the order they were
+  /// made; each removes itself when it goes.
+  static auto Registered() -> Vec<ErrorFormatter*>&;
 
-    /// The base the next file's formatter is given. Never reused,
-    /// so an ast of a freed file is owned by no later one.
-    auto NextBase() -> std::size_t& {
-      static auto next = kFilePositionStride;
-      return next;
-    }
-  }
+  /// The base the next file's formatter is given. Never reused,
+  /// so an ast of a freed file is owned by no later one.
+  static auto NextBase() -> std::size_t&;
 }
 
+auto spp::utils::errors::Utf16Length(const StrView text) -> std::size_t {
+  auto units = 0uz;
+  for (auto const c : text) {
+    const auto byte = static_cast<unsigned char>(c);
+    if ((byte & 0xC0u) == 0x80u) { continue; }
+    units += byte >= 0xF0u ? 2uz : 1uz;
+  }
+  return units;
+}
+
+auto spp::utils::errors::Registered() -> Vec<ErrorFormatter*>& {
+  static auto formatters = Vec<ErrorFormatter*>();
+  return formatters;
+}
+
+auto spp::utils::errors::NextBase() -> std::size_t& {
+  static auto next = kFilePositionStride;
+  return next;
+}
+
+SPP_MOD_BEGIN
 spp::utils::errors::ErrorFormatter::ErrorFormatter(
   Vec<lex::RawToken> tokens, Str file_path, const std::size_t prelude_token_index) :
   _Tokens(std::move(tokens)),

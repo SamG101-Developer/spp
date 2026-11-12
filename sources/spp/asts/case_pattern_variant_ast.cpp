@@ -30,30 +30,34 @@ use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
-namespace {
+namespace spp::asts {
   /// Resolve the types written on "pattern" and the destructures in
   /// it: a nested destructure is matched through the mapped "let"
   /// rather than analysed as a pattern of its own, and would otherwise
   /// keep naming its type as written.
-  auto AnalyseNestedWrittenTypes(
+  static auto AnalyseNestedWrittenTypes(
     CasePatternVariantAst &pattern, ScopeManager &sm,
-    CompilerMetaData &meta) -> void {
-    IMPORT_UTILS;
-    using namespace spp::asts;
-    if (const auto obj = pattern.To<CasePatternVariantDestructureObjectAst>()) {
-      obj->Type = type_resolution::AnalyseWrittenType(*obj->Type, sm, meta);
-      for (auto const &elem : obj->Elems) { AnalyseNestedWrittenTypes(*elem, sm, meta); }
-    }
-    else if (const auto tup = pattern.To<CasePatternVariantDestructureTupleAst>()) {
-      for (auto const &elem : tup->Elems) { AnalyseNestedWrittenTypes(*elem, sm, meta); }
-    }
-    else if (const auto arr = pattern.To<CasePatternVariantDestructureArrayAst>()) {
-      for (auto const &elem : arr->Elems) { AnalyseNestedWrittenTypes(*elem, sm, meta); }
-    }
-    else if (const auto binding = pattern.To<CasePatternVariantDestructureAttributeBindingAst>();
-      binding != nullptr and binding->Val != nullptr) {
-      AnalyseNestedWrittenTypes(*binding->Val, sm, meta);
-    }
+    CompilerMetaData &meta) -> void;
+}
+
+auto spp::asts::AnalyseNestedWrittenTypes(
+  CasePatternVariantAst &pattern, ScopeManager &sm,
+  CompilerMetaData &meta) -> void {
+  IMPORT_UTILS;
+  using namespace spp::asts;
+  if (const auto obj = pattern.To<CasePatternVariantDestructureObjectAst>()) {
+    obj->Type = type_resolution::AnalyseWrittenType(*obj->Type, sm, meta);
+    for (auto const &elem : obj->Elems) { AnalyseNestedWrittenTypes(*elem, sm, meta); }
+  }
+  else if (const auto tup = pattern.To<CasePatternVariantDestructureTupleAst>()) {
+    for (auto const &elem : tup->Elems) { AnalyseNestedWrittenTypes(*elem, sm, meta); }
+  }
+  else if (const auto arr = pattern.To<CasePatternVariantDestructureArrayAst>()) {
+    for (auto const &elem : arr->Elems) { AnalyseNestedWrittenTypes(*elem, sm, meta); }
+  }
+  else if (const auto binding = pattern.To<CasePatternVariantDestructureAttributeBindingAst>();
+    binding != nullptr and binding->Val != nullptr) {
+    AnalyseNestedWrittenTypes(*binding->Val, sm, meta);
   }
 }
 

@@ -7,6 +7,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Add tests even if failing](conventions/add-tests-even-if-failing.md) — red tests for known bugs wanted, plus a Todo at the site
 - [Code reduction means functions](conventions/code-reduction-means-functions.md) — remove dead/duplicate fns; not macros; single-use utils stay (de-bloat ASTs)
 - [Split at natural seams](conventions/split-functions-at-natural-seams.md) — no line target; private if one AST uses it, else utils/codegen module; dedupe siblings
+- [Internal fns: static top block](conventions/internal-functions-static-top-block.md) — one ns block at the top of static decls (types in namespace {}); defs below as ns::Name at the margin
 - [Symmetry levels up](conventions/symmetry-levels-up.md) — make the worse of a pair match the better
 - [Type/comp symmetry helpers](conventions/type-comp-symmetry-helpers.md) — comp generics mirror type generics; shared helpers
 - [Switch impls off TypeAst](conventions/switch-impls-off-typeast.md) — analysis/codegen move to symbols/TypeRef; big rewrites OK

@@ -31,26 +31,29 @@ use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN
-namespace {
-  /// An argument is its parameter's value: what the call's own
-  /// result goes into ("let y = k(..)") is no target of the
-  /// argument's, neither a type to check it against nor a slot to
-  /// store it into. Cleared while this lives, and restored after;
-  /// nothing is saved when no target is set.
-  struct WithoutCallersTarget {
-    explicit WithoutCallersTarget(CompilerMetaData *meta) {
-      if (meta == nullptr or (
-        meta->AssignmentTarget == nullptr
-        and meta->AssignmentTargetType == nullptr
-        and meta->LlvmAssignmentTarget == nullptr)) { return; }
-      _Guard.emplace(meta);
-      meta->ClearAssignmentTarget();
-      meta->LlvmAssignmentTarget = nullptr;
-    }
 
-  private:
-    spp::Opt<MetaGuard> _Guard;
-  };
+namespace spp::asts {
+  namespace {
+    /// An argument is its parameter's value: what the call's own
+    /// result goes into ("let y = k(..)") is no target of the
+    /// argument's, neither a type to check it against nor a slot to
+    /// store it into. Cleared while this lives, and restored after;
+    /// nothing is saved when no target is set.
+    struct WithoutCallersTarget {
+      explicit WithoutCallersTarget(CompilerMetaData *meta) {
+        if (meta == nullptr or (
+          meta->AssignmentTarget == nullptr
+          and meta->AssignmentTargetType == nullptr
+          and meta->LlvmAssignmentTarget == nullptr)) { return; }
+        _Guard.emplace(meta);
+        meta->ClearAssignmentTarget();
+        meta->LlvmAssignmentTarget = nullptr;
+      }
+
+    private:
+      spp::Opt<MetaGuard> _Guard;
+    };
+  }
 }
 
 spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(

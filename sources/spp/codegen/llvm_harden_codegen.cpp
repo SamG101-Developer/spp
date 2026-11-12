@@ -9,8 +9,7 @@ import llvm;
 import std;
 
 namespace spp::codegen {
-  namespace {
-  }
+
 }
 
 auto spp::codegen::ApplySlsHardening(

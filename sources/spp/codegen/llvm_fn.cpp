@@ -17,14 +17,14 @@ use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts, TypeAst);
 
 namespace spp::codegen {
-  namespace {
-    /// The header every closure's environment starts with: "owns"
-    /// and "drop_captures" ("ClosureEnvType").
-    auto ClosureEnvHeaderType(LlvmCtx const *ctx) -> llvm::StructType* {
-      return llvm::StructType::get(
-        *ctx->Context, {llvm::Type::getInt8Ty(*ctx->Context), llvm::PointerType::get(*ctx->Context, 0)});
-    }
-  }
+  /// The header every closure's environment starts with: "owns"
+  /// and "drop_captures" ("ClosureEnvType").
+  static auto ClosureEnvHeaderType(LlvmCtx const *ctx) -> llvm::StructType*;
+}
+
+auto spp::codegen::ClosureEnvHeaderType(LlvmCtx const *ctx) -> llvm::StructType* {
+  return llvm::StructType::get(
+    *ctx->Context, {llvm::Type::getInt8Ty(*ctx->Context), llvm::PointerType::get(*ctx->Context, 0)});
 }
 
 auto spp::codegen::GetOrAddTargetIntoCurrentModule(

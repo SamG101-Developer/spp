@@ -63,251 +63,280 @@ use_alias(spp::asts::meta, CompilerStage);
 use_alias(spp::asts::meta, MetaGuard);
 
 namespace spp::analyse::utils::generic_inference {
-  namespace {
-    /// [CHECKED]
-    /// Reject the first argument name no parameter has, reported
-    /// against the first parameter (or the argument itself, when
-    /// there are none).
-    auto EnforceGnArgNamesKnown(
-      Vec<GenericParameterAst*> const &params, Vec<GenericArgumentAst*> const &args) -> void {
-      // A pack is never named: it takes the positionals after the parameters before it (pack-design phase 11).
-      for (auto const *arg : args) {
-        const auto known = genex::any_of(params, [arg](auto const *p) {
-          return *p->Name == *arg->KeywordName() and not p->IsVariadic();
-        });
-        if (known) { continue; }
-        Raise<errors::SppArgumentNameInvalidError>(
-          ERR_ARGS(
-            params.empty() ? static_cast<Ast const&>(*arg->KeywordName()) : *params[0], StrView("gn param"),
-            *arg->KeywordName(), StrView("gn arg")));
-      }
-    }
+  /// Reject the first argument name no parameter has, reported
+  /// against the first parameter (or the argument itself, when
+  /// there are none).
+  static auto EnforceGnArgNamesKnown(
+    Vec<GenericParameterAst*> const &params, Vec<GenericArgumentAst*> const &args) -> void;
 
-    /// Whether "type" names the type parameter "param" anywhere in it, its generic arguments included ("Add[Ts]").
-    auto NamesTypeParam(
-      TypeAst const &type, GenericParameterAst const &param) -> bool {
-      auto const *const name = param.Name->To<TypeIdentifierAst>();
-      for (auto const *part : type.TypeParts()) {
-        if (name != nullptr and part->Name == name->Name and part->GnArgGroup->Args.empty()) { return true; }
-        for (auto const *arg : part->GnArgGroup->GetTypeArgs()) {
-          if (NamesTypeParam(*arg->TypeVal, param)) { return true; }
-        }
-      }
-      return false;
-    }
+  /// Whether "type" names the type parameter "param" anywhere in it, its generic arguments included ("Add[Ts]").
+  static auto NamesTypeParam(
+    TypeAst const &type, GenericParameterAst const &param) -> bool;
 
-    /// Check each type argument ("args": its parameter, and the
-    /// types it is checked as: the identity bound to it and the
-    /// type shown for it in an error, one per element for a pack)
-    /// against its parameter's constraints, read where the
-    /// parameters are written ("written_scope", which an
-    /// unsatisfied one is reported from) with the arguments bound
-    /// ("bindings"), from the use site.
-    auto CheckTypeArgConstraints(
-      Vec<Pair<GenericParameterAst const*, Vec<Pair<TypeId, Shared<TypeAst>>>>> const &args,
-      Scope const &written_scope, GenericSubst const &bindings,
-      ScopeManager &sm, CompilerMetaData &meta) -> void {
-      using errors::SppGenericConstraintError;
-      auto const &scope = *sm.CurrentScope;
-      for (auto const &[param, targets] : args) {
-        // This parameter's constraints, with the arguments bound ("with" in place of "bindings"), read from the scope
-        // of the type checked ("con_sm"), where "Self" is that type: each element's, for a pack.
-        const auto read_constraints = [&](GenericSubst const &with, ScopeManager &con_sm) {
-          auto cons = Vec<Shared<TypeAst>>();
-          for (auto const &p_con : param->TypeConstraints->Constraints) {
-            const auto sub = type_resolution::ReadType(*p_con, ExprSubst::Across(written_scope, with, scope));
-            {
-              // Resolved from the argument's scope, but written, and
-              // checked for visibility, where the parameter is declared:
-              // a module-private alias there is not visible from, say,
-              // a closure argument's (global) scope, and needn't be.
-              const auto _meta_guard = MetaGuard(&meta);
-              meta.AllowAbstractType = true;
-              meta.IgnoreAccessModifierViolations = true;
-              sub->Stage7_AnalyseSemantics(&con_sm, &meta);
-            }
-            cons.push_back(sub->WithSourceSpanOf(*p_con));
-          }
-          return cons;
-        };
+  /// Check each type argument ("args": its parameter, and the
+  /// types it is checked as: the identity bound to it and the
+  /// type shown for it in an error, one per element for a pack)
+  /// against its parameter's constraints, read where the
+  /// parameters are written ("written_scope", which an
+  /// unsatisfied one is reported from) with the arguments bound
+  /// ("bindings"), from the use site.
+  static auto CheckTypeArgConstraints(
+    Vec<Pair<GenericParameterAst const*, Vec<Pair<TypeId, Shared<TypeAst>>>>> const &args,
+    Scope const &written_scope, GenericSubst const &bindings,
+    ScopeManager &sm, CompilerMetaData &meta) -> void;
 
-        // A pack named in its own constraint ("..Ts: Add[Ts]") stands for each other element there, not its list:
-        // every element meets the constraint as read with the pack bound to each element in turn ("Self" being the
-        // element checked), so "xs#i + xs#j" holds for every pair a fold over the pack combines.
-        const auto names_itself = param->IsVariadic() and genex::any_of(
-          param->TypeConstraints->Constraints, [&](auto const &p_con) { return NamesTypeParam(*p_con, *param); });
-        const auto pairwise = [&](scopes::TypeId target, scopes::TypeId other, ScopeManager &con_sm) {
-          auto with = bindings;
-          for (auto &[id, value] : with.TypeParams) {
-            if (id == param->ParamId()) { value = other; }
-          }
-          std::erase_if(with.TypeParams, [](auto const &binding) { return binding.first == 0; });
-          with.TypeParams.emplace_back(0, target);
-          return read_constraints(with, con_sm);
-        };
+  /// Name the positional arguments of one kind after the
+  /// parameters they bind ("type_resolution::ParamsBoundByArgs";
+  /// "NameTypeArgs", "NameCompArgs"): each is copied under
+  /// its parameter's name by "bind", until a trailing variadic
+  /// parameter takes the rest, its pack's elements, which stay
+  /// positional ("f[U32, U32]" for "f[..Ts]", "f[1_u32, 2_u32]"
+  /// for "f[cmp ..s]"), each analysed by "elements": the pack's
+  /// list is keyed from them ("Scope::ArgsIdOf").
+  static auto NameArgs(
+    Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
+    CompilerMetaData &meta,
+    FuncRef<void(Vec<GenericArgumentAst*> const &)> elements,
+    FuncRef<void(GenericArgumentAst &, GenericArgumentAst const &)> bind) -> void;
 
-        // Raise an error if any constraint of this argument is not satisfied.
-        for (auto const &[target, target_ast] : targets) {
-          auto const *const target_sym = TypeRef::Of(target, scope).Symbol;
-          if (target_sym == nullptr) { continue; }
-          auto con_sm = sm.NewManagerAt(target_sym->LinkedScope != nullptr ? target_sym->LinkedScope : sm.CurrentScope);
-          auto per_other = Vec<Vec<Shared<TypeAst>>>();
-          if (names_itself) {
-            for (auto const &[other, other_ast] : targets) { per_other.emplace_back(pairwise(target, other, con_sm)); }
-          }
-          else { per_other.emplace_back(read_constraints(bindings, con_sm)); }
-          for (auto const &cons : per_other) {
-            const auto unsatisfied = type_compare::UnmetConstraint(
-              cons, TypeRef::Of(target, scope), scopes::IsSelfTypeId(target), scope, scope);
-            RaiseIf<SppGenericConstraintError>(
-              unsatisfied != nullptr,
-              ERR_ARGS(*unsatisfied, *target_ast));
-          }
-        }
-      }
-    }
+  /// "NameArgs" for type arguments. A type pack's elements stay
+  /// positional, each analysed: an element naming a bound pack
+  /// is spliced into the list where it is keyed ("A[S32, Ts]"
+  /// with "Ts" bound to "Bool, U8" is "A[S32, Bool, U8]"). Each
+  /// is analysed once types resolve.
+  static auto NameTypeArgs(
+    Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
+    ScopeManager &sm, CompilerMetaData &meta) -> void;
 
-    /// Name the positional arguments of one kind after the
-    /// parameters they bind ("type_resolution::ParamsBoundByArgs";
-    /// "NameTypeArgs", "NameCompArgs"): each is copied under
-    /// its parameter's name by "bind", until a trailing variadic
-    /// parameter takes the rest, its pack's elements, which stay
-    /// positional ("f[U32, U32]" for "f[..Ts]", "f[1_u32, 2_u32]"
-    /// for "f[cmp ..s]"), each analysed by "elements": the pack's
-    /// list is keyed from them ("Scope::ArgsIdOf").
-    auto NameArgs(
-      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
-      CompilerMetaData &meta,
-      FuncRef<void(Vec<GenericArgumentAst*> const &)> elements,
-      FuncRef<void(GenericArgumentAst &, GenericArgumentAst const &)> bind) -> void {
-      const auto keyword_args = args
-        | genex::views::ptr
-        | genex::views::filter([](auto const *x) { return x->KeywordName() != nullptr; })
-        | genex::to<Vec>();
-      EnforceGnArgNamesKnown(params, keyword_args);
+  /// "NameTypeArgs" for comp arguments: a comp pack's elements stay positional, each analysed, one naming a bound
+  /// comp pack spliced into the list where it is keyed. A literal or a name is analysed once types resolve; anything
+  /// else waits until stage 5 ends, as a comp expression ("n + 1") resolves its operator through the sup scopes of
+  /// its operand's type, attached only then. An operator expression is never analysed here - analysing it consumes it
+  /// - but by the argument's own "AnalyseCompVal", which folds it or checks a copy.
+  static auto NameCompArgs(
+    Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
+    ScopeManager &sm, CompilerMetaData &meta) -> void;
 
-      // Each argument names its parameter by identity as well as by
-      // name: a keyword argument's name, matched to its parameter
-      // by spelling just above, is stamped with the parameter's
-      // identity, and a positional one is given the parameter's
-      // name, stamped. A parameter not declared yet has none.
-      const auto name_of = [](GenericParameterAst const &param) -> Shared<TypeAst> {
-        if (param.Name->StampedTypeId() != nullptr or param.ParamId() == 0) { return param.Name; }
-        auto name = AstCloneShared(param.Name);
-        name->StampTypeId(scopes::ParamTypeId(param.ParamId()));
-        return name;
-      };
-      for (auto const *arg : keyword_args) {
-        auto const &name = *arg->KeywordName();
-        const auto param = genex::find_if(params, [&name](auto const *p) { return *p->Name == name; });
-        if (param != params.end() and (*param)->ParamId() != 0 and name.StampedTypeId() == nullptr) {
-          name.StampTypeId(scopes::ParamTypeId((*param)->ParamId()));
-        }
-      }
+  /// A comp pack's elements, an element forwarding an instance's pack (bound to its tuple) taken as its elements.
+  static auto PackSources(
+    Vec<Shared<ExpressionAst>> const &elems, Scope const &scope) -> Vec<ExpressionAst*>;
 
-      const auto targets = type_resolution::ParamsBoundByArgs(args | genex::views::ptr | genex::to<Vec>(), params);
+  /// A comp pack's element, typed: one naming a template's open pack is what that pack declares each element to be
+  /// ("PackInfo"), not the open tuple it is as a whole.
+  static auto CompElementType(
+    ExpressionAst &elem, ScopeManager &sm, CompilerMetaData &meta) -> Shared<TypeAst>;
+}
 
-      const auto _meta_guard = MetaGuard(&meta);
-      meta.TypeAnalysisTypeScope = nullptr;
+/// [CHECKED]
+auto spp::analyse::utils::generic_inference::EnforceGnArgNamesKnown(
+  Vec<GenericParameterAst*> const &params, Vec<GenericArgumentAst*> const &args) -> void {
+  // A pack is never named: it takes the positionals after the parameters before it (pack-design phase 11).
+  for (auto const *arg : args) {
+    const auto known = genex::any_of(params, [arg](auto const *p) {
+      return *p->Name == *arg->KeywordName() and not p->IsVariadic();
+    });
+    if (known) { continue; }
+    Raise<errors::SppArgumentNameInvalidError>(
+      ERR_ARGS(
+        params.empty() ? static_cast<Ast const&>(*arg->KeywordName()) : *params[0], StrView("gn param"),
+        *arg->KeywordName(), StrView("gn arg")));
+  }
+}
 
-      auto const *keyword_before = static_cast<GenericArgumentAst const*>(nullptr);
-      for (auto i = 0uz; i < args.size(); ++i) {
-        auto const &positional = args[i];
-        if (positional->KeywordName() != nullptr) {
-          keyword_before = positional.get();
-          continue;
-        }
-        auto const *const param = targets[i];
-        RaiseIf<errors::SppGenericArgumentTooManyError>(
-          param == nullptr,
-          ERR_ARGS(params.empty() ? owner : *params[0], owner, *positional));
-
-        // A positional after a keyword is only a variadic parameter's tail ("P[A=S32, Bool, U8]").
-        RaiseIf<errors::SppOrderInvalidError>(
-          keyword_before != nullptr and not param->IsVariadic(),
-          ERR_ARGS(Str("kKeywordArg"), *keyword_before, Str("kPositionalArg"), *positional));
-        auto named = MakeUnique<GenericArgumentAst>(name_of(*param), nullptr, nullptr, nullptr);
-
-        if (param->IsVariadic()) {
-          elements(args | genex::views::ptr | genex::views::drop(i) | genex::to<Vec>());
-          break;
-        }
-        bind(*named, *positional);
-        args[i] = std::move(named);
-      }
-    }
-
-    /// "NameArgs" for type arguments. A type pack's elements stay
-    /// positional, each analysed: an element naming a bound pack
-    /// is spliced into the list where it is keyed ("A[S32, Ts]"
-    /// with "Ts" bound to "Bool, U8" is "A[S32, Bool, U8]"). Each
-    /// is analysed once types resolve.
-    auto NameTypeArgs(
-      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
-      ScopeManager &sm, CompilerMetaData &meta) -> void {
-      const auto analyse = [&](GenericArgumentAst &named) {
-        if (meta.CurrentStage >= CompilerStage::kResolveDeclarations) {
-          named.TypeVal->Stage7_AnalyseSemantics(&sm, &meta);
-        }
-      };
-      const auto elements = [&](Vec<GenericArgumentAst*> const &rest) {
-        for (auto *const elem : rest) { analyse(*elem); }
-      };
-      const auto bind = [&](GenericArgumentAst &named, GenericArgumentAst const &positional) {
-        named.TypeVal = AstCloneShared(positional.TypeVal);
-        analyse(named);
-      };
-      NameArgs(args, params, owner, meta, elements, bind);
-    }
-
-    /// "NameTypeArgs" for comp arguments: a comp pack's elements stay positional, each analysed, one naming a bound
-    /// comp pack spliced into the list where it is keyed. A literal or a name is analysed once types resolve; anything
-    /// else waits until stage 5 ends, as a comp expression ("n + 1") resolves its operator through the sup scopes of
-    /// its operand's type, attached only then. An operator expression is never analysed here - analysing it consumes it
-    /// - but by the argument's own "AnalyseCompVal", which folds it or checks a copy.
-    auto NameCompArgs(
-      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
-      ScopeManager &sm, CompilerMetaData &meta) -> void {
-      const auto analyse = [&](GenericArgumentAst &arg) {
-        auto &val = *arg.CompVal;
-        const auto stage = meta.CurrentStage;
-        if (stage >= CompilerStage::kResolveDeclarations and (not comp_generics::NeedsSupScopesToType(val)
-          or (stage >= CompilerStage::kPreAnalyseSemantics and not comp_generics::IsCompOperator(val)))) {
-          arg.AnalyseCompExpr(val, &sm, &meta);
-        }
-      };
-      const auto elements = [&](Vec<GenericArgumentAst*> const &rest) {
-        for (auto *const elem : rest) { analyse(*elem); }
-      };
-      const auto bind = [&](GenericArgumentAst &named, GenericArgumentAst const &positional) {
-        named.CompVal = AstCloneShared(positional.CompVal);
-        named.ExpectedCompType = positional.ExpectedCompType;
-        analyse(named);
-      };
-      NameArgs(args, params, owner, meta, elements, bind);
-    }
-
-    /// A comp pack's elements, an element forwarding an instance's pack (bound to its tuple) taken as its elements.
-    auto PackSources(
-      Vec<Shared<ExpressionAst>> const &elems, Scope const &scope) -> Vec<ExpressionAst*> {
-      auto out = Vec<ExpressionAst*>();
-      for (auto const &elem : elems) {
-        if (auto spread = packs::BoundCompPackElements(*elem, scope); spread.has_value()) { out.append_range(*spread); }
-        else { out.emplace_back(elem.get()); }
-      }
-      return out;
-    }
-
-    /// A comp pack's element, typed: one naming a template's open pack is what that pack declares each element to be
-    /// ("PackInfo"), not the open tuple it is as a whole.
-    auto CompElementType(
-      ExpressionAst &elem, ScopeManager &sm, CompilerMetaData &meta) -> Shared<TypeAst> {
-      auto const *const name = elem.To<IdentifierAst>();
-      auto const *const sym = name != nullptr ? sm.CurrentScope->FindVarSymbol(name) : nullptr;
-      if (sym != nullptr and sym->Pack.has_value() and sym->Pack->Open) { return sym->Pack->Element; }
-      return elem.InferType(&sm, &meta);
+auto spp::analyse::utils::generic_inference::NamesTypeParam(
+  TypeAst const &type, GenericParameterAst const &param) -> bool {
+  auto const *const name = param.Name->To<TypeIdentifierAst>();
+  for (auto const *part : type.TypeParts()) {
+    if (name != nullptr and part->Name == name->Name and part->GnArgGroup->Args.empty()) { return true; }
+    for (auto const *arg : part->GnArgGroup->GetTypeArgs()) {
+      if (NamesTypeParam(*arg->TypeVal, param)) { return true; }
     }
   }
+  return false;
+}
+
+auto spp::analyse::utils::generic_inference::CheckTypeArgConstraints(
+  Vec<Pair<GenericParameterAst const*, Vec<Pair<TypeId, Shared<TypeAst>>>>> const &args,
+  Scope const &written_scope, GenericSubst const &bindings,
+  ScopeManager &sm, CompilerMetaData &meta) -> void {
+  using errors::SppGenericConstraintError;
+  auto const &scope = *sm.CurrentScope;
+  for (auto const &[param, targets] : args) {
+    // This parameter's constraints, with the arguments bound ("with" in place of "bindings"), read from the scope
+    // of the type checked ("con_sm"), where "Self" is that type: each element's, for a pack.
+    const auto read_constraints = [&](GenericSubst const &with, ScopeManager &con_sm) {
+      auto cons = Vec<Shared<TypeAst>>();
+      for (auto const &p_con : param->TypeConstraints->Constraints) {
+        const auto sub = type_resolution::ReadType(*p_con, ExprSubst::Across(written_scope, with, scope));
+        {
+          // Resolved from the argument's scope, but written, and
+          // checked for visibility, where the parameter is declared:
+          // a module-private alias there is not visible from, say,
+          // a closure argument's (global) scope, and needn't be.
+          const auto _meta_guard = MetaGuard(&meta);
+          meta.AllowAbstractType = true;
+          meta.IgnoreAccessModifierViolations = true;
+          sub->Stage7_AnalyseSemantics(&con_sm, &meta);
+        }
+        cons.push_back(sub->WithSourceSpanOf(*p_con));
+      }
+      return cons;
+    };
+
+    // A pack named in its own constraint ("..Ts: Add[Ts]") stands for each other element there, not its list:
+    // every element meets the constraint as read with the pack bound to each element in turn ("Self" being the
+    // element checked), so "xs#i + xs#j" holds for every pair a fold over the pack combines.
+    const auto names_itself = param->IsVariadic() and genex::any_of(
+      param->TypeConstraints->Constraints, [&](auto const &p_con) { return NamesTypeParam(*p_con, *param); });
+    const auto pairwise = [&](scopes::TypeId target, scopes::TypeId other, ScopeManager &con_sm) {
+      auto with = bindings;
+      for (auto &[id, value] : with.TypeParams) {
+        if (id == param->ParamId()) { value = other; }
+      }
+      std::erase_if(with.TypeParams, [](auto const &binding) { return binding.first == 0; });
+      with.TypeParams.emplace_back(0, target);
+      return read_constraints(with, con_sm);
+    };
+
+    // Raise an error if any constraint of this argument is not satisfied.
+    for (auto const &[target, target_ast] : targets) {
+      auto const *const target_sym = TypeRef::Of(target, scope).Symbol;
+      if (target_sym == nullptr) { continue; }
+      auto con_sm = sm.NewManagerAt(target_sym->LinkedScope != nullptr ? target_sym->LinkedScope : sm.CurrentScope);
+      auto per_other = Vec<Vec<Shared<TypeAst>>>();
+      if (names_itself) {
+        for (auto const &[other, other_ast] : targets) { per_other.emplace_back(pairwise(target, other, con_sm)); }
+      }
+      else { per_other.emplace_back(read_constraints(bindings, con_sm)); }
+      for (auto const &cons : per_other) {
+        const auto unsatisfied = type_compare::UnmetConstraint(
+          cons, TypeRef::Of(target, scope), scopes::IsSelfTypeId(target), scope, scope);
+        RaiseIf<SppGenericConstraintError>(
+          unsatisfied != nullptr,
+          ERR_ARGS(*unsatisfied, *target_ast));
+      }
+    }
+  }
+}
+
+auto spp::analyse::utils::generic_inference::NameArgs(
+  Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
+  CompilerMetaData &meta,
+  FuncRef<void(Vec<GenericArgumentAst*> const &)> elements,
+  FuncRef<void(GenericArgumentAst &, GenericArgumentAst const &)> bind) -> void {
+  const auto keyword_args = args
+    | genex::views::ptr
+    | genex::views::filter([](auto const *x) { return x->KeywordName() != nullptr; })
+    | genex::to<Vec>();
+  EnforceGnArgNamesKnown(params, keyword_args);
+
+  // Each argument names its parameter by identity as well as by
+  // name: a keyword argument's name, matched to its parameter
+  // by spelling just above, is stamped with the parameter's
+  // identity, and a positional one is given the parameter's
+  // name, stamped. A parameter not declared yet has none.
+  const auto name_of = [](GenericParameterAst const &param) -> Shared<TypeAst> {
+    if (param.Name->StampedTypeId() != nullptr or param.ParamId() == 0) { return param.Name; }
+    auto name = AstCloneShared(param.Name);
+    name->StampTypeId(scopes::ParamTypeId(param.ParamId()));
+    return name;
+  };
+  for (auto const *arg : keyword_args) {
+    auto const &name = *arg->KeywordName();
+    const auto param = genex::find_if(params, [&name](auto const *p) { return *p->Name == name; });
+    if (param != params.end() and (*param)->ParamId() != 0 and name.StampedTypeId() == nullptr) {
+      name.StampTypeId(scopes::ParamTypeId((*param)->ParamId()));
+    }
+  }
+
+  const auto targets = type_resolution::ParamsBoundByArgs(args | genex::views::ptr | genex::to<Vec>(), params);
+
+  const auto _meta_guard = MetaGuard(&meta);
+  meta.TypeAnalysisTypeScope = nullptr;
+
+  auto const *keyword_before = static_cast<GenericArgumentAst const*>(nullptr);
+  for (auto i = 0uz; i < args.size(); ++i) {
+    auto const &positional = args[i];
+    if (positional->KeywordName() != nullptr) {
+      keyword_before = positional.get();
+      continue;
+    }
+    auto const *const param = targets[i];
+    RaiseIf<errors::SppGenericArgumentTooManyError>(
+      param == nullptr,
+      ERR_ARGS(params.empty() ? owner : *params[0], owner, *positional));
+
+    // A positional after a keyword is only a variadic parameter's tail ("P[A=S32, Bool, U8]").
+    RaiseIf<errors::SppOrderInvalidError>(
+      keyword_before != nullptr and not param->IsVariadic(),
+      ERR_ARGS(Str("kKeywordArg"), *keyword_before, Str("kPositionalArg"), *positional));
+    auto named = MakeUnique<GenericArgumentAst>(name_of(*param), nullptr, nullptr, nullptr);
+
+    if (param->IsVariadic()) {
+      elements(args | genex::views::ptr | genex::views::drop(i) | genex::to<Vec>());
+      break;
+    }
+    bind(*named, *positional);
+    args[i] = std::move(named);
+  }
+}
+
+auto spp::analyse::utils::generic_inference::NameTypeArgs(
+  Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
+  ScopeManager &sm, CompilerMetaData &meta) -> void {
+  const auto analyse = [&](GenericArgumentAst &named) {
+    if (meta.CurrentStage >= CompilerStage::kResolveDeclarations) {
+      named.TypeVal->Stage7_AnalyseSemantics(&sm, &meta);
+    }
+  };
+  const auto elements = [&](Vec<GenericArgumentAst*> const &rest) {
+    for (auto *const elem : rest) { analyse(*elem); }
+  };
+  const auto bind = [&](GenericArgumentAst &named, GenericArgumentAst const &positional) {
+    named.TypeVal = AstCloneShared(positional.TypeVal);
+    analyse(named);
+  };
+  NameArgs(args, params, owner, meta, elements, bind);
+}
+
+auto spp::analyse::utils::generic_inference::NameCompArgs(
+  Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
+  ScopeManager &sm, CompilerMetaData &meta) -> void {
+  const auto analyse = [&](GenericArgumentAst &arg) {
+    auto &val = *arg.CompVal;
+    const auto stage = meta.CurrentStage;
+    if (stage >= CompilerStage::kResolveDeclarations and (not comp_generics::NeedsSupScopesToType(val)
+      or (stage >= CompilerStage::kPreAnalyseSemantics and not comp_generics::IsCompOperator(val)))) {
+      arg.AnalyseCompExpr(val, &sm, &meta);
+    }
+  };
+  const auto elements = [&](Vec<GenericArgumentAst*> const &rest) {
+    for (auto *const elem : rest) { analyse(*elem); }
+  };
+  const auto bind = [&](GenericArgumentAst &named, GenericArgumentAst const &positional) {
+    named.CompVal = AstCloneShared(positional.CompVal);
+    named.ExpectedCompType = positional.ExpectedCompType;
+    analyse(named);
+  };
+  NameArgs(args, params, owner, meta, elements, bind);
+}
+
+auto spp::analyse::utils::generic_inference::PackSources(
+  Vec<Shared<ExpressionAst>> const &elems, Scope const &scope) -> Vec<ExpressionAst*> {
+  auto out = Vec<ExpressionAst*>();
+  for (auto const &elem : elems) {
+    if (auto spread = packs::BoundCompPackElements(*elem, scope); spread.has_value()) { out.append_range(*spread); }
+    else { out.emplace_back(elem.get()); }
+  }
+  return out;
+}
+
+auto spp::analyse::utils::generic_inference::CompElementType(
+  ExpressionAst &elem, ScopeManager &sm, CompilerMetaData &meta) -> Shared<TypeAst> {
+  auto const *const name = elem.To<IdentifierAst>();
+  auto const *const sym = name != nullptr ? sm.CurrentScope->FindVarSymbol(name) : nullptr;
+  if (sym != nullptr and sym->Pack.has_value() and sym->Pack->Open) { return sym->Pack->Element; }
+  return elem.InferType(&sm, &meta);
 }
 
 SPP_MOD_BEGIN

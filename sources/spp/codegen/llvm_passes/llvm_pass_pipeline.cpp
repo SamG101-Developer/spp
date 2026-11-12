@@ -20,46 +20,6 @@ import genex;
 
 namespace spp::codegen {
   namespace {
-    /// What a coroutine intrinsic's name starts with. This is
-    /// used by the "PendingCoroUses" function to filter out
-    /// coroutines from subroutines, when checking for uses.
-    constexpr auto kCoroIntrinsicPrefix = llvm::StringLiteral("llvm.coro.");
-
-    /// The number of calls to a coroutine intrinsic still in
-    /// the module: what "RunCoroLoweringPipeline" checks has
-    /// reached zero once the coroutines are lowered.
-    auto PendingCoroUses(llvm::Module const &llvm_mod) -> unsigned long {
-      // Get the declared functions (not just defined), filter
-      // to get the coroutines (ignore subroutines), and then
-      // get the "number of uses" of the function - this is the
-      // number of "@llvm.coro.resume" calls which get lowered
-      // away; check for 0.
-      auto pending = 0UL;
-      for (auto const &fn : llvm_mod) {
-        if (not fn.isDeclaration() or not fn.getName().starts_with(kCoroIntrinsicPrefix)) { continue; }
-        pending += fn.getNumUses();
-      }
-      return pending;
-    }
-
-    /// Stop on any coroutine intrinsic the pipeline left behind.
-    /// That is coroutine ir llvm could not lower, a fault in what
-    /// codegen emitted: it would reach the backend as a call to an
-    /// intrinsic nothing lowers, and every coroutine would trap on
-    /// entry for want of a frame. The Ice names what was left.
-    auto CheckCoroutinesLowered(llvm::Module const &llvm_mod) -> void {
-      const auto pending = PendingCoroUses(llvm_mod);
-      if (pending == 0) { return; }
-      auto left = Str();
-      for (auto const &fn : llvm_mod) {
-        if (not fn.isDeclaration() or not fn.getName().starts_with(kCoroIntrinsicPrefix) or fn.use_empty()) { continue; }
-        left += (left.empty() ? "" : ", ") + fn.getName().str() + " (" + std::to_string(fn.getNumUses()) + ")";
-      }
-      spp::Ice(
-        "coroutine lowering left " + std::to_string(pending) + " intrinsic call(s) in " + llvm_mod.getName().str() +
-        ": " + left);
-    }
-
     /// A module pass running "hook" over the module, at the point
     /// of the pipeline it is added at. Only metadata changes, so
     /// every analysis survives it.
@@ -72,6 +32,50 @@ namespace spp::codegen {
       }
     };
   }
+
+  /// What a coroutine intrinsic's name starts with. This is
+  /// used by the "PendingCoroUses" function to filter out
+  /// coroutines from subroutines, when checking for uses.
+  static constexpr auto kCoroIntrinsicPrefix = llvm::StringLiteral("llvm.coro.");
+
+  /// The number of calls to a coroutine intrinsic still in
+  /// the module: what "RunCoroLoweringPipeline" checks has
+  /// reached zero once the coroutines are lowered.
+  static auto PendingCoroUses(llvm::Module const &llvm_mod) -> unsigned long;
+
+  /// Stop on any coroutine intrinsic the pipeline left behind.
+  /// That is coroutine ir llvm could not lower, a fault in what
+  /// codegen emitted: it would reach the backend as a call to an
+  /// intrinsic nothing lowers, and every coroutine would trap on
+  /// entry for want of a frame. The Ice names what was left.
+  static auto CheckCoroutinesLowered(llvm::Module const &llvm_mod) -> void;
+}
+
+auto spp::codegen::PendingCoroUses(llvm::Module const &llvm_mod) -> unsigned long {
+  // Get the declared functions (not just defined), filter
+  // to get the coroutines (ignore subroutines), and then
+  // get the "number of uses" of the function - this is the
+  // number of "@llvm.coro.resume" calls which get lowered
+  // away; check for 0.
+  auto pending = 0UL;
+  for (auto const &fn : llvm_mod) {
+    if (not fn.isDeclaration() or not fn.getName().starts_with(kCoroIntrinsicPrefix)) { continue; }
+    pending += fn.getNumUses();
+  }
+  return pending;
+}
+
+auto spp::codegen::CheckCoroutinesLowered(llvm::Module const &llvm_mod) -> void {
+  const auto pending = PendingCoroUses(llvm_mod);
+  if (pending == 0) { return; }
+  auto left = Str();
+  for (auto const &fn : llvm_mod) {
+    if (not fn.isDeclaration() or not fn.getName().starts_with(kCoroIntrinsicPrefix) or fn.use_empty()) { continue; }
+    left += (left.empty() ? "" : ", ") + fn.getName().str() + " (" + std::to_string(fn.getNumUses()) + ")";
+  }
+  spp::Ice(
+    "coroutine lowering left " + std::to_string(pending) + " intrinsic call(s) in " + llvm_mod.getName().str() +
+    ": " + left);
 }
 
 auto spp::codegen::RunOptimizationPipeline(

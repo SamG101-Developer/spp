@@ -2,15 +2,20 @@ module spp.codegen.llvm_coros;
 import spp.codegen.llvm_ctx;
 import std;
 
-namespace {
-  auto SlotStorageType(
+namespace spp::codegen {
+  static auto SlotStorageType(
     llvm::Type *const slot_type,
     spp::codegen::LlvmCtx const *ctx)
-    -> llvm::Type* {
-    return slot_type != nullptr and slot_type->isSized()
-      ? slot_type
-      : llvm::IntegerType::getInt64Ty(*ctx->Context);
-  }
+    -> llvm::Type*;
+}
+
+auto spp::codegen::SlotStorageType(
+  llvm::Type *const slot_type,
+  spp::codegen::LlvmCtx const *ctx)
+  -> llvm::Type* {
+  return slot_type != nullptr and slot_type->isSized()
+    ? slot_type
+    : llvm::IntegerType::getInt64Ty(*ctx->Context);
 }
 
 auto spp::codegen::CreateLlvmGeneratorStateType(

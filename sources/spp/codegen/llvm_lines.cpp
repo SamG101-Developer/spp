@@ -11,16 +11,9 @@ import llvm;
 import std;
 
 namespace spp::codegen {
+  static constexpr auto kNone = std::uint32_t{0xffffffff};
+
   namespace {
-    /// The format's constants, as sppc reads them (backtrace/common.h).
-    constexpr auto kMagic = std::uint32_t{0x4c505053}; // "SPPL", read little-endian
-    constexpr auto kVersion = std::uint32_t{1};
-    constexpr auto kNone = std::uint32_t{0xffffffff};
-
-    /// The table's symbol, and the sppc call that "main" hands it to.
-    constexpr auto kTableSymbol = "__spp_lines";
-    constexpr auto kRegisterFn = "sppc_set_source_lines";
-
     /// A place in the source: a function's name, a file, a line and a column,
     /// and the frame it was inlined into.
     struct Frame {
@@ -42,16 +35,6 @@ namespace spp::codegen {
       std::uint64_t Hash;
       Vec<Range> Ranges;
     };
-
-    /// The 64-bit FNV-1a hash of a symbol name, as sppc computes it.
-    auto HashOf(const llvm::StringRef name) -> std::uint64_t {
-      auto h = std::uint64_t{0xcbf29ce484222325};
-      for (const auto c : name) {
-        h ^= static_cast<std::uint8_t>(c);
-        h *= 0x100000001b3;
-      }
-      return h;
-    }
 
     /// The strings and frames of a table, each stored once.
     struct Places {
@@ -139,6 +122,28 @@ namespace spp::codegen {
       auto Put64(const std::uint64_t value) -> void { Put(value, 8); }
     };
   }
+
+  /// The format's constants, as sppc reads them (backtrace/common.h).
+  static constexpr auto kMagic = std::uint32_t{0x4c505053}; // "SPPL", read little-endian
+
+  static constexpr auto kVersion = std::uint32_t{1};
+
+  /// The table's symbol, and the sppc call that "main" hands it to.
+  static constexpr auto kTableSymbol = "__spp_lines";
+
+  static constexpr auto kRegisterFn = "sppc_set_source_lines";
+
+  /// The 64-bit FNV-1a hash of a symbol name, as sppc computes it.
+  static auto HashOf(const llvm::StringRef name) -> std::uint64_t;
+}
+
+auto spp::codegen::HashOf(const llvm::StringRef name) -> std::uint64_t {
+  auto h = std::uint64_t{0xcbf29ce484222325};
+  for (const auto c : name) {
+    h ^= static_cast<std::uint8_t>(c);
+    h *= 0x100000001b3;
+  }
+  return h;
 }
 
 auto spp::codegen::BuildLineTable(

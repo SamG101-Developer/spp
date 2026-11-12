@@ -18,26 +18,30 @@ use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, TypeIdentifierAst);
 
-SPP_MOD_BEGIN
 namespace spp::analyse::scopes {
-  namespace {
-    /// For an IdentifierAst, get the interned id, optimal for
-    /// comparisons.
-    SPP_ATTR_ALWAYS_INLINE inline auto SymbolKey(
-      IdentifierAst const *sym_name) noexcept -> spp::utils::InternedId {
-      return sym_name->NameId();
-    }
+  /// For an IdentifierAst, get the interned id, optimal for
+  /// comparisons.
+  SPP_ATTR_ALWAYS_INLINE static auto SymbolKey(
+    IdentifierAst const *sym_name) noexcept -> spp::utils::InternedId;
 
-    /// For a TypeIdentifierAst, get the string-based view over
-    /// the entire type. They are mutated so we can't "intern"
-    /// them - hash the view instead.
-    SPP_ATTR_ALWAYS_INLINE inline auto SymbolKey(
-      TypeIdentifierAst const *sym_name) -> StrView {
-      return sym_name->ToView();
-    }
-  }
+  /// For a TypeIdentifierAst, get the string-based view over
+  /// the entire type. They are mutated so we can't "intern"
+  /// them - hash the view instead.
+  SPP_ATTR_ALWAYS_INLINE static auto SymbolKey(
+    TypeIdentifierAst const *sym_name) -> StrView;
 }
 
+SPP_ATTR_ALWAYS_INLINE auto spp::analyse::scopes::SymbolKey(
+  IdentifierAst const *sym_name) noexcept -> spp::utils::InternedId {
+  return sym_name->NameId();
+}
+
+SPP_ATTR_ALWAYS_INLINE auto spp::analyse::scopes::SymbolKey(
+  TypeIdentifierAst const *sym_name) -> StrView {
+  return sym_name->ToView();
+}
+
+SPP_MOD_BEGIN
 template <typename I, typename S>
 spp::analyse::scopes::IndividualSymbolTable<I, S>::IndividualSymbolTable() = default;
 

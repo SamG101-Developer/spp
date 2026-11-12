@@ -58,105 +58,203 @@ use_alias(spp::asts, TokenAst);
 use_alias(spp::asts::meta, CompTimeCallArgs);
 
 namespace spp::analyse::utils::comp_time_intrinsics {
+  using Int = IntegerLiteralAst;
+  using Flt = FloatLiteralAst;
+  using Any = ExpressionAst;
+
   namespace {
-    auto SizedNumericLiteralTypeName(TypeSymbol const *sym) -> Str {
-      // The width and signedness are the sized type's own bindings of "w" and "signed", read from the instantiation as
-      // its type arguments would be - not parsed out of how its name happens to be written.
-      if (sym == nullptr) { return Str(); }
-      const auto width_val = scopes::U64Of(sym->CompArgId("w"));
-      if (not width_val.has_value()) { return Str(); }
-      const auto width = std::to_string(*width_val);
-
-      // A floating-point type has a width and nothing else; an integer one also says whether it is signed.
-      const auto signed_id = sym->CompArgId("signed");
-      if (signed_id == nullptr) { return "f" + width; }
-      auto const *const signed_val = signed_id->AsBool();
-      const auto is_signed = signed_val != nullptr and *signed_val;
-      return (is_signed ? "s" : "u") + width;
-    }
-
-    auto SizedNumericLiteralTypeNameOrError(
-      ScopeManager const &sm, Vec<Shared<TypeRef>> const &types, const bool is_float) -> Str {
-      // Get the type suffix for this integer or float
-      // type, and check that it is known.
-      SPP_ASSERT(not types.empty());
-      const auto name = SizedNumericLiteralTypeName(types[0]->Symbol);
-      const auto known = is_float
-        ? spp::utils::numbers::FloatBounds().contains(name)
-        : spp::utils::numbers::IntegerBounds().contains(name);
-
-      // Every width the language has a sized number type for has
-      // bounds ("utils::numbers"); one without is a compiler bug.
-      if (not known) {
-        SPP_ASSERT(types[0]->Symbol != nullptr);
-        const auto type = types[0]->Symbol->FqName();
-        Ice(*type, *sm.CurrentScope, "no numeric bounds for this type");
-      }
-      return name;
-    }
-
-    /// Comp-time float arithmetic rounds as run-time arithmetic
-    /// does: to nearest, ties to even.
-    constexpr auto kNearest = llvm::APFloat::rmNearestTiesToEven;
-
-    /// A float literal's value in its type's format: what its text
-    /// rounds to at run time ("utils::numbers"). Read from the text
-    /// rather than "BigVal", which loses the sign of a zero.
-    auto ValueOf(FloatLiteralAst const &lit) -> llvm::APFloat {
-      const auto is_negative = lit.TokSign != nullptr and lit.TokSign->TokenType == lex::SppTokenType::TK_SUB;
-      const auto digits = spp::utils::strings::NormalizeFloatString(lit.IntVal->TokenData, lit.FracVal->TokenData);
-      return spp::utils::numbers::ReadFloat((is_negative ? "-" : "") + digits, lit.Type);
-    }
-
-    /// A value in the format of "type" as a literal, its sign of
-    /// zero kept. One no constant of the type can hold (an infinity
-    /// or a NaN) is kept out of range, for the caller to reject
-    /// (E16).
-    auto FromValue(llvm::APFloat const &value, Str const &type) -> Unique<FloatLiteralAst> {
-      if (const auto text = spp::utils::numbers::WriteFloat(value); text.has_value()) {
-        return FloatLiteralAst::FromText(*text, type);
-      }
-      auto const &[lower, upper] = spp::utils::numbers::FloatBounds().at(type);
-      return FloatLiteralAst::FromBigVal(value.isNegative() ? lower + lower : upper + upper, type);
-    }
-
-    auto AssignInPlace(
-      IntegerLiteralAst &lhs, Unique<IntegerLiteralAst> &&result) -> void {
-      lhs.TokSign = std::move(result->TokSign);
-      lhs.Val = std::move(result->Val);
-      lhs.Type = std::move(result->Type);
-    }
-
-    auto AssignInPlace(
-      IntegerLiteralAst &lhs, Unique<ExpressionAst> &&result) -> void {
-      // A bitwise operation folds a "Bool" too, so it hands its
-      // result back as an expression: over integers, an integer.
-      AssignInPlace(lhs, Unique<IntegerLiteralAst>(result.release()->As<IntegerLiteralAst>()));
-    }
-
-    auto AssignInPlace(
-      FloatLiteralAst &lhs, Unique<FloatLiteralAst> &&result) -> void {
-      lhs.TokSign = std::move(result->TokSign);
-      lhs.IntVal = std::move(result->IntVal);
-      lhs.FracVal = std::move(result->FracVal);
-      lhs.Type = std::move(result->Type);
-    }
-
-    /// The argument setting @p name in an object initializer,
-    /// if there is one. An autofill argument ("..old") sets no
-    /// attribute of its own, whatever its value is called.
-    auto FindNamedArg(
-      ObjectInitializerAst const &init,
-      IdentifierAst const &name)
-      -> ObjectInitializerArgumentAst* {
-      for (auto *const arg : init.ArgGroup->GetAllArgs()) {
-        const auto shorthand = arg->To<ObjectInitializerArgumentShorthandAst>();
-        if (shorthand != nullptr and shorthand->TokEllipsis != nullptr) { continue; }
-        if (arg->Name != nullptr and *arg->Name == name) { return arg; }
-      }
-      return nullptr;
-    }
+    /// An operator, and the intrinsic each kind of operand folds
+    /// it by - what std's method for it calls ("S32::add" calls
+    /// "sadd", "F32::ne" calls "one"); null where there is none.
+    struct BinaryOp {
+      StrView Op;
+      Unique<ExpressionAst> (*Int)(ExpressionAst const &, ExpressionAst const &);
+      Unique<ExpressionAst> (*Float)(ExpressionAst const &, ExpressionAst const &);
+      Unique<ExpressionAst> (*Bool)(ExpressionAst const &, ExpressionAst const &);
+    };
   }
+
+  /// Comp-time float arithmetic rounds as run-time arithmetic
+  /// does: to nearest, ties to even.
+  static constexpr auto kNearest = llvm::APFloat::rmNearestTiesToEven;
+
+  static auto SizedNumericLiteralTypeName(TypeSymbol const *sym) -> Str;
+
+  static auto SizedNumericLiteralTypeNameOrError(
+    ScopeManager const &sm, Vec<Shared<TypeRef>> const &types, const bool is_float) -> Str;
+
+  /// A float literal's value in its type's format: what its text
+  /// rounds to at run time ("utils::numbers"). Read from the text
+  /// rather than "BigVal", which loses the sign of a zero.
+  static auto ValueOf(FloatLiteralAst const &lit) -> llvm::APFloat;
+
+  /// A value in the format of "type" as a literal, its sign of
+  /// zero kept. One no constant of the type can hold (an infinity
+  /// or a NaN) is kept out of range, for the caller to reject
+  /// (E16).
+  static auto FromValue(llvm::APFloat const &value, Str const &type) -> Unique<FloatLiteralAst>;
+
+  static auto AssignInPlace(
+    IntegerLiteralAst &lhs, Unique<IntegerLiteralAst> &&result) -> void;
+
+  static auto AssignInPlace(
+    IntegerLiteralAst &lhs, Unique<ExpressionAst> &&result) -> void;
+
+  static auto AssignInPlace(
+    FloatLiteralAst &lhs, Unique<FloatLiteralAst> &&result) -> void;
+
+  /// The argument setting @p name in an object initializer,
+  /// if there is one. An autofill argument ("..old") sets no
+  /// attribute of its own, whatever its value is called.
+  static auto FindNamedArg(
+    ObjectInitializerAst const &init,
+    IdentifierAst const &name)
+    -> ObjectInitializerArgumentAst*;
+
+  /// An intrinsic over two literals of one kind, read as the expressions a fold has.
+  template <typename Lit, auto Fn>
+  static auto Over(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst>;
+
+  /// "and" and "or" are built in, short-circuiting, so no
+  /// intrinsic folds them; over two values, they are this.
+  static auto LogicalAnd(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst>;
+
+  static auto LogicalOr(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst>;
+
+  /// ">>" over two integers is what std's "BitShr" is for the
+  /// left one's type: arithmetic for a signed type, logical for
+  /// an unsigned one.
+  static auto ShiftRightOfType(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst>;
+
+  static constexpr auto kBinaryOps = std::to_array<BinaryOp>({
+    {"+", Over<Int, StdIntrinsicsAdd>, Over<Flt, StdIntrinsicsFadd>, nullptr},
+    {"-", Over<Int, StdIntrinsicsSub>, Over<Flt, StdIntrinsicsFsub>, nullptr},
+    {"*", Over<Int, StdIntrinsicsMul>, Over<Flt, StdIntrinsicsFmul>, nullptr},
+    {"/", Over<Int, StdIntrinsicsDiv>, Over<Flt, StdIntrinsicsFdiv>, nullptr},
+    {"%", Over<Int, StdIntrinsicsRem>, Over<Flt, StdIntrinsicsFrem>, nullptr},
+    {"<<", Over<Int, StdIntrinsicsBitShl>, nullptr, nullptr},
+    {">>", ShiftRightOfType, nullptr, nullptr},
+    {"|", Over<Any, StdIntrinsicsBitIor>, nullptr, Over<Any, StdIntrinsicsBitIor>},
+    {"&", Over<Any, StdIntrinsicsBitAnd>, nullptr, Over<Any, StdIntrinsicsBitAnd>},
+    {"^", Over<Any, StdIntrinsicsBitXor>, nullptr, Over<Any, StdIntrinsicsBitXor>},
+    {"==", Over<Any, StdIntrinsicsEq>, Over<Flt, StdIntrinsicsOeq>, Over<Any, StdIntrinsicsEq>},
+    {"!=", Over<Any, StdIntrinsicsNe>, Over<Flt, StdIntrinsicsOne>, Over<Any, StdIntrinsicsNe>},
+    {"<", Over<Int, StdIntrinsicsLt>, Over<Flt, StdIntrinsicsOlt>, nullptr},
+    {"<=", Over<Int, StdIntrinsicsLe>, Over<Flt, StdIntrinsicsOle>, nullptr},
+    {">", Over<Int, StdIntrinsicsGt>, Over<Flt, StdIntrinsicsOgt>, nullptr},
+    {">=", Over<Int, StdIntrinsicsGe>, Over<Flt, StdIntrinsicsOge>, nullptr},
+    {"and", nullptr, nullptr, LogicalAnd},
+    {"or", nullptr, nullptr, LogicalOr},
+  });
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::SizedNumericLiteralTypeName(TypeSymbol const *sym) -> Str {
+  // The width and signedness are the sized type's own bindings of "w" and "signed", read from the instantiation as
+  // its type arguments would be - not parsed out of how its name happens to be written.
+  if (sym == nullptr) { return Str(); }
+  const auto width_val = scopes::U64Of(sym->CompArgId("w"));
+  if (not width_val.has_value()) { return Str(); }
+  const auto width = std::to_string(*width_val);
+
+  // A floating-point type has a width and nothing else; an integer one also says whether it is signed.
+  const auto signed_id = sym->CompArgId("signed");
+  if (signed_id == nullptr) { return "f" + width; }
+  auto const *const signed_val = signed_id->AsBool();
+  const auto is_signed = signed_val != nullptr and *signed_val;
+  return (is_signed ? "s" : "u") + width;
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::SizedNumericLiteralTypeNameOrError(
+  ScopeManager const &sm, Vec<Shared<TypeRef>> const &types, const bool is_float) -> Str {
+  // Get the type suffix for this integer or float
+  // type, and check that it is known.
+  SPP_ASSERT(not types.empty());
+  const auto name = SizedNumericLiteralTypeName(types[0]->Symbol);
+  const auto known = is_float
+    ? spp::utils::numbers::FloatBounds().contains(name)
+    : spp::utils::numbers::IntegerBounds().contains(name);
+
+  // Every width the language has a sized number type for has
+  // bounds ("utils::numbers"); one without is a compiler bug.
+  if (not known) {
+    SPP_ASSERT(types[0]->Symbol != nullptr);
+    const auto type = types[0]->Symbol->FqName();
+    Ice(*type, *sm.CurrentScope, "no numeric bounds for this type");
+  }
+  return name;
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::ValueOf(FloatLiteralAst const &lit) -> llvm::APFloat {
+  const auto is_negative = lit.TokSign != nullptr and lit.TokSign->TokenType == lex::SppTokenType::TK_SUB;
+  const auto digits = spp::utils::strings::NormalizeFloatString(lit.IntVal->TokenData, lit.FracVal->TokenData);
+  return spp::utils::numbers::ReadFloat((is_negative ? "-" : "") + digits, lit.Type);
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::FromValue(llvm::APFloat const &value, Str const &type) -> Unique<FloatLiteralAst> {
+  if (const auto text = spp::utils::numbers::WriteFloat(value); text.has_value()) {
+    return FloatLiteralAst::FromText(*text, type);
+  }
+  auto const &[lower, upper] = spp::utils::numbers::FloatBounds().at(type);
+  return FloatLiteralAst::FromBigVal(value.isNegative() ? lower + lower : upper + upper, type);
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::AssignInPlace(
+  IntegerLiteralAst &lhs, Unique<IntegerLiteralAst> &&result) -> void {
+  lhs.TokSign = std::move(result->TokSign);
+  lhs.Val = std::move(result->Val);
+  lhs.Type = std::move(result->Type);
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::AssignInPlace(
+  IntegerLiteralAst &lhs, Unique<ExpressionAst> &&result) -> void {
+  // A bitwise operation folds a "Bool" too, so it hands its
+  // result back as an expression: over integers, an integer.
+  AssignInPlace(lhs, Unique<IntegerLiteralAst>(result.release()->As<IntegerLiteralAst>()));
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::AssignInPlace(
+  FloatLiteralAst &lhs, Unique<FloatLiteralAst> &&result) -> void {
+  lhs.TokSign = std::move(result->TokSign);
+  lhs.IntVal = std::move(result->IntVal);
+  lhs.FracVal = std::move(result->FracVal);
+  lhs.Type = std::move(result->Type);
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::FindNamedArg(
+  ObjectInitializerAst const &init,
+  IdentifierAst const &name)
+  -> ObjectInitializerArgumentAst* {
+  for (auto *const arg : init.ArgGroup->GetAllArgs()) {
+    const auto shorthand = arg->To<ObjectInitializerArgumentShorthandAst>();
+    if (shorthand != nullptr and shorthand->TokEllipsis != nullptr) { continue; }
+    if (arg->Name != nullptr and *arg->Name == name) { return arg; }
+  }
+  return nullptr;
+}
+
+template <typename Lit, auto Fn>
+auto spp::analyse::utils::comp_time_intrinsics::Over(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst> {
+  return Fn(*lhs.As<Lit>(), *rhs.As<Lit>());
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::LogicalAnd(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst> {
+  return BooleanLiteralAst::FromCppVal(
+    lhs.As<BooleanLiteralAst>()->CppVal() and rhs.As<BooleanLiteralAst>()->CppVal());
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::LogicalOr(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst> {
+  return BooleanLiteralAst::FromCppVal(
+    lhs.As<BooleanLiteralAst>()->CppVal() or rhs.As<BooleanLiteralAst>()->CppVal());
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::ShiftRightOfType(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst> {
+  auto const &l = *lhs.As<IntegerLiteralAst>();
+  auto const &r = *rhs.As<IntegerLiteralAst>();
+  auto const &bounds = spp::utils::numbers::IntegerBounds();
+  const auto range = bounds.find(l.TypeOrDefault());
+  const auto is_signed = range != bounds.end() and range->second.first.IsNegative();
+  if (is_signed) { return StdIntrinsicsBitAShr(l, r); }
+  return StdIntrinsicsBitShr(l, r);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::SetCompTimeAttrValue(
@@ -850,75 +948,6 @@ auto spp::analyse::utils::comp_time_intrinsics::IsShiftTooWide(
   IntegerLiteralAst const &value, IntegerLiteralAst const &amount) -> bool {
   // The amount is a "U32", so never negative.
   return amount.BigVal() >= numex::BigInt(IntegerWidth(value.TypeOrDefault()));
-}
-
-namespace spp::analyse::utils::comp_time_intrinsics {
-  namespace {
-    /// An intrinsic over two literals of one kind, read as the expressions a fold has.
-    template <typename Lit, auto Fn>
-    auto Over(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst> {
-      return Fn(*lhs.As<Lit>(), *rhs.As<Lit>());
-    }
-
-    /// "and" and "or" are built in, short-circuiting, so no
-    /// intrinsic folds them; over two values, they are this.
-    auto LogicalAnd(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst> {
-      return BooleanLiteralAst::FromCppVal(
-        lhs.As<BooleanLiteralAst>()->CppVal() and rhs.As<BooleanLiteralAst>()->CppVal());
-    }
-
-    auto LogicalOr(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst> {
-      return BooleanLiteralAst::FromCppVal(
-        lhs.As<BooleanLiteralAst>()->CppVal() or rhs.As<BooleanLiteralAst>()->CppVal());
-    }
-
-    /// ">>" over two integers is what std's "BitShr" is for the
-    /// left one's type: arithmetic for a signed type, logical for
-    /// an unsigned one.
-    auto ShiftRightOfType(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst> {
-      auto const &l = *lhs.As<IntegerLiteralAst>();
-      auto const &r = *rhs.As<IntegerLiteralAst>();
-      auto const &bounds = spp::utils::numbers::IntegerBounds();
-      const auto range = bounds.find(l.TypeOrDefault());
-      const auto is_signed = range != bounds.end() and range->second.first.IsNegative();
-      if (is_signed) { return StdIntrinsicsBitAShr(l, r); }
-      return StdIntrinsicsBitShr(l, r);
-    }
-
-    /// An operator, and the intrinsic each kind of operand folds
-    /// it by - what std's method for it calls ("S32::add" calls
-    /// "sadd", "F32::ne" calls "one"); null where there is none.
-    struct BinaryOp {
-      StrView Op;
-      Unique<ExpressionAst> (*Int)(ExpressionAst const &, ExpressionAst const &);
-      Unique<ExpressionAst> (*Float)(ExpressionAst const &, ExpressionAst const &);
-      Unique<ExpressionAst> (*Bool)(ExpressionAst const &, ExpressionAst const &);
-    };
-
-    using Int = IntegerLiteralAst;
-    using Flt = FloatLiteralAst;
-    using Any = ExpressionAst;
-    constexpr auto kBinaryOps = std::to_array<BinaryOp>({
-      {"+", Over<Int, StdIntrinsicsAdd>, Over<Flt, StdIntrinsicsFadd>, nullptr},
-      {"-", Over<Int, StdIntrinsicsSub>, Over<Flt, StdIntrinsicsFsub>, nullptr},
-      {"*", Over<Int, StdIntrinsicsMul>, Over<Flt, StdIntrinsicsFmul>, nullptr},
-      {"/", Over<Int, StdIntrinsicsDiv>, Over<Flt, StdIntrinsicsFdiv>, nullptr},
-      {"%", Over<Int, StdIntrinsicsRem>, Over<Flt, StdIntrinsicsFrem>, nullptr},
-      {"<<", Over<Int, StdIntrinsicsBitShl>, nullptr, nullptr},
-      {">>", ShiftRightOfType, nullptr, nullptr},
-      {"|", Over<Any, StdIntrinsicsBitIor>, nullptr, Over<Any, StdIntrinsicsBitIor>},
-      {"&", Over<Any, StdIntrinsicsBitAnd>, nullptr, Over<Any, StdIntrinsicsBitAnd>},
-      {"^", Over<Any, StdIntrinsicsBitXor>, nullptr, Over<Any, StdIntrinsicsBitXor>},
-      {"==", Over<Any, StdIntrinsicsEq>, Over<Flt, StdIntrinsicsOeq>, Over<Any, StdIntrinsicsEq>},
-      {"!=", Over<Any, StdIntrinsicsNe>, Over<Flt, StdIntrinsicsOne>, Over<Any, StdIntrinsicsNe>},
-      {"<", Over<Int, StdIntrinsicsLt>, Over<Flt, StdIntrinsicsOlt>, nullptr},
-      {"<=", Over<Int, StdIntrinsicsLe>, Over<Flt, StdIntrinsicsOle>, nullptr},
-      {">", Over<Int, StdIntrinsicsGt>, Over<Flt, StdIntrinsicsOgt>, nullptr},
-      {">=", Over<Int, StdIntrinsicsGe>, Over<Flt, StdIntrinsicsOge>, nullptr},
-      {"and", nullptr, nullptr, LogicalAnd},
-      {"or", nullptr, nullptr, LogicalOr},
-    });
-  }
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::ValueKeyOf(

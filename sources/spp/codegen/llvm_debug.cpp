@@ -33,6 +33,12 @@ namespace spp::codegen {
   using analyse::scopes::TypeRef;
   using analyse::scopes::TypeSymbol;
 
+  /// Where a move or an assignment of "variable" is: the builder's location,
+  /// when it is in the variable's own function. Null elsewhere (a binding of
+  /// the parent read inside a closure's body), where nothing is said of it.
+  static auto VariableEventAt(
+    LlvmCtx const &ctx, llvm::DILocalVariable const &variable) -> llvm::DILocation*;
+
   /// Where "position" is, as a file and a line and column: the position's own
   /// file, or the module's with line 0 for one with no line.
   static auto PlaceOf(
@@ -84,6 +90,16 @@ namespace spp::codegen {
   static auto DisplayNameOf(
     LlvmCtx &ctx, TypeSymbol const &sym,
     analyse::scopes::Scope const &scope) -> Str;
+}
+
+auto spp::codegen::VariableEventAt(
+  LlvmCtx const &ctx, llvm::DILocalVariable const &variable) -> llvm::DILocation* {
+  const auto scope = CurrentDebugScope(ctx);
+  if (scope == nullptr or scope->getSubprogram() != variable.getScope()->getSubprogram()) { return nullptr; }
+  const auto current = ctx.Builder.getCurrentDebugLocation();
+  return current
+    ? llvm::DILocation::get(*ctx.Context, current.getLine(), current.getCol(), scope)
+    : llvm::DILocation::get(*ctx.Context, 0, 0, scope);
 }
 
 /// [CHECKED]
@@ -605,23 +621,6 @@ auto spp::codegen::DeclareVariable(
     return;
   }
   ctx.DiBuilder->insertDeclare(storage, variable, ctx.DiBuilder->createExpression(), at, ctx.Builder.GetInsertPoint());
-}
-
-namespace spp::codegen {
-  namespace {
-    /// Where a move or an assignment of "variable" is: the builder's location,
-    /// when it is in the variable's own function. Null elsewhere (a binding of
-    /// the parent read inside a closure's body), where nothing is said of it.
-    auto VariableEventAt(
-      LlvmCtx const &ctx, llvm::DILocalVariable const &variable) -> llvm::DILocation* {
-      const auto scope = CurrentDebugScope(ctx);
-      if (scope == nullptr or scope->getSubprogram() != variable.getScope()->getSubprogram()) { return nullptr; }
-      const auto current = ctx.Builder.getCurrentDebugLocation();
-      return current
-        ? llvm::DILocation::get(*ctx.Context, current.getLine(), current.getCol(), scope)
-        : llvm::DILocation::get(*ctx.Context, 0, 0, scope);
-    }
-  }
 }
 
 auto spp::codegen::EndVariable(

@@ -13,39 +13,41 @@ namespace fs = std::filesystem;
 constexpr auto SPP_EXT = ".spp";
 
 namespace spp::utils::files {
-  namespace {
-    /// [CHECKED]
-    /// The directories on PATH, in order. Split by the given separator (which
-    /// is platform dependent).
-    auto PathDirectories() -> Vec<Path> {
-      // Get the PATH from the environment. If it is empty, then no extra
-      // processing needs to happen. Return early.
-      auto dirs = spp::Vec<Path>();
-      const auto raw = env::Get(env::Var::Path);
-      if (not raw.has_value()) { return dirs; }
+  /// The directories on PATH, in order. Split by the given separator (which
+  /// is platform dependent).
+  static auto PathDirectories() -> Vec<Path>;
 
-      // Move through the "rest" which is a view over the "raw" PATH value, and
-      // get the next path (upto the separator), and then trim and continue.
-      auto rest = StrView(*raw);
-      while (not rest.empty()) {
-        const auto end = rest.find(PathListSeparator);
-        const auto dir = rest.substr(0, end);
-        if (not dir.empty()) { dirs.emplace_back(dir); }
-        rest = end == StrView::npos ? StrView() : rest.substr(end + 1);
-      }
-      return dirs;
-    }
+  /// Whether "path" is a file this process may run. On windows, provided the
+  /// file is regular, it's always executable (sys::X_OK is "exists").
+  static auto IsExecutable(Path const &path) -> bool;
+}
 
-    /// [CHECKED]
-    /// Whether "path" is a file this process may run. On windows, provided the
-    /// file is regular, it's always executable (sys::X_OK is "exists").
-    auto IsExecutable(Path const &path) -> bool {
-      auto ec = std::error_code();
-      // Run the two checks (regular file, and access control).
-      return fs::is_regular_file(path, ec)
-        and sys::access(path.c_str(), sys::X_OK) == 0;
-    }
+/// [CHECKED]
+auto spp::utils::files::PathDirectories() -> Vec<Path> {
+  // Get the PATH from the environment. If it is empty, then no extra
+  // processing needs to happen. Return early.
+  auto dirs = spp::Vec<Path>();
+  const auto raw = env::Get(env::Var::Path);
+  if (not raw.has_value()) { return dirs; }
+
+  // Move through the "rest" which is a view over the "raw" PATH value, and
+  // get the next path (upto the separator), and then trim and continue.
+  auto rest = StrView(*raw);
+  while (not rest.empty()) {
+    const auto end = rest.find(PathListSeparator);
+    const auto dir = rest.substr(0, end);
+    if (not dir.empty()) { dirs.emplace_back(dir); }
+    rest = end == StrView::npos ? StrView() : rest.substr(end + 1);
   }
+  return dirs;
+}
+
+/// [CHECKED]
+auto spp::utils::files::IsExecutable(Path const &path) -> bool {
+  auto ec = std::error_code();
+  // Run the two checks (regular file, and access control).
+  return fs::is_regular_file(path, ec)
+    and sys::access(path.c_str(), sys::X_OK) == 0;
 }
 
 /// [CHECKED]

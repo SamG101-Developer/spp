@@ -9,31 +9,38 @@ import magic_enum;
 import std;
 
 namespace spp::compiler {
-  namespace {
-    /// The name of an enum value in lower case: how it is written by the user.
-    template <typename E>
-    auto LowerName(const E value) -> Str {
-      return magic_enum::enum_name(value)
-        | genex::strings::lower_case
-        | genex::to<Str>();
-    }
+  /// The name of an enum value in lower case: how it is written by the user.
+  template <typename E>
+  static auto LowerName(const E value) -> Str;
 
-    /// The lower case name of every value of an enum, in declaration order.
-    template <typename E>
-    auto LowerNames() -> Vec<Str> {
-      auto names = Vec<Str>();
-      for (const auto value : magic_enum::enum_values<E>()) {
-        names.emplace_back(LowerName(value));
-      }
-      return names;
-    }
+  /// The lower case name of every value of an enum, in declaration order.
+  template <typename E>
+  static auto LowerNames() -> Vec<Str>;
 
-    /// The value of an enum that a name written by the user means, if any.
-    template <typename E>
-    auto FromName(const StrView name) -> Opt<E> {
-      return magic_enum::enum_cast<E>(name, magic_enum::case_insensitive);
-    }
+  /// The value of an enum that a name written by the user means, if any.
+  template <typename E>
+  static auto FromName(const StrView name) -> Opt<E>;
+}
+
+template <typename E>
+auto spp::compiler::LowerName(const E value) -> Str {
+  return magic_enum::enum_name(value)
+    | genex::strings::lower_case
+    | genex::to<Str>();
+}
+
+template <typename E>
+auto spp::compiler::LowerNames() -> Vec<Str> {
+  auto names = Vec<Str>();
+  for (const auto value : magic_enum::enum_values<E>()) {
+    names.emplace_back(LowerName(value));
   }
+  return names;
+}
+
+template <typename E>
+auto spp::compiler::FromName(const StrView name) -> Opt<E> {
+  return magic_enum::enum_cast<E>(name, magic_enum::case_insensitive);
 }
 
 auto spp::compiler::ModeName(
