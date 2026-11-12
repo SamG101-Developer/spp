@@ -9,14 +9,15 @@
 #   - stepping through the function never stops in the branch not taken: the code after a "case" (storing its value)
 #     is at the statement's line, not the last branch generated.
 # The variables are read with gdb and the stepping with lldb (gdb also stops a second time on a line whose inlined
-# checked add it steps over); each part is skipped where its debugger is not installed.
+# checked add it steps over); each part is skipped where its debugger is not installed, or fails under CI's
+# SPP_CI_REQUIRE_TOOLS.
 #
 #   tests/codegen/check-debug-scopes.sh [path/to/spp]
 
 # shellcheck source=tests/codegen/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" "$@"
 
-LLDB="$(command -v lldb-23 || command -v lldb || true)"
+LLDB="$(command -v lldb-23 || command -v lldb || echo lldb-23)"
 readonly LLDB
 
 # The branch taken holds lines 9 to 11; the one not taken, line 14.
@@ -63,9 +64,7 @@ if ! build_project "dev" "${dir}" dev --for-debugger; then
     finish
 fi
 
-if ! command -v gdb > /dev/null; then
-    echo "skip  gdb: not installed"
-else
+if have_tool gdb "gdb"; then
     gdb_at "${dir}" "${EXE}" 11 > "${dir}/inside.log"
     # shellcheck disable=SC2016 # gdb's output, not a shell variable
     if ! grep -qE '^\$1 = 100$' "${dir}/inside.log"; then
@@ -87,9 +86,7 @@ else
     fi
 fi
 
-if [[ -z "${LLDB}" ]]; then
-    echo "skip  lldb: not installed"
-else
+if have_tool "${LLDB}" "lldb"; then
     nexts=()
     for _ in $(seq 1 11); do nexts+=(-o next); done
     (cd "${dir}" && "${LLDB}" -b -o "settings set target.source-map . ${dir}" -o 'breakpoint set -n main::look' \

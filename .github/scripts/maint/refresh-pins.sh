@@ -208,6 +208,20 @@ else
   set_pin pin.valgrind.sha256 "$(sha256sum "$tmp/valgrind.tar.bz2" | cut -d ' ' -f 1)"
 fi
 
+# GDB (the codegen checks' debugger, built from its release tarball)
+echo
+echo "gdb (${MANIFEST})"
+gdb_version="$(fetch https://ftp.gnu.org/gnu/gdb/ \
+  | grep -oE 'gdb-[0-9]+\.[0-9]+(\.[0-9]+)?\.tar\.xz' | sed -E 's/^gdb-|\.tar\.xz$//g' | sort -uV | tail -1)"
+if [ -z "$gdb_version" ]; then
+  echo "::error::could not read the latest gdb release"
+  status=1
+else
+  fetch -o "$tmp/gdb.tar.xz" "https://ftp.gnu.org/gnu/gdb/gdb-${gdb_version}.tar.xz"
+  set_pin pin.gdb.version "$gdb_version"
+  set_pin pin.gdb.sha256 "$(sha256sum "$tmp/gdb.tar.xz" | cut -d ' ' -f 1)"
+fi
+
 # RUST (stable; the run-time benchmarks' rustc). Hashed here rather
 # than read from the .sha256 files beside them, like every other pin.
 echo

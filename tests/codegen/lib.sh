@@ -141,6 +141,34 @@ fail() {
     failures=$((failures + 1))
 }
 
+# Whether "tool" (a name on PATH, or a path) can be run, for the part of a
+# check "what" names. Without it that part is skipped, except where CI sets
+# SPP_CI_REQUIRE_TOOLS: there the image is meant to have it, and a check that
+# skipped would pass having checked nothing, so the case fails instead.
+have_tool() {
+    local tool="$1" what="$2"
+    command -v "${tool}" > /dev/null && return 0
+    if [[ -n "${SPP_CI_REQUIRE_TOOLS:-}" ]]; then
+        fail "${what}: ${tool} is not installed, and SPP_CI_REQUIRE_TOOLS is set"
+    else
+        echo "skip  ${what}: no ${tool}"
+    fi
+    return 1
+}
+
+# For a check that needs "tool" throughout: skipped whole without it, or
+# failed under SPP_CI_REQUIRE_TOOLS (see "have_tool").
+need_tool() {
+    local tool="$1"
+    command -v "${tool}" > /dev/null && return 0
+    if [[ -n "${SPP_CI_REQUIRE_TOOLS:-}" ]]; then
+        echo "FAIL  ${tool} is not installed, and SPP_CI_REQUIRE_TOOLS is set"
+        exit 1
+    fi
+    echo "skipped: no ${tool}"
+    exit 0
+}
+
 # For a check that reads one architecture's disassembly.
 require_x86_64() {
     if [[ "$(uname -m)" != "x86_64" ]]; then

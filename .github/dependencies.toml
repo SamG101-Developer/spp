@@ -86,6 +86,13 @@ sha256 = "75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2"
 version = "3.28.0"
 sha256 = "9f7a18d128f05d3a80fea53e6953f34aad7200a425ceaee46099a8a798a7dd9c"
 
+# Built from the release tarball, with Python for the std's
+# pretty-printers: the runner image has no gdb, and apt's trails
+# upstream by years. The codegen checks read variables with it.
+[pin.gdb]
+version = "18.1"
+sha256 = "cd9fc3fe2b47743840e42c1592d3d87f8302eb18639c0b8b4ba0898002e2348f"
+
 [pin.qemu-user]
 tag = "spp-2026.11.09.3"
 sha256 = "64e805c66d9f64d9d1bedd6dc44b280ee8dc1e5aa7237f606b467a27481705f7"
@@ -152,6 +159,7 @@ macos = "26.0"
 local = "{home}/.local"
 doxygen = "{home}/.tools/doxygen"
 valgrind = "{home}/.tools/valgrind"
+gdb = "{home}/.tools/gdb"
 rust = "{home}/.tools/rust"
 qemu = "{home}/.tools/qemu"
 llvm-win = "{home}/llvm"

@@ -8,17 +8,14 @@
 #   - after it is moved into a call, it is "<optimized out>", and after an assignment, it shows the new value;
 #   - one moved on every branch of a "case" is "<optimized out>" after it;
 #   - a parameter moved inside its function is "<optimized out>" after the move.
-# Skipped without gdb.
+# Skipped without gdb, or failed under CI's SPP_CI_REQUIRE_TOOLS.
 #
 #   tests/codegen/check-debug-moves.sh [path/to/spp]
 
 # shellcheck source=tests/codegen/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" "$@"
 
-if ! command -v gdb > /dev/null; then
-    echo "skipped: no gdb"
-    exit 0
-fi
+need_tool gdb
 
 read -r -d '' PROGRAM <<'SPP'
 use std::hints::black_box

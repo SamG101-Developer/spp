@@ -10,10 +10,11 @@ if ! [ -d "/usr/lib/llvm-${LLVM_LIB_VERSION}" ]; then
   # llvm.sh always installs lldb, and every apt.llvm.org
   # lldb ships /etc/lldb/lldbinit with no Replaces:, so
   # this release cannot unpack over the one the Clang step
-  # pulled in. Nothing here uses lldb.
+  # pulled in. The build uses no lldb (the codegen checks
+  # install their own, in the test job).
   mapfile -t lldb_pkgs < <(
-    dpkg-query -W -f '${db:Status-Abbrev}\t${binary:Package}\n' |
-      awk '$1 ~ /^i/ && $2 ~ /lldb/ { print $2 }'
+    dpkg-query -W -f '${db:Status-Abbrev}\t${binary:Package}\n' \
+      | awk '$1 ~ /^i/ && $2 ~ /lldb/ { print $2 }'
   )
   if [ ${#lldb_pkgs[@]} -gt 0 ]; then
     sudo apt-get purge -y "${lldb_pkgs[@]}"

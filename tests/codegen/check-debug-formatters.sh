@@ -3,8 +3,9 @@
 # End-to-end check that the std's debugger formatters (SPP-STL "etc/gdb/spp_std.py" and "etc/lldb/spp_std.py") read
 # what the compiler's debug info describes: the layouts of "Str", "StrView", "Vec" and "Char", the owners and locks
 # ("Single", "Rc", "Arc", "Weak", "Vol", "Atom", "Mutex", "RwLock"), the big numbers, times and paths ("BigUInt",
-# "BigInt", "Duration", "TimePoint", "Path"), and every variant's "{tag, payload}". Builds a scratch project at dev for a debugger ("--for-debugger", so no local is lost to the split
-# stack), stops it in a function holding one of each, and asserts that:
+# "BigInt", "Duration", "TimePoint", "Path"), and every variant's "{tag, payload}". Builds a scratch project at dev
+# for a debugger ("--for-debugger", so no local is lost to the split stack), stops it in a function holding one of
+# each, and asserts that:
 #   - gdb, with the printers sourced, shows each by its contents ("Some(7)", "\"héllo\"", "Vec(len=2, cap=2) =
 #     {10, 20}", a borrowed view as "&\"a view\"", "'é' (U+00E9)"), and each owner and lock by what it holds, with a
 #     shared owner's counts ("Rc(6, strong=1, weak=1)", a "Weak" outliving its value as "dropped", "Mutex(10)"), and
@@ -12,7 +13,8 @@
 #   - lldb, with the formatters imported, shows the same, a vector's element by its index ("nums[1]"), and an owner's
 #     value as its child ("arc.value");
 #   - gdb without them shows none of it (the negative control: the expectations are the formatters' doing).
-# Skipped when the std has no formatters; each debugger's part is skipped where it is not installed. STD_ETC, if set,
+# Skipped when the std has no formatters; each debugger's part is skipped where it is not installed. Under CI's
+# SPP_CI_REQUIRE_TOOLS, either fails instead. STD_ETC, if set,
 # replaces the std's "etc" (formatters not yet pushed to SPP-STL).
 #
 #   [STD_ETC=../spp-stl/etc] tests/codegen/check-debug-formatters.sh [path/to/spp]
@@ -20,7 +22,7 @@
 # shellcheck source=tests/codegen/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" "$@"
 
-LLDB="$(command -v lldb-23 || command -v lldb || true)"
+LLDB="$(command -v lldb-23 || command -v lldb || echo lldb-23)"
 readonly LLDB
 
 # The debugger stops on the line of "let out", after every other local is set.
@@ -130,8 +132,8 @@ first_missing() {
     done
 }
 
-# gdb stopped on the "let out" line of "exe", run from the project directory "dir", printing the locals; "script" is sourced
-# first when given. Its output, empty without gdb.
+# gdb stopped on the "let out" line of "exe", run from the project directory "dir", printing the locals; "script" is
+# sourced first when given.
 gdb_locals() {
     local dir="$1" exe="$2" script="${3:-}"
     local load=()
@@ -164,13 +166,15 @@ fi
 GDB_SCRIPT="${dir}/vcs/std/etc/gdb/spp_std.py"
 LLDB_SCRIPT="${dir}/vcs/std/etc/lldb/spp_std.py"
 if [[ ! -f "${GDB_SCRIPT}" || ! -f "${LLDB_SCRIPT}" ]]; then
+    if [[ -n "${SPP_CI_REQUIRE_TOOLS:-}" ]]; then
+        echo "FAIL  the std has no formatters (etc/gdb, etc/lldb), and SPP_CI_REQUIRE_TOOLS is set"
+        exit 1
+    fi
     echo "skipped: the std has no formatters (etc/gdb, etc/lldb)"
     exit 0
 fi
 
-if ! command -v gdb > /dev/null; then
-    echo "skip  gdb: not installed"
-else
+if have_tool gdb "gdb"; then
     gdb_locals "${dir}" "${EXE}" "${GDB_SCRIPT}" > "${dir}/gdb.log"
     missing="$(first_missing "${dir}/gdb.log" "${GDB_EXPECTED[@]}")"
     if [[ -n "${missing}" ]]; then
@@ -189,9 +193,7 @@ else
     fi
 fi
 
-if [[ -z "${LLDB}" ]]; then
-    echo "skip  lldb: not installed"
-else
+if have_tool "${LLDB}" "lldb"; then
     lldb_locals "${dir}" "${EXE}" "${LLDB_SCRIPT}" > "${dir}/lldb.log"
     missing="$(first_missing "${dir}/lldb.log" "${LLDB_EXPECTED[@]}")"
     if [[ -n "${missing}" ]]; then

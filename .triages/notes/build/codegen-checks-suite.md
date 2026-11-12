@@ -1,7 +1,7 @@
 ---
 name: codegen-checks-suite
 description: "tests/codegen/run.sh runs the check-*.sh hardening checks (~3 min, ~60 builds); new checks go on lib.sh; not part of gtest"
-updated: 2026-11-08
+updated: 2026-11-12
 ---
 
 Since 2026-10-18 (codegen-test-plan.md P1-P4) the tests are split by suite: `tests/compiler/` is the gtest suite
@@ -11,8 +11,9 @@ hardening checks that used to be `.tools/check-*.sh`. The `spp_tests` glob reads
 `bash tests/codegen/run.sh [spp] [name ...]` runs every `check-*.sh`, or those named (`run.sh <spp> sls seal`).
 All eight took 2m58s locally (~60 build+run cycles, ~3 s each). Each check sources `tests/codegen/lib.sh`:
 `new_project dir "<extra toml>"`, `add_ffi dir pkg source.c|.cpp <<stub`, `build_project name dir mode` (sets
-`EXE`/`OBJ`, returns 1 on failure - caller bumps `failures`), `run_exe exe log` (sets `RC`, never piped), `ok`,
-`fail msg [log]`, `require_x86_64`, `finish`. The project is named after its directory, and so is the executable.
+`EXE`/`OBJ`, returns 1 on failure - caller bumps `failures`; further arguments go to `spp build`), `run_exe exe log` (sets `RC`, never piped), `ok`,
+`fail msg [log]`, `require_x86_64`, `have_tool tool what` / `need_tool tool` (skip without a tool; fail under CI's
+`SPP_CI_REQUIRE_TOOLS`, see [[codegen-cell-debuggers]]), `finish`. The project is named after its directory, and so is the executable.
 `SPPC_LIB=` works for every check. std is copied from `tests/test_outputs/vcs`, or cloned once per script when
 there is no fixture (CI).
 

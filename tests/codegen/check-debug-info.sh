@@ -15,8 +15,9 @@
 #     number, a borrowed class's fields, a tuple, and a variant by the member it holds ("Some[S32]");
 #   - with "info = \"none\"" the object has no line table, no source-line table is linked, and the report names no
 #     lines.
-# Skipped without LLVM 23's llvm-dwarfdump and llvm-symbolizer; the variables are read with gdb where it is installed. The report's lines need a libsppc that reads the table (SPPC_LIB
-# replaces the vendored one until SPP-STL ships it).
+# Skipped without LLVM 23's llvm-dwarfdump and llvm-symbolizer, and the variables are read with gdb where it is
+# installed; under CI's SPP_CI_REQUIRE_TOOLS either missing fails instead. The report's lines need a libsppc that reads
+# the table (SPPC_LIB replaces the vendored one until SPP-STL ships it).
 #
 #   [SPPC_LIB=path/to/libsppc.so] tests/codegen/check-debug-info.sh [path/to/spp]
 
@@ -26,10 +27,13 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" "$@"
 DWARFDUMP="$(command -v llvm-dwarfdump-23 || echo /usr/lib/llvm-23/bin/llvm-dwarfdump)"
 SYMBOLIZER="$(command -v llvm-symbolizer-23 || echo /usr/lib/llvm-23/bin/llvm-symbolizer)"
 readonly DWARFDUMP SYMBOLIZER
-if [[ ! -x "${DWARFDUMP}" || ! -x "${SYMBOLIZER}" ]]; then
-    echo "skipped: no llvm-dwarfdump 23 or llvm-symbolizer 23"
-    exit 0
-fi
+need_tool "${DWARFDUMP}"
+need_tool "${SYMBOLIZER}"
+
+# The variables are read with gdb; without it that part of each case is left out.
+HAVE_GDB=false
+have_tool gdb "the variables, as gdb shows them" && HAVE_GDB=true
+readonly HAVE_GDB
 
 # The overflow is on line 13 of main.spp, in "bump", called on line 19.
 read -r -d '' PROGRAM <<'SPP'
@@ -63,7 +67,7 @@ SPP
 # type; empty without gdb.
 gdb_view() {
     local exe="$1"
-    command -v gdb > /dev/null || return 0
+    [[ "${HAVE_GDB}" == true ]] || return 0
     (cd "$(dirname "$(dirname "$(dirname "$(dirname "${exe}")")")")" && gdb -batch -nx \
         -ex 'break src/main.spp:13' -ex run -ex 'info args' -ex 'info locals' -ex 'print *p' -ex 'whatis maybe' \
         "${exe}" 2>&1)
