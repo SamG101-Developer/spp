@@ -35,6 +35,7 @@ namespace spp::utils::features {
     BinaryLinkFortifiedFfi,
     BinaryLinkRelroFfi,
     BinaryLinkSegmentsFfi,
+    BinaryDebugInfo,
     TargetFloorLinux,
     TargetFloorCpu,
   };
@@ -51,7 +52,12 @@ namespace spp::utils::features {
     StrView DefaultText = {}; /// Default for string and version values.
     StrView Help;
     StrView MinLinux = {}; /// Empty for one that needs nothing of the kernel.
+    Vec<StrView> Choices = {}; /// The values a string key may take; empty for any.
   };
+
+  /// How much debug info a program is built with ("[binary.debug] info"):
+  /// none, or the line tables that map its code back to its source.
+  SPP_EXP_CLS enum class DebugInfo { None, Lines, Full };
 
   /// A section specification contains the metadata of a section within the
   /// schema, including its name, list of keys (as key specifications) and if
@@ -68,6 +74,7 @@ namespace spp::utils::features {
   SPP_EXP_CLS struct TargetFacts {
     bool SafeStack;
     bool SafeStackCanary;
+    bool PacRet;
     bool IsLinux;
     StrView Folder;
   };
@@ -88,7 +95,7 @@ namespace spp::utils::features {
   SPP_EXP_FUN auto Load(Path const &config, Vec<Str> &errors) -> bool;
 
   /// Check whether a feature is enabled, either from the defaults or the config
-  /// overrides.
+  /// overrides, and not left out by "LeaveOut".
   SPP_EXP_FUN auto IsEnabled(ConfigKey key) -> bool;
 
   /// Whether a measure goes into the program: turned on, and not left out
@@ -108,6 +115,10 @@ namespace spp::utils::features {
 
   /// The value of a string or version key, set or defaulted.
   SPP_EXP_FUN auto Text(ConfigKey key) -> Str;
+
+  /// "[binary.debug] info": as spp.toml sets it, else full debug info for a
+  /// "dev" build and line tables for a "rel" one.
+  SPP_EXP_FUN auto DebugInfoLevel(bool dev) -> DebugInfo;
 
   /// Report every flag that the config has been manually set that trips the
   /// "IsFlagIncompatibleWithSystem" function, with error wrapping. Asking for a
