@@ -196,6 +196,21 @@ export namespace sys {
     return spp_sys_legacy::IsDir(mode);
   }
 
+  // Have the console read this process's output as UTF-8 and act on ANSI
+  // escapes, as a POSIX terminal already does; a no-op elsewhere.
+  inline auto use_utf8_console() -> void {
+#if SPP_PLATFORM_WINDOWS
+    ::SetConsoleOutputCP(CP_UTF8);
+    for (const auto which : {STD_OUTPUT_HANDLE, STD_ERROR_HANDLE}) {
+      const auto handle = ::GetStdHandle(which);
+      auto mode = ::DWORD{};
+      if (handle != spp_sys_legacy::InvalidHandleValue() and ::GetConsoleMode(handle, &mode)) {
+        ::SetConsoleMode(handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+      }
+    }
+#endif
+  }
+
   // The most memory this process has held, in bytes (0 if unknown).
   inline auto peak_rss_bytes() -> unsigned long long {
 #if SPP_PLATFORM_WINDOWS

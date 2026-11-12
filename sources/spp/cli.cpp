@@ -352,6 +352,9 @@ namespace spp::cli {
 /// [CHECKED]
 auto spp::cli::RunCli(
   const std::int32_t argc, char **argv) -> std::int32_t {
+  // The progress bar and messages are UTF-8, and errors are coloured.
+  sys::use_utf8_console();
+
   // Refuse an unknown or malformed "SPP_" variable before anything reads it: a
   // typo would otherwise silently do nothing.
   auto env_errors = Vec<Str>();
