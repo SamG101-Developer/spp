@@ -20,7 +20,12 @@ on:
         type: boolean
         default: false
       full-scan:
-        description: "CodeQL runs security-and-quality rather than security-extended."
+        description: "CodeQL runs security-and-quality rather than security-extended; clang-tidy checks every file."
+        required: false
+        type: boolean
+        default: false
+      clang-tidy:
+        description: "Run clang-tidy over the C++ sources (on a pull request, only those it changed)."
         required: false
         type: boolean
         default: false
@@ -226,3 +231,74 @@ jobs:
           SONAR_HOST_URL: https://sonarcloud.io
         with:
           args: ${{ inputs.coverage-artifact != '' && '-Dsonar.cfamily.llvm-cov.reportPath=coverage/coverage.txt' || '' }}
+
+  # Restores the Linux Clang lane's release tree: clang-tidy
+  # loads its module files, so the build below only catches up.
+  # Advisory until the existing findings are cleared.
+  clang-tidy:
+    name: Clang-Tidy (Advisory)
+    if: inputs.clang-tidy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python and load pins
+        uses: ./.github/actions/setup-python
+
+      - name: Restore source mtimes
+        uses: ./.github/actions/restore-mtimes
+
+      - name: Set up toolchain
+        uses: ./.github/actions/setup-toolchain
+        with:
+          runner-image: ubuntu-24.04
+          compiler: clang
+          version: ${{ env.LLVM_LIB_VERSION }}
+          cache-key-suffix: clang-tidy
+
+      - name: Install clang-tidy
+        run: bash .github/scripts/setup/install-clang-tidy.sh
+
+      - name: Compose build tree cache key
+        id: cache-key
+        uses: ./.github/actions/build-cache-key
+        with:
+          os: ubuntu-24.04
+          compiler: clang
+          version: ${{ env.LLVM_LIB_VERSION }}
+          variant: release
+
+      - name: Restore build tree
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build
+          key: ${{ steps.cache-key.outputs.key }}
+          restore-keys: |
+            ${{ steps.cache-key.outputs.prefix }}
+
+      - name: Configure
+        uses: ./.github/actions/configure-cmake
+        with:
+          build-type: Release
+          extra-flags: -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run clang-tidy
+        env:
+          BASE_SHA: ${{ !inputs.full-scan && github.event.pull_request.base.sha || '' }}
+        run: bash .github/scripts/scan/clang-tidy.sh build ${BASE_SHA:+--since "$BASE_SHA"}

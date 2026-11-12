@@ -43,6 +43,9 @@ outputs:
   codeql_python:
     description: "'true' when the Python CodeQL job has to run."
     value: ${{ steps.classify.outputs.codeql_python }}
+  clang_tidy:
+    description: "'true' when the clang-tidy job has to run."
+    value: ${{ steps.classify.outputs.clang_tidy }}
   sonar:
     description: "'true' when the Sonar job has to run."
     value: ${{ steps.classify.outputs.sonar }}
