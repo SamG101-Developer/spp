@@ -346,6 +346,34 @@ namespace spp::cli {
 #endif
       return utils::shell::Run(command) == 0;
     }
+
+    /// Print where the project's executable is built to under "mode" and
+    /// "target" (empty for the host), as an absolute path on a line of its own,
+    /// and build nothing: for a tool that builds with "spp build" and then
+    /// launches the executable itself, such as an IDE's debugger. A library has
+    /// no executable, so for one it prints nothing and returns false.
+    auto PrintExecutable(
+      const compiler::BuildMode mode, Str const &target) -> bool {
+      SPP_VALIDATE_PROJECT_OR(false, false);
+      if (ProjectBuildType() == compiler::BuildType::LIB) {
+        std::cerr
+          << "Error: This project is a library ('build = \"lib\"' in spp.toml), "
+          << "so it has no executable.\n";
+        return false;
+      }
+
+      // The path "spp build" links to, worked out the same way; nothing is
+      // fetched or compiled, so it is printed whether or not it has been built
+      // yet.
+      if (not codegen::SelectTarget(target.c_str())) { return false; }
+      const auto out = compiler::OutLayout{
+        .Root = std::filesystem::current_path(),
+        .Target = codegen::TargetFolderName(),
+        .Mode = mode
+      };
+      std::cout << utils::files::NativeString(out.ExecutablePath()) << '\n';
+      return true;
+    }
   }
 }
 
@@ -451,7 +479,20 @@ auto spp::cli::RunCli(
     "Write a json report of the work each stage did, its time and peak memory, "
     "to this file");
 
+  auto build_print_executable = false;
+  build_cmd->add_flag(
+    "--print-executable", build_print_executable,
+    "Print the absolute path the executable is built to, for this mode and "
+    "target, and build nothing");
+
   build_cmd->callback([&] {
+    if (build_print_executable) {
+      if (not PrintExecutable(
+        *compiler::ModeFromName(build_mode), build_target)) {
+        throw CLI_ERR;
+      }
+      return;
+    }
     if (not HandleBuild(
       *compiler::ModeFromName(build_mode), build_target, build_skip_vcs,
       build_message_format, build_analyse_only, build_index_files,
