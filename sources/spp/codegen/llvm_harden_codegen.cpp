@@ -14,8 +14,7 @@ namespace spp::codegen {
 }
 
 auto spp::codegen::ApplySlsHardening(
-  void *llvm_module) -> bool {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm::Module &llvm_mod) -> bool {
   if (not DoesTargetSupportSlsHardening()) {
     llvm::errs()
       << "This target has no straight-line speculation hardening.\n"
@@ -43,8 +42,7 @@ auto spp::codegen::ApplySlsHardening(
 }
 
 auto spp::codegen::ApplyRegisterScrubbing(
-  void *llvm_module) -> bool {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm::Module &llvm_mod) -> bool {
   if (not DoesTargetSupportRegisterScrubbing()) {
     llvm::errs()
       << "This target cannot scrub registers on return.\n"
@@ -64,8 +62,7 @@ auto spp::codegen::ApplyRegisterScrubbing(
 }
 
 auto spp::codegen::ApplyFfiUnwindGuard(
-  void *llvm_module) -> bool {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm::Module &llvm_mod) -> bool {
   auto &ctx = llvm_mod.getContext();
   if (not DoesTargetSupportPcRelEhPointers()) {
     llvm::errs()
@@ -144,8 +141,7 @@ auto spp::codegen::ApplyFfiUnwindGuard(
 }
 
 auto spp::codegen::ApplyUnwindTables(
-  void *llvm_module) -> unsigned long {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm::Module &llvm_mod) -> unsigned long {
 
   auto stamped = 0UL;
   for (auto &fn : llvm_mod) {

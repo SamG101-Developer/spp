@@ -558,7 +558,7 @@ namespace spp::codegen {
       auto expander = llvm::SCEVExpander(se, "air");
       if (not expander.isSafeToExpand(count)) { return false; }
       const auto ty = count->getType();
-      VersionLoop(loop, exit, [&](llvm::Instruction *before) -> llvm::User* {
+      VersionLoop(loop, exit, [&expander, count, ty](llvm::Instruction *before) -> llvm::User* {
         auto b = llvm::IRBuilder<>(before);
         const auto counted = expander.expandCodeFor(count, ty, before->getIterator());
         return llvm::cast<llvm::User>(b.CreateAnd(

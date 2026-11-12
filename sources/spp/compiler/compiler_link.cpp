@@ -132,7 +132,7 @@ namespace spp::compiler {
     /// optimiser sees across them; verified before anything reads it.
     auto BuildLtoModule(Vec<Unique<codegen::LlvmCtx>> const &ctxs) -> Unique<llvm::Module> {
       auto lto_module = MakeUnique<llvm::Module>("spp.lto", *ctxs[0]->Context);
-      codegen::ApplyTargetToModule(lto_module.get());
+      codegen::ApplyTargetToModule(*lto_module);
 
       // Link every module into the special lto "root" module. This creates one
       // meta-module containing all the definitions.
@@ -183,24 +183,23 @@ namespace spp::compiler {
         }
       }
       return not utils::features::IsApplied(utils::features::ConfigKey::BinaryCodegenBti, codegen::TargetIsLinux())
-        or codegen::ApplyBranchTargets(&lto_module);
+        or codegen::ApplyBranchTargets(lto_module);
     }
 
     /// Every hardening measure the project has on, applied to the optimised
     /// program, one key each; false when one cannot be, having said why.
     auto ApplyHardening(llvm::Module &lto_module, Path const &object_file) -> bool {
-      const auto m = &lto_module;
-      FEATURE_GATE(MemoryStackProtect) { codegen::ApplyStackProtector(m); }
-      FEATURE_GATE(MemoryStackProbe) { codegen::ApplyStackClashProtection(m); }
-      FEATURE_GATE(MemoryStackSplit) { codegen::ApplySafeStack(m); }
-      FEATURE_GATE(BinaryCodegenSls) { if (not codegen::ApplySlsHardening(m)) { return false; } }
-      FEATURE_GATE(BinaryCodegenScrub) { if (not codegen::ApplyRegisterScrubbing(m)) { return false; } }
-      FEATURE_GATE(BinaryCodegenCfi) { codegen::FinishCfi(m); }
-      FEATURE_GATE(BinaryCodegenJumpTableBounds) { codegen::ApplyHardenedJumpTables(m); }
-      FEATURE_GATE(BinaryCodegenFfiUnwindGuard) { if (not codegen::ApplyFfiUnwindGuard(m)) { return false; } }
+      FEATURE_GATE(MemoryStackProtect) { codegen::ApplyStackProtector(lto_module); }
+      FEATURE_GATE(MemoryStackProbe) { codegen::ApplyStackClashProtection(lto_module); }
+      FEATURE_GATE(MemoryStackSplit) { codegen::ApplySafeStack(lto_module); }
+      FEATURE_GATE(BinaryCodegenSls) { if (not codegen::ApplySlsHardening(lto_module)) { return false; } }
+      FEATURE_GATE(BinaryCodegenScrub) { if (not codegen::ApplyRegisterScrubbing(lto_module)) { return false; } }
+      FEATURE_GATE(BinaryCodegenCfi) { codegen::FinishCfi(lto_module); }
+      FEATURE_GATE(BinaryCodegenJumpTableBounds) { codegen::ApplyHardenedJumpTables(lto_module); }
+      FEATURE_GATE(BinaryCodegenFfiUnwindGuard) { if (not codegen::ApplyFfiUnwindGuard(lto_module)) { return false; } }
       FEATURE_GATE(BinaryCodegenBti) { if (not ApplyBranchTargetsIfKept(lto_module, object_file)) { return false; } }
-      FEATURE_GATE(BinaryCodegenPacRet) { if (not codegen::ApplyReturnSigning(m)) { return false; } }
-      codegen::ApplyUnwindTables(m);
+      FEATURE_GATE(BinaryCodegenPacRet) { if (not codegen::ApplyReturnSigning(lto_module)) { return false; } }
+      codegen::ApplyUnwindTables(lto_module);
       return true;
     }
 
@@ -211,7 +210,7 @@ namespace spp::compiler {
         "spp {}\ntarget {}\nmode {}\n{}", SPP_VERSION, codegen::TargetFolderName(),
         ModeName(out.Mode),
         utils::features::EffectiveSettings(codegen::TargetIsLinux()));
-      codegen::EmitHardeningRecord(&lto_module, record.c_str());
+      codegen::EmitHardeningRecord(lto_module, record.c_str());
     }
 
     /// Whether the program carries a source-line table for its crash reports:
@@ -493,7 +492,7 @@ auto spp::compiler::LinkTimeOptimize(
   const auto has_entry_point = not entry.empty();
   if (has_entry_point) {
     codegen::EmitCEntryPoint(
-      lto_module.get(), Str(entry).c_str(),
+      *lto_module, Str(entry).c_str(),
       utils::features::IsEnabled(utils::features::ConfigKey::MemoryStackSplit),
       utils::features::IsApplied(utils::features::ConfigKey::MemoryMapDenyWx, codegen::TargetIsLinux()),
       utils::features::IsApplied(utils::features::ConfigKey::MemoryMapSeal, codegen::TargetIsLinux()));
@@ -506,15 +505,15 @@ auto spp::compiler::LinkTimeOptimize(
   // passes keep "kcfi_type" on a function they rebuild but not s++'s own
   // records; its calls are checked with the rest of the hardening below.
   FEATURE_GATE(BinaryCodegenCfi, has_entry_point) {
-    if (not codegen::ApplyCfiTypes(lto_module.get())) { return false; }
+    if (not codegen::ApplyCfiTypes(*lto_module)) { return false; }
   }
 
   // Every function is built for the chosen CPU ("[target.floor] cpu"),
   // named on it, as a function's own target features would be; and
   // sppc's allocation functions are named as such, so LLVM treats them
   // as "malloc" and "free".
-  codegen::ApplyTargetToFunctions(lto_module.get());
-  codegen::ApplyRuntimeAllocatorAttrs(lto_module.get());
+  codegen::ApplyTargetToFunctions(*lto_module);
+  codegen::ApplyRuntimeAllocatorAttrs(*lto_module);
 
   // Run the standard optimization pipeline across the LTO module, using the
   // optimization level from "rel" (O3) vs "dev" (O0).
@@ -524,7 +523,7 @@ auto spp::compiler::LinkTimeOptimize(
     and utils::features::IsEnabled(utils::features::ConfigKey::BinaryCodegenCfi);
   codegen::RunOptimizationPipeline(
     lto_module.get(), codegen::SelectedTargetMachine(), opt_level,
-    cfi ? &codegen::ApplyCfiCoroTypes : nullptr,
+    cfi ? +[](void *llvm_mod) { codegen::ApplyCfiCoroTypes(*static_cast<llvm::Module*>(llvm_mod)); } : nullptr,
     utils::features::IsEnabled(utils::features::ConfigKey::BinaryCodegenAirIntegers));
   RecordIrSize(*lto_module, "after_opt");
   utils::stats::BeginPhase("write-ir-and-harden");
@@ -541,7 +540,7 @@ auto spp::compiler::LinkTimeOptimize(
   EmitRecord(*lto_module, out);
   utils::stats::BeginPhase("emit-object");
   if (not codegen::EmitObjectFile(
-    lto_module.get(), utils::files::NativeString(object_file).c_str(), opt_level)) { return false; }
+    *lto_module, utils::files::NativeString(object_file).c_str(), opt_level)) { return false; }
   RecordFileSize(object_file, "object.bytes");
   if (HasLineTable(out) and not EmitLineTable(*lto_module, out, opt_level)) {
     return false;

@@ -127,8 +127,12 @@ namespace spp::codegen {
       }
 
       auto ReturnOf(llvm::Type *type) const -> llvm::Type* override { return type; }
-      auto AddAttrs(llvm::Function &, Vec<AbiParam> const &, bool) const -> void override {}
-      auto AdaptArgs(llvm::Function const &, Vec<llvm::Value*> &, LlvmCtx *) const -> void override {}
+      auto AddAttrs(llvm::Function &, Vec<AbiParam> const &, bool) const -> void override {
+        // Values pass as they are, so no ABI attributes are needed.
+      }
+      auto AdaptArgs(llvm::Function const &, Vec<llvm::Value*> &, LlvmCtx *) const -> void override {
+        // Arguments already have their declared types.
+      }
       auto AdaptReturn(llvm::Value *result, llvm::Type *, LlvmCtx *) const -> llvm::Value* override { return result; }
     };
 

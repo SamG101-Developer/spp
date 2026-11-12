@@ -39,9 +39,7 @@ namespace spp::analyse::scopes {
 }
 
 template <typename I, typename S>
-spp::analyse::scopes::IndividualSymbolTable<I, S>::IndividualSymbolTable() :
-  _Table() {
-}
+spp::analyse::scopes::IndividualSymbolTable<I, S>::IndividualSymbolTable() = default;
 
 template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::IndexParam(

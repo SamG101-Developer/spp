@@ -155,8 +155,7 @@ namespace spp::codegen {
 }
 
 auto spp::codegen::ApplyHardenedJumpTables(
-  void *llvm_module) -> void {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm::Module &llvm_mod) -> void {
   for (auto &fn : llvm_mod) {
     if (not fn.isDeclaration()) { fn.addFnAttr(kNoJumpTablesAttr, "true"); }
   }

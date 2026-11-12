@@ -157,8 +157,7 @@ auto spp::codegen::CfiClosureEnvDropCallBundles(
 }
 
 auto spp::codegen::ApplyBranchTargets(
-  void *llvm_module) -> bool {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm::Module &llvm_mod) -> bool {
 
   // Where the processor does not enforce landing pads, the type checks on
   // indirect calls already limit where one can go, more tightly than a landing
@@ -182,8 +181,7 @@ auto spp::codegen::ApplyBranchTargets(
 }
 
 auto spp::codegen::ApplyReturnSigning(
-  void *llvm_module) -> bool {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm::Module &llvm_mod) -> bool {
 
   // Where return addresses cannot be signed, the split stack keeps what a
   // callee could overflow off the stack they are saved on; its own key fails
@@ -208,8 +206,7 @@ auto spp::codegen::ApplyReturnSigning(
 }
 
 auto spp::codegen::ApplyCfiTypes(
-  void *llvm_module) -> bool {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm::Module &llvm_mod) -> bool {
   if (not DoesTargetSupportKcfi()) {
     llvm::errs()
       << "This target cannot check indirect calls by type.\n"
@@ -229,15 +226,14 @@ auto spp::codegen::ApplyCfiTypes(
 }
 
 auto spp::codegen::ApplyCfiCoroTypes(
-  void *llvm_module) -> void {
+  llvm::Module &llvm_mod) -> void {
   // Retyping the functions typed before is harmless; the module
   // flag is not added again, as a second one fails verification.
-  TypeCfiFunctions(*static_cast<llvm::Module*>(llvm_module));
+  TypeCfiFunctions(llvm_mod);
 }
 
 auto spp::codegen::FinishCfi(
-  void *llvm_module) -> void {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm::Module &llvm_mod) -> void {
 
   // On Mach-O the type word before a function belongs to the atom
   // before it, which ld64 may move (a cold function, either side).

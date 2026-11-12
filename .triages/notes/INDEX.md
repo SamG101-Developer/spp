@@ -27,6 +27,8 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Env vars are registered](conventions/env-vars-registered.md) — SPP_ names live in utils/env.cpp, CI's are SPP_CI_; anything else stops spp at startup
 - [sys:: names vs C macros](conventions/sys-names-vs-c-macros.md) — a macro-named sys:: export breaks where the C header is included (gtest); #undef there
 - [Shell through utils::shell](conventions/shell-through-utils-shell.md) — shell::Run and shell::Quote only; why cmd /c needs an outer pair of quotes
+- [and/or/not, not &&/||/!](conventions/alternative-operator-keywords.md) — keyword logical ops; Sonar S3659 ignored; clang-tidy readability-operators-representation enforces
+- [and/or/not, not &&/||/!](conventions/alternative-operator-keywords.md) — keyword logical ops; Sonar S3659 ignored; clang-tidy readability-operators-representation enforces
 - [Enums over strings](conventions/enums-over-strings.md) — fields and params hold the enum; convert once where a user writes it; "any" is Opt<Enum>
 - [Tickets: a folder each](conventions/tickets-one-folder-each.md) — .triages/tickets/<slug>/ with README.md + repro files; URL in the status line once filed
 
@@ -56,7 +58,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 
 ## Areas (open the area's INDEX.md when the work touches it)
 - [Toolchain](toolchain/INDEX.md) — GCC/clang C++20 module bugs and workarounds, LLVM wrapper module, linters (17)
-- [CI and platforms](ci/INDEX.md) — workflow quirks, compiler caches, macOS libc++, MSVC bugs, cross-target blockers (37)
+- [CI and platforms](ci/INDEX.md) — workflow quirks, compiler caches, macOS libc++, MSVC bugs, cross-target blockers (38)
 - [Type identity](types/INDEX.md) — TypeKey/stamps, aliases, variant order, TypeEq vs Assignable, Self, comp key folding (13)
 - [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (23)
 - [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (25)

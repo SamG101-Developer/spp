@@ -123,7 +123,7 @@ namespace spp::codegen {
 }
 
 auto spp::codegen::ApplyRuntimeAllocatorAttrs(
-  void *llvm_module) -> void {
+  llvm::Module &llvm_mod) -> void {
   // What each is, as LLVM names it ("allockind"), and which of its
   // arguments is the size ("allocsize", a count beside it for
   // "calloc"), the pointer it takes ("allocptr"), and the alignment
@@ -151,7 +151,6 @@ auto spp::codegen::ApplyRuntimeAllocatorAttrs(
     Allocator{.Name = "sppc_free", .Kind = kind({K::Free}), .Size = Nullopt, .Count = Nullopt, .Pointer = 0u, .Align = Nullopt},
   };
 
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   auto &ctx = llvm_mod.getContext();
   for (auto const &a : allocators) {
     const auto fn = llvm_mod.getFunction(a.Name);
@@ -168,9 +167,8 @@ auto spp::codegen::ApplyRuntimeAllocatorAttrs(
 }
 
 auto spp::codegen::EmitCEntryPoint(
-  void *llvm_module, char const *spp_main_name, const bool split_stacks,
+  llvm::Module &llvm_mod, char const *spp_main_name, const bool split_stacks,
   const bool deny_wx, const bool seal) -> void {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   auto &ctx = llvm_mod.getContext();
 
   // Analysis has already checked "main" exists and is the only

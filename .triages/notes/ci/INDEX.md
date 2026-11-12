@@ -35,3 +35,4 @@
 - [clang-cl: std::apply mangling crash](clang-cl-std-apply-mangling-crash.md) — segfault mangling std::apply in comp_key.ixx and diagnostic.cpp; unfixed; reproducer + BMIs in the buildlog artifact
 - [clang-cl: -Wall is -Weverything](clang-cl-wall-is-weverything.md) — ~46k C++98-compat warnings; Warnings.cmake gives clang-cl /W4
 - [Defender already off on x64](windows-defender-already-off-x64.md) — windows-2025 x64 runs with real-time scan off (ARM on); exclusions can't speed the x64 shards
+- [clang-tidy CI job](clang-tidy-ci-job.md) — advisory in _analysis.yaml on the Linux Clang tree; PRs --since base, nightly full; shared scan script

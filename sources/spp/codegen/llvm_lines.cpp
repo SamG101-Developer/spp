@@ -311,7 +311,7 @@ auto spp::codegen::EmitLineTableObject(
   global->setVisibility(llvm::GlobalValue::HiddenVisibility);
   global->setDSOLocal(true);
   global->setAlignment(llvm::Align(8));
-  return EmitObjectFile(&module, utils::files::NativeString(path).c_str(), opt_level);
+  return EmitObjectFile(module, utils::files::NativeString(path).c_str(), opt_level);
 }
 
 auto spp::codegen::RegisterLineTable(

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_harden_memory;
+import llvm;
 
 namespace spp::codegen {
   /// Marks a function that cannot have split stacks: one that runs before the
@@ -11,7 +12,7 @@ namespace spp::codegen {
 
   /// Give every function in a "llvm::Module" a stack protector. Returns how
   /// many functions were given one.
-  SPP_EXP_FUN auto ApplyStackProtector(void *llvm_module) -> unsigned long;
+  SPP_EXP_FUN auto ApplyStackProtector(llvm::Module &llvm_mod) -> unsigned long;
 
   /// Give every function in a "llvm::Module", an inline stack probe, so a frame
   /// is claimed a page at a time rather than by one subtraction from the stack
@@ -20,12 +21,12 @@ namespace spp::codegen {
   /// first write into the new frame hits memory the function was never given.
   /// Returns how many functions were given one.
   SPP_EXP_FUN auto ApplyStackClashProtection(
-    void *llvm_module) -> unsigned long;
+    llvm::Module &llvm_mod) -> unsigned long;
 
   /// Split every function's frame in two: the objects a callee could write past
   /// stay on a separate "unsafe" stack, and the frame the hardware knows about
   /// (the return address, the saved registers, the spills) keeps only what
   /// nothing can reach out of bounds. LLVM decides which stack objects go onto,
   /// and some function might not be split if there is no need to. Return the
-  SPP_EXP_FUN auto ApplySafeStack(void *llvm_module) -> unsigned long;
+  SPP_EXP_FUN auto ApplySafeStack(llvm::Module &llvm_mod) -> unsigned long;
 }

@@ -107,29 +107,28 @@ namespace spp::codegen {
   /// folder that names no target.
   SPP_EXP_FUN auto ExecutableSuffix(char const *folder) -> char const*;
 
-  /// Stamp an "llvm::Module" (passed as an opaque pointer)
-  /// with the selected target's triple and data layout.
-  SPP_EXP_FUN auto ApplyTargetToModule(void *llvm_module) -> void;
+  /// Stamp an "llvm::Module" with the selected target's triple
+  /// and data layout.
+  SPP_EXP_FUN auto ApplyTargetToModule(llvm::Module &llvm_mod) -> void;
 
-  /// Give every function defined in "llvm_module" (an opaque pointer)
-  /// the selected CPU and its features, as the "target-cpu" and
-  /// "target-features" LLVM reads each function's target from. A
-  /// function's own features are kept, after the program's, so they
-  /// win: where a function built for a wider CPU than the program's
-  /// would say so.
-  SPP_EXP_FUN auto ApplyTargetToFunctions(void *llvm_module) -> void;
+  /// Give every function defined in "llvm_mod" the selected CPU and
+  /// its features, as the "target-cpu" and "target-features" LLVM
+  /// reads each function's target from. A function's own features
+  /// are kept, after the program's, so they win: where a function
+  /// built for a wider CPU than the program's would say so.
+  SPP_EXP_FUN auto ApplyTargetToFunctions(llvm::Module &llvm_mod) -> void;
 
   /// The selected target's machine, built once on first use;
   /// every module is built against it. Null when no backend
   /// serves the selected triple.
   SPP_EXP_FUN auto SelectedTargetMachine() -> llvm::TargetMachine*;
 
-  /// Emit an "llvm::Module" (passed as an opaque pointer) as a
-  /// native object file at "path". Answers whether the object
-  /// file was written. "opt_level" (0 to 3, as the optimisation
-  /// pipeline takes it) sets how hard the backend works:
-  /// instruction selection and register allocation.
-  SPP_EXP_FUN auto EmitObjectFile(void *llvm_module, char const *path, unsigned opt_level) -> bool;
+  /// Emit an "llvm::Module" as a native object file at "path".
+  /// Answers whether the object file was written. "opt_level" (0
+  /// to 3, as the optimisation pipeline takes it) sets how hard
+  /// the backend works: instruction selection and register
+  /// allocation.
+  SPP_EXP_FUN auto EmitObjectFile(llvm::Module &llvm_mod, char const *path, unsigned opt_level) -> bool;
 
   /// Check that all the intrinsic names are sound, ie spelled correctly and
   /// non-corrupted. This is because of some LLVM and GCC bugs causing mangled

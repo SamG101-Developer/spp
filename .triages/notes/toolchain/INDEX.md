@@ -3,7 +3,7 @@
 - [Impl units can import upward](impl-units-can-import-upward.md) — .cpp may import higher modules; no hooks
 - [Third-party module wrappers](third-party-module-wrappers.md) — headers/wrappers/*.ixx; names must not collide
 - [llvm wrapper exports](llvm-module-wrapper-exports.md) — export missing LLVM symbols from llvm.ixx
-- [Four plain LLVM TUs](llvm-passes-plain-tu.md) — pipeline/air/bounds/loop_versioning; PassBuilder.h TU-local, fixed by #233326 in LLVM 24 (the only blocker)
+- [Four plain LLVM TUs](llvm-passes-plain-tu.md) — pipeline/air/bounds/loop_versioning; PassBuilder.h TU-local, fixed by #233326 in LLVM 24; void* Module until then (GCC ICE)
 - [Boost multiprecision needs a GMF](boost-multiprecision-needs-gmf.md) — BigInt/BigDec arithmetic headers in GMF
 - [LLVM intrinsic overload arity](llvm-intrinsic-overload-arity.md) — multi-type intrinsics crash in the printer
 - [genex view gotchas](genex-view-gotchas.md) — zip/concat need to<Vec>; iota|transform breaks

@@ -311,11 +311,10 @@ namespace spp::codegen {
 
 /// [CHECKED]
 auto spp::codegen::EmitHardeningRecord(
-  void *llvm_module, char const *record) -> void {
+  llvm::Module &llvm_mod, char const *record) -> void {
   // Cast the module to the correct type, and extract the context and target
   // triple for this build. The record is received (pre-built) into this
   // function.
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   auto &ctx = llvm_mod.getContext();
   const auto &triple = TargetTriple();
   const auto text = llvm::StringRef(record);

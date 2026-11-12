@@ -15,8 +15,7 @@ namespace spp::codegen {
 }
 
 auto spp::codegen::ApplyStackProtector(
-  void *llvm_module) -> unsigned long {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm::Module &llvm_mod) -> unsigned long {
 
   auto stamped = 0UL;
   for (auto &fn : llvm_mod) {
@@ -32,8 +31,7 @@ auto spp::codegen::ApplyStackProtector(
 }
 
 auto spp::codegen::ApplyStackClashProtection(
-  void *llvm_module) -> unsigned long {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm::Module &llvm_mod) -> unsigned long {
   auto &ctx = llvm_mod.getContext();
 
   // Windows probes every frame larger than a page itself
@@ -60,8 +58,7 @@ auto spp::codegen::ApplyStackClashProtection(
 }
 
 auto spp::codegen::ApplySafeStack(
-  void *llvm_module) -> unsigned long {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm::Module &llvm_mod) -> unsigned long {
 
   auto stamped = 0UL;
   for (auto &fn : llvm_mod) {

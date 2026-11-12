@@ -576,7 +576,9 @@ Each entry gives:
 - **Check:** `grep -n 'namespace detail' $(llvm-config --includedir)/llvm/Transforms/Scalar/LoopPassManager.h` above
   `HasRunOnLoopT`.
 - **When it lands:** on the LLVM 24 bump, turn the four plain TUs into modules, exporting what they need from
-  `headers/wrappers/llvm.ixx`.
+  `headers/wrappers/llvm.ixx`. Then type `llvm_passes.hpp`'s four `void*` functions (`llvm::Module &`,
+  `llvm::TargetMachine *`) and drop the `ApplyCfiCoroTypes` lambda in `compiler_link.cpp`, which clears the last
+  Sonar S5008 issues.
 - **Last checked:** 2026-11-10.
 
 ## U26. LLVM: the KCFI type id on Mach-O

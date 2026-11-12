@@ -442,7 +442,7 @@ auto spp::codegen::ExecutableSuffix(
 
 /// [CHECKED]
 auto spp::codegen::ApplyTargetToModule(
-  void *llvm_module) -> void {
+  llvm::Module &llvm_mod) -> void {
   // Both off the same machine, rather than off the selected triple
   // directly: a backend is allowed to answer with a triple other
   // than the one it was looked up by, and taking both from the
@@ -451,7 +451,6 @@ auto spp::codegen::ApplyTargetToModule(
   const auto *machine = SelectedTargetMachine();
   if (machine == nullptr) { return; }
 
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   llvm_mod.setTargetTriple(machine->getTargetTriple());
   llvm_mod.setDataLayout(machine->createDataLayout());
   if (not TargetIsPositionIndependent()) { return; }
@@ -535,12 +534,12 @@ auto spp::codegen::SelectCpu(
 }
 
 auto spp::codegen::ApplyTargetToFunctions(
-  void *llvm_module) -> void {
+  llvm::Module &llvm_mod) -> void {
   const auto machine = SelectedTargetMachine();
   if (machine == nullptr) { return; }
   const auto cpu = machine->getTargetCPU();
   const auto features = machine->getTargetFeatureString();
-  for (auto &fn : *static_cast<llvm::Module*>(llvm_module)) {
+  for (auto &fn : llvm_mod) {
     if (fn.isDeclaration()) { continue; }
     if (not fn.hasFnAttribute("target-cpu")) { fn.addFnAttr("target-cpu", cpu); }
     const auto own = fn.getFnAttribute("target-features").getValueAsString();
@@ -551,8 +550,7 @@ auto spp::codegen::ApplyTargetToFunctions(
 }
 
 auto spp::codegen::EmitObjectFile(
-  void *llvm_module, char const *path, const unsigned opt_level) -> bool {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm::Module &llvm_mod, char const *path, const unsigned opt_level) -> bool {
   auto *machine = SelectedTargetMachine();
   if (machine == nullptr) { return false; }
 

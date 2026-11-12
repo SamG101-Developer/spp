@@ -1,7 +1,7 @@
 ---
 name: gcc-module-forward-decl-chain
 description: "Every AST forward decl is SPP_EXP_CLS in the module purview (SPP_FWD_CLS was deleted) because GCC mishandles non-exported and GMF extern \\\"C++\\\" decls across modules; plus the redeclare-every-intermediate rule"
-updated: 2026-10-26
+updated: 2026-11-12
 ---
 
 **Current policy (2026-09-11):** every forward decl in the AST headers is `SPP_EXP_CLS` (`export extern "C++"`) inside the module purview. The per-file form is `SPP_AST_COMMON_FWD_DECL(Self) { SPP_EXP_CLS struct X; }`, placed after the imports; the macro also declares `ScopeManager`, `CompilerMetaData` and the exported self decl. `SPP_FWD_CLS` was deleted from `macros.hpp`. The global module fragment holds `#include`s only. Keep it this way until GCC is fixed. At that point the goal is non-exported (`extern "C++"`) purview decls - The maintainer doesn't want these names exported.
@@ -40,3 +40,7 @@ Related: `expression-generic-substitution`, [[msvc-requires-clause-token-match]]
   implementation unit of the same module (`substitution_bindings.cpp`); reordering imports and deleting gcms did not.
   Also: a static member returning `Unique<ConventionAst>` added to `convention_ast.ixx` (with `import spp.utils.types`)
   broke importers the same way - keep such helpers in a module that already imports both (`symbols`).
+- 2026-11-12: a third-party type cannot be forward declared beside its module either. `namespace llvm { class Module; }`
+  in a GMF (in an interface, or a header included into a unit) plus `import llvm` in the same TU ICEs GCC at the first
+  call that mixes them ("canonical types differ for identical types"). Import `llvm` in the interface instead; see
+  [[llvm-passes-plain-tu]].
