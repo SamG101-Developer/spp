@@ -143,9 +143,10 @@ info = \"${info}\""
         gdb_view "${EXE}" > "${dir}/gdb.log"
         if [[ -s "${dir}/gdb.log" && "${full}" == true ]]; then
             local expected
-            # A one-byte integer also shows its character ("100 'd'"), as gdb shows C's "uint8_t".
-            for expected in 'x = 100' 'pair = {0 = 100' ', 1 = true}' 'maybe = {tag = Some[S32], payload = ' \
-                '= {x = 3, y = 4}' 'type = struct None or Some[S32]'; do
+            # In Rust's forms, as the debug info is marked Rust's: a one-byte integer as a number, a tuple in
+            # parentheses, a variant's tag by its enumerator's qualified name.
+            for expected in 'x = 100' 'pair = (100, true)' 'tag::std::option::Some[S32], payload: ' '{val: 4}' \
+                '= main::Point {x: 3, y: 4}' 'type = std::option::None or std::option::Some[S32]'; do
                 grep -qF "${expected}" "${dir}/gdb.log" || { why="gdb does not show \"${expected}\""; break; }
             done
         elif [[ -s "${dir}/gdb.log" ]] && grep -qF 'pair = ' "${dir}/gdb.log"; then

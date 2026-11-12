@@ -24,7 +24,11 @@ python3 "${HERE}/intrinsics.py" emit "${ROOT}/sources/spp/codegen/builtins.cpp" 
 run_one() {
     local prog="$1" mode="$2"
     local dir="${WORK}/${prog}-${mode}/intrinsics"
-    new_project "${dir}"
+    # Line tables only: the programs are large single functions, and full debug info doubles what each build needs
+    # (notes: debug-info-line-tables), with four at once. What is checked here is the values.
+    new_project "${dir}" "
+[binary.debug]
+info = \"lines\""
     cp "${gen}/${prog}.spp" "${dir}/src/main.spp"
     if ! (cd "${dir}" && "${SPP}" build -m "${mode}" > "${dir}/build.log" 2>&1); then
         echo build-failed > "${gen}/${prog}.${mode}.status"
