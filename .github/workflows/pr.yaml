@@ -205,7 +205,6 @@ jobs:
     with:
       os: windows-2025
       compiler: msvc
-      off: &msvc-off pac_ret memory.stack.split
       shard-count: 2
       gtest-workers: "2"
 
@@ -221,7 +220,6 @@ jobs:
       os: windows-2025-vs2026
       compiler: clang-cl
       advisory: true
-      off: *msvc-off
       shard-count: 2
 
   # Todo: drop advisory once it builds and passes as the x64 lane does; see .triages/next-steps.md N15.
@@ -235,7 +233,6 @@ jobs:
       os: windows-11-arm
       compiler: msvc
       advisory: true
-      off: *msvc-off
       shard-count: 2
 
   # Todo: Add to ci-success once more stable.
