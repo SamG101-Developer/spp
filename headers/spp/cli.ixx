@@ -36,11 +36,12 @@ namespace spp::cli {
 
   /// Compile the project and run what it produced. Only a host build of an
   /// "exe" project can be run; a library is refused before anything is built.
-  /// "target" is a target triple, or empty for the host. Only ever returns
-  /// false, and only when there was nothing to run. Once the program runs, it
-  /// exits with its own status.
+  /// "target" is a target triple, or empty for the host; "args" are passed
+  /// to the program as its own. Only ever returns false, and only when there
+  /// was nothing to run. Once the program runs, it exits with its own status.
   SPP_EXP_FUN auto HandleRun(
-    compiler::BuildMode mode, Str const &target = "") -> bool;
+    compiler::BuildMode mode, Str const &target = "",
+    Vec<Str> const &args = {}) -> bool;
 
   /// Remove built artifacts: those of "mode", or of every mode if it is empty.
   /// "target" limits the clean to that target's tree. If the target is empty,
