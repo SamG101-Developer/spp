@@ -20,14 +20,14 @@ column=1
 for entry in "${SETTINGS[@]}"; do
   read -r key on off why <<< "${entry}"
   value="${on}"
-  (( column == 2 )) && value="${off}"
+  ((column == 2)) && value="${off}"
   sudo sysctl -q "${key}=${value}"
   printf '%-28s %s  (%s)\n' "${key}" "$(sysctl -n "${key}")" "${why}"
 done
 
 # perf can record without libelf, but then names no symbols (a flame graph of bare "[spp]" frames).
 if command -v perf > /dev/null; then
-  if ! perf version --build-options 2>/dev/null | grep -q 'libelf: \[ on'; then
+  if ! perf version --build-options 2> /dev/null | grep -q 'libelf: \[ on'; then
     echo "warning: $(command -v perf) has no libelf, so it will not name symbols; put one that does first on PATH"
   fi
 else
