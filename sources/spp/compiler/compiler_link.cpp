@@ -213,6 +213,32 @@ namespace spp::compiler {
       codegen::EmitHardeningRecord(&lto_module, record.c_str());
     }
 
+    /// Whether the program carries a source-line table for its crash reports:
+    /// whenever it has debug info to build one from.
+    auto HasLineTable(OutLayout const &out) -> bool {
+      return utils::features::DebugInfoLevel(out.Mode == BuildMode::DEV) != utils::features::DebugInfo::None;
+    }
+
+    /// Build the source-line table from the object's debug info, and write it
+    /// as the object linked in beside it.
+    auto EmitLineTable(llvm::Module const &lto_module, OutLayout const &out, const unsigned opt_level) -> bool {
+      const auto object_file = out.ObjectFile();
+      const auto table = codegen::BuildLineTable(
+        object_file, out.Root, lto_module.getDataLayout().getGlobalPrefix());
+      if (not table.has_value()) {
+        llvm::errs() << "Could not read " << utils::files::DisplayString(object_file) << " for its source lines\n";
+        return false;
+      }
+      return codegen::EmitLineTableObject(lto_module, *table, out.LineTableFile(), opt_level);
+    }
+
+    /// The program's objects, quoted for a link command: its own, and its
+    /// source-line table's when it has one.
+    auto ObjectArgs(OutLayout const &out) -> Str {
+      auto args = " " + utils::shell::Quote(utils::files::NativeString(out.ObjectFile()));
+      return args;
+    }
+
     /// A cross build names its object first, as "spp build --target" has always
     /// printed it. Only a Linux target is linked: the link asks an ELF linker
     /// for ELF hardening. Whether to link.
@@ -233,7 +259,7 @@ namespace spp::compiler {
     /// Run the link "command" that builds "exe_file", saying so; a failure is
     /// reported with the command.
     auto RunLink(Str const &command, Path const &exe_file) -> bool {
-      std::cout << "Linking: " << exe_file << '\n';
+      std::cout << "Linking: " << exe_file.string() << '\n';
       if (const auto status = utils::shell::Run(command); status != 0) {
         llvm::errs() << "Linking failed (" << status << "): " << command << "\n";
         return false;
@@ -248,11 +274,15 @@ namespace spp::compiler {
     auto CheckLinked(Path const &exe_file, F &&finding, StrView advice) -> bool {
       const auto found = finding(utils::files::NativeString(exe_file).c_str());
       if (not found) {
-        std::cerr << "Error: cannot read the linked " << exe_file << ": " << found.error() << "\n";
+        std::cerr
+          << "Error: cannot read the linked " << exe_file.string()
+          << ": " << found.error() << "\n";
         return false;
       }
       if (found->has_value()) {
-        std::cerr << "Error: " << exe_file << " was linked with " << **found << ".\n" << advice;
+        std::cerr
+          << "Error: " << exe_file.string() << " was linked with "
+          << **found << ".\n" << advice;
         return false;
       }
       return true;
@@ -297,7 +327,7 @@ namespace spp::compiler {
       auto command = linker
         + " /nologo /subsystem:console"
         + " /out:" + utils::shell::Quote(utils::files::NativeString(exe_file))
-        + " " + utils::shell::Quote(utils::files::NativeString(out.ObjectFile()));
+        + ObjectArgs(out);
 
       for (auto const &lib : libraries) {
         const auto import = ffi::ImportLibraryOf(lib);
@@ -367,7 +397,7 @@ namespace spp::compiler {
       const auto obj_filepath = utils::files::NativeString(out.ObjectFile());
       auto command = linker
         + " -o " + utils::shell::Quote(utils::files::NativeString(out.ExecutablePath()))
-        + " " + utils::shell::Quote(obj_filepath)
+        + ObjectArgs(out)
         + StageLibraries(out, libraries);
 
       // Add the "libm" math library flag for everything except COFF objects, which
@@ -432,7 +462,8 @@ namespace spp::compiler {
         ? LinkMsvcExecutable(out, *linker, *libraries)
         : LinkCcExecutable(out, *linker, *libraries);
       if (not linked) { return false; }
-      std::cout << "Built executable: " << out.ExecutablePath() << '\n';
+      std::cout
+        << "Built executable: " << out.ExecutablePath().string() << '\n';
       return true;
     }
   }
