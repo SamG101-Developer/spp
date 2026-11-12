@@ -12,6 +12,7 @@ import spp.codegen.llvm_entry;
 import spp.codegen.llvm_harden_codegen;
 import spp.codegen.llvm_harden_memory;
 import spp.codegen.llvm_jump_tables;
+import spp.codegen.llvm_lines;
 import spp.codegen.llvm_support;
 import spp.codegen.llvm_target;
 import spp.compiler.ffi;
@@ -236,6 +237,9 @@ namespace spp::compiler {
     /// source-line table's when it has one.
     auto ObjectArgs(OutLayout const &out) -> Str {
       auto args = " " + utils::shell::Quote(utils::files::NativeString(out.ObjectFile()));
+      if (HasLineTable(out)) {
+        args += " " + utils::shell::Quote(utils::files::NativeString(out.LineTableFile()));
+      }
       return args;
     }
 
@@ -493,6 +497,7 @@ auto spp::compiler::LinkTimeOptimize(
       utils::features::IsEnabled(utils::features::ConfigKey::MemoryStackSplit),
       utils::features::IsApplied(utils::features::ConfigKey::MemoryMapDenyWx, codegen::TargetIsLinux()),
       utils::features::IsApplied(utils::features::ConfigKey::MemoryMapSeal, codegen::TargetIsLinux()));
+    if (HasLineTable(out)) { codegen::RegisterLineTable(*lto_module); }
     constexpr auto preserved = "main";
     codegen::RunInternalizePass(lto_module.get(), &preserved, 1);
   }
@@ -538,6 +543,9 @@ auto spp::compiler::LinkTimeOptimize(
   if (not codegen::EmitObjectFile(
     lto_module.get(), utils::files::NativeString(object_file).c_str(), opt_level)) { return false; }
   RecordFileSize(object_file, "object.bytes");
+  if (HasLineTable(out) and not EmitLineTable(*lto_module, out, opt_level)) {
+    return false;
+  }
 
   // Link the executable up, where the target is linked here at all.
   if (not ReportCrossObject(object_file)) { return true; }
