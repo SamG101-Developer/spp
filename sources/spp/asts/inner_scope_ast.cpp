@@ -22,6 +22,7 @@ import spp.asts.token_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_debug;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
 import spp.utils.ice;
@@ -96,7 +97,11 @@ auto spp::asts::InnerScopeAst<T>::Stage11_CodeGen(
   sm->MoveToNextScope();
   // SPP_ASSERT(sm->CurrentScope == _Scope);
 
-  for (auto const &m : Members) { m->Stage11_CodeGen(sm, meta, ctx); }
+  // Each member at its own line, for the debug info.
+  for (auto const &m : Members) {
+    codegen::SetDebugLocation(*ctx, m->PosStart());
+    m->Stage11_CodeGen(sm, meta, ctx);
+  }
 
   // Need to add a "return void" if the final member isn't a
   // RetStatementAst.
