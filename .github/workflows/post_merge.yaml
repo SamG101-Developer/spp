@@ -260,7 +260,6 @@ jobs:
       off: sls
       shard-count: 2
 
-  # Todo: drop "off" once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
   release-windows-x64:
     name: Release · Windows x64
     needs: [ release-gate ]
