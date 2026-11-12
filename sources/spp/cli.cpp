@@ -241,6 +241,7 @@ namespace spp::cli {
       const auto target = utils::features::TargetFacts{
         .SafeStack = codegen::DoesTargetSupportSafeStack(),
         .SafeStackCanary = codegen::DoesTargetSupportSafeStackCanary(),
+        .PacRet = codegen::DoesTargetSupportPacRet(),
         .IsLinux = codegen::TargetIsLinux(),
         .Folder = codegen::TargetFolderName()
       };
