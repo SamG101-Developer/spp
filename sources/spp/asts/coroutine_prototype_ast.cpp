@@ -30,6 +30,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_debug;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_target;
@@ -259,10 +260,14 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     Ice(*this, "a function body emitted from another module's walk");
   }
 
+  // Its debug info, as a subroutine's: a subprogram at the prototype, whose
+  // line everything emitted has until a statement gives its own.
   const auto uid = "." + Uid();
   const auto entry_bb = llvm::BasicBlock::Create(
     *ctx->Context, "entry", llvm_func_target);
   ctx->Builder.SetInsertPoint(entry_bb);
+  codegen::AttachSubprogram(*ctx, *llvm_func_target, PosStart());
+  codegen::SetDebugLocation(*ctx, PosStart());
 
   // Firstly, emit the llvm coroutine intrinsics for the
   // coroutine id, size and begin. These form the "boot"
