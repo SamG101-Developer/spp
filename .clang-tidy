@@ -7,6 +7,9 @@ Checks: >
   clang-analyzer-*,
   -clang-analyzer-optin.performance.Padding,
   performance-*,
-  -performance-enum-size
+  -performance-enum-size,
+  readability-operators-representation
+CheckOptions:
+  readability-operators-representation.BinaryOperators: 'and;or;not'
 HeaderFilterRegex: '.*/(headers|sources)/spp/.*'
 WarningsAsErrors: ''
