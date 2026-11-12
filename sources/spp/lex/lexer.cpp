@@ -197,13 +197,13 @@ auto spp::lex::Lexer::Lex() -> Vec<RawToken> {
       }
       case '\'': {
         tokens.emplace_back(RawTokenType::TK_APOSTROPHE, "'");
-        in_char = !in_char;
+        in_char = not in_char;
         ++i;
         continue;
       }
       case '"': {
         tokens.emplace_back(RawTokenType::TK_QUOTATION_MARK, "\"");
-        in_string = !in_string;
+        in_string = not in_string;
         ++i;
         continue;
       }

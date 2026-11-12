@@ -995,7 +995,7 @@ auto spp::cli::HandleClean(
   // folder, and emplace every target folder into the list.
   else {
     for (auto const &entry : SafeDirectoryIterator(cwd / OUT_FOLDER)) {
-      if (!entry.is_directory()) { continue; }
+      if (not entry.is_directory()) { continue; }
       targets.emplace_back(
         utils::files::NativeString(entry.path().filename()));
     }

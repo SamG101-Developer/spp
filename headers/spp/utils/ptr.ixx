@@ -89,8 +89,8 @@ namespace spp::utils::ptr {
   SPP_EXP_CLS template <typename T>
   struct ptr_eq {
     auto operator()(T const &lhs, T const &rhs) const -> bool {
-      if (lhs == nullptr && rhs == nullptr) { return true; }
-      if (lhs == nullptr || rhs == nullptr) { return false; }
+      if (lhs == nullptr and rhs == nullptr) { return true; }
+      if (lhs == nullptr or rhs == nullptr) { return false; }
       return *lhs == *rhs;
     }
   };
@@ -98,7 +98,7 @@ namespace spp::utils::ptr {
   SPP_EXP_CLS template <typename T>
   struct ptr_cmp {
     auto operator()(T const &lhs, T const &rhs) const -> bool {
-      if (lhs == nullptr && rhs == nullptr) { return false; }
+      if (lhs == nullptr and rhs == nullptr) { return false; }
       if (lhs == nullptr) { return true; }
       if (rhs == nullptr) { return false; }
       return *lhs < *rhs;
