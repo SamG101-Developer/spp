@@ -233,6 +233,10 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   // once for each exit that runs it.
   codegen::EnterDeferScope(*sm->CurrentScope, ctx);
 
+  // The block's own lexical block, so its variables show only
+  // inside it, and one shadowing an outer one in its place.
+  codegen::EnterDebugBlock(*ctx, PosStart());
+
   // A statement's value is either bound or "Void", and a local
   // is either moved on or taken apart, because stage 8 rejects
   // anything else. So a scope leaves nothing behind to destroy,
@@ -269,6 +273,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   codegen::EmitScopeExit(sm->CurrentScope->Parent, sm, meta, ctx);
 
   // Exit the scope.
+  codegen::LeaveDebugBlock(*ctx);
   sm->MoveOutOfCurrentScope();
 
   if (ret_val and meta->LlvmAssignmentTarget) {

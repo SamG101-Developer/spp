@@ -13,8 +13,10 @@ use(spp::analyse::scopes, struct TypeRef);
 /// The debug info a module carries (DWARF; "[binary.debug] info"): a compile
 /// unit per s++ module, a subprogram per function, and a location on every
 /// instruction, so a debugger and a crash report can name the source line. The
-/// language is the vendor code "DW_LANG_lo_user" until S++ has a registered
-/// one.
+/// language is "DW_LANG_Rust" until S++ has a registered code: a vendor code
+/// left LLDB showing no variables at all, and Rust's rules suit S++ best in
+/// gdb (numbers as numbers, no byte pointer read as a C string). Only how a
+/// debugger shows values and reads expressions follows from it.
 namespace spp::codegen {
   /// Setup the LLVM context's debug info fields, and add any additional flags
   /// specific to debugging. The "level" indicates "full" for debugging in "dev"
@@ -42,9 +44,24 @@ namespace spp::codegen {
     LlvmCtx &ctx, llvm::Function &fn, std::size_t position) -> void;
 
   /// Update the current debug location so that any debug information emitted
-  /// lands in the line/column "position" of the target block.
+  /// lands in the line/column "position" of the target block, in the innermost
+  /// lexical block being generated in the builder's function.
   SPP_EXP_FUN auto SetDebugLocation(
     LlvmCtx &ctx, std::size_t position) -> void;
+
+  /// Open a lexical block at "position" (a block's start), inside the innermost
+  /// one of the builder's function, or its subprogram. This is the scope the
+  /// variables and locations of a block's members are placed in, so a debugger
+  /// shows a variable only inside its block, and a shadowing one in place of
+  /// the one it shadows.
+  SPP_EXP_FUN auto EnterDebugBlock(
+    LlvmCtx &ctx, std::size_t position) -> void;
+
+  /// Close the lexical block the matching "EnterDebugBlock" opened, and go back
+  /// to the location current when it opened. This will be the statement the
+  /// block is part of, which the code after it belongs to.
+  SPP_EXP_FUN auto LeaveDebugBlock(
+    LlvmCtx &ctx) -> void;
 
   /// The debug type of an S++ type, made once per module: a basic type for a
   /// number or "Bool"; a pointer for a borrow ("&T", "&mut T"), "NonNull[T]"

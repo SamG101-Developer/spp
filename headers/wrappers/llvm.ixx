@@ -112,6 +112,8 @@ export namespace llvm {
   using ::llvm::DICompositeType;
   using ::llvm::DIExpression;
   using ::llvm::DIFile;
+  using ::llvm::DILexicalBlock;
+  using ::llvm::DILocalScope;
   using ::llvm::DILocalVariable;
   using ::llvm::DILocation;
   using ::llvm::DINode;
@@ -230,7 +232,7 @@ export namespace llvm {
     using ::llvm::dwarf::DW_ATE_float;
     using ::llvm::dwarf::DW_ATE_signed;
     using ::llvm::dwarf::DW_ATE_unsigned;
-    using ::llvm::dwarf::DW_LANG_lo_user;
+    using ::llvm::dwarf::DW_LANG_Rust;
     using ::llvm::dwarf::DW_TAG_inlined_subroutine;
   }
 
