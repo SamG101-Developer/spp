@@ -233,6 +233,7 @@ export namespace llvm {
     using ::llvm::dwarf::DW_ATE_signed;
     using ::llvm::dwarf::DW_ATE_unsigned;
     using ::llvm::dwarf::DW_LANG_Rust;
+    using ::llvm::dwarf::DW_OP_deref;
     using ::llvm::dwarf::DW_TAG_inlined_subroutine;
   }
 

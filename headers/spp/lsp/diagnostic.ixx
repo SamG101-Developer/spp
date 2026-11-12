@@ -59,6 +59,11 @@ namespace spp::lsp {
   /// Render a diagnostic as one line of json.
   SPP_EXP_FUN auto ToJson(Diagnostic const &diagnostic) -> Str;
 
+  /// Render what a build produced as one line of json: the executable it
+  /// linked, by its absolute path, for a tool that launches it (an IDE's
+  /// debugger) to read rather than work the path out.
+  SPP_EXP_FUN auto ArtifactJson(Path const &executable) -> Str;
+
   /// Render what one name resolved to as one line of json.
   /// Shares the output with the diagnostics, so both carry
   /// a "kind" telling a reader which of the two it has.

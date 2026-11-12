@@ -296,6 +296,12 @@ namespace spp::utils::features {
                 "'" + inner_key + "' in [" + path + "] must be "
                 + Str(KindName(key_sp->Kind)));
             }
+            else if (not key_sp->Choices.empty()
+              and not genex::contains(key_sp->Choices, StrView(*inner_node.template value<Str>()))) {
+              auto choices = Str();
+              for (auto const &c : key_sp->Choices) { choices += (choices.empty() ? "\"" : ", \"") + Str(c) + "\""; }
+              errors.emplace_back("'" + inner_key + "' in [" + path + "] must be one of " + choices);
+            }
           }
 
           // If nothing in the user provided section gave a value for a required
@@ -506,8 +512,8 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           .Help = "Sign every return address a function saves to the stack, and stop the program when one comes back "
           "altered (pointer authentication). Two instructions per function that calls another; no-ops on a "
           "processor without it. AArch64 Linux and FreeBSD; elsewhere 'split' in [memory.stack] stands in for "
-          "it, keeping what could overflow away from return addresses, and a target without either fails the "
-          "build until this is turned off."
+          "it, keeping what could overflow away from return addresses. On a target without either, it is left "
+          "out when on by default, and fails the build when set on."
         },
         KeySpec{
           .Key = ConfigKey::BinaryCodegenJumpTableBounds,
@@ -543,6 +549,26 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           "so checks can be moved where they cost least and loops vectorised. Every overflow that matters still "
           "stops it, naming the check; the report is where the value was used. Off, every check is made at its "
           "operation. rel only; dev always checks at the operation."
+        },
+      },
+      .FreeForm = false,
+    },
+    SectionSpec{
+      .Name = "binary.debug",
+      .Help = "What the program carries to be debugged, and to name source lines in a crash report.",
+      .Keys = Vec<KeySpec>{
+        KeySpec{
+          .Key = ConfigKey::BinaryDebugInfo,
+          .Name = "info",
+          .Kind = ValueKind::String,
+          .Required = false,
+          .Default = false,
+          .DefaultText = "lines",
+          .Help = "\"full\": line tables, and every variable and its type, for a debugger to show. \"lines\": "
+          "line tables (DWARF) alone, mapping every instruction back to its file and line, for stepping and a crash "
+          "report's frames. \"none\": nothing. Either of the first two grows the program, never its code. When not "
+          "set, \"full\" at dev and \"lines\" at rel.",
+          .Choices = Vec<StrView>{"full", "lines", "none"}
         },
       },
       .FreeForm = false,
@@ -752,7 +778,7 @@ auto spp::utils::features::IsEnabled(const ConfigKey key) -> bool {
   // feature set too.
   const auto it = CurrentFlags().find(key);
   SPP_ASSERT(it != CurrentFlags().end());
-  return it->second;
+  return it->second and not CurrentLeftOut().contains(key);
 }
 
 /// [CHECKED]
@@ -761,8 +787,7 @@ auto spp::utils::features::IsApplied(
   // A flag is applied if it is enabled, and not incompatible with the system
   // constraints.
   return IsEnabled(key)
-    and not IsFlagIncompatibleWithSystem(key, target_linux).first
-    and not CurrentLeftOut().contains(key);
+    and not IsFlagIncompatibleWithSystem(key, target_linux).first;
 }
 
 auto spp::utils::features::IsExplicit(
@@ -776,6 +801,14 @@ auto spp::utils::features::LeaveOut(
 }
 
 /// [CHECKED]
+auto spp::utils::features::DebugInfoLevel(const bool dev) -> DebugInfo {
+  if (not IsExplicit(ConfigKey::BinaryDebugInfo)) {
+    return dev ? DebugInfo::Full : DebugInfo::Lines;
+  }
+  const auto text = Text(ConfigKey::BinaryDebugInfo);
+  return text == "none" ? DebugInfo::None : text == "full" ? DebugInfo::Full : DebugInfo::Lines;
+}
+
 auto spp::utils::features::Text(
   const ConfigKey key) -> Str {
   // Apply the defaults if the flags aren't ready, otherwise get the text
@@ -820,27 +853,58 @@ auto spp::utils::features::CheckFloor(
   return errors.size() == before;
 }
 
+namespace {
+  /// Leave out the split stack, on by default, and "pac_ret" with it where the
+  /// split stack is what stands in for it, unless the project set that itself
+  /// (then the return-signing pass refuses it, naming the key).
+  auto LeaveOutSplitStack(
+    spp::utils::features::TargetFacts const &target, const spp::StrView why) -> void {
+    using namespace spp::utils::features;
+    LeaveOut(ConfigKey::MemoryStackSplit, why);
+    if (not target.PacRet and IsEnabled(ConfigKey::BinaryCodegenPacRet)
+      and not IsExplicit(ConfigKey::BinaryCodegenPacRet)) {
+      LeaveOut(ConfigKey::BinaryCodegenPacRet, "the target cannot sign return addresses, and 'split' is left out");
+    }
+  }
+}
+
+auto spp::utils::features::LeaveOutForDebugger(
+  TargetFacts const &target) -> void {
+  if (IsEnabled(ConfigKey::MemoryStackSplit) and not IsExplicit(ConfigKey::MemoryStackSplit)) {
+    LeaveOutSplitStack(target, "a build for a debugger, which loses track of the variables the split stack moves");
+  }
+}
+
 /// [CHECKED]
+/// A measure the target cannot have is left out where it is on by default,
+/// and refused where the project set it itself.
 auto spp::utils::features::CheckTargetSupport(
   TargetFacts const &target, Vec<Str> &errors) -> bool {
   if (IsEnabled(ConfigKey::MemoryStackSplit) and not target.SafeStack) {
-    errors.emplace_back(
-      "'split' in [memory.stack] cannot be applied: "
-      + Str("LLVM has no unsafe stack pointer for ")
-      + Str(target.Folder) + "; set 'split = false'");
-    return false;
+    if (IsExplicit(ConfigKey::MemoryStackSplit)) {
+      errors.emplace_back(
+        "'split' in [memory.stack] cannot be applied: "
+        + Str("there is no unsafe stack pointer for ")
+        + Str(target.Folder) + "; set 'split = false'");
+      return false;
+    }
+    LeaveOutSplitStack(target, "no unsafe stack pointer for " + Str(target.Folder));
   }
 
   // Todo: drop once LLVM's safestack checks a canary the target's own way; .triages/upstream-watch.md U15.
   if (IsEnabled(ConfigKey::MemoryStackProtect)
     and IsEnabled(ConfigKey::MemoryStackSplit)
     and not target.SafeStackCanary) {
-    errors.emplace_back(
-      "'protect' and 'split' in [memory.stack] cannot both be applied: "
-      + Str("LLVM's split stack checks its canary with __stack_chk_fail; ")
-      + Str(target.Folder) + " does not have this. Set one to false");
-    return false;
+    const auto why = "LLVM's split stack checks its canary with __stack_chk_fail, which " + Str(target.Folder)
+      + " does not have";
+    if (not IsExplicit(ConfigKey::MemoryStackSplit)) { LeaveOutSplitStack(target, why); }
+    else if (not IsExplicit(ConfigKey::MemoryStackProtect)) { LeaveOut(ConfigKey::MemoryStackProtect, why); }
+    else {
+      errors.emplace_back(
+        "'protect' and 'split' in [memory.stack] cannot both be applied: " + why + ". Set one to false");
+      return false;
     }
+  }
   return true;
 }
 

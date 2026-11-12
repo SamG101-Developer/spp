@@ -23,6 +23,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_debug;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_type;
 import spp.lsp.resolution_index;
@@ -241,8 +242,12 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
   // This is from normal "let" statements via their local
   // variable asts.
   if (llvm::isa<llvm::AllocaInst>(var_sym->LlvmInfo->Alloca)) {
+    // A binding that can be moved is read by value only to be moved: from here
+    // on, a debugger shows it as not available.
     const auto alloca = llvm::cast<llvm::AllocaInst>(var_sym->LlvmInfo->Alloca);
-    return ctx->Builder.CreateLoad(alloca->getAllocatedType(), alloca, "load.local" + uid);
+    const auto value = ctx->Builder.CreateLoad(alloca->getAllocatedType(), alloca, "load.local" + uid);
+    codegen::EndVariable(*ctx, *var_sym->LlvmInfo);
+    return value;
   }
 
   // Handle global constants. These values aren't created

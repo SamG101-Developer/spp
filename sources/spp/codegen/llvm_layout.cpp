@@ -24,17 +24,28 @@ auto spp::codegen::SortMembersForSppLayout(
   // minimal total object size (minimize padding). Return the
   // re-ordered fields and the field index mapping.
   auto const &dl = ctx->Module->getDataLayout();
+
+  // A field with no size yet (a struct still being laid out further up, as a
+  // recursive walk leaves it) sorts last. LLVM is never asked for its layout:
+  // it would cache an empty one for good, which every size and offset this
+  // module asks for later would then read.
+  const auto align_of = [&](llvm::Type *type) {
+    return type->isSized() ? dl.getABITypeAlign(type).value() : 0;
+  };
+  const auto size_of = [&](llvm::Type *type) {
+    return type->isSized() ? dl.getTypeAllocSize(type).getFixedValue() : 0;
+  };
   auto order = DropValuelessFields(field_types);
   order |= genex::actions::stable_sort([&](auto a, auto b) {
     // Sort first on alignment, moving the larger alignments
     // first.
-    const auto align_a = dl.getABITypeAlign(field_types[a]).value();
-    const auto align_b = dl.getABITypeAlign(field_types[b]).value();
+    const auto align_a = align_of(field_types[a]);
+    const auto align_b = align_of(field_types[b]);
     if (align_a != align_b) { return align_a > align_b; }
 
     // Then sort on type sizes, moving the larger sizes first.
-    const auto size_a = dl.getTypeAllocSize(field_types[a]).getFixedValue();
-    const auto size_b = dl.getTypeAllocSize(field_types[b]).getFixedValue();
+    const auto size_a = size_of(field_types[a]);
+    const auto size_b = size_of(field_types[b]);
     return size_a > size_b;
   });
 

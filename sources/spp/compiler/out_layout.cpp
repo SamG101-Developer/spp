@@ -95,6 +95,10 @@ auto spp::compiler::OutLayout::ObjectFile() const -> Path {
   return LlvmRoot() / "spp.o";
 }
 
+auto spp::compiler::OutLayout::LineTableFile() const -> Path {
+  return LlvmRoot() / "spp-lines.o";
+}
+
 /// [CHECKED]
 auto spp::compiler::OutLayout::ExecutablePath() const -> Path {
   return OutRoot() / ExecutableName();

@@ -132,6 +132,13 @@ namespace spp::utils::features {
   SPP_EXP_FUN auto CheckTargetSupport(
     TargetFacts const &target, Vec<Str> &errors) -> bool;
 
+  /// A build a debugger runs ("spp build --for-debugger"): the split stack is
+  /// left out, unless the project set it itself, and a default "pac_ret" that
+  /// rests on it with it. LLVM tracks each variable the split stack moves
+  /// through a register, and loses it once that is reused, so a debugger shows
+  /// it as optimised out, even at dev (upstream-watch U29).
+  SPP_EXP_FUN auto LeaveOutForDebugger(TargetFacts const &target) -> void;
+
   /// The linker "[target.linkers]" names for a target folder, if it names one:
   /// a command, run with the link's arguments after it.
   SPP_EXP_FUN auto Linker(StrView target_folder) -> Opt<Str>;

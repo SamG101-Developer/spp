@@ -27,12 +27,14 @@ namespace spp::cli {
   /// Compile the project, under a build mode, an optional non-host target
   /// (empty for host), and a number of other possible flags for things such as
   /// index-only, or skip VCS checks. A non-empty "stats_file" gets a json
-  /// report of the work each stage did ("spp.utils.stats").
+  /// report of the work each stage did ("spp.utils.stats"). "for_debugger"
+  /// builds the program for a debugger to run ("LeaveOutForDebugger").
   SPP_EXP_FUN auto HandleBuild(
     compiler::BuildMode build_mode, Str const &target = "",
     bool skip_vcs = false, Str const &message_format = "human",
     bool analyse_only = false, Vec<Str> const &index_files = {},
-    bool index_project = false, Str const &stats_file = "") -> bool;
+    bool index_project = false, Str const &stats_file = "",
+    bool for_debugger = false) -> bool;
 
   /// Compile the project and run what it produced. Only a host build of an
   /// "exe" project can be run; a library is refused before anything is built.

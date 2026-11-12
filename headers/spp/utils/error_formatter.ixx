@@ -9,6 +9,7 @@ import std;
 use(spp::asts, struct Ast);
 use(spp::utils::errors, class ErrorFormatter);
 use(spp::utils::errors, struct SourceSpan);
+use(spp::utils::errors, struct LineCol);
 
 /// Where a piece of source sits, as an editor counts it: a
 /// zero-based line, and zero-based columns measured in UTF-16
@@ -21,6 +22,14 @@ SPP_EXP_CLS struct spp::utils::errors::SourceSpan {
   std::size_t EndLine = 0;
   std::size_t EndCol = 0;
   bool Generated = true; /// Compiler generated (not in source).
+};
+
+/// Where a position sits in its file, as debug info and a
+/// compiler's own messages count it: a one-based line, and a
+/// one-based column in bytes.
+SPP_EXP_CLS struct spp::utils::errors::LineCol {
+  std::size_t Line = 0;
+  std::size_t Column = 0;
 };
 
 /// The error formatter is the single place where all errors
@@ -123,21 +132,37 @@ public:
   /// The whole file, for a scope that covers it rather than sitting at a position in it.
   SPP_ATTR_NODISCARD auto SpanOfWholeFile() const -> SourceSpan;
 
+  /// The line and column a position of this file is at, or none
+  /// for one with no place in the author's source (generated
+  /// code, the prelude behind it, another file's position). For
+  /// every instruction's debug location, so a lookup in the line
+  /// table, not a scan.
+  SPP_ATTR_NODISCARD auto LineColOf(
+    std::size_t position) const -> Opt<LineCol>;
+
 private:
   /// Everything both the quoted line and the span are built
   /// from: which line the position falls on, that line's text,
   /// and where within it the underlined part starts and how far
-  /// it runs. "RenderOffset" is the offset the caret row is
-  /// drawn from, which counts the line feed token the quoted
-  /// text drops; "ByteOffset" indexes "LineText" itself.
+  /// it runs, in bytes of "LineText".
   struct _RawLocation {
     bool Generated = false;
     bool PastUserSource = false;
     std::size_t Line = 0;
     Str LineText;
     std::size_t ByteOffset = 0;
-    std::size_t RenderOffset = 0;
     std::size_t ByteSpan = 0;
+  };
+
+  /// A position quoted for an error: where it is ("on line 3"),
+  /// the line's number and text, the gutter's padding, and the
+  /// caret row under the quoted text.
+  struct _Quote {
+    Str Location;
+    Str LineNumber;
+    Str LineText;
+    Str LeftPadding;
+    Str Carets;
   };
 
   /// Locate a raw position: the shared half of the quote and
@@ -149,6 +174,25 @@ private:
   /// of this file's.
   SPP_ATTR_NODISCARD auto _TokenIndexOf(
     std::size_t position) const -> Opt<std::size_t>;
+
+  /// The token index of the author's code a position is: none for
+  /// a position that is not this file's, or is the lexer's leading
+  /// newline, or lies in the prelude behind the author's code.
+  SPP_ATTR_NODISCARD auto _UserTokenIndexOf(
+    std::size_t position) const -> Opt<std::size_t>;
+
+  /// The one-based line token "index" is on ("_LineStarts").
+  SPP_ATTR_NODISCARD auto _LineOf(
+    std::size_t index) const -> std::size_t;
+
+  /// The tokens on one-based "line", as [first, last): the line's
+  /// own, without the newline that ends it.
+  SPP_ATTR_NODISCARD auto _LineBounds(
+    std::size_t line) const -> Pair<std::size_t, std::size_t>;
+
+  /// The bytes of tokens [first, last).
+  SPP_ATTR_NODISCARD auto _ByteLength(
+    std::size_t first, std::size_t last) const -> std::size_t;
 
   /// Token list to index into.
   Vec<lex::RawToken> _Tokens;
@@ -163,9 +207,22 @@ private:
   /// The index of the first token in the prelude.
   std::size_t _PreludeTokenIndex;
 
+  /// The token index each line starts at, the first line first:
+  /// the token after each newline. A newline is any token that is
+  /// one, the line feeds between tokens and those inside a string
+  /// literal alike (which the lexer gives as characters), so a
+  /// line counts as the author's editor counts it.
+  Vec<std::size_t> _LineStarts;
+
   /// The core error formatter. Handles almost all formatting
   /// between the different entry api functions.
-  auto _InternalParseErrorRawPos(
+  auto _QuoteRawPos(
     std::size_t ast_start_pos, std::size_t ast_size,
-    Str &&tag_message) -> Tup<Str, Str, Str, Str, Str, Str>;
+    Str &&tag_message) const -> _Quote;
+
+  /// An error ("is_error", red, headed "Error") or its context
+  /// (green, headed "Context") quoted at a position.
+  SPP_ATTR_NODISCARD auto _Render(
+    bool is_error, std::size_t ast_start_pos, std::size_t ast_size,
+    Str &&tag_message) const -> Str;
 };

@@ -35,7 +35,7 @@ select = [
 ]
 
 [tool.ty.src]
-exclude = ["tests/gtest-parallel"]
+exclude = ["tests/gtest-parallel", "**/vcs/**"]
 
 [tool.ty.environment]
 extra-paths = [".github/scripts/lib"]

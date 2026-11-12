@@ -233,7 +233,7 @@ namespace spp::cli {
     /// features need to be loadable from the config file, the versions "floor"
     /// needs to be met, and the target needs to be supported. If all three
     /// pass, then the project features are determined as loadable.
-    auto LoadProjectFeatures() -> bool {
+    auto LoadProjectFeatures(const bool for_debugger = false) -> bool {
       // Create the config errors list to mutate inside the loading functions,
       // and define the config file path for loading.
       auto config_errors = Vec<Str>();
@@ -252,6 +252,7 @@ namespace spp::cli {
         utils::features::Load(config_file, config_errors)
         and utils::features::CheckFloor(target, config_errors)
         and utils::features::CheckTargetSupport(target, config_errors)) {
+        if (for_debugger) { utils::features::LeaveOutForDebugger(target); }
         return codegen::SelectCpu(utils::features::Text(utils::features::ConfigKey::TargetFloorCpu).c_str());
       }
 
@@ -348,11 +349,11 @@ namespace spp::cli {
       return utils::shell::Run(command) == 0;
     }
 
-    /// Print where the project's executable is built to under "mode" and
-    /// "target" (empty for the host), as an absolute path on a line of its own,
-    /// and build nothing: for a tool that builds with "spp build" and then
-    /// launches the executable itself, such as an IDE's debugger. A library has
-    /// no executable, so for one it prints nothing and returns false.
+    /// "spp info executable": print where the project's executable is built to
+    /// under "mode" and "target" (empty for the host), as an absolute path on a
+    /// line of its own, and build nothing: for a tool or script that launches
+    /// the executable itself, such as an IDE's debugger. A library has no
+    /// executable, so for one it prints nothing and returns false.
     auto PrintExecutable(
       const compiler::BuildMode mode, Str const &target) -> bool {
       SPP_VALIDATE_PROJECT_OR(false, false);
@@ -480,24 +481,17 @@ auto spp::cli::RunCli(
     "Write a json report of the work each stage did, its time and peak memory, "
     "to this file");
 
-  auto build_print_executable = false;
+  auto build_for_debugger = false;
   build_cmd->add_flag(
-    "--print-executable", build_print_executable,
-    "Print the absolute path the executable is built to, for this mode and "
-    "target, and build nothing");
+    "--for-debugger", build_for_debugger,
+    "Build for a debugger to run: the split stack is left out unless spp.toml "
+    "sets it, as a debugger loses track of the variables it moves");
 
   build_cmd->callback([&] {
-    if (build_print_executable) {
-      if (not PrintExecutable(
-        *compiler::ModeFromName(build_mode), build_target)) {
-        throw CLI_ERR;
-      }
-      return;
-    }
     if (not HandleBuild(
       *compiler::ModeFromName(build_mode), build_target, build_skip_vcs,
       build_message_format, build_analyse_only, build_index_files,
-      build_index_project, build_stats_file)) {
+      build_index_project, build_stats_file, build_for_debugger)) {
       throw CLI_ERR;
     }
   });
@@ -614,6 +608,31 @@ auto spp::cli::RunCli(
       std::filesystem::current_path())) {
       throw CLI_ERR;
     }
+  });
+
+  // The "spp info" command answers questions about the project without
+  // building it, for tools and scripts: "spp info executable" prints the path
+  // the executable is built to for a mode and target.
+  const auto info_cmd = app.add_subcommand(
+    "info", "Show facts about the project, without building it");
+  info_cmd->fallthrough();
+  info_cmd->require_subcommand(1);
+
+  const auto info_exe_cmd = info_cmd->add_subcommand(
+    "executable", "Print the absolute path the executable is built to");
+  auto info_mode = Str("dev");
+  const auto info_exe_mode_option = info_exe_cmd->add_option(
+    "-m,--mode", info_mode, "Build mode");
+  info_exe_mode_option->check(CLI::IsMember(compiler::ModeNames()));
+  info_exe_mode_option->default_val("dev");
+
+  auto info_target = Str();
+  info_exe_cmd->add_option(
+    "-t,--target", info_target,
+    CMD_HELP_TEXT_BUILD_TARGET);
+
+  info_exe_cmd->callback([&] {
+    if (not PrintExecutable(*compiler::ModeFromName(info_mode), info_target)) { throw CLI_ERR; }
   });
 
   // The "spp config" command lists all the possible keys available for the
@@ -813,7 +832,7 @@ auto spp::cli::HandleBuild(
   const compiler::BuildMode build_mode, Str const &target, const bool skip_vcs,
   Str const &message_format, const bool analyse_only,
   Vec<Str> const &index_files, const bool index_project,
-  Str const &stats_file) -> bool {
+  Str const &stats_file, const bool for_debugger) -> bool {
   // Validate the project structure first. This is a failsafe to prevent
   // downstream errors. Select the LLVM target, and perform a failsafe assertion
   // on intrinsic names.
@@ -848,7 +867,7 @@ auto spp::cli::HandleBuild(
   // the fetch brought. Try to load the project features too.
   SPP_VALIDATE_STRUCTURE_OR(false, false);
   if (not compiler::ffi::Validate(std::filesystem::current_path())
-    or not LoadProjectFeatures()) {
+    or not LoadProjectFeatures(for_debugger)) {
     return false;
   }
 
@@ -865,11 +884,17 @@ auto spp::cli::HandleBuild(
 
   // The report is written whether or not the build succeeded: how long a
   // project full of errors takes to reject is worth measuring too.
-  if (stats_file.empty()) { return CompileReportingErrors(c, message_format); }
-  utils::stats::Enable(std::filesystem::absolute(stats_file));
+  if (not stats_file.empty()) { utils::stats::Enable(std::filesystem::absolute(stats_file)); }
   const auto built = CompileReportingErrors(c, message_format);
-  const auto written = utils::stats::Finish(
+  const auto written = stats_file.empty() or utils::stats::Finish(
     compiler::ModeName(build_mode), codegen::TargetFolderName(), built);
+
+  // Json is read by a tool, which is told what the build linked, last, so it
+  // can launch the executable without working out where it is.
+  if (built and message_format == "json" and not analyse_only
+    and ProjectBuildType() == compiler::BuildType::EXE) {
+    std::cout << lsp::ArtifactJson(out.ExecutablePath()) << '\n';
+  }
   return built and written;
 }
 
@@ -1089,7 +1114,7 @@ auto spp::cli::HandleTest(
 
   // Prep the test runner, printing some debug info before the built test exe is
   // ran. Generate the exe path from the file too.
-  std::cout << "Running " << c.TestCount() << " test(s)." << std::endl;
+  std::cout << "Running " << c.TestCount() << " test(s)." << '\n';
   std::cout.flush();
   const auto exe = utils::shell::Quote(utils::files::NativeString(exe_file));
 

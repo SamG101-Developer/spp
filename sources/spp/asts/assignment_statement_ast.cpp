@@ -29,6 +29,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coerce;
+import spp.codegen.llvm_debug;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.ice;
@@ -389,6 +390,11 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
     if (llvm_lhs_locs[i] == nullptr and llvm_rhs_vals[i] == nullptr) { continue; }
     SPP_ASSERT(llvm_lhs_locs[i] != nullptr and llvm_rhs_vals[i] != nullptr);
     ctx->Builder.CreateStore(llvm_rhs_vals[i], llvm_lhs_locs[i]);
+
+    // A binding a move left empty holds a value again: a debugger shows it.
+    if (const auto id = Lhs[i]->To<IdentifierAst>(); id != nullptr) {
+      codegen::ResumeVariable(*ctx, *sm->CurrentScope->FindVarSymbol(id)->LlvmInfo);
+    }
   }
 
   // Statements are always generated into a builder so no need

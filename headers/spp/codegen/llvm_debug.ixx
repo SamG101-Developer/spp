@@ -3,6 +3,7 @@ module;
 
 export module spp.codegen.llvm_debug;
 import spp.codegen.llvm_ctx;
+import spp.codegen.llvm_sym_info;
 import spp.utils.features;
 import spp.utils.types;
 import llvm;
@@ -73,10 +74,24 @@ namespace spp::codegen {
   SPP_EXP_FUN auto DebugTypeOf(
     LlvmCtx &ctx, TypeRef const &ref) -> llvm::DIType*;
 
-  /// Describe the variable "name", held in "storage" (its stack slot), of type
-  /// "ref", declared at "position", for a debugger to show. A parameter is
-  /// numbered ("arg_no", from 1); 0 for any other variable.
+  /// Describe the variable "name", held in "info"'s stack slot, of type "ref",
+  /// declared at "position", for a debugger to show. A parameter is numbered
+  /// ("arg_no", from 1); 0 for any other variable. A binding that can be moved
+  /// (its type is not "Copy", nor a borrow) is not described for its whole
+  /// block, but from where it is given a value ("ResumeVariable") to where it
+  /// is moved ("EndVariable"); "info" keeps its variable for those.
   SPP_EXP_FUN auto DeclareVariable(
-    LlvmCtx &ctx, llvm::Value *storage, StrView name, TypeRef const &ref,
+    LlvmCtx &ctx, LlvmVarSymbolInfo &info, StrView name, TypeRef const &ref,
     std::size_t position, unsigned arg_no) -> void;
+
+  /// A binding moved here: a debugger shows it as not available from here on,
+  /// rather than the value it no longer holds. Nothing for a binding that
+  /// cannot be moved.
+  SPP_EXP_FUN auto EndVariable(
+    LlvmCtx &ctx, LlvmVarSymbolInfo const &info) -> void;
+
+  /// A binding given a value here (an assignment): a debugger shows it again,
+  /// after a move ended it. Nothing for a binding that cannot be moved.
+  SPP_EXP_FUN auto ResumeVariable(
+    LlvmCtx &ctx, LlvmVarSymbolInfo const &info) -> void;
 }

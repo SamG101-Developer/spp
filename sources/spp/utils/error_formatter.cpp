@@ -8,7 +8,6 @@ import spp.utils.ice;
 import colex;
 import genex;
 import std;
-import sys;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::asts, Ast);
@@ -55,6 +54,11 @@ spp::utils::errors::ErrorFormatter::ErrorFormatter(
   _Tokens(std::move(tokens)),
   _FilePath(std::move(file_path)),
   _PreludeTokenIndex(prelude_token_index) {
+  // The lexer starts every file with a newline (token 0), so the
+  // author's first line starts at token 1.
+  for (auto i = 0uz; i < _Tokens.size(); ++i) {
+    if (_Tokens[i].Data == "\n") { _LineStarts.emplace_back(i + 1); }
+  }
 }
 
 spp::utils::errors::ErrorFormatter::~ErrorFormatter() {
@@ -114,6 +118,47 @@ auto spp::utils::errors::ErrorFormatter::_TokenIndexOf(
   return position - _Base;
 }
 
+auto spp::utils::errors::ErrorFormatter::_UserTokenIndexOf(
+  const std::size_t position) const
+  -> Opt<std::size_t> {
+  const auto index = _TokenIndexOf(position);
+  if (not index.has_value() or *index == 0 or *index >= _PreludeTokenIndex) { return Nullopt; }
+  return index;
+}
+
+auto spp::utils::errors::ErrorFormatter::_LineOf(
+  const std::size_t index) const
+  -> std::size_t {
+  // How many lines start at or before the token.
+  return static_cast<std::size_t>(genex::upper_bound(_LineStarts, index) - _LineStarts.begin());
+}
+
+auto spp::utils::errors::ErrorFormatter::_LineBounds(
+  const std::size_t line) const
+  -> Pair<std::size_t, std::size_t> {
+  // The next line's start is just past this line's newline.
+  const auto first = _LineStarts[line - 1];
+  const auto last = line < _LineStarts.size() ? _LineStarts[line] - 1 : _Tokens.size();
+  return {first, last};
+}
+
+auto spp::utils::errors::ErrorFormatter::_ByteLength(
+  const std::size_t first, const std::size_t last) const
+  -> std::size_t {
+  auto bytes = 0uz;
+  for (auto i = first; i < last; ++i) { bytes += _Tokens[i].Data.length(); }
+  return bytes;
+}
+
+auto spp::utils::errors::ErrorFormatter::LineColOf(
+  const std::size_t position) const
+  -> Opt<LineCol> {
+  const auto index = _UserTokenIndexOf(position);
+  if (not index.has_value()) { return Nullopt; }
+  const auto line = _LineOf(*index);
+  return LineCol{.Line = line, .Column = 1 + _ByteLength(_LineBounds(line).first, *index)};
+}
+
 auto spp::utils::errors::ErrorFormatter::IsPastUserSource(
   const std::size_t position) const -> bool {
   const auto index = _TokenIndexOf(position);
@@ -126,23 +171,9 @@ auto spp::utils::errors::ErrorFormatter::ErrorRawPos(
   Str &&message,
   Str &&tag_message)
   -> Str {
-  //
   using namespace std::string_literals;
-
-  auto [file_path, location, line_number, error_line, left_padding, carets] = _InternalParseErrorRawPos(
-    ast_start_pos, ast_size, std::move(tag_message));
-
-  // Todo: Make the file path clickable in supporting terminals (IntelliJ).
-  // file_path = "\033]8;;"s + file_path + "\033" + file_path + "\033]8;;\033";
-
-  const auto line1 = (colex::fg_bright_white & colex::st_bold) + "Error in file '"s + file_path + "', "s +
-    location + ":\n";
-  const auto line2 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |\n"s;
-  const auto line3 = (colex::fg_bright_red & colex::st_bold) + line_number + " | "s + error_line + "\n"s;
-  const auto line4 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |"s;
-  const auto line5 = (colex::reset & colex::fg_bright_red) + carets + "\n"s;
-  const auto line6 = (colex::reset & colex::fg_bright_red) + message + "\n"s;
-  return line1 + line2 + line3 + line4 + line5 + line6;
+  return _Render(true, ast_start_pos, ast_size, std::move(tag_message))
+    + (colex::reset & colex::fg_bright_red) + message + "\n"s;
 }
 
 auto spp::utils::errors::ErrorFormatter::ErrorRawPosMinimal(
@@ -150,17 +181,30 @@ auto spp::utils::errors::ErrorFormatter::ErrorRawPosMinimal(
   const std::size_t ast_size,
   Str &&tag_message)
   -> Str {
+  return _Render(false, ast_start_pos, ast_size, std::move(tag_message));
+}
+
+auto spp::utils::errors::ErrorFormatter::_Render(
+  const bool is_error,
+  const std::size_t ast_start_pos,
+  const std::size_t ast_size,
+  Str &&tag_message) const
+  -> Str {
   //
   using namespace std::string_literals;
+  const auto quote = _QuoteRawPos(ast_start_pos, ast_size, std::move(tag_message));
+  const auto heading = is_error ? "Error in file '"s : "Context from file '"s;
+  const auto quoted = is_error ? (colex::fg_bright_red & colex::st_bold) : (colex::fg_bright_green & colex::st_bold);
+  const auto carets = is_error ? (colex::reset & colex::fg_bright_red) : (colex::reset & colex::fg_bright_green);
 
-  auto [file_path, location, line_number, error_line, left_padding, carets] = _InternalParseErrorRawPos(
-    ast_start_pos, ast_size, std::move(tag_message));
-  const auto line1 = (colex::fg_bright_white & colex::st_bold) + "Context from file '"s + file_path + "', "s +
-    location + ":\n";
-  const auto line2 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |\n"s;
-  const auto line3 = (colex::fg_bright_green & colex::st_bold) + line_number + " | "s + error_line + "\n"s;
-  const auto line4 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |"s;
-  const auto line5 = (colex::reset & colex::fg_bright_green) + carets + "\n"s;
+  // Todo: Make the file path clickable in supporting terminals (IntelliJ).
+  // file_path = "\033]8;;"s + file_path + "\033" + file_path + "\033]8;;\033";
+  const auto line1 = (colex::fg_bright_white & colex::st_bold) + heading + _FilePath + "', "s +
+    quote.Location + ":\n";
+  const auto line2 = (colex::fg_bright_white & colex::st_bold) + quote.LeftPadding + " |\n"s;
+  const auto line3 = quoted + quote.LineNumber + " | "s + quote.LineText + "\n"s;
+  const auto line4 = (colex::fg_bright_white & colex::st_bold) + quote.LeftPadding + " |"s;
+  const auto line5 = carets + quote.Carets + "\n"s;
   return line1 + line2 + line3 + line4 + line5;
 }
 
@@ -249,22 +293,19 @@ auto spp::utils::errors::ErrorFormatter::SpanAcross(
 
 auto spp::utils::errors::ErrorFormatter::SpanOfWholeFile() const
   -> SourceSpan {
-  using lex::RawTokenType;
-  // Every line the author wrote: the prelude appended behind
-  // them is not part of the file anyone is looking at.
-  auto lines = 0uz;
-  for (auto i = 0uz; i < _Tokens.size() and i < _PreludeTokenIndex; ++i) {
-    if (_Tokens[i].Type == RawTokenType::TK_LINE_FEED) { ++lines; }
-  }
-  return SourceSpan{.File = _FilePath, .EndLine = lines, .Generated = false};
+  // Every line the author wrote, to the one after their last
+  // newline: the prelude appended behind them is not part of the
+  // file anyone is looking at. Lines are zero-based here.
+  const auto user_end = std::min(_PreludeTokenIndex, _Tokens.size());
+  const auto lines = static_cast<std::size_t>(
+    genex::upper_bound(_LineStarts, user_end) - _LineStarts.begin());
+  return SourceSpan{.File = _FilePath, .EndLine = lines > 0 ? lines - 1 : 0, .Generated = false};
 }
 
 auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   std::size_t ast_start_pos,
   std::size_t ast_size) const
   -> _RawLocation {
-  using lex::RawTokenType;
-
   // A span of over 1000 tokens (a whole function or class) is
   // quoted by its first token, so the report stays readable.
   ast_size = ast_size > 1000 ? 1 : ast_size;
@@ -276,121 +317,65 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   // would point at a line the user didn't type. A position that
   // is not this file's (another file's ast, or code the compiler
   // parsed for itself) has none here either.
-  const auto index = _TokenIndexOf(ast_start_pos);
-  if (not index.has_value() or *index == 0 or *index >= _PreludeTokenIndex) {
+  const auto index = _UserTokenIndexOf(ast_start_pos);
+  if (not index.has_value()) {
     auto nowhere = _RawLocation();
     nowhere.Generated = true;
-    nowhere.PastUserSource = index.has_value() and *index != 0;
+    nowhere.PastUserSource = IsPastUserSource(ast_start_pos);
     return nowhere;
   }
-  ast_start_pos = *index;
 
-  // Find the start of the error line: the token immediately
-  // after the last newline before this one.
-  auto error_line_start_pos = 1uz;
-  for (auto i = ast_start_pos; i-- > 0;) {
-    if (_Tokens[i].Type == RawTokenType::TK_LINE_FEED) {
-      error_line_start_pos = i + 1uz;
-      break;
-    }
-  }
-
-  // Find the end too: the first newline after it, or the end
-  // of the file
-  auto error_line_end_pos = _Tokens.size();
-  for (auto i = ast_start_pos; i < _Tokens.size(); ++i) {
-    if (_Tokens[i].Type == RawTokenType::TK_LINE_FEED) {
-      error_line_end_pos = i;
-      break;
-    }
-  }
-
-  // Build the source line string by concatenating raw token
-  // data.
-  auto error_line_tokens = Vec<lex::RawToken>(
-    _Tokens.begin() + static_cast<sys::ssize_t>(error_line_start_pos),
-    _Tokens.begin() + static_cast<sys::ssize_t>(error_line_end_pos));
-  auto error_line_as_string = genex::fold_left(
-    error_line_tokens, Str(),
-    [](Str const &acc, const lex::RawToken &token) { return acc + token.Data; });
-  while (!error_line_as_string.empty() and error_line_as_string.back() == ' ') {
-    error_line_as_string.pop_back();
-  }
-
-  // Count line feeds before this token to get the 1-based line number.
-  auto error_line_number = 0uz;
-  for (auto i = 0uz; i < ast_start_pos; ++i) {
-    if (_Tokens[i].Type == RawTokenType::TK_LINE_FEED) { ++error_line_number; }
-  }
-
-  // Compute the character offset within the line by summing the data lengths of all raw tokens
-  // between the line start and the error token. This correctly handles keywords (one multi-char
-  // raw token) and multi-character identifiers (one single-char raw token per letter).
-  auto char_offset = 0uz;
-  for (auto i = error_line_start_pos; i < ast_start_pos && i < _Tokens.size(); ++i) {
-    char_offset += _Tokens[i].Data.length();
-  }
-
-  // Compute the character span to underline. Iterate the raw tokens covered by this AST
-  // (from ast_start_pos to ast_start_pos + ast_size, i.e. PosEnd()) and sum their data lengths.
-  // Clip to the end of the current line to avoid spanning newlines.
-  auto char_span = 0uz;
-  const auto span_end = std::min(ast_start_pos + ast_size, error_line_end_pos);
-  for (auto i = ast_start_pos; i < span_end && i < _Tokens.size(); ++i) {
-    char_span += _Tokens[i].Data.length();
-  }
-  if (char_span < 1) char_span = 1;
-
-  // The quoted line drops a leading line feed; an offset into
-  // that text has to drop it too, while the caret row is drawn
-  // from the offset as counted.
-  auto byte_offset = char_offset;
-  if (!error_line_as_string.empty() and error_line_as_string.front() == '\n') {
-    error_line_as_string.erase(0, 1);
-    if (byte_offset > 0) { --byte_offset; }
-  }
+  // The line the token is on, quoted as its tokens' text, with
+  // the trailing spaces dropped. Its offset is the bytes before
+  // the token on that line, and the underlined part the bytes of
+  // the ast's tokens, clipped to the line and never empty.
+  const auto line = _LineOf(*index);
+  const auto [first, last] = _LineBounds(line);
+  auto text = Str();
+  for (auto i = first; i < last; ++i) { text += _Tokens[i].Data; }
+  while (not text.empty() and text.back() == ' ') { text.pop_back(); }
 
   return {
     .Generated = false,
     .PastUserSource = false,
-    .Line = error_line_number,
-    .LineText = std::move(error_line_as_string),
-    .ByteOffset = byte_offset,
-    .RenderOffset = char_offset,
-    .ByteSpan = char_span
+    .Line = line,
+    .LineText = std::move(text),
+    .ByteOffset = _ByteLength(first, *index),
+    .ByteSpan = std::max(1uz, _ByteLength(*index, std::min(*index + ast_size, last)))
   };
 }
 
-auto spp::utils::errors::ErrorFormatter::_InternalParseErrorRawPos(
+auto spp::utils::errors::ErrorFormatter::_QuoteRawPos(
   const std::size_t ast_start_pos,
   const std::size_t ast_size,
-  Str &&tag_message)
-  -> Tup<Str, Str, Str, Str, Str, Str> {
+  Str &&tag_message) const
+  -> _Quote {
   using namespace std::literals;
 
   const auto loc = _LocateRawPos(ast_start_pos, ast_size);
   if (loc.Generated) {
     return {
-      _FilePath,
-      loc.PastUserSource ? "at the end of the file"_str : "in generated code"_str,
-      ""_str,
-      loc.PastUserSource ? "<end of file>"_str : "<generated code>"_str,
-      ""_str,
-      " <- "s + (colex::fg_bright_white & colex::st_bold) + tag_message
+      .Location = loc.PastUserSource ? "at the end of the file"_str : "in generated code"_str,
+      .LineNumber = ""_str,
+      .LineText = loc.PastUserSource ? "<end of file>"_str : "<generated code>"_str,
+      .LeftPadding = ""_str,
+      .Carets = " <- "s + (colex::fg_bright_white & colex::st_bold) + tag_message
     };
   }
 
-  // Build the caret line. +1 on the offset aligns with the display gutter ("N | source")
-  // where the caret row is "  |carets" - the source character column is offset by one
-  // relative to the caret row's starting position.
+  // The caret row is drawn under the quoted text, one column in
+  // from the gutter ("N | source" against "  |carets").
   auto carets = Str(loc.ByteSpan, '^');
-  carets.insert(0, Str(loc.RenderOffset + 1, ' '));
+  carets.insert(0, Str(loc.ByteOffset + 1, ' '));
   carets += (colex::fg_bright_white & colex::st_bold) + " <- "s + tag_message;
 
-  const auto error_line_number = std::to_string(loc.Line);
-  const auto left_padding = Str(error_line_number.length(), ' ');
+  const auto line_number = std::to_string(loc.Line);
   return {
-    _FilePath, "on line "s + error_line_number, error_line_number, loc.LineText, left_padding, carets
+    .Location = "on line "s + line_number,
+    .LineNumber = line_number,
+    .LineText = loc.LineText,
+    .LeftPadding = Str(line_number.length(), ' '),
+    .Carets = std::move(carets)
   };
 }
 

@@ -8,6 +8,7 @@ import spp.compiler.compiler;
 import spp.lsp.resolution_index;
 import spp.parse.errors.parser_error;
 import spp.utils.error_formatter;
+import spp.utils.files;
 import genex;
 import std;
 
@@ -246,6 +247,10 @@ auto spp::lsp::ToJson(Diagnostic const &diagnostic) -> Str {
     out += (i > 0 ? "," : "") + JsonString(diagnostic.Wrapped[i]);
   }
   return out + "]}";
+}
+
+auto spp::lsp::ArtifactJson(Path const &executable) -> Str {
+  return Str("{\"kind\":\"artifact\",\"executable\":") + JsonString(utils::files::NativeString(executable)) + "}";
 }
 
 auto spp::lsp::ToJson(lsp::resolution_index::ResolvedName const &name) -> Str {

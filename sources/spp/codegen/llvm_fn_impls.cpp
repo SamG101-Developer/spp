@@ -128,6 +128,13 @@ namespace {
       fn->setDoesNotReturn();
       fn->setDoesNotThrow();
       fn->addFnAttr(llvm::Attribute::Cold);
+
+      // With debug info, each failed check keeps its own call, and so its own
+      // line in a crash report; merged, the call would have the line of none
+      // of them. Without it there is no line to keep, and merging saves code.
+      if (ctx->DiBuilder != nullptr) {
+        fn->addFnAttr(llvm::Attribute::NoMerge);
+      }
     }
 
     // Create a call to the check-failed function, passing in the

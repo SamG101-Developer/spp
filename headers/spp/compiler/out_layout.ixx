@@ -78,6 +78,10 @@ SPP_EXP_CLS struct spp::compiler::OutLayout {
   /// combined module.
   SPP_ATTR_NODISCARD auto ObjectFile() const -> Path;
 
+  /// "<root>/out/<target>/<mode>/llvm/spp-lines.o" : the program's source-line
+  /// table, built from the object's debug info and linked in beside it.
+  SPP_ATTR_NODISCARD auto LineTableFile() const -> Path;
+
   /// "<root>/out/<target>/<mode>/<name>" : the linked executable.
   SPP_ATTR_NODISCARD auto ExecutablePath() const -> Path;
 

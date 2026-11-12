@@ -333,7 +333,7 @@ auto spp::codegen::mangle::MangleFnName(
   }
   readable += "::" + fun_proto.Name->Val;
   if (not owner_args.empty()) {
-    readable += "[";
+    readable += '[';
     for (auto i = 0uz; i < owner_args.size(); ++i) {
       auto const *arg = owner_args[i];
       if (i != 0) { readable += ", "; }
@@ -345,7 +345,7 @@ auto spp::codegen::mangle::MangleFnName(
       auto const *const sym = owner_scope.FindTypeSymbol(arg->TypeVal.get());
       readable += ShortTypeName(sym != nullptr ? *sym->FqName() : *arg->TypeVal);
     }
-    readable += "]";
+    readable += ']';
   }
   return readable + "$h" + HashHex(full);
 }
