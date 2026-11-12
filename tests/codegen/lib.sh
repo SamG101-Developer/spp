@@ -79,13 +79,14 @@ add_ffi() {
     cat > "${dir}/ffi/${pkg}/stub.spp"
 }
 
-# Build "dir" at "mode", leaving the executable in EXE and the program's own
-# object in OBJ. On a failure, reports it against "name" and returns 1; the
-# caller counts it.
+# Build "dir" at "mode", with any further arguments passed to "spp build",
+# leaving the executable in EXE and the program's own object in OBJ. On a
+# failure, reports it against "name" and returns 1; the caller counts it.
 build_project() {
     local name="$1" dir="$2" mode="$3"
+    shift 3
     EXE="" OBJ=""
-    if ! (cd "${dir}" && "${SPP}" build -m "${mode}" > "${dir}/build.log" 2>&1); then
+    if ! (cd "${dir}" && "${SPP}" build -m "${mode}" "$@" > "${dir}/build.log" 2>&1); then
         echo "FAIL  ${name}: build failed, see below"
         tr '\r' '\n' < "${dir}/build.log" | grep -v '^\s*$' | tail -20
         return 1
