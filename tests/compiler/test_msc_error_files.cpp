@@ -11,8 +11,10 @@ namespace {
   using spp::utils::errors::ErrorFormatter;
 
   auto FormatterFor(spp::Str const &code, spp::Str const &path) -> spp::Unique<ErrorFormatter> {
+    // Lexed first: the prelude's index is only known once it has been.
     auto lexer = spp::lex::Lexer(code);
-    return ErrorFormatter::ForFile(lexer.Lex(), path, lexer.PreludeTokenIndex());
+    auto tokens = lexer.Lex();
+    return ErrorFormatter::ForFile(std::move(tokens), path, lexer.PreludeTokenIndex());
   }
 }
 

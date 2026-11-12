@@ -107,7 +107,7 @@ OUT
 # The parameter list of the one instance whose mangled name holds "name": what follows the quoted name, to the
 # closing parenthesis before the attributes.
 params_of() {
-    grep -E "^define .*${1}" "$2" | head -1 | sed -E 's/.*"\(//; s/\) #[0-9]+ \{$//'
+    grep -E "^define .*${1}" "$2" | head -1 | sed -E 's/.*"\(//; s/\) #[0-9]+( !dbg ![0-9]+)? \{$//'
 }
 
 for mode in dev rel; do

@@ -18,7 +18,7 @@ TEST(TestTargetSupport, test_safe_stack_where_llvm_has_an_unsafe_stack_pointer) 
 TEST(TestTargetSupport, test_no_safe_stack_where_llvm_has_no_unsafe_stack_pointer) {
   for (const auto triple : {
     "powerpc64le-unknown-linux-gnu", "powerpc64-unknown-linux-gnu", "powerpc-unknown-linux-gnu",
-    "wasm32-unknown-wasip1"}) {
+    "wasm32-unknown-wasip1", "x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc", "x86_64-w64-windows-gnu"}) {
     EXPECT_FALSE(spp::codegen::DoesTargetSupportSafeStack(llvm::Triple(triple))) << triple;
   }
 }
