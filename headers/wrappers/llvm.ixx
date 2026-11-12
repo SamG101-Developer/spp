@@ -102,6 +102,7 @@ export namespace llvm {
   using ::llvm::ConstantTokenNone;
   using ::llvm::ConstantStruct;
   using ::llvm::DEBUG_METADATA_VERSION;
+  using ::llvm::DataLayout;
   using ::llvm::DebugLoc;
   using ::llvm::DIBuilder;
   using ::llvm::DIInliningInfo;
