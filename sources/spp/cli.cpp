@@ -828,7 +828,8 @@ auto spp::cli::HandleBuild(
 
 /// [CHECKED]
 auto spp::cli::HandleRun(
-  const compiler::BuildMode mode, Str const &target) -> bool {
+  const compiler::BuildMode mode, Str const &target,
+  Vec<Str> const &args) -> bool {
   // A library has no entry point, so there is nothing to run. Say so before
   // the fetch and compile, rather than after them as a missing executable.
   SPP_VALIDATE_PROJECT_OR(false, false);
@@ -882,8 +883,9 @@ auto spp::cli::HandleRun(
 
   // Use the memory bound until the stl is stable; todo: also wire to a flag?
   // There have been instances where allocation issues mangled the WSL instance.
-  const auto status = utils::shell::Run(
-    WithMemoryLimit(utils::shell::Quote(utils::files::NativeString(exe_file))));
+  auto command = utils::shell::Quote(utils::files::NativeString(exe_file));
+  for (auto const &arg : args) { command += " " + utils::shell::Quote(arg); }
+  const auto status = utils::shell::Run(WithMemoryLimit(command));
   const auto exited_normally = sys::WIFEXITED(status);
   const auto exit_code = exited_normally
     ? sys::WEXITSTATUS(status)
