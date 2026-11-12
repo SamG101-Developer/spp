@@ -1,0 +1,65 @@
+module;
+#include <spp/macros.hpp>
+
+export module spp.codegen.llvm_debug;
+import spp.codegen.llvm_ctx;
+import spp.utils.features;
+import spp.utils.types;
+import llvm;
+import std;
+
+use(spp::analyse::scopes, struct TypeRef);
+
+/// The debug info a module carries (DWARF; "[binary.debug] info"): a compile
+/// unit per s++ module, a subprogram per function, and a location on every
+/// instruction, so a debugger and a crash report can name the source line. The
+/// language is the vendor code "DW_LANG_lo_user" until S++ has a registered
+/// one.
+namespace spp::codegen {
+  /// Setup the LLVM context's debug info fields, and add any additional flags
+  /// specific to debugging. The "level" indicates "full" for debugging in "dev"
+  /// mode, and "lines" otherwise.
+  SPP_EXP_FUN auto StartDebugInfo(
+    LlvmCtx &ctx, StrView path, Path const &root,
+    utils::features::DebugInfo level) -> void;
+
+  /// Run the "finalisation" function on the debug information builder, which
+  /// invokes the teardown logic, resolving any pending debug info, allowing
+  /// verification and linking. After codegen, before IR is read.
+  SPP_EXP_FUN auto FinishDebugInfo(
+    LlvmCtx const &ctx) -> void;
+
+  /// The file entry for the source at "path", made once per module. Re-query
+  /// returns the existing pointer for the path (create and store if new).
+  SPP_EXP_FUN auto DebugFileOf(
+    LlvmCtx &ctx, StrView path) -> llvm::DIFile*;
+
+  /// Give "fn" its subprogram, at the line of "position" (an ast's start), by
+  /// its S++ name (no linkage name with line tables only). A position with no
+  /// line (generated code) makes an artificial one at line 0, which a debugger
+  /// steps over.
+  SPP_EXP_FUN auto AttachSubprogram(
+    LlvmCtx &ctx, llvm::Function &fn, std::size_t position) -> void;
+
+  /// Update the current debug location so that any debug information emitted
+  /// lands in the line/column "position" of the target block.
+  SPP_EXP_FUN auto SetDebugLocation(
+    LlvmCtx &ctx, std::size_t position) -> void;
+
+  /// The debug type of an S++ type, made once per module: a basic type for a
+  /// number or "Bool"; a pointer for a borrow ("&T", "&mut T"), "NonNull[T]"
+  /// and "Ptr[T]"; an array for "Arr[T, n]"; a structure of its fields, at
+  /// their offsets in the type's own layout, for a class or a tuple; and for a
+  /// variant, its tag, an enumeration naming each member, beside a union of
+  /// the members. A type it cannot describe (one with no layout) is a structure
+  /// of its size with no fields. Nothing for "Void".
+  SPP_EXP_FUN auto DebugTypeOf(
+    LlvmCtx &ctx, TypeRef const &ref) -> llvm::DIType*;
+
+  /// Describe the variable "name", held in "storage" (its stack slot), of type
+  /// "ref", declared at "position", for a debugger to show. A parameter is
+  /// numbered ("arg_no", from 1); 0 for any other variable.
+  SPP_EXP_FUN auto DeclareVariable(
+    LlvmCtx &ctx, llvm::Value *storage, StrView name, TypeRef const &ref,
+    std::size_t position, unsigned arg_no) -> void;
+}
