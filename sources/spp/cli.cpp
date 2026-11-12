@@ -742,8 +742,8 @@ auto spp::cli::HandleVcs() -> bool {
     // Otherwise, update the branch (for mutating tags like "master"). Same
     // error system as above; attempt, then check if host is up etc.
     else if (
-      not RunGit("-C " + quoted_target + " checkout " + quoted_branch) or
-      not RunGit("-C " + quoted_target + " pull origin " + quoted_branch)) {
+      not RunGit("-C " + quoted_target + " checkout --quiet " + quoted_branch) or
+      not RunGit("-C " + quoted_target + " pull --quiet origin " + quoted_branch)) {
       if (host_is_up()) { return false; }
       std::cerr
         << "Warning: '"s << host
@@ -1069,7 +1069,7 @@ auto spp::cli::HandleTest(
   // Run the tests, and check for a exit status of 0 (this can include failed
   // tests, but it means all the tests ran without crashing / aborting).
   if (run("") == 0) {
-    std::cout << "All " << c.TestCount() << " test(s) passed." << std::endl;
+    std::cout << "All " << c.TestCount() << " test(s) passed." << '\n';
     return;
   }
 
@@ -1079,7 +1079,7 @@ auto spp::cli::HandleTest(
   // one result rather than the rest of the suite.
   std::cout
     << "\nA test did not finish. Re-running each test in its own process.\n"
-    << std::endl;
+    << '\n';
   std::cout.flush();
 
   // Collect the crashing tests by running one at a time and collecting the exit
@@ -1092,7 +1092,7 @@ auto spp::cli::HandleTest(
   // Dump all the failed test information.
   std::cout
     << "\n" << (c.TestCount() - failed.size()) << "/" << c.TestCount()
-    << " test(s) passed." << std::endl;
+    << " test(s) passed." << '\n';
   if (failed.empty()) {
     // Every test passes on its own, so what failed is something they share
     // rather than any one of them.
