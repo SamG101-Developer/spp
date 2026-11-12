@@ -25,6 +25,7 @@ import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
+import spp.asts.expression_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_optional_ast;

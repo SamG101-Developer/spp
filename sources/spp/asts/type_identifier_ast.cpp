@@ -31,6 +31,7 @@ import spp.asts.identifier_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.type_unary_expression_ast;
 import spp.asts.type_unary_expression_operator_ast;

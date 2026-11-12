@@ -15,6 +15,7 @@ import spp.analyse.utils.packs;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.asts.convention_ast;
+import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;

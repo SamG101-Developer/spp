@@ -28,6 +28,7 @@
 - [Scorecard reads pruned check runs](scorecard-reads-pruned-check-runs.md) — CI-Tests 0/6 comes from nightly prune-runs (3 days) deleting check runs, not from missing CI
 - [Python CodeQL alerts frozen](python-codeql-alerts-frozen.md) — old py/* alerts date from the removed default setup; codeql-python ignores tests, so dismiss gtest-parallel ones
 - [Benchmark records branch](benchmark-records-branch.md) — orphan `benchmarks` branch, records/<sha>/<kind>.json; only Publish Benchmarks writes; Rust pinned by component tarball
+- [sys module has no std](sys-module-has-no-std.md) — no braced-list loops or std types in sys.ixx; builds on Linux, fails every Windows lane
 - [windows.h before SDK headers](windows-h-before-sdk-headers.md) — psapi.h etc. need windows.h first; sorted includes break MSVC sys.ixx with WINAPI/BOOL errors
 - [LLVM Windows pins](llvm-win-mac-pins-refreshed.md) — fixed tags refresh-pins.sh moves to the newest final <llvm-lib major>.x.y; Linux floats on apt, macOS on brew llvm
 - [MSVC: interface names not inherited](msvc-interface-names-not-inherited.md) — .cpp misses its interface use() decls; templates lose them when instantiated elsewhere; use_alias / qualify

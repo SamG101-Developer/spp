@@ -22,6 +22,7 @@ import spp.analyse.utils.visibility_utils;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.ast;
 import spp.asts.convention_ast;
+import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.generic_argument_ast;

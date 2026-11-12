@@ -31,6 +31,8 @@ auto spp::analyse::utils::pattern_solver::Helper(...) -> T { ... }
   `SPP_EXP_CLS` entities (class methods, `extern "C++"` exported functions) that need global-module attachment. The
   helpers have internal linkage and need none. Keep a helper's declaration and definition on the same side, so they
   are not attached to two different modules. See [[spp-mod-begin-extern-cpp-linkage]].
+  Outside the block, MSVC needs every AST type a helper uses imported directly
+  ([[msvc-needs-member-type-imported]]).
 - `static` goes after any leading attribute macro (`SPP_ATTR_HOT static auto`); the other order does not compile.
 - Order inside the block is by dependency. A constant or type that names a helper (`kBinaryOps` taking
   `&ShiftRightOfType`, a class whose inline methods call one) goes after the function declarations, in a second
