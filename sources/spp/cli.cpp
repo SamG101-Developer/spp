@@ -519,8 +519,13 @@ auto spp::cli::RunCli(
     "-t,--target", run_target,
     CMD_HELP_TEXT_BUILD_TARGET);
 
+  auto run_args = Vec<Str>();
+  run_cmd->add_option(
+    "args", run_args,
+    "Arguments for the program, after '--' (spp run -- a b)");
+
   run_cmd->callback([&] {
-    if (not HandleRun(*compiler::ModeFromName(run_mode), run_target)) { throw CLI_ERR; }
+    if (not HandleRun(*compiler::ModeFromName(run_mode), run_target, run_args)) { throw CLI_ERR; }
   });
 
   // The "spp clean" command, which deletes artefacts created by the build (such
