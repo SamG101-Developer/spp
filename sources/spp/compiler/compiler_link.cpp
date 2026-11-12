@@ -31,12 +31,12 @@ namespace spp::compiler {
   namespace {
     /// Record the size of "module" for the stats report, under "when": its
     /// functions with bodies, their basic blocks, and their instructions.
-    auto RecordIrSize(llvm::Module const &module, const StrView when) -> void {
+    auto RecordIrSize(llvm::Module const &llvm_mod, const StrView when) -> void {
       if (not utils::stats::Enabled()) { return; }
       auto functions = 0ull;
       auto blocks = 0ull;
       auto instructions = 0ull;
-      for (auto const &fn : module) {
+      for (auto const &fn : llvm_mod) {
         if (fn.isDeclaration()) { continue; }
         ++functions;
         blocks += fn.size();

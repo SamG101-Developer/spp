@@ -130,7 +130,8 @@ namespace spp::analyse::utils::visibility_utils {
     auto DefinitionModuleOf(Symbol const &sym, Scope const &type_scope) -> Scope const* {
       if constexpr (std::same_as<Symbol, VariableSymbol>) {
         if (sym.ScopeDefinedIn != nullptr) {
-          if (const auto module = sym.ScopeDefinedIn->GetParentModule(); module != nullptr) { return module; }
+          const auto own_module = sym.ScopeDefinedIn->GetParentModule();
+          if (own_module != nullptr) { return own_module; }
         }
       }
       return type_scope.GetParentModule();

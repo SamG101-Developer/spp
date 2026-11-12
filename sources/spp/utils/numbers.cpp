@@ -88,7 +88,8 @@ namespace {
     // Carry from the last digit kept, which may lengthen the number.
     if (round_up) {
       auto carry = true;
-      for (auto i = cut; carry and i-- > 0;) {
+      for (auto i = cut; carry and i > 0;) {
+        --i;
         if (not is_digit(i)) { continue; }
         carry = text[i] == '9';
         text[i] = carry ? '0' : static_cast<char>(text[i] + 1);

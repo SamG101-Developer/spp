@@ -152,7 +152,7 @@ namespace spp::codegen {
 
       auto ParamsOf(
         Vec<llvm::Type*> const &value_types, Vec<bool> const &is_signed,
-        llvm::Module const &module) const -> Vec<AbiParam> override {
+        llvm::Module const &llvm_mod) const -> Vec<AbiParam> override {
         const auto &triple = TargetTriple();
         const auto arch = triple.getArch();
         const auto by_val = arch == llvm::Triple::ppc or arch == llvm::Triple::ppcle or arch == llvm::Triple::m68k;
@@ -163,7 +163,7 @@ namespace spp::codegen {
         const auto s390x = arch == llvm::Triple::systemz;
         const auto win64 = arch == llvm::Triple::x86_64 and triple.isOSWindows();
         const auto int_or_ptr = s390x or win64;
-        const auto &layout = module.getDataLayout();
+        const auto &layout = llvm_mod.getDataLayout();
 
         auto params = Vec<AbiParam>();
         params.reserve(value_types.size());

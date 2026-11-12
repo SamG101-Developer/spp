@@ -512,9 +512,9 @@ namespace spp::lsp::resolution_index {
       // that the symbol was defined in.
       auto definition = SourceSpan();
       if (sym.LinkedScope != nullptr) {
-        if (const auto module = AstAs<ModulePrototypeAst>(sym.LinkedScope->AstNode); module != nullptr) {
+        if (const auto mod_proto = AstAs<ModulePrototypeAst>(sym.LinkedScope->AstNode); mod_proto != nullptr) {
           definition = SourceSpan{
-            .File = spp::utils::files::DisplayString(module->FilePath), .Generated = false
+            .File = spp::utils::files::DisplayString(mod_proto->FilePath), .Generated = false
           };
         }
       }

@@ -303,8 +303,7 @@ namespace {
     }
 
     // Return the type scope, and the final type part.
-    auto const *final = type_parts.back();
-    return {shifted_scope, final};
+    return {shifted_scope, type_parts.back()};
   }
 
   /// The binary operator a comp identity's operation spells ("+", "<<"), as the token a written one carries.

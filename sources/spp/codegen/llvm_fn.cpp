@@ -94,22 +94,22 @@ auto spp::codegen::BuildFnValue(
   // forwards everything else to the function unchanged. One
   // function can be the value of two function types, which are
   // two types to call it as, so the thunk is per type.
-  const auto module = ctx->Module.get();
-  const auto callee = GetOrAddTargetIntoCurrentModule(target, *module);
+  const auto llvm_mod = ctx->Module.get();
+  const auto callee = GetOrAddTargetIntoCurrentModule(target, *llvm_mod);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   auto type_hex = Str(8, '0');
   auto t = CfiFnType(fn_sup);
   for (auto i = 8uz; i > 0; --i, t >>= 4) { type_hex[i - 1] = "0123456789abcdef"[t & 0xfu]; }
   const auto thunk_name = callee->getName().str() + ".as_value." + type_hex;
 
-  auto thunk = module->getFunction(thunk_name);
+  auto thunk = llvm_mod->getFunction(thunk_name);
   if (thunk == nullptr) {
     auto thunk_param_tys = spp::Vec<llvm::Type*>{ptr_ty};
     for (const auto param_ty : callee->getFunctionType()->params()) { thunk_param_tys.push_back(param_ty); }
 
     thunk = llvm::Function::Create(
       llvm::FunctionType::get(callee->getReturnType(), thunk_param_tys, false),
-      llvm::GlobalValue::InternalLinkage, thunk_name, module);
+      llvm::GlobalValue::InternalLinkage, thunk_name, llvm_mod);
     StampCfiFn(*thunk, fn_sup);
     auto builder = llvm::IRBuilder(llvm::BasicBlock::Create(*ctx->Context, "entry", thunk));
     auto forwarded = spp::Vec<llvm::Value*>();
