@@ -43,6 +43,9 @@ Each entry gives:
 | U24 | LLVM             | `Module::renumberMetadataForAssembly()` (LLVM 24)               | 2026-11-10   |
 | U25 | LLVM             | `HasRunOnLoopT` out of an anonymous namespace (#233326)         | 2026-11-10   |
 | U26 | LLVM             | KCFI type id kept in the function's atom on Mach-O (#241037)    | 2026-11-10   |
+| U27 | LLVM             | SafeStack pointer accessor on Windows (DLLs cannot export TLS)  | 2026-11-11   |
+| U28 | GCC, clang, MSVC | P2243R0: C language linkage for templates (C++29, as a DR)      | 2026-11-11   |
+| U29 | LLVM             | SafeStack keeps a moved variable's debug location a frame slot  | 2026-11-12   |
 
 ## U1. LLVM: the new pass manager's codegen pipeline on every target
 
@@ -600,6 +603,105 @@ Each entry gives:
 - **When it lands:** on the bump to the first LLVM that has it (Homebrew's, on macOS), drop the `anchor_types` prefix
   data from `FinishCfi`.
 - **Last checked:** 2026-11-10.
+
+## U27. LLVM: a SafeStack pointer accessor on Windows
+
+- **Library:** LLVM (`llvm/include/llvm/IR/RuntimeLibcalls.td`, `isSafeStackPointerAddress`;
+  `TargetLoweringBase::getSafeStackPointerLocation`). The root cause is PE/COFF itself: a DLL cannot export a
+  thread-local variable (`__declspec(dllimport)` on a `__declspec(thread)` variable is an error), which only a Windows
+  loader change could lift: Microsoft Developer Community
+  [11181499](https://developercommunity.visualstudio.com/t/DLL-linker-should-support-exporting-__de/11181499).
+- **Want:** the `__safestack_pointer_address` libcall (a function returning the address of the current thread's unsafe
+  stack pointer) available on Windows triples, so SafeStack calls it instead of naming the thread-local
+  `__safestack_unsafe_stack_ptr`.
+- **Why:** sppc is a DLL on Windows, so the thread-local `__safestack_unsafe_stack_ptr` it defines cannot be imported by
+  the program, and the name LLVM emits is undefined at `lld-link`. Windows therefore has no split stack
+  (`[memory.stack] split`), and on Windows AArch64 none of the `pac_ret` fallback that rests on it. An accessor is an
+  ordinary function, which a DLL can export. The same limit applies to any other thread-local that compiled code would
+  need to read out of sppc. Details: `notes/codegen/link-flags-per-object-format.md`.
+- **Meanwhile:** `codegen::DoesTargetSupportSafeStack` (`../sources/spp/codegen/llvm_support.cpp`) returns false for
+  any Windows triple, so `CheckTargetSupport` (`../sources/spp/utils/features.cpp`) leaves the default `split` out and
+  refuses an explicit `split = true`. sppc's `_sppc_export` (`sppc/headers/sppc/macros.h`) documents the limit.
+- **Status (2026-11-11):** `isSafeStackPointerAddress` is `(AArch64 | ARM | Thumb | X86) and Android` on `main`
+  `4479eb614a66`. The hidden `-safestack-use-pointer-address` option forces the accessor, but still needs the libcall,
+  so on Windows it gives "no location available for safestack pointer address". No LLVM issue or patch known. On the
+  root cause, Developer Community
+  [11181499](https://developercommunity.visualstudio.com/t/DLL-linker-should-support-exporting-__de/11181499) asks for
+  DLLs to export thread-locals (linked here 2026-11-11); expect "by design" or a redirect to Feedback Hub.
+- **Check:** whether Developer Community 11181499 has been answered, forwarded or closed. For LLVM:
+  `llvm::RTLIB::RuntimeLibcallsInfo(triple).getSupportedLibcallImpl("__safestack_pointer_address")` is not
+  `Unsupported` for `x86_64-pc-windows-msvc`; or `llc -mtriple=x86_64-pc-windows-msvc` on a `safestack` function
+  with an array alloca calls `__safestack_pointer_address`.
+- **When it lands:** export `__safestack_pointer_address` from sppc (returning `&__safestack_unsafe_stack_ptr`), drop
+  the Windows early return from `DoesTargetSupportSafeStack`, and check whether the accessor or the thread-local is
+  chosen (the accessor wins in `getSafeStackPointerLocation` once available). Then run the Windows STL conformance lane
+  with the default `split`. Alternative without LLVM: link sppc statically on Windows.
+- **Last checked:** 2026-11-11.
+
+## U28. GCC, clang, MSVC: language linkage for templates (P2243R0) (long term)
+
+- **Library:** the C++ standard, [P2243R0](https://wg21.link/P2243R0) (Herring, Tong; resolves CWG1463), accepted for
+  C++29 as a Defect Report, so it applies to earlier `-std` modes too. Then each compiler that builds spp: GCC
+  [PR 125823](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=125823) (under the C++29 meta-bug 125821), clang's C++2d
+  status table, MSVC.
+- **Want:** templates allowed inside `extern "C"`. The paper deletes the `[temp.pre]` rule that "a template, an explicit
+  specialization, and a partial specialization shall not have C language linkage", so these become valid:
+  `extern "C" template<class T> void del(void *p) { delete static_cast<T*>(p); }` (a function template whose
+  specializations have C-linkage function *types*), and `extern "C" template<class T> using getter = void(*)(T);` (a
+  dependent C-linkage callback type, which deduction can see through).
+- **Why:** speculative, nothing waits on it yet. It could let a C++ layer give S++'s `!ffi` generic, typed C callbacks
+  (one trampoline template instead of a hand-written function per type) and bind C++ libraries through templated
+  C-ABI shims. Note the limit: only the function *type* gets C linkage. Specializations still have no unmangled C
+  names, so an `!ffi` `symbol` cannot name one; a shim still has to export a plain `extern "C"` function or pass the
+  specialization's address.
+- **Meanwhile:** nothing uses it. Without it, one writes a non-dependent `extern "C" typedef void deleter(void*);`
+  and declares `template<class> deleter del;`, or a separate `extern "C"` function per type. In practice GCC and clang
+  ignore language linkage on function types (CWG1555), so the paper changes little beyond lifting the error.
+- **Status (2026-11-11):** GCC PR 125823 is NEW, version 17.0, no patch or assignee. Its only comment (opened
+  2026-06-16) records acceptance as a DR. It links PR 122888, where clang warns about gccrs's `extern "C"` declarations
+  returning `FFIVec<Piece>`. clang's `cxx_status.html` on `main` `4479eb614a66` lists P2243R0 under C++2d as "No",
+  and CWG1463 (`extern "C"` alias templates) as "Unknown"; no llvm-project issue or PR mentions it. MSVC: not checked.
+- **Check:** PR 125823's status and target milestone (Bugzilla's web page blocks scripts; the REST API at
+  `https://gcc.gnu.org/bugzilla/rest/bug/125823` works); the P2243R0 row in clang's `clang/www/cxx_status.html`; MSVC's
+  C++ conformance table on Microsoft Learn. Quick test: `extern "C" template<class T> void del(void *p);` compiles.
+- **When it lands:** once GCC, clang and MSVC at the versions CI uses all accept it, decide whether the FFI design wants
+  it (the C++-library binding or generic callbacks above), and write that up as a next-steps item first.
+- **Last checked:** 2026-11-11.
+
+## U29. LLVM: SafeStack keeps a moved variable's debug location a frame slot
+
+- **Library:** LLVM (`llvm/lib/CodeGen/SafeStack.cpp`, which rewrites each moved alloca's `#dbg_declare` with
+  `replaceDbgDeclare` onto the unsafe stack pointer plus an offset; FastISel and SelectionDAG then lower a declaration
+  whose address is not a static alloca to a `DBG_VALUE`).
+- **Want:** a variable SafeStack moves to the unsafe stack described by one location for the whole function (as a
+  static alloca's declaration is, a frame-index entry), not tracked instruction by instruction.
+- **Why:** with full debug info (`[binary.debug] info = "full"`, the dev default) and `[memory.stack] split` (on by
+  default on Linux), every moved variable becomes a `DBG_VALUE` on the register holding the base pointer. Once that
+  register is reused, a debugger shows the variable as optimised out, even at dev (a `Vec` in an ordinary function,
+  2026-11-12). And the back end's history and location-list machinery (`calculateDbgEntityHistory`, `buildLocationList`, a label before each instruction) scales with them. On
+  `check-intrinsics`' largest program (one function, 31,066 declarations after always-inlining) object emission went
+  from 0.9 s to 9.7 s and peak memory from 1.8 GB to 3.5 GB; with `split = false` full debug info costs nothing
+  measurable (0.73 s, 1.83 GB). Clang with `-fsanitize=safe-stack -O0 -g` takes the same path.
+- **Meanwhile:** `spp build --for-debugger` (`features::LeaveOutForDebugger`) leaves the split stack out unless
+  spp.toml sets it, and spp-idea's Debug builds with it, so the IDE shows every variable. An ordinary program pays
+  little for the cost side (`./project` at dev: 3.8 s against 3.4 s, 9 MB more at peak).
+  `tests/codegen/check-intrinsics.sh` builds its programs with `info = "lines"`, as four at once ran WSL out of memory.
+- **Status (2026-11-12):** found by profiling (`perf`, with `kernel.perf_event_paranoid=1`). Patch open upstream:
+  https://github.com/llvm/llvm-project/pull/242016 (from `users/samg101-developer/safestack-debug-loc`): SafeStack stores the base pointer in a slot on
+  the regular stack, made with or without debug info so `-g` does not change the code, and anchors each declaration
+  on it with `DW_OP_deref` and the offset, which stays a frame-index location.
+- **Also `#dbg_value`s (2026-11-12):** a binding that can be moved is now described by `#dbg_value`s of its slot (B3,
+  so a move can end it). SafeStack rewrites those with `replaceDbgValueForAlloca` onto the base pointer's SSA value
+  (`SafeStack.cpp`, beside the patched `replaceDbgDeclare` calls), so under the split stack they read wrong:
+  garbage before the value is given, not available while it is held (a `Vec` at dev without `--for-debugger`). At
+  `-O0` the spilled base pointer's slot was even used as the pointer itself (`RSP+8, -24, deref`), a wrong address.
+  The patch now anchors them on the same slot too (`replaceDbgValueForAlloca` gains a `DIExprFlags` argument,
+  `DerefBefore`): `RSP+112, deref, -24`, checked on the move probe's IR (2026-11-12).
+- **Check:** an LLVM issue or patch about SafeStack and debug locations; or build `check-intrinsics`' `float-F128`
+  program at dev with full debug info and compare `emit-object` (`--emit-stats`) with and without `split`.
+- **When it lands:** drop `info = "lines"` from `check-intrinsics.sh`, and `--for-debugger` with
+  `LeaveOutForDebugger` (and spp-idea's use of it), once the LLVM release spp builds against has it.
+- **Last checked:** 2026-11-12.
 
 ## Resolved
 

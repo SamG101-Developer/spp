@@ -13,7 +13,9 @@ return address; a signing function's `paciasp` is its landing pad. **Elsewhere e
 KCFI (`cfi`), `pac_ret` on the split stack (`[memory.stack] split`, which keeps what could overflow away from return
 addresses, and fails the build itself where the target has none). So `cfi = false` needs `bti = false`, and
 `split = false` needs `pac_ret = false`, off AArch64 ELF: every cross-codegen row, CI lane and check script that turns
-one off turns the other off beside it.
+one off turns the other off beside it. Where the target has no split stack (`CheckTargetSupport`: no unsafe stack
+pointer, as on Windows, or no canary for it beside `protect`), a default `split` is left out and takes a default
+`pac_ret` with it; one set explicitly is refused (`split`) or fails at the signing pass (`pac_ret`).
 
 The linker keeps the executable's BTI property only if every object linked has it, and drops it silently otherwise.
 **Some toolchains' own start files lack it** (Ubuntu 24.04's glibc `crti.o`/`crtn.o`; Arm's aarch64_be gcc's

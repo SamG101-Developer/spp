@@ -1,7 +1,7 @@
 ---
 name: spp-test-writing-idioms
 description: "Syntax that costs a rebuild each time it is guessed wrong when writing s++ tests or benchmarks"
-updated: 2026-11-03
+updated: 2026-11-11
 ---
 
 Collected while writing std unit tests — each of these was found by a failed build, so check here first.
@@ -44,5 +44,10 @@ Found writing the run-time benchmarks (`benchmarks/runtime`, 2026-11-02), for a 
   function value (`FunRef[(U64,), U64]`) passed to a `!no_inline` function (`use std::llvm::no_inline`).
 - `v[mut i]@ = x` writes an element; `v[i]@` reads one. `F64::from(u)`, `S64::from(f)` (truncating) and
   `USize::from(u64)` convert.
+
+**C++ unit tests that lex:** call `lexer.Lex()` before `lexer.PreludeTokenIndex()`, in separate statements, never
+both as arguments of one call (`ForFile(lexer.Lex(), path, lexer.PreludeTokenIndex())`): C++ does not fix the order
+arguments are evaluated in, and GCC reads the index first, before lexing has set it, so the prelude reads as the
+author's code (2026-11-11, `test_msc_source_positions.cpp`, `test_msc_error_files.cpp`).
 
 Related: [[spp-linear-types]], [[build-workflow]], [[add-tests-even-if-failing]].

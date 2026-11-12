@@ -46,6 +46,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Stale module objects](build/cmake-stale-module-objects.md) — a changed .cpp may not rebuild; touch it
 - [Split macro headers](build/split-macro-headers.md) — macros.hpp edit = 11 min rebuild; use narrow headers
 - [Genex on one line](build/cmake-genex-no-line-breaks.md) — a wrapped generator expression splits into args; ninja "bad $-escape"; use a variable
+- [Enable debugging](build/enable-debugging-script.md) — .tools/enable-debugging.sh: perf + gdb -p permissions (sysctl, until WSL restarts); --off restores
 - [ASAN for LLVM crashes](build/asan-build-for-llvm-crashes.md) — gdb can't unwind LLVM; -DSPP_SANITIZER=address
 - [heaptrack needs mimalloc removed](build/heaptrack-needs-mimalloc-removed.md) — -DSPP_NO_MIMALLOC build + patchelf out libmimalloc
 - [Stderr behind progress bar](build/spp-stderr-behind-progress-bar.md) — tr '\r' '\n' before grepping
@@ -60,5 +61,5 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (23)
 - [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (25)
 - [Language semantics](language/INDEX.md) — linear types, drops, borrows, case/patterns, closures, generators (27)
-- [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path (38)
+- [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path, source lines (41)
 - [Std and sibling repos](repos/INDEX.md) — SPP-STL and sppc: what lives where, prelude, link-time library checks (7)
