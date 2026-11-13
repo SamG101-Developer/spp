@@ -323,8 +323,13 @@ if [[ "${PLATFORM}" != windows && "$(id -u)" != 0 ]]; then
 fi
 
 # "spp self install", in a scratch home: never the real HOME, LOCALAPPDATA or PATH, and on Windows the user Path is
-# saved here and put back on exit.
+# saved here and put back on exit. On Linux and macOS the home is reached through a symbolic link, so the path the
+# setup records differs from the installed spp's own (resolved) one, as macOS's /var -> /private/var makes it.
 HOME_DIR="${WORK}/home"
+if [[ "${PLATFORM}" != windows ]]; then
+    mkdir -p "${WORK}/home-real"
+    ln -s home-real "${HOME_DIR}"
+fi
 mkdir -p "${HOME_DIR}/.config/fish"
 printf 'export EDITOR=vi\n' > "${HOME_DIR}/.bashrc"
 # shellcheck disable=SC2016 # the line as written into .bashrc, $HOME and all

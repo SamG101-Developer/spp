@@ -139,8 +139,12 @@ namespace spp::cli {
   /// entries written as %VARIABLE% stay unexpanded (as [Environment]'s
   /// getter would not keep them), and written back as an expandable string.
   /// Setting a throwaway user variable afterwards broadcasts the change, so
-  /// programs started from now on see it. "$d" is "dir".
-  static auto RunOnUserPath(Path const &dir, StrView change) -> bool;
+  /// programs started from now on see it. "$d" is "entry", an entry's text.
+  static auto RunOnUserPath(StrView entry, StrView change) -> bool;
+
+  /// The user Path's entries, each as stored (a %VARIABLE% unexpanded) beside
+  /// it expanded, which is the directory it names.
+  static auto UserPathEntries() -> Vec<Pair<Str, Str>>;
 #endif
 
   /// Put "dir" on the user's PATH, for shells started from now on: on
@@ -150,8 +154,12 @@ namespace spp::cli {
   /// and a fish snippet where fish is set up. What it did, one line each.
   static auto AddToPath(Path const &dir, Path const &home) -> Vec<Str>;
 
-  /// Take back what "AddToPath" did, where it did it. What it undid, one
-  /// line each.
+  /// Take back what "AddToPath" did for "dir", where it did it. The setup is
+  /// found by the directory it names, not by its spelling: install records
+  /// the directory as the environment spells it, which can differ from the
+  /// running spp's own path, resolved (a symbolic link in HOME, as macOS's
+  /// /var is; an 8.3 short name in LOCALAPPDATA, as GitHub's Windows runners'
+  /// is). What it undid, one line each.
   static auto RemoveFromPath(Path const &dir, Path const &home) -> Vec<Str>;
 }
 
@@ -423,8 +431,8 @@ auto spp::cli::SameContent(Path const &a, Path const &b) -> bool {
 }
 
 #if SPP_PLATFORM_WINDOWS
-auto spp::cli::RunOnUserPath(Path const &dir, StrView change) -> bool {
-  auto quoted = utils::files::NativeString(dir);
+auto spp::cli::RunOnUserPath(const StrView entry, const StrView change) -> bool {
+  auto quoted = Str(entry);
   for (auto at = quoted.find('\''); at != Str::npos; at = quoted.find('\'', at + 2)) { quoted.insert(at, 1, '\''); }
   const auto script = "$d='" + quoted + "'; "
     "$k=[Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment',$true); "
@@ -434,13 +442,40 @@ auto spp::cli::RunOnUserPath(Path const &dir, StrView change) -> bool {
     "[Environment]::SetEnvironmentVariable('spp_path_refresh',$null,'User')";
   return utils::shell::Run("powershell -NoProfile -NonInteractive -Command \"" + script + "\"") == 0;
 }
+
+auto spp::cli::UserPathEntries() -> Vec<Pair<Str, Str>> {
+  // Written one entry a line, as stored and expanded with a tab between, in
+  // UTF-8 so that a path outside the console's code page survives.
+  auto random = std::random_device();
+  const auto listing = std::filesystem::temp_directory_path() / ("spp-user-path-" + std::to_string(random()) + ".txt");
+  const auto script = Str("[Console]::OutputEncoding=[Text.Encoding]::UTF8; "
+    "$k=[Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment'); "
+    "$p=$k.GetValue('Path','',[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames); "
+    "foreach ($e in ($p -split ';')) { "
+    "if ($e -ne '') { $e + [char]9 + [Environment]::ExpandEnvironmentVariables($e) } }");
+  auto entries = Vec<Pair<Str, Str>>();
+  if (utils::shell::Run("powershell -NoProfile -NonInteractive -Command \"" + script + "\" > "
+    + utils::shell::Quote(utils::files::NativeString(listing))) == 0) {
+    auto lines = std::istringstream(utils::files::ReadBytes(listing).value_or(""));
+    for (auto line = Str(); std::getline(lines, line);) {
+      if (line.ends_with('\r')) { line.pop_back(); }
+      if (const auto tab = line.find('\t'); tab != Str::npos) {
+        entries.emplace_back(line.substr(0, tab), line.substr(tab + 1));
+      }
+    }
+  }
+  auto ec = std::error_code();
+  std::filesystem::remove(listing, ec);
+  return entries;
+}
 #endif
 
 auto spp::cli::AddToPath(Path const &dir, Path const &home) -> Vec<Str> {
   auto done = Vec<Str>();
 #if SPP_PLATFORM_WINDOWS
   static_cast<void>(home);
-  if (RunOnUserPath(dir, "if ($parts -notcontains $d) { $k.SetValue('Path', ((@($d) + $parts) -join ';'), "
+  if (RunOnUserPath(utils::files::NativeString(dir),
+    "if ($parts -notcontains $d) { $k.SetValue('Path', ((@($d) + $parts) -join ';'), "
     "[Microsoft.Win32.RegistryValueKind]::ExpandString) };")) {
     done.push_back("added " + utils::files::NativeString(dir) + " to your user Path");
   }
@@ -488,16 +523,25 @@ auto spp::cli::RemoveFromPath(Path const &dir, Path const &home) -> Vec<Str> {
   auto done = Vec<Str>();
 #if SPP_PLATFORM_WINDOWS
   static_cast<void>(home);
-  if (RunOnUserPath(dir, "$kept=@($parts | Where-Object { $_ -ne $d }); if ($kept.Count -ne $parts.Count) { "
-    "$k.SetValue('Path', ($kept -join ';'), [Microsoft.Win32.RegistryValueKind]::ExpandString) };")) {
-    done.push_back("took " + utils::files::NativeString(dir) + " out of your user Path, if it was there");
+  for (auto const &[stored, expanded] : UserPathEntries()) {
+    if (not SameFile(Path(std::u8string(expanded.begin(), expanded.end())), dir)) { continue; }
+    if (RunOnUserPath(stored, "$kept=@($parts | Where-Object { $_ -ne $d }); if ($kept.Count -ne $parts.Count) { "
+      "$k.SetValue('Path', ($kept -join ';'), [Microsoft.Win32.RegistryValueKind]::ExpandString) };")) {
+      done.push_back("took " + stored + " out of your user Path");
+    }
   }
 #else
   // Only the setup that points at "dir": uninstalling some other copy of
   // spp leaves the installed one on PATH.
+  // The directory ~/.spp/env records is in its export line, before ":${PATH}".
   auto ec = std::error_code();
   const auto env_text = std::filesystem::exists(home / "env") ? utils::files::ReadFile(home / "env") : Str();
-  if (env_text.find("\"" + utils::files::NativeString(dir) + ":") == Str::npos) { return done; }
+  constexpr auto kExport = StrView("export PATH=\"");
+  const auto from = env_text.find(kExport);
+  const auto to = from == Str::npos ? Str::npos : env_text.find(":${PATH}\"", from);
+  if (to == Str::npos) { return done; }
+  const auto recorded = Path(env_text.substr(from + kExport.size(), to - from - kExport.size()));
+  if (not SameFile(recorded, dir)) { return done; }
   if (std::filesystem::remove(home / "env", ec)) {
     done.push_back("removed " + utils::files::NativeString(home / "env"));
   }
