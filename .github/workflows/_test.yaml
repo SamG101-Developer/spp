@@ -113,28 +113,29 @@ jobs:
       # DWARF tools from apt.llvm.org, at the LLVM release spp is
       # built against, and gdb, built from its pinned release with
       # Python and cached as valgrind is. Neither is on the image.
+      # Linux only: the checks that read them run there alone.
       - name: Fetch llvm.sh
-        if: contains(matrix.suites, 'codegen')
+        if: contains(matrix.suites, 'codegen') && runner.os == 'Linux'
         run: bash .github/scripts/setup/fetch-llvm-sh.sh
 
       - name: Install lldb and LLVM's DWARF tools
-        if: contains(matrix.suites, 'codegen')
+        if: contains(matrix.suites, 'codegen') && runner.os == 'Linux'
         run: bash .github/scripts/setup/install-debuggers-linux.sh
 
       - name: Cache gdb
         id: gdb-cache
-        if: contains(matrix.suites, 'codegen')
+        if: contains(matrix.suites, 'codegen') && runner.os == 'Linux'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.tools/gdb
           key: gdb-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup/install-gdb-linux.sh') }}
 
       - name: Install gdb (cache miss)
-        if: contains(matrix.suites, 'codegen') && steps.gdb-cache.outputs.cache-hit != 'true'
+        if: contains(matrix.suites, 'codegen') && runner.os == 'Linux' && steps.gdb-cache.outputs.cache-hit != 'true'
         run: bash .github/scripts/setup/install-gdb-linux.sh
 
       - name: Expose gdb
-        if: contains(matrix.suites, 'codegen')
+        if: contains(matrix.suites, 'codegen') && runner.os == 'Linux'
         run: |
           echo "$SPP_CI_GDB_PREFIX/bin" >> "$GITHUB_PATH"
           "$SPP_CI_GDB_PREFIX/bin/gdb" --version | head -1
@@ -188,13 +189,17 @@ jobs:
           # unwinding and reproducibility, each against its key
           # turned off, and the debug info, read with gdb and lldb.
           # cc, c++ and objdump are on the image; a debugger or
-          # DWARF tool missing fails rather than skipping.
+          # DWARF tool missing fails rather than skipping. On macOS
+          # and Windows, the checks marked for them ("# platforms:").
           - name: Codegen checks
             if: contains(matrix.suites, 'codegen')
             continue-on-error: ${{ matrix.suites != 'codegen' }}
             env:
               SPP_CI_REQUIRE_TOOLS: "1"
-            run: bash tests/codegen/run.sh build/spp
+            run: |
+              exe=""
+              [ "$RUNNER_OS" = Windows ] && exe=".exe"
+              bash tests/codegen/run.sh "build/spp${exe}"
 
           # Each program built at dev and at rel, run, and its
           # output and exit status compared.

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Expand a lane's test matrix: one gtest cell per mode, and per
 # shard where the lane shards (each carrying the shard count),
-# then one cell for the rest - STL conformance, and on Linux
-# valgrind, the codegen checks and the differential suite -
+# then one cell for the rest - STL conformance, the codegen
+# checks, and on Linux valgrind and the differential suite -
 # which the test job runs side by side, all against one build.
 set -euo pipefail
 
@@ -18,16 +18,15 @@ read -ra mode_list <<< "$MODES"
 
 # The suites beyond gtest: name, label, timeout, advisory.
 # STL conformance runs once per lane: it never reads
-# SPP_TEST_MODE. Valgrind, the codegen checks and the
-# differential suite are Linux only, and advisory until each has
-# run clean for a while.
+# SPP_TEST_MODE. Valgrind and the differential suite are Linux
+# only. The codegen checks run on every lane, each check on the
+# platforms its "# platforms:" line names (tests/codegen/run.sh).
+# All three are advisory until each has run clean for a while.
 extras=()
 [ "$STL" = true ] && extras+=("stl|STL Conformance|90|false")
-if [[ "$OS" == ubuntu* ]]; then
-  [ "$VALGRIND" = true ] && extras+=("valgrind|Valgrind Conformance|90|true")
-  [ "$CODEGEN" = true ] && extras+=("codegen|Codegen Checks|90|true")
-  [ "$DIFFERENTIAL" = true ] && extras+=("differential|Differential Suite|90|true")
-fi
+[[ "$OS" == ubuntu* && "$VALGRIND" = true ]] && extras+=("valgrind|Valgrind Conformance|90|true")
+[ "$CODEGEN" = true ] && extras+=("codegen|Codegen Checks|90|true")
+[[ "$OS" == ubuntu* && "$DIFFERENTIAL" = true ]] && extras+=("differential|Differential Suite|90|true")
 
 entries=()
 add() {  # suites label timeout advisory [mode shard]
