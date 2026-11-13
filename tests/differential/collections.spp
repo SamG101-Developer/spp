@@ -1,0 +1,167 @@
+# Vectors and strings: appends past each capacity (the growth path), inserts and removals in the middle, a reverse, an
+# insertion sort by hand, searches, truncation and resizing, a clone compared back, a vector of strings, and strings
+# built, searched, cased and reversed, with multi-byte characters. These loops are inlined and vectorised at rel only.
+
+fun show(what: &StrView, got: U64) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  let text = Str::from(got)
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun show_str(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun checksum(v: &Vec[U64]) -> U64 {
+  let mut sum = 0_u64
+  let mut i = 0_uz
+  loop i < v.len() {
+    sum = sum.mul_wrapping(31_u64).add_wrapping(v[i]@)
+    i += 1_uz
+  }
+  ret sum
+}
+
+fun opt_index(x: Opt[USize]) -> U64 {
+  ret case x of {
+    is Some[USize](val) { U64::from(val) }
+    else { 999_u64 }
+  }
+}
+
+fun opt_value(x: Opt[U64]) -> U64 {
+  ret case x of {
+    is Some[U64](val) { val }
+    else { 999_u64 }
+  }
+}
+
+fun growth() -> Void {
+  let mut v = Vec[U64]::new()
+  let mut regrows = 0_u64
+  let mut last_cap = 0_uz
+  let mut i = 0_u64
+  loop i < 1000_u64 {
+    v.append(i * i)
+    case v.cap() != last_cap {
+      regrows += 1_u64
+      last_cap = v.cap()
+    }
+    i += 1_u64
+  }
+  show("growth len", U64::from(v.len()))
+  show("growth regrows", regrows)
+  show("growth checksum", checksum(&v))
+  std::mem::ops::drop(v)
+}
+
+fun middle() -> Void {
+  let mut v = Vec[U64]::new()
+  let mut i = 0_u64
+  loop i < 10_u64 {
+    v.append(i)
+    i += 1_u64
+  }
+  v.insert_at(5_uz, 100_u64)
+  v.insert_at(0_uz, 200_u64)
+  v.insert_at(v.len(), 300_u64)
+  show("inserted checksum", checksum(&v))
+  show("take_at 3", opt_value(v.take_at(3_uz)))
+  show("take_last", opt_value(v.take_last()))
+  show("take_at past end", opt_value(v.take_at(50_uz)))
+  v.swap(0_uz, 1_uz)
+  v.make_reverse()
+  show("reversed checksum", checksum(&v))
+  show("find 100", opt_index(v.find(&100_u64)))
+  show("find 77", opt_index(v.find(&77_u64)))
+  v.truncate(4_uz)
+  v.resize(7_uz, 42_u64)
+  show("resized checksum", checksum(&v))
+  let copy = v.clone()
+  v[mut 2_uz]@ = 5_u64
+  show("clone equal", case copy == v { 1_u64 } else { 0_u64 })
+  show("clone checksum", checksum(&copy))
+  std::mem::ops::drop(copy)
+  std::mem::ops::drop(v)
+}
+
+fun sorted() -> Void {
+  let mut v = Vec[U64]::new()
+  let mut x = 12345_u64
+  let mut i = 0_u64
+  loop i < 200_u64 {
+    x = x.mul_wrapping(6364136223846793005_u64).add_wrapping(1442695040888963407_u64)
+    v.append(x >> 40_u32)
+    i += 1_u64
+  }
+  let mut j = 1_uz
+  loop j < v.len() {
+    let key = v[j]@
+    let mut k = j
+    loop k > 0_uz and v[k - 1_uz]@ > key {
+      v[mut k]@ = v[k - 1_uz]@
+      k -= 1_uz
+    }
+    v[mut k]@ = key
+    j += 1_uz
+  }
+  let mut ordered = 1_u64
+  let mut m = 1_uz
+  loop m < v.len() {
+    case v[m - 1_uz]@ > v[m]@ { ordered = 0_u64 }
+    m += 1_uz
+  }
+  show("sorted in order", ordered)
+  show("sorted first", v[0_uz]@)
+  show("sorted last", v[199_uz]@)
+  show("sorted checksum", checksum(&v))
+  std::mem::ops::drop(v)
+}
+
+fun strings() -> Void {
+  let mut words = Vec[Str]::new()
+  let mut i = 0_u64
+  loop i < 6_u64 {
+    let mut w = Str::from("item-")
+    let n = Str::from(i * 7_u64)
+    w.append_str(&n)
+    std::mem::ops::drop(n)
+    words.append(w)
+    i += 1_u64
+  }
+  let mut joined = Str::new()
+  let mut k = 0_uz
+  loop k < words.len() {
+    case k > 0_uz { joined.append_str(",") }
+    joined.append_str(words[k])
+    k += 1_uz
+  }
+  std::mem::ops::drop(words)
+  show("joined len", U64::from(joined.len()))
+  show("find item-21", opt_index(joined.find("item-21")))
+  show("rfind item", opt_index(joined.rfind("item")))
+  show("starts with item-0", case joined.starts_with("item-0") { 1_u64 } else { 0_u64 })
+  show_str("upper", joined.to_uppercase())
+  show_str("joined", joined)
+
+  let mut wide = Str::from("naïve café ∑ 𝄞 end")
+  wide.append_str(" + ü")
+  show("wide len", U64::from(wide.len()))
+  show("wide boundary 3", U64::from(wide.ceil_char_boundary(3_uz)))
+  show("wide boundary 15", U64::from(wide.ceil_char_boundary(15_uz)))
+  show("wide find 𝄞", opt_index(wide.find("𝄞")))
+  show_str("wide reversed", wide.to_reverse())
+  show_str("wide", wide)
+}
+
+fun main() -> Void {
+  growth()
+  middle()
+  sorted()
+  strings()
+}

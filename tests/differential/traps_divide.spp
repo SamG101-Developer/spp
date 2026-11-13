@@ -1,0 +1,19 @@
+# Division by a divisor that counts down to zero: the quotients print, then the divide-by-zero check fails, at dev and
+# at rel.
+
+fun show(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun main() -> Void {
+  let mut d = 4_u64
+  let mut i = 0_u64
+  loop i < 10_u64 {
+    show("quotient", Str::from(1000_u64 / d))
+    d -= 1_u64
+    i += 1_u64
+  }
+}

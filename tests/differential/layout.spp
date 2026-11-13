@@ -1,0 +1,140 @@
+# Layout: a variant of classes with payloads of different sizes and alignments, an "Opt" of it, tuples and classes of
+# mixed widths, and an array of them, each passed and returned by value, copied, rebuilt and taken apart. Scalar
+# replacement and memcpy merging at rel must keep every field and every variant's tag where dev puts it.
+
+cls Small {
+  !public a: U8
+}
+
+cls Mid {
+  !public a: U32
+  !public b: U16
+}
+
+cls Big {
+  !public a: U64
+  !public b: U8
+  !public c: U64
+}
+
+cls Mixed {
+  !public flag: Bool
+  !public wide: U64
+  !public narrow: U8
+  !public half: U16
+  !public shape: Small or Mid or Big
+}
+
+sup Small ext std::copy::Copy { }
+sup Mid ext std::copy::Copy { }
+sup Big ext std::copy::Copy { }
+sup Mixed ext std::copy::Copy { }
+
+fun show(what: &StrView, got: U64) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  let text = Str::from(got)
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun make(k: U64) -> Small or Mid or Big {
+  ret case k % 3_u64 of {
+    == 0_u64 { Small(a=U8::from(k)) }
+    == 1_u64 { Mid(a=U32::from(k) * 1000_u32, b=U16::from(k)) }
+    else { Big(a=k << 40_u32, b=U8::from(k + 1_u64), c=k * 3_u64) }
+  }
+}
+
+fun weigh(s: Small or Mid or Big) -> U64 {
+  ret case s of {
+    is Small(a) { U64::from(a) }
+    is Mid(a, b) { U64::from(a) + U64::from(b) * 7_u64 }
+    is Big(a, b, c) { (a >> 32_u32) + U64::from(b) * 11_u64 + c }
+  }
+}
+
+fun grow(s: Small or Mid or Big) -> Small or Mid or Big {
+  ret case s of {
+    is Small(a) { Mid(a=U32::from(a) + 1_u32, b=U16::from(a) * 2_u16) }
+    is Mid(a, b) { Big(a=U64::from(a), b=U8::from(b), c=U64::from(a) + U64::from(b)) }
+    is Big(a, b, c) { Small(a=b + U8::from(c)) }
+  }
+}
+
+fun maybe(k: U64) -> Opt[Small or Mid or Big] {
+  ret case k % 4_u64 == 3_u64 { None } else { Some(val=make(k)) }
+}
+
+fun weigh_maybe(o: Opt[Small or Mid or Big]) -> U64 {
+  ret case o of {
+    is Some[Small or Mid or Big](val) { weigh(val) + 1_u64 }
+    else { 0_u64 }
+  }
+}
+
+fun tuple_roundtrip(t: (U8, U64, Bool, U16, S8)) -> (U8, U64, Bool, U16, S8) {
+  let (a, b, c, d, e) = t
+  let flipped = case c { false } else { true }
+  ret (a.add_wrapping(1_u8), b * 2_u64, flipped, d.sub_wrapping(1_u16), e)
+}
+
+fun tuple_weigh(t: (U8, U64, Bool, U16, S8)) -> U64 {
+  let (a, b, c, d, e) = t
+  let flag = case c { 1_u64 } else { 0_u64 }
+  ret U64::from(a) + b + flag * 100_u64 + U64::from(d) * 3_u64 + U64::from(S64::from(e) + 128_s64)
+}
+
+fun mixed(k: U64) -> Mixed {
+  ret Mixed(flag=k % 2_u64 == 0_u64, wide=k * 1000003_u64, narrow=U8::from(k), half=U16::from(k * 13_u64), shape=make(k))
+}
+
+fun mixed_weigh(m: Mixed) -> U64 {
+  let flag = case m.flag { 1_u64 } else { 0_u64 }
+  ret flag + m.wide + U64::from(m.narrow) * 5_u64 + U64::from(m.half) + weigh(m.shape)
+}
+
+fun main() -> Void {
+  let mut total = 0_u64
+  let mut k = 0_u64
+  loop k < 12_u64 {
+    let s = make(k)
+    let g = grow(s)
+    let gg = grow(g)
+    total = total * 31_u64 + weigh(s) + weigh(g) * 3_u64 + weigh(gg) * 7_u64
+    total = total % 1000000007_u64
+    k += 1_u64
+  }
+  show("variants", total)
+
+  let mut opts = 0_u64
+  k = 0_u64
+  loop k < 12_u64 {
+    opts = opts * 17_u64 + weigh_maybe(maybe(k))
+    opts = opts % 1000000007_u64
+    k += 1_u64
+  }
+  show("optional variants", opts)
+
+  let mut t = (250_u8, 1234567_u64, true, 0_u16, -128_s8)
+  let mut tuples = 0_u64
+  k = 0_u64
+  loop k < 4_u64 {
+    t = tuple_roundtrip(t)
+    tuples = tuples * 1000_u64 + tuple_weigh(t) % 1000_u64
+    k += 1_u64
+  }
+  show("tuples", tuples)
+
+  let arr = [mixed(1_u64), mixed(2_u64), mixed(3_u64), mixed(4_u64)]
+  let mut copy = arr
+  copy[mut 1_uz]@ = mixed(9_u64)
+  let mut sum = 0_u64
+  let mut i = 0_uz
+  loop i < 4_uz {
+    sum = sum * 7_u64 + mixed_weigh(arr[i]@) + mixed_weigh(copy[i]@) * 3_u64
+    sum = sum % 1000000007_u64
+    i += 1_uz
+  }
+  show("array of mixed", sum)
+}

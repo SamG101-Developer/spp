@@ -1,0 +1,100 @@
+# Conversions through "From" at the edges of each width: truncation, sign and zero extension between widths and
+# signedness, floats truncated toward zero into integers (in range: out of range traps, as in traps_float.spp), integers
+# rounded into floats, and shifts by distances at and past the width. Each helper is a call at dev and folded at rel.
+
+fun show(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun bits64(x: F64) -> Str {
+  ret Str::from(std::intrinsics::bit_cast[U64](x))
+}
+
+fun bits32(x: F32) -> Str {
+  ret Str::from(std::intrinsics::bit_cast[U32](x))
+}
+
+fun from_u64(x: U64) -> Void {
+  show("u64 to u8", Str::from(U8::from(x)))
+  show("u64 to s8", Str::from(S8::from(x)))
+  show("u64 to s32", Str::from(S32::from(x)))
+  show("u64 to s64", Str::from(S64::from(x)))
+  show("u64 to u128", Str::from(U128::from(x)))
+  show("u64 to f64", bits64(F64::from(x)))
+  show("u64 to f32", bits32(F32::from(x)))
+}
+
+fun from_s32(x: S32) -> Void {
+  show("s32 to u8", Str::from(U8::from(x)))
+  show("s32 to s16", Str::from(S16::from(x)))
+  show("s32 to u64", Str::from(U64::from(x)))
+  show("s32 to s64", Str::from(S64::from(x)))
+  show("s32 to f32", bits32(F32::from(x)))
+  show("s32 to f64", bits64(F64::from(x)))
+}
+
+fun from_f64(x: F64) -> Void {
+  show("f64 to s64", Str::from(S64::from(x)))
+  show("f64 to s32", Str::from(S32::from(x)))
+  show("f64 to f32", bits32(std::intrinsics::fptrunc[32_u32](x)))
+}
+
+fun from_f64_wide(x: F64) -> Void {
+  show("f64 to s64", Str::from(S64::from(x)))
+  show("f64 to f32", bits32(std::intrinsics::fptrunc[32_u32](x)))
+}
+
+fun from_f64_unsigned(x: F64) -> Void {
+  show("f64 to u64", Str::from(U64::from(x)))
+}
+
+fun to_u8(x: F64) -> Void {
+  show("f64 to u8", Str::from(U8::from(x)))
+}
+
+fun shifts_u32(x: U32, by: U32) -> Void {
+  show("u32 shl", Str::from(x << by))
+  show("u32 shr", Str::from(x >> by))
+}
+
+fun shifts_s32(x: S32, by: U32) -> Void {
+  show("s32 shl", Str::from(x << by))
+  show("s32 shr", Str::from(x >> by))
+}
+
+fun main() -> Void {
+  from_u64(18446744073709551615_u64)
+  from_u64(9223372036854775808_u64)
+  from_u64(4294967551_u64)
+  from_u64(9007199254740993_u64)
+  from_u64(0_u64)
+  from_s32(-1_s32)
+  from_s32(-2147483648_s32)
+  from_s32(2147483647_s32)
+  from_s32(16777217_s32)
+  from_s32(-129_s32)
+  from_f64(-0.99_f64)
+  from_f64(-2147483648.75_f64)
+  from_f64(2147483647.5_f64)
+  from_f64(0.000000000000000000000000000000000000000000001_f64)
+  from_f64_wide(9223372036854774784.0_f64)
+  from_f64_wide(-9223372036854775808.0_f64)
+  from_f64_unsigned(255.9_f64)
+  from_f64_unsigned(0.5_f64)
+  from_f64_unsigned(-0.75_f64)
+  from_f64_unsigned(18446744073709549568.0_f64)
+  to_u8(255.9_f64)
+  to_u8(-0.75_f64)
+  shifts_u32(4294967295_u32, 0_u32)
+  shifts_u32(4294967295_u32, 31_u32)
+  shifts_u32(4294967295_u32, 32_u32)
+  shifts_u32(1_u32, 33_u32)
+  shifts_u32(2863311530_u32, 4294967295_u32)
+  shifts_s32(-2147483648_s32, 31_u32)
+  shifts_s32(-1_s32, 32_u32)
+  shifts_s32(-5_s32, 1_u32)
+  shifts_s32(1073741824_s32, 1_u32)
+}

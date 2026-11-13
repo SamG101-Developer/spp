@@ -1,0 +1,147 @@
+# Drop order: values whose destructor prints, dropped on an early and a normal return, under "defer"s, out of a loop
+# left by "exit exit", in "case" arms, by a partial move out of a class, by assignment over a live value, and through a
+# vector. Each drop must run once, in the same order at dev as at rel.
+
+cls Noisy {
+  !public n: U64
+}
+
+sup Noisy ext std::ops::drop::Drop {
+  fun drop(self) -> Void {
+    let s = Str::from(self.n)
+    std::console::print("drop ")
+    std::console::println(&s)
+    std::mem::ops::drop(s)
+    let Noisy(..) = self
+  }
+}
+
+cls Pair {
+  !public a: Noisy
+  !public b: Noisy
+}
+
+fun take(x: Noisy) -> U64 {
+  let n = x.n
+  std::mem::ops::drop(x)
+  ret n
+}
+
+fun early(stop: Bool) -> U64 {
+  let a = Noisy(n=1_u64)
+  defer std::console::println("defer outer")
+  let b = Noisy(n=2_u64)
+  case stop {
+    std::mem::ops::drop(b)
+    ret take(a)
+  }
+  std::console::println("past the return")
+  let r = take(b)
+  std::mem::ops::drop(a)
+  ret r
+}
+
+fun deferred_drops() -> Void {
+  let a = Noisy(n=10_u64)
+  defer std::mem::ops::drop(a)
+  let b = Noisy(n=11_u64)
+  defer std::mem::ops::drop(b)
+  std::console::println("body of deferred_drops")
+}
+
+fun nested_loops() -> U64 {
+  let mut total = 0_u64
+  let mut i = 0_u64
+  loop i < 4_u64 {
+    let outer = Noisy(n=100_u64 + i)
+    let mut j = 0_u64
+    loop j < 4_u64 {
+      let inner = Noisy(n=200_u64 + i * 10_u64 + j)
+      total += take(inner)
+      case i == 2_u64 and j == 1_u64 {
+        std::mem::ops::drop(outer)
+        exit exit
+      }
+      j += 1_u64
+    }
+    std::mem::ops::drop(outer)
+    i += 1_u64
+  }
+  ret total
+}
+
+fun arms(x: Opt[U64]) -> U64 {
+  let a = Noisy(n=300_u64)
+  ret case x of {
+    is Some[U64](val) {
+      let b = Noisy(n=301_u64 + val)
+      take(b) + take(a)
+    }
+    else {
+      take(a)
+    }
+  }
+}
+
+fun partial() -> U64 {
+  let p = Pair(a=Noisy(n=400_u64), b=Noisy(n=401_u64))
+  let r = take(p.b)
+  std::console::println("b moved out")
+  std::mem::ops::drop(p.a)
+  ret r
+}
+
+fun reassigned() -> U64 {
+  let mut x = Noisy(n=500_u64)
+  let mut i = 1_u64
+  loop i < 4_u64 {
+    std::mem::ops::drop(x)
+    x = Noisy(n=500_u64 + i)
+    i += 1_u64
+  }
+  ret take(x)
+}
+
+fun through_vec() -> U64 {
+  let mut v = Vec[Noisy]::new()
+  let mut i = 0_u64
+  loop i < 5_u64 {
+    v.append(Noisy(n=600_u64 + i))
+    i += 1_u64
+  }
+  let last = v.take_last()
+  let r = case last of {
+    is Some[Noisy](val) { take(val) }
+    else { 0_u64 }
+  }
+  let middle = v.take_at(1_uz)
+  let s = case middle of {
+    is Some[Noisy](val) { take(val) }
+    else { 0_u64 }
+  }
+  std::console::println("dropping the vector")
+  std::mem::ops::drop(v)
+  ret r + s
+}
+
+fun show(what: &StrView, got: U64) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  let text = Str::from(got)
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun main() -> Void {
+  show("early stop", early(true))
+  show("early run", early(false))
+  deferred_drops()
+  show("nested loops", nested_loops())
+  let some: Opt[U64] = Some(val=5_u64)
+  let none: Opt[U64] = None
+  show("arms some", arms(some))
+  show("arms none", arms(none))
+  show("partial", partial())
+  show("reassigned", reassigned())
+  show("through vec", through_vec())
+}

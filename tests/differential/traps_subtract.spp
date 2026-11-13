@@ -1,0 +1,23 @@
+# An unsigned subtraction that underflows: a balance paid down in steps prints, then the subtraction check fails, at
+# dev and at rel.
+
+fun show(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun pay(balance: U64, amount: U64) -> U64 {
+  ret balance - amount
+}
+
+fun main() -> Void {
+  let mut balance = 100_u64
+  let mut i = 0_u64
+  loop i < 10_u64 {
+    balance = pay(balance, 30_u64)
+    show("balance", Str::from(balance))
+    i += 1_u64
+  }
+}
