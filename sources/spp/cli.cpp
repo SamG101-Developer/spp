@@ -406,6 +406,7 @@ auto spp::cli::RunCli(
   const std::int32_t argc, char **argv) -> std::int32_t {
   // The progress bar and messages are UTF-8, and errors are coloured.
   sys::use_utf8_console();
+  RemoveUpdateLeftover();
 
   // Refuse an unknown or malformed "SPP_" variable before anything reads it: a
   // typo would otherwise silently do nothing.
@@ -655,6 +656,58 @@ auto spp::cli::RunCli(
 
   info_exe_cmd->callback([&] {
     if (not PrintExecutable(*compiler::ModeFromName(info_mode), info_target)) { throw CLI_ERR; }
+  });
+
+  // The "spp self" commands manage this spp itself rather than a project:
+  // "spp self install" installs it for the user and puts it on PATH, "spp self
+  // update" replaces it with the latest release (or "--version"'s), and
+  // "spp self uninstall" removes it, and what install set up.
+  const auto self_cmd = app.add_subcommand(
+    "self", "Manage this spp install");
+  self_cmd->fallthrough();
+  self_cmd->require_subcommand(1);
+
+  const auto self_update_cmd = self_cmd->add_subcommand(
+    "update", "Replace this spp with the latest release, or the one --version names");
+  auto self_update_version = Str();
+  self_update_cmd->add_option(
+    "--version", self_update_version,
+    "The release to install instead of the latest, up or down (0.7.0 or later)");
+  self_update_cmd->callback([&] {
+    const auto version = self_update_version.empty() ? Opt<Str>() : Opt<Str>(self_update_version);
+    if (not HandleSelfUpdate(version)) { throw CLI_ERR; }
+  });
+
+  const auto self_install_cmd = self_cmd->add_subcommand(
+    "install",
+    "Install this spp for the user, and put it on PATH");
+  auto self_install_dir = Str();
+  auto self_install_force = false;
+  auto self_install_no_path = false;
+  self_install_cmd->add_option(
+    "--dir", self_install_dir,
+    "Install into this directory (default ~/.spp/bin; %LOCALAPPDATA%\\spp\\bin)");
+  self_install_cmd->add_flag(
+    "-f,--force", self_install_force,
+    "Install even when it is installed already, a different spp is there, or "
+    "another is on PATH");
+  self_install_cmd->add_flag(
+    "--no-modify-path", self_install_no_path,
+    "Leave PATH and the shell start-up files alone");
+  self_install_cmd->callback([&] {
+    const auto dir = self_install_dir.empty() ? Opt<Str>() : Opt<Str>(self_install_dir);
+    if (not HandleSelfInstall(dir, self_install_force, not self_install_no_path)) { throw CLI_ERR; }
+  });
+
+  const auto self_uninstall_cmd = self_cmd->add_subcommand(
+    "uninstall",
+    "Remove this spp (projects' vcs and out folders are left as they are)");
+  auto self_uninstall_yes = false;
+  self_uninstall_cmd->add_flag(
+    "-y,--yes", self_uninstall_yes,
+    "Remove it without asking");
+  self_uninstall_cmd->callback([&] {
+    if (not HandleSelfUninstall(self_uninstall_yes)) { throw CLI_ERR; }
   });
 
   // The "spp config" command lists all the possible keys available for the

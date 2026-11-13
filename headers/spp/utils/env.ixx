@@ -11,11 +11,13 @@ namespace spp::utils::env {
   /// except "SPP_CI_", which belongs to the CI scripts.
   SPP_EXP_CLS enum class Var {
     Path,
+    UserDir,
     Backtrace,
     MemoryLimitKb,
     NoNetworkCheck,
     TestMode,
     TestOnly,
+    UpdateBaseUrl,
   };
 
   /// What a variable's value may be: anything, "0" or "1", a whole number, or

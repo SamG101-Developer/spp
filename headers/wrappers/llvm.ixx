@@ -24,6 +24,7 @@ module;
 #include <llvm/Object/ELFObjectFile.h>
 #include <llvm/Object/ObjectFile.h>
 #include <llvm/Support/FileSystem.h>
+#include <llvm/Support/SHA256.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetOptions.h>
@@ -147,6 +148,7 @@ export namespace llvm {
   using ::llvm::PointerType;
   using ::llvm::PHINode;
   using ::llvm::RuntimeLibraryInfoWrapper;
+  using ::llvm::SHA256;
   using ::llvm::SmallVector;
   using ::llvm::StringLiteral;
   using ::llvm::StringRef;
@@ -184,6 +186,7 @@ export namespace llvm {
   }
 
   namespace sys::fs {
+    using ::llvm::sys::fs::getMainExecutable;
     using ::llvm::sys::fs::OpenFlags;
     using ::llvm::sys::fs::OF_None;
   }

@@ -79,6 +79,15 @@ auto spp::utils::files::ReadFile(Path const &path) -> Str {
 }
 
 /// [CHECKED]
+auto spp::utils::files::ReadBytes(Path const &path) -> Opt<Str> {
+  // Binary, so nothing is translated; a stream that did not open is a file
+  // that could not be read.
+  auto in = std::ifstream(path, std::ios::binary);
+  if (not in) { return Nullopt; }
+  return Str(std::istreambuf_iterator(in), {});
+}
+
+/// [CHECKED]
 auto spp::utils::files::WriteFile(
   Path const &path, Str const &content) -> void {
   // Create an output file stream from the path, and push the contents into it.

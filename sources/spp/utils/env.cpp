@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.utils.env;
+import genex;
 import std;
 import sys;
 
@@ -9,10 +10,10 @@ namespace spp::utils::env {
   static constexpr auto kOwnPrefix = StrView("SPP_");
   static constexpr auto kCiPrefix = StrView("SPP_CI_");
 
-  static auto ParseCount(const StrView value) -> Opt<std::uint64_t>;
+  static auto ParseCount(StrView value) -> Opt<std::uint64_t>;
 
   /// What is wrong with a variable's value, if anything.
-  static auto ProblemWith(VarSpec const &spec, const StrView value) -> Opt<Str>;
+  static auto ProblemWith(VarSpec const &spec, StrView value) -> Opt<Str>;
 }
 
 auto spp::utils::env::ParseCount(const StrView value) -> Opt<std::uint64_t> {
@@ -55,6 +56,20 @@ auto spp::utils::env::Schema() -> Vec<VarSpec> const& {
       .Kind = ValueKind::Text,
       .Help = "Where the linker and other programs are looked for."
     },
+    // The user's own directory, which is a different variable per platform;
+    // only this platform's is listed.
+    VarSpec{
+      .Key = Var::UserDir,
+#if SPP_PLATFORM_WINDOWS
+      .Name = "LOCALAPPDATA",
+      .Kind = ValueKind::Text,
+      .Help = "Where 'spp self install' installs (%LOCALAPPDATA%\\spp\\bin)."
+#else
+      .Name = "HOME",
+      .Kind = ValueKind::Text,
+      .Help = "The user's home: 'spp self install' installs into ~/.spp/bin there."
+#endif
+    },
     VarSpec{
       .Key = Var::Backtrace,
       .Name = "SPP_BACKTRACE",
@@ -85,6 +100,13 @@ auto spp::utils::env::Schema() -> Vec<VarSpec> const& {
       .Name = "SPP_TEST_ONLY",
       .Kind = ValueKind::Text,
       .Help = "The tests a built test program runs; 'spp test' sets this itself."
+    },
+    VarSpec{
+      .Key = Var::UpdateBaseUrl,
+      .Name = "SPP_UPDATE_BASE_URL",
+      .Kind = ValueKind::Text,
+      .Help = "Where 'spp self update' looks for releases, in place of GitHub's: a URL laid out as a GitHub "
+        "repository's releases (<url>/releases/latest, <url>/releases/download/<tag>/<asset>); for testing."
     },
   };
   return schema;
@@ -141,8 +163,8 @@ auto spp::utils::env::CheckEntries(
     if (not name.starts_with(kOwnPrefix) or name.starts_with(kCiPrefix)) { continue; }
 
     auto const &schema = Schema();
-    const auto spec = std::find_if(
-      schema.begin(), schema.end(), [name](VarSpec const &s) { return s.Name == name; });
+    const auto spec = genex::find_if(
+      schema, [name](VarSpec const &s) { return s.Name == name; });
     if (spec == schema.end()) {
       errors.emplace_back("unknown environment variable '" + Str(name) + "'");
       any_unknown = true;
