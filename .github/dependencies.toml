@@ -72,9 +72,9 @@ developer-dir-macos-26 = "/Applications/Xcode_26.6.app/Contents/Developer"
 # than rustup's. Its LLVM major should match [pin.llvm-lib], as the
 # comparison is of the IR each frontend hands the same LLVM.
 [pin.rust]
-version = "1.99.1"
-sha256-rustc = "2ff05ff9c08a90861e7f6e4065b40a8b87463b4576186fd613871c3e37f2091f"
-sha256-rust-std = "109b074225bf5b9ea3820890876bfdf4ed161adbfaf94b2b4b5984c85ee5d958"
+version = "1.100.0"
+sha256-rustc = "f1d0b1dec81dab6f523cd098507763487b0d4bd7fd2c87582f154128719be03b"
+sha256-rust-std = "4591b6486594ded52ecd6135db95bf9355bbd3ca7a380888b141528bbcf9a5d4"
 
 [pin.doxygen]
 version = "1.17.0"
@@ -175,7 +175,7 @@ generation = "v3"
 [[library]]
 name = "unordered_dense"
 repo = "https://github.com/martinus/unordered_dense.git"
-commit = "4c8dd1e1e610e653e56c09fb29049a5a6535a8c8"
+commit = "bcc2bb5801fb920a1df06a2ee205b93b2514964e"
 
 [[library]]
 name = "mimalloc"
@@ -187,18 +187,18 @@ cmake-flags-windows = ["-DMI_OVERRIDE=OFF"]
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "8d591bf7201b67e97d9cf33aed9e88f18bbe2eac"
+commit = "cdfb130fa6582e8dbfae5391201c1c747290b071"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
 name = "tomlplusplus"
 repo = "https://github.com/marzer/tomlplusplus.git"
-commit = "c828e4d4d131eacaad1ff129d73385cb79d46fbf"
+commit = "cfd715973663275575701cd779fb60d303561cc1"
 
 [[library]]
 name = "magic_enum"
 repo = "https://github.com/Neargye/magic_enum.git"
-commit = "4de5a9e6e595be3a5be0716ba8759b6bccdd339d"
+commit = "4a0f8aa6f05be991caeec3d7cf44dead75d8cc08"
 cmake-flags = [
   "-DMAGIC_ENUM_OPT_BUILD_TESTS=OFF",
   "-DMAGIC_ENUM_OPT_BUILD_EXAMPLES=OFF",
