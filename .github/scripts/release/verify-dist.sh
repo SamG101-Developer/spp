@@ -2,7 +2,7 @@
 # Check dist/ against the checksums from `needs`: exactly those files and digests, and an identical SHA256SUMS.
 set -euo pipefail
 
-LINE_RE='^[0-9a-f]{64}  spp-[0-9]+\.[0-9]+\.[0-9]+-[a-z0-9-]+(\.exe)?$'
+LINE_RE='^[0-9a-f]{64}  spp-[a-z0-9]+(-[a-z0-9]+)*\.zip$'
 
 if [ -z "${CHECKSUMS:-}" ]; then
   echo "::error::no checksums were handed over"

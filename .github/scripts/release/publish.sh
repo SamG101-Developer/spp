@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Create the release with one binary per platform and the attested SHA256SUMS. The tag is created
-# here, so a red lane leaves no tag behind and the next push retries cleanly.
+# Create the release with one zip per platform (spp, LICENSE.md, THIRD-PARTY-NOTICES.txt) and the attested
+# SHA256SUMS. The tag is created here, so a red lane leaves no tag behind and the next push retries cleanly.
 set -euo pipefail
 source .github/scripts/lib/version.sh
 

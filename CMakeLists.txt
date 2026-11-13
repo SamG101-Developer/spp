@@ -15,6 +15,20 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 # file at the repository root.
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" SPP_VERSION LIMIT_COUNT 1)
 string(STRIP "${SPP_VERSION}" SPP_VERSION)
+
+# The release label of this platform, as post_merge.yaml's collect-release names
+# the zips (spp-<label>.zip); empty where no release is published.
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" _spp_arch)
+set(SPP_RELEASE_LABEL "")
+if (LINUX AND _spp_arch MATCHES "^(x86_64|amd64)$")
+  set(SPP_RELEASE_LABEL "linux-x64")
+elseif (LINUX AND _spp_arch MATCHES "^(aarch64|arm64)$")
+  set(SPP_RELEASE_LABEL "linux-arm64")
+elseif (APPLE AND _spp_arch MATCHES "^(arm64|aarch64)$")
+  set(SPP_RELEASE_LABEL "macos-arm64")
+elseif (WIN32 AND _spp_arch MATCHES "^(x86_64|amd64)$")
+  set(SPP_RELEASE_LABEL "windows-x64")
+endif ()
 set_property(
   DIRECTORY APPEND
   PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
