@@ -1,43 +1,43 @@
 {
   "keys": {
-    "cpu": "AMD EPYC 7763 64-Core Processor",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
     "llvm": "23.1.6",
     "os": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
     "rounds": 3,
-    "runner_image": "ubuntu24 20261101.360.1",
-    "spp": "0.6.0",
-    "spp_commit": "61f7e89025ca29a4362884b55abee3ae5a9d6e83",
-    "std_rev": "1eb1c26794212852d0fd68d495fede0695cf60a5",
+    "runner_image": "ubuntu24 20261111.370.1",
+    "spp": "0.7.0",
+    "spp_commit": "c99de695b593edb9a6f3ebc147de7e28a7d6dd43",
+    "std_rev": "2e471c230fb6688278072b4c3ae876f09dd88e4f",
     "valgrind": "valgrind-3.28.0"
   },
   "schema": 1,
   "workloads": {
     "generic-depth": {
-      "hash": "9027c0146ce9d545e9c4d9b0ab60c53e66b9e5ddebb28d019d5e5a36eeafd744",
+      "hash": "ef0c3f1be308e9e4f3db620b093301aee3cf3aad963b20b2337589696c8c95d7",
       "modes": {
         "dev": {
           "counters": {
-            "ast_nodes_created": 17069123,
-            "cls_instances_made": 6144,
-            "comp_key_interns": 239659,
-            "comp_keys_distinct": 1486,
-            "fn_instances_made": 2001,
-            "scope_linkage_generation": 1558,
-            "scopes_copied": 250678,
-            "scopes_created": 23082,
-            "sup_instances_made": 29047,
-            "sup_scope_walks": 804136,
-            "sup_scope_walks_cached": 627480,
-            "type_key_interns": 3499182,
-            "type_keys_distinct": 94912,
-            "type_structure_generation": 111868,
-            "type_symbol_lookups": 2873081,
-            "type_symbol_lookups_by_stamp": 849368,
-            "var_symbol_lookups": 1269249
+            "ast_nodes_created": 17223771,
+            "cls_instances_made": 6166,
+            "comp_key_interns": 239850,
+            "comp_keys_distinct": 1493,
+            "fn_instances_made": 2005,
+            "scope_linkage_generation": 1566,
+            "scopes_copied": 250928,
+            "scopes_created": 23138,
+            "sup_instances_made": 29107,
+            "sup_scope_walks": 819886,
+            "sup_scope_walks_cached": 642936,
+            "type_key_interns": 3563487,
+            "type_keys_distinct": 95065,
+            "type_structure_generation": 112029,
+            "type_symbol_lookups": 2894601,
+            "type_symbol_lookups_by_stamp": 861378,
+            "var_symbol_lookups": 1273291
           },
           "deterministic": true,
-          "instructions": 19882963003,
-          "peak_rss_bytes": 1402474496,
+          "instructions": 20492516285,
+          "peak_rss_bytes": 1415917568,
           "phases": [
             {
               "counters": {
@@ -60,11 +60,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 87363981
+              "wall_ns": 67201359
             },
             {
               "counters": {
-                "ast_nodes_created": 1898753,
+                "ast_nodes_created": 1905105,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -83,11 +83,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 139539697
+              "wall_ns": 111212755
             },
             {
               "counters": {
-                "ast_nodes_created": 397066,
+                "ast_nodes_created": 398985,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -106,57 +106,57 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 41262479
+              "wall_ns": 36405544
             },
             {
               "counters": {
-                "ast_nodes_created": 124021,
+                "ast_nodes_created": 124123,
                 "cls_instances_made": 0,
                 "comp_key_interns": 268,
                 "comp_keys_distinct": 217,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 14217,
+                "scopes_created": 14250,
                 "sup_instances_made": 0,
                 "sup_scope_walks": 0,
                 "sup_scope_walks_cached": 0,
                 "type_key_interns": 1792,
                 "type_keys_distinct": 640,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 57321,
+                "type_symbol_lookups": 57347,
                 "type_symbol_lookups_by_stamp": 0,
-                "var_symbol_lookups": 12459
+                "var_symbol_lookups": 12476
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 23073713
+              "wall_ns": 20535173
             },
             {
               "counters": {
-                "ast_nodes_created": 200490,
+                "ast_nodes_created": 200525,
                 "cls_instances_made": 0,
                 "comp_key_interns": 14430,
                 "comp_keys_distinct": 9,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 2594,
+                "scopes_created": 2595,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 8846,
+                "sup_scope_walks": 8847,
                 "sup_scope_walks_cached": 6959,
-                "type_key_interns": 62747,
+                "type_key_interns": 62752,
                 "type_keys_distinct": 400,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 151632,
-                "type_symbol_lookups_by_stamp": 20106,
+                "type_symbol_lookups": 151642,
+                "type_symbol_lookups_by_stamp": 20107,
                 "var_symbol_lookups": 10822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 44838341
+              "wall_ns": 35079172
             },
             {
               "counters": {
-                "ast_nodes_created": 373671,
+                "ast_nodes_created": 373823,
                 "cls_instances_made": 231,
                 "comp_key_interns": 38321,
                 "comp_keys_distinct": 2,
@@ -165,67 +165,67 @@
                 "scopes_copied": 231,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 48072,
-                "sup_scope_walks_cached": 45505,
-                "type_key_interns": 175232,
-                "type_keys_distinct": 2055,
-                "type_structure_generation": 54807,
-                "type_symbol_lookups": 214129,
-                "type_symbol_lookups_by_stamp": 58467,
-                "var_symbol_lookups": 30849
+                "sup_scope_walks": 48081,
+                "sup_scope_walks_cached": 45513,
+                "type_key_interns": 175267,
+                "type_keys_distinct": 2063,
+                "type_structure_generation": 54822,
+                "type_symbol_lookups": 214197,
+                "type_symbol_lookups_by_stamp": 58474,
+                "var_symbol_lookups": 30876
               },
               "name": "qualifying-types",
-              "wall_ns": 102663075
+              "wall_ns": 79134086
             },
             {
               "counters": {
-                "ast_nodes_created": 977198,
-                "cls_instances_made": 3065,
+                "ast_nodes_created": 980514,
+                "cls_instances_made": 3075,
                 "comp_key_interns": 4017,
                 "comp_keys_distinct": 3,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 3065,
+                "scopes_copied": 3075,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 49914,
-                "sup_scope_walks_cached": 46527,
-                "type_key_interns": 193070,
-                "type_keys_distinct": 10717,
+                "sup_scope_walks": 49949,
+                "sup_scope_walks_cached": 46555,
+                "type_key_interns": 193570,
+                "type_keys_distinct": 10742,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 178386,
-                "type_symbol_lookups_by_stamp": 45859,
-                "var_symbol_lookups": 26452
+                "type_symbol_lookups": 179110,
+                "type_symbol_lookups_by_stamp": 45978,
+                "var_symbol_lookups": 26497
               },
               "name": "loading-super-scopes",
-              "wall_ns": 172087102
+              "wall_ns": 123991683
             },
             {
               "counters": {
-                "ast_nodes_created": 4428460,
-                "cls_instances_made": 2448,
-                "comp_key_interns": 77543,
+                "ast_nodes_created": 4440804,
+                "cls_instances_made": 2460,
+                "comp_key_interns": 77623,
                 "comp_keys_distinct": 2,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 215383,
+                "scopes_copied": 215615,
                 "scopes_created": 0,
-                "sup_instances_made": 26134,
-                "sup_scope_walks": 278719,
-                "sup_scope_walks_cached": 164088,
-                "type_key_interns": 1335441,
-                "type_keys_distinct": 69564,
-                "type_structure_generation": 45429,
-                "type_symbol_lookups": 703468,
-                "type_symbol_lookups_by_stamp": 219047,
-                "var_symbol_lookups": 108537
+                "sup_instances_made": 26194,
+                "sup_scope_walks": 279215,
+                "sup_scope_walks_cached": 164404,
+                "type_key_interns": 1338379,
+                "type_keys_distinct": 69676,
+                "type_structure_generation": 45543,
+                "type_symbol_lookups": 704570,
+                "type_symbol_lookups_by_stamp": 219481,
+                "var_symbol_lookups": 108577
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 893426367
+              "wall_ns": 642722109
             },
             {
               "counters": {
-                "ast_nodes_created": 845565,
+                "ast_nodes_created": 846322,
                 "cls_instances_made": 42,
                 "comp_key_interns": 14877,
                 "comp_keys_distinct": 0,
@@ -234,44 +234,44 @@
                 "scopes_copied": 12127,
                 "scopes_created": 0,
                 "sup_instances_made": 1097,
-                "sup_scope_walks": 72140,
-                "sup_scope_walks_cached": 60789,
-                "type_key_interns": 256762,
+                "sup_scope_walks": 72212,
+                "sup_scope_walks_cached": 60851,
+                "type_key_interns": 257139,
                 "type_keys_distinct": 3302,
                 "type_structure_generation": 1729,
-                "type_symbol_lookups": 214816,
-                "type_symbol_lookups_by_stamp": 90769,
+                "type_symbol_lookups": 215359,
+                "type_symbol_lookups_by_stamp": 90952,
                 "var_symbol_lookups": 26825
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 251058615
+              "wall_ns": 203433195
             },
             {
               "counters": {
-                "ast_nodes_created": 5888364,
+                "ast_nodes_created": 5894756,
                 "cls_instances_made": 347,
-                "comp_key_interns": 66354,
+                "comp_key_interns": 66407,
                 "comp_keys_distinct": 288,
-                "fn_instances_made": 1597,
+                "fn_instances_made": 1599,
                 "scope_linkage_generation": 22,
-                "scopes_copied": 17316,
-                "scopes_created": 4502,
+                "scopes_copied": 17320,
+                "scopes_created": 4520,
                 "sup_instances_made": 1647,
-                "sup_scope_walks": 197206,
-                "sup_scope_walks_cached": 165663,
-                "type_key_interns": 819765,
-                "type_keys_distinct": 7364,
-                "type_structure_generation": 8086,
-                "type_symbol_lookups": 886400,
-                "type_symbol_lookups_by_stamp": 255036,
-                "var_symbol_lookups": 588176
+                "sup_scope_walks": 198841,
+                "sup_scope_walks_cached": 167273,
+                "type_key_interns": 823105,
+                "type_keys_distinct": 7365,
+                "type_structure_generation": 8110,
+                "type_symbol_lookups": 890104,
+                "type_symbol_lookups_by_stamp": 256481,
+                "var_symbol_lookups": 590092
               },
               "name": "analysing-semantics",
-              "wall_ns": 1067858640
+              "wall_ns": 795233058
             },
             {
               "counters": {
-                "ast_nodes_created": 45815,
+                "ast_nodes_created": 46096,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -280,67 +280,67 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 95657,
-                "sup_scope_walks_cached": 93897,
-                "type_key_interns": 158941,
+                "sup_scope_walks": 95952,
+                "sup_scope_walks_cached": 94192,
+                "type_key_interns": 160213,
                 "type_keys_distinct": 1,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 97954,
-                "type_symbol_lookups_by_stamp": 49011,
-                "var_symbol_lookups": 233252
+                "type_symbol_lookups": 98262,
+                "type_symbol_lookups_by_stamp": 49197,
+                "var_symbol_lookups": 234255
               },
               "name": "checking-memory-safety",
-              "wall_ns": 98460795
+              "wall_ns": 81448825
             },
             {
               "counters": {
-                "ast_nodes_created": 1000221,
+                "ast_nodes_created": 1004762,
                 "cls_instances_made": 11,
-                "comp_key_interns": 16653,
+                "comp_key_interns": 16695,
                 "comp_keys_distinct": 0,
-                "fn_instances_made": 404,
-                "scope_linkage_generation": 1536,
-                "scopes_copied": 2556,
-                "scopes_created": 1768,
+                "fn_instances_made": 406,
+                "scope_linkage_generation": 1544,
+                "scopes_copied": 2560,
+                "scopes_created": 1772,
                 "sup_instances_made": 169,
-                "sup_scope_walks": 39582,
-                "sup_scope_walks_cached": 34413,
-                "type_key_interns": 220932,
+                "sup_scope_walks": 39722,
+                "sup_scope_walks_cached": 34525,
+                "type_key_interns": 222755,
                 "type_keys_distinct": 858,
-                "type_structure_generation": 1817,
-                "type_symbol_lookups": 191053,
-                "type_symbol_lookups_by_stamp": 52057,
-                "var_symbol_lookups": 171750
+                "type_structure_generation": 1825,
+                "type_symbol_lookups": 192633,
+                "type_symbol_lookups_by_stamp": 52697,
+                "var_symbol_lookups": 172042
               },
               "name": "monomorphising-generics",
-              "wall_ns": 239689695
+              "wall_ns": 176094063
             },
             {
               "counters": {
-                "ast_nodes_created": 717375,
+                "ast_nodes_created": 717903,
                 "cls_instances_made": 0,
-                "comp_key_interns": 7168,
-                "comp_keys_distinct": 965,
+                "comp_key_interns": 7184,
+                "comp_keys_distinct": 972,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 9788,
-                "sup_scope_walks_cached": 5464,
-                "type_key_interns": 197471,
+                "sup_scope_walks": 9840,
+                "sup_scope_walks_cached": 5486,
+                "type_key_interns": 197809,
                 "type_keys_distinct": 11,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 52176,
-                "type_symbol_lookups_by_stamp": 18826,
-                "var_symbol_lookups": 8203
+                "type_symbol_lookups": 52375,
+                "type_symbol_lookups_by_stamp": 18899,
+                "var_symbol_lookups": 8219
               },
               "name": "generating-code-1",
-              "wall_ns": 142687161
+              "wall_ns": 122568352
             },
             {
               "counters": {
-                "ast_nodes_created": 172124,
+                "ast_nodes_created": 290053,
                 "cls_instances_made": 0,
                 "comp_key_interns": 28,
                 "comp_keys_distinct": 0,
@@ -349,17 +349,17 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 4212,
-                "sup_scope_walks_cached": 4175,
-                "type_key_interns": 77029,
-                "type_keys_distinct": 0,
+                "sup_scope_walks": 17227,
+                "sup_scope_walks_cached": 17178,
+                "type_key_interns": 130706,
+                "type_keys_distinct": 7,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 125746,
-                "type_symbol_lookups_by_stamp": 40190,
-                "var_symbol_lookups": 51924
+                "type_symbol_lookups": 139002,
+                "type_symbol_lookups_by_stamp": 49112,
+                "var_symbol_lookups": 52610
               },
               "name": "generating-code-2",
-              "wall_ns": 90160044
+              "wall_ns": 102678685
             },
             {
               "counters": {
@@ -382,7 +382,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 60387956
+              "wall_ns": 63507139
             },
             {
               "counters": {
@@ -405,7 +405,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 97618086
+              "wall_ns": 109496949
             },
             {
               "counters": {
@@ -428,7 +428,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 3695551
+              "wall_ns": 3648370
             },
             {
               "counters": {
@@ -451,7 +451,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 7840080
+              "wall_ns": 10556472
             },
             {
               "counters": {
@@ -474,7 +474,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 71227916
+              "wall_ns": 76879700
             },
             {
               "counters": {
@@ -497,51 +497,51 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 26173739
+              "wall_ns": 24390101
             }
           ],
           "records": {
-            "executable.bytes": 101536,
+            "executable.bytes": 281952,
             "llvm.after_opt.blocks": 735,
             "llvm.after_opt.functions": 245,
-            "llvm.after_opt.instructions": 6764,
+            "llvm.after_opt.instructions": 6772,
             "llvm.before_opt.blocks": 727,
             "llvm.before_opt.functions": 308,
-            "llvm.before_opt.instructions": 6040,
-            "object.bytes": 103696
+            "llvm.before_opt.instructions": 6042,
+            "object.bytes": 272040
           },
-          "spp": "0.6.0",
+          "spp": "0.7.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 3674207375,
+          "wall_ns": 2909655832,
           "wall_ns_rounds": [
-            3876586698,
-            3799200735,
-            3674207375
+            2961142787,
+            2955193892,
+            2909655832
           ]
         },
         "rel": {
           "counters": {
-            "ast_nodes_created": 17069075,
-            "cls_instances_made": 6144,
-            "comp_key_interns": 239659,
-            "comp_keys_distinct": 1486,
-            "fn_instances_made": 2001,
-            "scope_linkage_generation": 1558,
-            "scopes_copied": 250678,
-            "scopes_created": 23082,
-            "sup_instances_made": 29047,
-            "sup_scope_walks": 804136,
-            "sup_scope_walks_cached": 627480,
-            "type_key_interns": 3499173,
-            "type_keys_distinct": 94912,
-            "type_structure_generation": 111868,
-            "type_symbol_lookups": 2873051,
-            "type_symbol_lookups_by_stamp": 849359,
-            "var_symbol_lookups": 1269224
+            "ast_nodes_created": 17106535,
+            "cls_instances_made": 6166,
+            "comp_key_interns": 239850,
+            "comp_keys_distinct": 1493,
+            "fn_instances_made": 2005,
+            "scope_linkage_generation": 1566,
+            "scopes_copied": 250928,
+            "scopes_created": 23138,
+            "sup_instances_made": 29107,
+            "sup_scope_walks": 806867,
+            "sup_scope_walks_cached": 629929,
+            "type_key_interns": 3515751,
+            "type_keys_distinct": 95065,
+            "type_structure_generation": 112029,
+            "type_symbol_lookups": 2888615,
+            "type_symbol_lookups_by_stamp": 855989,
+            "var_symbol_lookups": 1273266
           },
           "deterministic": true,
-          "instructions": 19864475465,
-          "peak_rss_bytes": 1404948480,
+          "instructions": 20030840352,
+          "peak_rss_bytes": 1414324224,
           "phases": [
             {
               "counters": {
@@ -564,11 +564,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 87092182
+              "wall_ns": 67472793
             },
             {
               "counters": {
-                "ast_nodes_created": 1898753,
+                "ast_nodes_created": 1905105,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -587,11 +587,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 139359990
+              "wall_ns": 112634998
             },
             {
               "counters": {
-                "ast_nodes_created": 397045,
+                "ast_nodes_created": 398964,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -610,57 +610,57 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 40573373
+              "wall_ns": 36603276
             },
             {
               "counters": {
-                "ast_nodes_created": 124021,
+                "ast_nodes_created": 124123,
                 "cls_instances_made": 0,
                 "comp_key_interns": 268,
                 "comp_keys_distinct": 217,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 14217,
+                "scopes_created": 14250,
                 "sup_instances_made": 0,
                 "sup_scope_walks": 0,
                 "sup_scope_walks_cached": 0,
                 "type_key_interns": 1792,
                 "type_keys_distinct": 640,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 57321,
+                "type_symbol_lookups": 57347,
                 "type_symbol_lookups_by_stamp": 0,
-                "var_symbol_lookups": 12459
+                "var_symbol_lookups": 12476
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 22315025
+              "wall_ns": 20372362
             },
             {
               "counters": {
-                "ast_nodes_created": 200490,
+                "ast_nodes_created": 200525,
                 "cls_instances_made": 0,
                 "comp_key_interns": 14430,
                 "comp_keys_distinct": 9,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 2594,
+                "scopes_created": 2595,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 8846,
+                "sup_scope_walks": 8847,
                 "sup_scope_walks_cached": 6959,
-                "type_key_interns": 62747,
+                "type_key_interns": 62752,
                 "type_keys_distinct": 400,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 151632,
-                "type_symbol_lookups_by_stamp": 20106,
+                "type_symbol_lookups": 151642,
+                "type_symbol_lookups_by_stamp": 20107,
                 "var_symbol_lookups": 10822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 43577557
+              "wall_ns": 35810395
             },
             {
               "counters": {
-                "ast_nodes_created": 373671,
+                "ast_nodes_created": 373823,
                 "cls_instances_made": 231,
                 "comp_key_interns": 38321,
                 "comp_keys_distinct": 2,
@@ -669,67 +669,67 @@
                 "scopes_copied": 231,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 48072,
-                "sup_scope_walks_cached": 45505,
-                "type_key_interns": 175232,
-                "type_keys_distinct": 2055,
-                "type_structure_generation": 54807,
-                "type_symbol_lookups": 214129,
-                "type_symbol_lookups_by_stamp": 58467,
-                "var_symbol_lookups": 30849
+                "sup_scope_walks": 48081,
+                "sup_scope_walks_cached": 45513,
+                "type_key_interns": 175267,
+                "type_keys_distinct": 2063,
+                "type_structure_generation": 54822,
+                "type_symbol_lookups": 214197,
+                "type_symbol_lookups_by_stamp": 58474,
+                "var_symbol_lookups": 30876
               },
               "name": "qualifying-types",
-              "wall_ns": 102658780
+              "wall_ns": 78215194
             },
             {
               "counters": {
-                "ast_nodes_created": 977198,
-                "cls_instances_made": 3065,
+                "ast_nodes_created": 980514,
+                "cls_instances_made": 3075,
                 "comp_key_interns": 4017,
                 "comp_keys_distinct": 3,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 3065,
+                "scopes_copied": 3075,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 49914,
-                "sup_scope_walks_cached": 46527,
-                "type_key_interns": 193070,
-                "type_keys_distinct": 10717,
+                "sup_scope_walks": 49949,
+                "sup_scope_walks_cached": 46555,
+                "type_key_interns": 193570,
+                "type_keys_distinct": 10742,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 178386,
-                "type_symbol_lookups_by_stamp": 45859,
-                "var_symbol_lookups": 26452
+                "type_symbol_lookups": 179110,
+                "type_symbol_lookups_by_stamp": 45978,
+                "var_symbol_lookups": 26497
               },
               "name": "loading-super-scopes",
-              "wall_ns": 171732309
+              "wall_ns": 123918794
             },
             {
               "counters": {
-                "ast_nodes_created": 4428460,
-                "cls_instances_made": 2448,
-                "comp_key_interns": 77543,
+                "ast_nodes_created": 4440804,
+                "cls_instances_made": 2460,
+                "comp_key_interns": 77623,
                 "comp_keys_distinct": 2,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 215383,
+                "scopes_copied": 215615,
                 "scopes_created": 0,
-                "sup_instances_made": 26134,
-                "sup_scope_walks": 278719,
-                "sup_scope_walks_cached": 164088,
-                "type_key_interns": 1335441,
-                "type_keys_distinct": 69564,
-                "type_structure_generation": 45429,
-                "type_symbol_lookups": 703468,
-                "type_symbol_lookups_by_stamp": 219047,
-                "var_symbol_lookups": 108537
+                "sup_instances_made": 26194,
+                "sup_scope_walks": 279215,
+                "sup_scope_walks_cached": 164404,
+                "type_key_interns": 1338379,
+                "type_keys_distinct": 69676,
+                "type_structure_generation": 45543,
+                "type_symbol_lookups": 704570,
+                "type_symbol_lookups_by_stamp": 219481,
+                "var_symbol_lookups": 108577
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 882659734
+              "wall_ns": 636300352
             },
             {
               "counters": {
-                "ast_nodes_created": 845565,
+                "ast_nodes_created": 846322,
                 "cls_instances_made": 42,
                 "comp_key_interns": 14877,
                 "comp_keys_distinct": 0,
@@ -738,44 +738,44 @@
                 "scopes_copied": 12127,
                 "scopes_created": 0,
                 "sup_instances_made": 1097,
-                "sup_scope_walks": 72140,
-                "sup_scope_walks_cached": 60789,
-                "type_key_interns": 256762,
+                "sup_scope_walks": 72212,
+                "sup_scope_walks_cached": 60851,
+                "type_key_interns": 257139,
                 "type_keys_distinct": 3302,
                 "type_structure_generation": 1729,
-                "type_symbol_lookups": 214816,
-                "type_symbol_lookups_by_stamp": 90769,
+                "type_symbol_lookups": 215359,
+                "type_symbol_lookups_by_stamp": 90952,
                 "var_symbol_lookups": 26825
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 249923177
+              "wall_ns": 198648057
             },
             {
               "counters": {
-                "ast_nodes_created": 5888345,
+                "ast_nodes_created": 5894737,
                 "cls_instances_made": 347,
-                "comp_key_interns": 66354,
+                "comp_key_interns": 66407,
                 "comp_keys_distinct": 288,
-                "fn_instances_made": 1597,
+                "fn_instances_made": 1599,
                 "scope_linkage_generation": 22,
-                "scopes_copied": 17316,
-                "scopes_created": 4502,
+                "scopes_copied": 17320,
+                "scopes_created": 4520,
                 "sup_instances_made": 1647,
-                "sup_scope_walks": 197206,
-                "sup_scope_walks_cached": 165663,
-                "type_key_interns": 819761,
-                "type_keys_distinct": 7364,
-                "type_structure_generation": 8086,
-                "type_symbol_lookups": 886384,
-                "type_symbol_lookups_by_stamp": 255033,
-                "var_symbol_lookups": 588167
+                "sup_scope_walks": 198841,
+                "sup_scope_walks_cached": 167273,
+                "type_key_interns": 823101,
+                "type_keys_distinct": 7365,
+                "type_structure_generation": 8110,
+                "type_symbol_lookups": 890088,
+                "type_symbol_lookups_by_stamp": 256478,
+                "var_symbol_lookups": 590083
               },
               "name": "analysing-semantics",
-              "wall_ns": 1061787709
+              "wall_ns": 782055640
             },
             {
               "counters": {
-                "ast_nodes_created": 45807,
+                "ast_nodes_created": 46088,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -784,67 +784,67 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 95657,
-                "sup_scope_walks_cached": 93897,
-                "type_key_interns": 158937,
+                "sup_scope_walks": 95952,
+                "sup_scope_walks_cached": 94192,
+                "type_key_interns": 160209,
                 "type_keys_distinct": 1,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 97944,
-                "type_symbol_lookups_by_stamp": 49005,
-                "var_symbol_lookups": 233236
+                "type_symbol_lookups": 98252,
+                "type_symbol_lookups_by_stamp": 49191,
+                "var_symbol_lookups": 234239
               },
               "name": "checking-memory-safety",
-              "wall_ns": 97647194
+              "wall_ns": 81494005
             },
             {
               "counters": {
-                "ast_nodes_created": 1000221,
+                "ast_nodes_created": 1004762,
                 "cls_instances_made": 11,
-                "comp_key_interns": 16653,
+                "comp_key_interns": 16695,
                 "comp_keys_distinct": 0,
-                "fn_instances_made": 404,
-                "scope_linkage_generation": 1536,
-                "scopes_copied": 2556,
-                "scopes_created": 1768,
+                "fn_instances_made": 406,
+                "scope_linkage_generation": 1544,
+                "scopes_copied": 2560,
+                "scopes_created": 1772,
                 "sup_instances_made": 169,
-                "sup_scope_walks": 39582,
-                "sup_scope_walks_cached": 34413,
-                "type_key_interns": 220932,
+                "sup_scope_walks": 39722,
+                "sup_scope_walks_cached": 34525,
+                "type_key_interns": 222755,
                 "type_keys_distinct": 858,
-                "type_structure_generation": 1817,
-                "type_symbol_lookups": 191053,
-                "type_symbol_lookups_by_stamp": 52057,
-                "var_symbol_lookups": 171750
+                "type_structure_generation": 1825,
+                "type_symbol_lookups": 192633,
+                "type_symbol_lookups_by_stamp": 52697,
+                "var_symbol_lookups": 172042
               },
               "name": "monomorphising-generics",
-              "wall_ns": 238947877
+              "wall_ns": 179023380
             },
             {
               "counters": {
-                "ast_nodes_created": 717375,
+                "ast_nodes_created": 717903,
                 "cls_instances_made": 0,
-                "comp_key_interns": 7168,
-                "comp_keys_distinct": 965,
+                "comp_key_interns": 7184,
+                "comp_keys_distinct": 972,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 9788,
-                "sup_scope_walks_cached": 5464,
-                "type_key_interns": 197471,
+                "sup_scope_walks": 9840,
+                "sup_scope_walks_cached": 5486,
+                "type_key_interns": 197809,
                 "type_keys_distinct": 11,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 52176,
-                "type_symbol_lookups_by_stamp": 18826,
-                "var_symbol_lookups": 8203
+                "type_symbol_lookups": 52375,
+                "type_symbol_lookups_by_stamp": 18899,
+                "var_symbol_lookups": 8219
               },
               "name": "generating-code-1",
-              "wall_ns": 141312862
+              "wall_ns": 123304500
             },
             {
               "counters": {
-                "ast_nodes_created": 172124,
+                "ast_nodes_created": 172865,
                 "cls_instances_made": 0,
                 "comp_key_interns": 28,
                 "comp_keys_distinct": 0,
@@ -853,17 +853,17 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 4212,
-                "sup_scope_walks_cached": 4175,
-                "type_key_interns": 77028,
-                "type_keys_distinct": 0,
+                "sup_scope_walks": 4208,
+                "sup_scope_walks_cached": 4171,
+                "type_key_interns": 82978,
+                "type_keys_distinct": 7,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 125742,
-                "type_symbol_lookups_by_stamp": 40190,
-                "var_symbol_lookups": 51924
+                "type_symbol_lookups": 133042,
+                "type_symbol_lookups_by_stamp": 43732,
+                "var_symbol_lookups": 52610
               },
               "name": "generating-code-2",
-              "wall_ns": 89222778
+              "wall_ns": 84173533
             },
             {
               "counters": {
@@ -886,7 +886,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 59663648
+              "wall_ns": 55589094
             },
             {
               "counters": {
@@ -909,7 +909,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 99585755
+              "wall_ns": 87858615
             },
             {
               "counters": {
@@ -932,7 +932,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 80288763
+              "wall_ns": 59939134
             },
             {
               "counters": {
@@ -955,7 +955,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 761418
+              "wall_ns": 1035487
             },
             {
               "counters": {
@@ -978,7 +978,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 16520399
+              "wall_ns": 17385030
             },
             {
               "counters": {
@@ -1001,56 +1001,56 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 24177294
+              "wall_ns": 20832734
             }
           ],
           "records": {
-            "executable.bytes": 17680,
+            "executable.bytes": 46896,
             "llvm.after_opt.blocks": 87,
             "llvm.after_opt.functions": 9,
-            "llvm.after_opt.instructions": 380,
+            "llvm.after_opt.instructions": 382,
             "llvm.before_opt.blocks": 727,
             "llvm.before_opt.functions": 308,
-            "llvm.before_opt.instructions": 6040,
-            "object.bytes": 10424
+            "llvm.before_opt.instructions": 6042,
+            "object.bytes": 34840
           },
-          "spp": "0.6.0",
+          "spp": "0.7.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 3657989673,
+          "wall_ns": 2814183278,
           "wall_ns_rounds": [
-            3657989673,
-            3710465701,
-            3883929574
+            2921230633,
+            2814183278,
+            2880742207
           ]
         }
       }
     },
     "hello": {
-      "hash": "1454749ceb8ccd2e490c8484e52852da1b0f55f3c679a1a9dc401a80b7d57c5d",
+      "hash": "0206b2d9f817c4b7ea8bc1ae4b50119e2c82269f452297fc596fb04bb15b8225",
       "modes": {
         "dev": {
           "counters": {
-            "ast_nodes_created": 13216719,
-            "cls_instances_made": 6017,
-            "comp_key_interns": 232983,
-            "comp_keys_distinct": 1467,
-            "fn_instances_made": 1861,
-            "scope_linkage_generation": 1278,
-            "scopes_copied": 248965,
-            "scopes_created": 22803,
-            "sup_instances_made": 28729,
-            "sup_scope_walks": 742534,
-            "sup_scope_walks_cached": 570621,
-            "type_key_interns": 3151603,
-            "type_keys_distinct": 93972,
-            "type_structure_generation": 110905,
-            "type_symbol_lookups": 2773809,
-            "type_symbol_lookups_by_stamp": 803000,
-            "var_symbol_lookups": 1230736
+            "ast_nodes_created": 13258765,
+            "cls_instances_made": 6039,
+            "comp_key_interns": 233174,
+            "comp_keys_distinct": 1474,
+            "fn_instances_made": 1865,
+            "scope_linkage_generation": 1286,
+            "scopes_copied": 249215,
+            "scopes_created": 22859,
+            "sup_instances_made": 28789,
+            "sup_scope_walks": 748324,
+            "sup_scope_walks_cached": 576117,
+            "type_key_interns": 3178061,
+            "type_keys_distinct": 94125,
+            "type_structure_generation": 111066,
+            "type_symbol_lookups": 2790151,
+            "type_symbol_lookups_by_stamp": 810384,
+            "var_symbol_lookups": 1234757
           },
           "deterministic": true,
-          "instructions": 17514003649,
-          "peak_rss_bytes": 1114333184,
+          "instructions": 17820522007,
+          "peak_rss_bytes": 1127817216,
           "phases": [
             {
               "counters": {
@@ -1073,11 +1073,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 87355536
+              "wall_ns": 65815337
             },
             {
               "counters": {
-                "ast_nodes_created": 1844490,
+                "ast_nodes_created": 1850842,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -1096,11 +1096,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 135256395
+              "wall_ns": 107637521
             },
             {
               "counters": {
-                "ast_nodes_created": 379906,
+                "ast_nodes_created": 381825,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -1119,57 +1119,57 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 40134210
+              "wall_ns": 34812739
             },
             {
               "counters": {
-                "ast_nodes_created": 123697,
+                "ast_nodes_created": 123799,
                 "cls_instances_made": 0,
                 "comp_key_interns": 268,
                 "comp_keys_distinct": 217,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 14116,
+                "scopes_created": 14149,
                 "sup_instances_made": 0,
                 "sup_scope_walks": 0,
                 "sup_scope_walks_cached": 0,
                 "type_key_interns": 1762,
                 "type_keys_distinct": 628,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 57249,
+                "type_symbol_lookups": 57275,
                 "type_symbol_lookups_by_stamp": 0,
-                "var_symbol_lookups": 12417
+                "var_symbol_lookups": 12434
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 22653175
+              "wall_ns": 20016356
             },
             {
               "counters": {
-                "ast_nodes_created": 200478,
+                "ast_nodes_created": 200513,
                 "cls_instances_made": 0,
                 "comp_key_interns": 14430,
                 "comp_keys_distinct": 9,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 2594,
+                "scopes_created": 2595,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 8846,
+                "sup_scope_walks": 8847,
                 "sup_scope_walks_cached": 6959,
-                "type_key_interns": 62747,
+                "type_key_interns": 62752,
                 "type_keys_distinct": 400,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 151624,
-                "type_symbol_lookups_by_stamp": 20106,
+                "type_symbol_lookups": 151634,
+                "type_symbol_lookups_by_stamp": 20107,
                 "var_symbol_lookups": 10822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 45375417
+              "wall_ns": 34922695
             },
             {
               "counters": {
-                "ast_nodes_created": 373396,
+                "ast_nodes_created": 373548,
                 "cls_instances_made": 231,
                 "comp_key_interns": 38321,
                 "comp_keys_distinct": 2,
@@ -1178,67 +1178,67 @@
                 "scopes_copied": 231,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 48072,
-                "sup_scope_walks_cached": 45505,
-                "type_key_interns": 175160,
-                "type_keys_distinct": 2033,
-                "type_structure_generation": 54795,
-                "type_symbol_lookups": 213934,
-                "type_symbol_lookups_by_stamp": 58467,
-                "var_symbol_lookups": 30832
+                "sup_scope_walks": 48081,
+                "sup_scope_walks_cached": 45513,
+                "type_key_interns": 175195,
+                "type_keys_distinct": 2041,
+                "type_structure_generation": 54810,
+                "type_symbol_lookups": 214002,
+                "type_symbol_lookups_by_stamp": 58474,
+                "var_symbol_lookups": 30859
               },
               "name": "qualifying-types",
-              "wall_ns": 102917853
+              "wall_ns": 78471981
             },
             {
               "counters": {
-                "ast_nodes_created": 973171,
-                "cls_instances_made": 3051,
+                "ast_nodes_created": 976487,
+                "cls_instances_made": 3061,
                 "comp_key_interns": 4017,
                 "comp_keys_distinct": 3,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 3051,
+                "scopes_copied": 3061,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 49625,
-                "sup_scope_walks_cached": 46256,
-                "type_key_interns": 192147,
-                "type_keys_distinct": 10676,
+                "sup_scope_walks": 49660,
+                "sup_scope_walks_cached": 46284,
+                "type_key_interns": 192647,
+                "type_keys_distinct": 10701,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 176899,
-                "type_symbol_lookups_by_stamp": 45556,
-                "var_symbol_lookups": 26383
+                "type_symbol_lookups": 177623,
+                "type_symbol_lookups_by_stamp": 45675,
+                "var_symbol_lookups": 26428
               },
               "name": "loading-super-scopes",
-              "wall_ns": 173173307
+              "wall_ns": 122004167
             },
             {
               "counters": {
-                "ast_nodes_created": 4426142,
-                "cls_instances_made": 2444,
-                "comp_key_interns": 77543,
+                "ast_nodes_created": 4438486,
+                "cls_instances_made": 2456,
+                "comp_key_interns": 77623,
                 "comp_keys_distinct": 2,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 215217,
+                "scopes_copied": 215449,
                 "scopes_created": 0,
-                "sup_instances_made": 26084,
-                "sup_scope_walks": 278143,
-                "sup_scope_walks_cached": 163696,
-                "type_key_interns": 1334239,
-                "type_keys_distinct": 69486,
-                "type_structure_generation": 45339,
-                "type_symbol_lookups": 703074,
-                "type_symbol_lookups_by_stamp": 218903,
-                "var_symbol_lookups": 108509
+                "sup_instances_made": 26144,
+                "sup_scope_walks": 278639,
+                "sup_scope_walks_cached": 164012,
+                "type_key_interns": 1337177,
+                "type_keys_distinct": 69598,
+                "type_structure_generation": 45453,
+                "type_symbol_lookups": 704176,
+                "type_symbol_lookups_by_stamp": 219337,
+                "var_symbol_lookups": 108549
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 893759217
+              "wall_ns": 629090320
             },
             {
               "counters": {
-                "ast_nodes_created": 844337,
+                "ast_nodes_created": 845094,
                 "cls_instances_made": 42,
                 "comp_key_interns": 14877,
                 "comp_keys_distinct": 0,
@@ -1247,44 +1247,44 @@
                 "scopes_copied": 12127,
                 "scopes_created": 0,
                 "sup_instances_made": 1097,
-                "sup_scope_walks": 71867,
-                "sup_scope_walks_cached": 60536,
-                "type_key_interns": 256029,
+                "sup_scope_walks": 71939,
+                "sup_scope_walks_cached": 60598,
+                "type_key_interns": 256406,
                 "type_keys_distinct": 3302,
                 "type_structure_generation": 1729,
-                "type_symbol_lookups": 213765,
-                "type_symbol_lookups_by_stamp": 90394,
+                "type_symbol_lookups": 214308,
+                "type_symbol_lookups_by_stamp": 90577,
                 "var_symbol_lookups": 26821
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 252008087
+              "wall_ns": 196027096
             },
             {
               "counters": {
-                "ast_nodes_created": 2923064,
+                "ast_nodes_created": 2929456,
                 "cls_instances_made": 239,
-                "comp_key_interns": 60932,
+                "comp_key_interns": 60985,
                 "comp_keys_distinct": 288,
-                "fn_instances_made": 1470,
+                "fn_instances_made": 1472,
                 "scope_linkage_generation": 22,
-                "scopes_copied": 16306,
-                "scopes_created": 4482,
+                "scopes_copied": 16310,
+                "scopes_created": 4500,
                 "sup_instances_made": 1431,
-                "sup_scope_walks": 185749,
-                "sup_scope_walks_cached": 156663,
-                "type_key_interns": 683067,
-                "type_keys_distinct": 6696,
-                "type_structure_generation": 7592,
-                "type_symbol_lookups": 837064,
-                "type_symbol_lookups_by_stamp": 236009,
-                "var_symbol_lookups": 574085
+                "sup_scope_walks": 187384,
+                "sup_scope_walks_cached": 158273,
+                "type_key_interns": 686407,
+                "type_keys_distinct": 6697,
+                "type_structure_generation": 7616,
+                "type_symbol_lookups": 840768,
+                "type_symbol_lookups_by_stamp": 237454,
+                "var_symbol_lookups": 576001
               },
               "name": "analysing-semantics",
-              "wall_ns": 890499384
+              "wall_ns": 634723891
             },
             {
               "counters": {
-                "ast_nodes_created": 45278,
+                "ast_nodes_created": 45559,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -1293,67 +1293,67 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 62563,
-                "sup_scope_walks_cached": 60917,
-                "type_key_interns": 118390,
+                "sup_scope_walks": 62858,
+                "sup_scope_walks_cached": 61212,
+                "type_key_interns": 119662,
                 "type_keys_distinct": 1,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 79799,
-                "type_symbol_lookups_by_stamp": 33612,
-                "var_symbol_lookups": 224701
+                "type_symbol_lookups": 80107,
+                "type_symbol_lookups_by_stamp": 33798,
+                "var_symbol_lookups": 225704
               },
               "name": "checking-memory-safety",
-              "wall_ns": 90868989
+              "wall_ns": 72868824
             },
             {
               "counters": {
-                "ast_nodes_created": 806367,
+                "ast_nodes_created": 810908,
                 "cls_instances_made": 10,
-                "comp_key_interns": 15537,
+                "comp_key_interns": 15579,
                 "comp_keys_distinct": 0,
-                "fn_instances_made": 391,
-                "scope_linkage_generation": 1256,
-                "scopes_copied": 2033,
-                "scopes_created": 1610,
+                "fn_instances_made": 393,
+                "scope_linkage_generation": 1264,
+                "scopes_copied": 2037,
+                "scopes_created": 1614,
                 "sup_instances_made": 117,
-                "sup_scope_walks": 24381,
-                "sup_scope_walks_cached": 21030,
-                "type_key_interns": 188409,
+                "sup_scope_walks": 24521,
+                "sup_scope_walks_cached": 21142,
+                "type_key_interns": 190220,
                 "type_keys_distinct": 739,
-                "type_structure_generation": 1450,
-                "type_symbol_lookups": 171226,
-                "type_symbol_lookups_by_stamp": 42974,
-                "var_symbol_lookups": 160315
+                "type_structure_generation": 1458,
+                "type_symbol_lookups": 172794,
+                "type_symbol_lookups_by_stamp": 43614,
+                "var_symbol_lookups": 160607
               },
               "name": "monomorphising-generics",
-              "wall_ns": 214255298
+              "wall_ns": 151020392
             },
             {
               "counters": {
-                "ast_nodes_created": 145918,
+                "ast_nodes_created": 146446,
                 "cls_instances_made": 0,
-                "comp_key_interns": 7034,
-                "comp_keys_distinct": 946,
+                "comp_key_interns": 7050,
+                "comp_keys_distinct": 953,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 9325,
-                "sup_scope_walks_cached": 5133,
-                "type_key_interns": 68179,
+                "sup_scope_walks": 9377,
+                "sup_scope_walks_cached": 5155,
+                "type_key_interns": 68517,
                 "type_keys_distinct": 11,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 49899,
-                "type_symbol_lookups_by_stamp": 18030,
-                "var_symbol_lookups": 8163
+                "type_symbol_lookups": 50098,
+                "type_symbol_lookups_by_stamp": 18103,
+                "var_symbol_lookups": 8179
               },
               "name": "generating-code-1",
-              "wall_ns": 102046323
+              "wall_ns": 88202924
             },
             {
               "counters": {
-                "ast_nodes_created": 130475,
+                "ast_nodes_created": 135802,
                 "cls_instances_made": 0,
                 "comp_key_interns": 24,
                 "comp_keys_distinct": 0,
@@ -1362,17 +1362,17 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 3963,
-                "sup_scope_walks_cached": 3926,
-                "type_key_interns": 71474,
-                "type_keys_distinct": 0,
+                "sup_scope_walks": 7018,
+                "sup_scope_walks_cached": 6969,
+                "type_key_interns": 87316,
+                "type_keys_distinct": 7,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 119276,
-                "type_symbol_lookups_by_stamp": 38949,
-                "var_symbol_lookups": 47688
+                "type_symbol_lookups": 127366,
+                "type_symbol_lookups_by_stamp": 43245,
+                "var_symbol_lookups": 48353
               },
               "name": "generating-code-2",
-              "wall_ns": 76490504
+              "wall_ns": 78279151
             },
             {
               "counters": {
@@ -1395,7 +1395,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 54648205
+              "wall_ns": 59003373
             },
             {
               "counters": {
@@ -1418,7 +1418,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 90068987
+              "wall_ns": 95247698
             },
             {
               "counters": {
@@ -1441,7 +1441,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 56826
+              "wall_ns": 46951
             },
             {
               "counters": {
@@ -1464,7 +1464,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 227845
+              "wall_ns": 773122
             },
             {
               "counters": {
@@ -1487,7 +1487,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 1416509
+              "wall_ns": 2105486
             },
             {
               "counters": {
@@ -1510,51 +1510,51 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 23522757
+              "wall_ns": 20999300
             }
           ],
           "records": {
-            "executable.bytes": 16272,
+            "executable.bytes": 34704,
             "llvm.after_opt.blocks": 7,
             "llvm.after_opt.functions": 4,
-            "llvm.after_opt.instructions": 17,
+            "llvm.after_opt.instructions": 19,
             "llvm.before_opt.blocks": 7,
             "llvm.before_opt.functions": 4,
-            "llvm.before_opt.instructions": 17,
-            "object.bytes": 2248
+            "llvm.before_opt.instructions": 19,
+            "object.bytes": 29936
           },
-          "spp": "0.6.0",
+          "spp": "0.7.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 3312631442,
+          "wall_ns": 2510989859,
           "wall_ns_rounds": [
-            3312631442,
-            3357745660,
-            3389621671
+            2510989859,
+            2523321516,
+            2516655742
           ]
         },
         "rel": {
           "counters": {
-            "ast_nodes_created": 13216671,
-            "cls_instances_made": 6017,
-            "comp_key_interns": 232983,
-            "comp_keys_distinct": 1467,
-            "fn_instances_made": 1861,
-            "scope_linkage_generation": 1278,
-            "scopes_copied": 248965,
-            "scopes_created": 22803,
-            "sup_instances_made": 28729,
-            "sup_scope_walks": 742534,
-            "sup_scope_walks_cached": 570621,
-            "type_key_interns": 3151594,
-            "type_keys_distinct": 93972,
-            "type_structure_generation": 110905,
-            "type_symbol_lookups": 2773779,
-            "type_symbol_lookups_by_stamp": 802991,
-            "var_symbol_lookups": 1230711
+            "ast_nodes_created": 13254131,
+            "cls_instances_made": 6039,
+            "comp_key_interns": 233174,
+            "comp_keys_distinct": 1474,
+            "fn_instances_made": 1865,
+            "scope_linkage_generation": 1286,
+            "scopes_copied": 249215,
+            "scopes_created": 22859,
+            "sup_instances_made": 28789,
+            "sup_scope_walks": 745265,
+            "sup_scope_walks_cached": 573070,
+            "type_key_interns": 3167654,
+            "type_keys_distinct": 94125,
+            "type_structure_generation": 111066,
+            "type_symbol_lookups": 2788761,
+            "type_symbol_lookups_by_stamp": 809587,
+            "var_symbol_lookups": 1234732
           },
           "deterministic": true,
-          "instructions": 17530447535,
-          "peak_rss_bytes": 1119551488,
+          "instructions": 17636088157,
+          "peak_rss_bytes": 1130926080,
           "phases": [
             {
               "counters": {
@@ -1577,11 +1577,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 86431033
+              "wall_ns": 68668743
             },
             {
               "counters": {
-                "ast_nodes_created": 1844490,
+                "ast_nodes_created": 1850842,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -1600,11 +1600,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 135091514
+              "wall_ns": 109934244
             },
             {
               "counters": {
-                "ast_nodes_created": 379885,
+                "ast_nodes_created": 381804,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -1623,57 +1623,57 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 39576617
+              "wall_ns": 35201150
             },
             {
               "counters": {
-                "ast_nodes_created": 123697,
+                "ast_nodes_created": 123799,
                 "cls_instances_made": 0,
                 "comp_key_interns": 268,
                 "comp_keys_distinct": 217,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 14116,
+                "scopes_created": 14149,
                 "sup_instances_made": 0,
                 "sup_scope_walks": 0,
                 "sup_scope_walks_cached": 0,
                 "type_key_interns": 1762,
                 "type_keys_distinct": 628,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 57249,
+                "type_symbol_lookups": 57275,
                 "type_symbol_lookups_by_stamp": 0,
-                "var_symbol_lookups": 12417
+                "var_symbol_lookups": 12434
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 22137385
+              "wall_ns": 20414753
             },
             {
               "counters": {
-                "ast_nodes_created": 200478,
+                "ast_nodes_created": 200513,
                 "cls_instances_made": 0,
                 "comp_key_interns": 14430,
                 "comp_keys_distinct": 9,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 2594,
+                "scopes_created": 2595,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 8846,
+                "sup_scope_walks": 8847,
                 "sup_scope_walks_cached": 6959,
-                "type_key_interns": 62747,
+                "type_key_interns": 62752,
                 "type_keys_distinct": 400,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 151624,
-                "type_symbol_lookups_by_stamp": 20106,
+                "type_symbol_lookups": 151634,
+                "type_symbol_lookups_by_stamp": 20107,
                 "var_symbol_lookups": 10822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 43808371
+              "wall_ns": 35818579
             },
             {
               "counters": {
-                "ast_nodes_created": 373396,
+                "ast_nodes_created": 373548,
                 "cls_instances_made": 231,
                 "comp_key_interns": 38321,
                 "comp_keys_distinct": 2,
@@ -1682,67 +1682,67 @@
                 "scopes_copied": 231,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 48072,
-                "sup_scope_walks_cached": 45505,
-                "type_key_interns": 175160,
-                "type_keys_distinct": 2033,
-                "type_structure_generation": 54795,
-                "type_symbol_lookups": 213934,
-                "type_symbol_lookups_by_stamp": 58467,
-                "var_symbol_lookups": 30832
+                "sup_scope_walks": 48081,
+                "sup_scope_walks_cached": 45513,
+                "type_key_interns": 175195,
+                "type_keys_distinct": 2041,
+                "type_structure_generation": 54810,
+                "type_symbol_lookups": 214002,
+                "type_symbol_lookups_by_stamp": 58474,
+                "var_symbol_lookups": 30859
               },
               "name": "qualifying-types",
-              "wall_ns": 100558895
+              "wall_ns": 80679547
             },
             {
               "counters": {
-                "ast_nodes_created": 973171,
-                "cls_instances_made": 3051,
+                "ast_nodes_created": 976487,
+                "cls_instances_made": 3061,
                 "comp_key_interns": 4017,
                 "comp_keys_distinct": 3,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 3051,
+                "scopes_copied": 3061,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 49625,
-                "sup_scope_walks_cached": 46256,
-                "type_key_interns": 192147,
-                "type_keys_distinct": 10676,
+                "sup_scope_walks": 49660,
+                "sup_scope_walks_cached": 46284,
+                "type_key_interns": 192647,
+                "type_keys_distinct": 10701,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 176899,
-                "type_symbol_lookups_by_stamp": 45556,
-                "var_symbol_lookups": 26383
+                "type_symbol_lookups": 177623,
+                "type_symbol_lookups_by_stamp": 45675,
+                "var_symbol_lookups": 26428
               },
               "name": "loading-super-scopes",
-              "wall_ns": 167240543
+              "wall_ns": 123900558
             },
             {
               "counters": {
-                "ast_nodes_created": 4426142,
-                "cls_instances_made": 2444,
-                "comp_key_interns": 77543,
+                "ast_nodes_created": 4438486,
+                "cls_instances_made": 2456,
+                "comp_key_interns": 77623,
                 "comp_keys_distinct": 2,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 215217,
+                "scopes_copied": 215449,
                 "scopes_created": 0,
-                "sup_instances_made": 26084,
-                "sup_scope_walks": 278143,
-                "sup_scope_walks_cached": 163696,
-                "type_key_interns": 1334239,
-                "type_keys_distinct": 69486,
-                "type_structure_generation": 45339,
-                "type_symbol_lookups": 703074,
-                "type_symbol_lookups_by_stamp": 218903,
-                "var_symbol_lookups": 108509
+                "sup_instances_made": 26144,
+                "sup_scope_walks": 278639,
+                "sup_scope_walks_cached": 164012,
+                "type_key_interns": 1337177,
+                "type_keys_distinct": 69598,
+                "type_structure_generation": 45453,
+                "type_symbol_lookups": 704176,
+                "type_symbol_lookups_by_stamp": 219337,
+                "var_symbol_lookups": 108549
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 873163053
+              "wall_ns": 642092466
             },
             {
               "counters": {
-                "ast_nodes_created": 844337,
+                "ast_nodes_created": 845094,
                 "cls_instances_made": 42,
                 "comp_key_interns": 14877,
                 "comp_keys_distinct": 0,
@@ -1751,44 +1751,44 @@
                 "scopes_copied": 12127,
                 "scopes_created": 0,
                 "sup_instances_made": 1097,
-                "sup_scope_walks": 71867,
-                "sup_scope_walks_cached": 60536,
-                "type_key_interns": 256029,
+                "sup_scope_walks": 71939,
+                "sup_scope_walks_cached": 60598,
+                "type_key_interns": 256406,
                 "type_keys_distinct": 3302,
                 "type_structure_generation": 1729,
-                "type_symbol_lookups": 213765,
-                "type_symbol_lookups_by_stamp": 90394,
+                "type_symbol_lookups": 214308,
+                "type_symbol_lookups_by_stamp": 90577,
                 "var_symbol_lookups": 26821
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 243859905
+              "wall_ns": 199833828
             },
             {
               "counters": {
-                "ast_nodes_created": 2923045,
+                "ast_nodes_created": 2929437,
                 "cls_instances_made": 239,
-                "comp_key_interns": 60932,
+                "comp_key_interns": 60985,
                 "comp_keys_distinct": 288,
-                "fn_instances_made": 1470,
+                "fn_instances_made": 1472,
                 "scope_linkage_generation": 22,
-                "scopes_copied": 16306,
-                "scopes_created": 4482,
+                "scopes_copied": 16310,
+                "scopes_created": 4500,
                 "sup_instances_made": 1431,
-                "sup_scope_walks": 185749,
-                "sup_scope_walks_cached": 156663,
-                "type_key_interns": 683063,
-                "type_keys_distinct": 6696,
-                "type_structure_generation": 7592,
-                "type_symbol_lookups": 837048,
-                "type_symbol_lookups_by_stamp": 236006,
-                "var_symbol_lookups": 574076
+                "sup_scope_walks": 187384,
+                "sup_scope_walks_cached": 158273,
+                "type_key_interns": 686403,
+                "type_keys_distinct": 6697,
+                "type_structure_generation": 7616,
+                "type_symbol_lookups": 840752,
+                "type_symbol_lookups_by_stamp": 237451,
+                "var_symbol_lookups": 575992
               },
               "name": "analysing-semantics",
-              "wall_ns": 856919469
+              "wall_ns": 619937488
             },
             {
               "counters": {
-                "ast_nodes_created": 45270,
+                "ast_nodes_created": 45551,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -1797,67 +1797,67 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 62563,
-                "sup_scope_walks_cached": 60917,
-                "type_key_interns": 118386,
+                "sup_scope_walks": 62858,
+                "sup_scope_walks_cached": 61212,
+                "type_key_interns": 119658,
                 "type_keys_distinct": 1,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 79789,
-                "type_symbol_lookups_by_stamp": 33606,
-                "var_symbol_lookups": 224685
+                "type_symbol_lookups": 80097,
+                "type_symbol_lookups_by_stamp": 33792,
+                "var_symbol_lookups": 225688
               },
               "name": "checking-memory-safety",
-              "wall_ns": 87848413
+              "wall_ns": 73306338
             },
             {
               "counters": {
-                "ast_nodes_created": 806367,
+                "ast_nodes_created": 810908,
                 "cls_instances_made": 10,
-                "comp_key_interns": 15537,
+                "comp_key_interns": 15579,
                 "comp_keys_distinct": 0,
-                "fn_instances_made": 391,
-                "scope_linkage_generation": 1256,
-                "scopes_copied": 2033,
-                "scopes_created": 1610,
+                "fn_instances_made": 393,
+                "scope_linkage_generation": 1264,
+                "scopes_copied": 2037,
+                "scopes_created": 1614,
                 "sup_instances_made": 117,
-                "sup_scope_walks": 24381,
-                "sup_scope_walks_cached": 21030,
-                "type_key_interns": 188409,
+                "sup_scope_walks": 24521,
+                "sup_scope_walks_cached": 21142,
+                "type_key_interns": 190220,
                 "type_keys_distinct": 739,
-                "type_structure_generation": 1450,
-                "type_symbol_lookups": 171226,
-                "type_symbol_lookups_by_stamp": 42974,
-                "var_symbol_lookups": 160315
+                "type_structure_generation": 1458,
+                "type_symbol_lookups": 172794,
+                "type_symbol_lookups_by_stamp": 43614,
+                "var_symbol_lookups": 160607
               },
               "name": "monomorphising-generics",
-              "wall_ns": 205636990
+              "wall_ns": 151770303
             },
             {
               "counters": {
-                "ast_nodes_created": 145918,
+                "ast_nodes_created": 146446,
                 "cls_instances_made": 0,
-                "comp_key_interns": 7034,
-                "comp_keys_distinct": 946,
+                "comp_key_interns": 7050,
+                "comp_keys_distinct": 953,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 9325,
-                "sup_scope_walks_cached": 5133,
-                "type_key_interns": 68179,
+                "sup_scope_walks": 9377,
+                "sup_scope_walks_cached": 5155,
+                "type_key_interns": 68517,
                 "type_keys_distinct": 11,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 49899,
-                "type_symbol_lookups_by_stamp": 18030,
-                "var_symbol_lookups": 8163
+                "type_symbol_lookups": 50098,
+                "type_symbol_lookups_by_stamp": 18103,
+                "var_symbol_lookups": 8179
               },
               "name": "generating-code-1",
-              "wall_ns": 100987944
+              "wall_ns": 88906620
             },
             {
               "counters": {
-                "ast_nodes_created": 130475,
+                "ast_nodes_created": 131216,
                 "cls_instances_made": 0,
                 "comp_key_interns": 24,
                 "comp_keys_distinct": 0,
@@ -1866,17 +1866,17 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 3963,
-                "sup_scope_walks_cached": 3926,
-                "type_key_interns": 71473,
-                "type_keys_distinct": 0,
+                "sup_scope_walks": 3959,
+                "sup_scope_walks_cached": 3922,
+                "type_key_interns": 76917,
+                "type_keys_distinct": 7,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 119272,
-                "type_symbol_lookups_by_stamp": 38949,
-                "var_symbol_lookups": 47688
+                "type_symbol_lookups": 126002,
+                "type_symbol_lookups_by_stamp": 42457,
+                "var_symbol_lookups": 48353
               },
               "name": "generating-code-2",
-              "wall_ns": 73270103
+              "wall_ns": 68977538
             },
             {
               "counters": {
@@ -1899,7 +1899,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 51236832
+              "wall_ns": 50562112
             },
             {
               "counters": {
@@ -1922,7 +1922,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 83237491
+              "wall_ns": 80265224
             },
             {
               "counters": {
@@ -1945,7 +1945,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 1498101
+              "wall_ns": 1312644
             },
             {
               "counters": {
@@ -1968,7 +1968,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 198981
+              "wall_ns": 315164
             },
             {
               "counters": {
@@ -1991,7 +1991,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 2448803
+              "wall_ns": 2785109
             },
             {
               "counters": {
@@ -2014,56 +2014,56 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 23725751
+              "wall_ns": 20701844
             }
           ],
           "records": {
-            "executable.bytes": 16184,
+            "executable.bytes": 16336,
             "llvm.after_opt.blocks": 5,
             "llvm.after_opt.functions": 2,
-            "llvm.after_opt.instructions": 13,
+            "llvm.after_opt.instructions": 15,
             "llvm.before_opt.blocks": 7,
             "llvm.before_opt.functions": 4,
-            "llvm.before_opt.instructions": 17,
-            "object.bytes": 2016
+            "llvm.before_opt.instructions": 19,
+            "object.bytes": 2264
           },
-          "spp": "0.6.0",
+          "spp": "0.7.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 3241942039,
+          "wall_ns": 2500105045,
           "wall_ns_rounds": [
-            3258051905,
-            3244400892,
-            3241942039
+            2500105045,
+            2562184919,
+            2520382143
           ]
         }
       }
     },
     "long-function": {
-      "hash": "6dfbb19f57233d035b6adc1714118ff89e9318321ee5aa3308db4a67b85916c3",
+      "hash": "7602332b4bf2e979d96a4cd01e45da7f27fa8a7477fc9e141e1fd49dbebd33bd",
       "modes": {
         "dev": {
           "counters": {
-            "ast_nodes_created": 15885388,
-            "cls_instances_made": 6018,
-            "comp_key_interns": 279218,
-            "comp_keys_distinct": 1468,
-            "fn_instances_made": 1879,
-            "scope_linkage_generation": 1314,
-            "scopes_copied": 249498,
-            "scopes_created": 30344,
-            "sup_instances_made": 28781,
-            "sup_scope_walks": 818766,
-            "sup_scope_walks_cached": 646598,
-            "type_key_interns": 3796891,
-            "type_keys_distinct": 94096,
-            "type_structure_generation": 111031,
-            "type_symbol_lookups": 3905076,
-            "type_symbol_lookups_by_stamp": 997530,
-            "var_symbol_lookups": 3457074
+            "ast_nodes_created": 15927500,
+            "cls_instances_made": 6040,
+            "comp_key_interns": 279409,
+            "comp_keys_distinct": 1475,
+            "fn_instances_made": 1883,
+            "scope_linkage_generation": 1322,
+            "scopes_copied": 249748,
+            "scopes_created": 30400,
+            "sup_instances_made": 28841,
+            "sup_scope_walks": 827614,
+            "sup_scope_walks_cached": 655152,
+            "type_key_interns": 3832581,
+            "type_keys_distinct": 94249,
+            "type_structure_generation": 111192,
+            "type_symbol_lookups": 3924502,
+            "type_symbol_lookups_by_stamp": 1006427,
+            "var_symbol_lookups": 3473100
           },
           "deterministic": true,
-          "instructions": 34020067146,
-          "peak_rss_bytes": 1356333056,
+          "instructions": 168608279970,
+          "peak_rss_bytes": 5408989184,
           "phases": [
             {
               "counters": {
@@ -2086,11 +2086,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 108239603
+              "wall_ns": 81721836
             },
             {
               "counters": {
-                "ast_nodes_created": 2963367,
+                "ast_nodes_created": 2969719,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -2109,11 +2109,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 231926408
+              "wall_ns": 184507179
             },
             {
               "counters": {
-                "ast_nodes_created": 623219,
+                "ast_nodes_created": 625138,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -2132,57 +2132,57 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 55141264
+              "wall_ns": 50100924
             },
             {
               "counters": {
-                "ast_nodes_created": 123708,
+                "ast_nodes_created": 123810,
                 "cls_instances_made": 0,
                 "comp_key_interns": 268,
                 "comp_keys_distinct": 217,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 14120,
+                "scopes_created": 14153,
                 "sup_instances_made": 0,
                 "sup_scope_walks": 0,
                 "sup_scope_walks_cached": 0,
                 "type_key_interns": 1762,
                 "type_keys_distinct": 628,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 57251,
+                "type_symbol_lookups": 57277,
                 "type_symbol_lookups_by_stamp": 0,
-                "var_symbol_lookups": 12419
+                "var_symbol_lookups": 12436
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 22792696
+              "wall_ns": 20941763
             },
             {
               "counters": {
-                "ast_nodes_created": 200478,
+                "ast_nodes_created": 200513,
                 "cls_instances_made": 0,
                 "comp_key_interns": 14430,
                 "comp_keys_distinct": 9,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 2594,
+                "scopes_created": 2595,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 8846,
+                "sup_scope_walks": 8847,
                 "sup_scope_walks_cached": 6959,
-                "type_key_interns": 62747,
+                "type_key_interns": 62752,
                 "type_keys_distinct": 400,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 151624,
-                "type_symbol_lookups_by_stamp": 20106,
+                "type_symbol_lookups": 151634,
+                "type_symbol_lookups_by_stamp": 20107,
                 "var_symbol_lookups": 10822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 45942636
+              "wall_ns": 35982472
             },
             {
               "counters": {
-                "ast_nodes_created": 373402,
+                "ast_nodes_created": 373554,
                 "cls_instances_made": 231,
                 "comp_key_interns": 38321,
                 "comp_keys_distinct": 2,
@@ -2191,67 +2191,67 @@
                 "scopes_copied": 231,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 48072,
-                "sup_scope_walks_cached": 45505,
-                "type_key_interns": 175162,
-                "type_keys_distinct": 2034,
-                "type_structure_generation": 54795,
-                "type_symbol_lookups": 213941,
-                "type_symbol_lookups_by_stamp": 58467,
-                "var_symbol_lookups": 30832
+                "sup_scope_walks": 48081,
+                "sup_scope_walks_cached": 45513,
+                "type_key_interns": 175197,
+                "type_keys_distinct": 2042,
+                "type_structure_generation": 54810,
+                "type_symbol_lookups": 214009,
+                "type_symbol_lookups_by_stamp": 58474,
+                "var_symbol_lookups": 30859
               },
               "name": "qualifying-types",
-              "wall_ns": 101813170
+              "wall_ns": 81675797
             },
             {
               "counters": {
-                "ast_nodes_created": 973278,
-                "cls_instances_made": 3051,
+                "ast_nodes_created": 976594,
+                "cls_instances_made": 3061,
                 "comp_key_interns": 4017,
                 "comp_keys_distinct": 3,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 3051,
+                "scopes_copied": 3061,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 49626,
-                "sup_scope_walks_cached": 46257,
-                "type_key_interns": 192168,
-                "type_keys_distinct": 10677,
+                "sup_scope_walks": 49661,
+                "sup_scope_walks_cached": 46285,
+                "type_key_interns": 192668,
+                "type_keys_distinct": 10702,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 176965,
-                "type_symbol_lookups_by_stamp": 45567,
-                "var_symbol_lookups": 26385
+                "type_symbol_lookups": 177689,
+                "type_symbol_lookups_by_stamp": 45686,
+                "var_symbol_lookups": 26430
               },
               "name": "loading-super-scopes",
-              "wall_ns": 172574556
+              "wall_ns": 125756805
             },
             {
               "counters": {
-                "ast_nodes_created": 4426142,
-                "cls_instances_made": 2444,
-                "comp_key_interns": 77543,
+                "ast_nodes_created": 4438486,
+                "cls_instances_made": 2456,
+                "comp_key_interns": 77623,
                 "comp_keys_distinct": 2,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 215217,
+                "scopes_copied": 215449,
                 "scopes_created": 0,
-                "sup_instances_made": 26084,
-                "sup_scope_walks": 278143,
-                "sup_scope_walks_cached": 163696,
-                "type_key_interns": 1334239,
-                "type_keys_distinct": 69486,
-                "type_structure_generation": 45339,
-                "type_symbol_lookups": 703074,
-                "type_symbol_lookups_by_stamp": 218903,
-                "var_symbol_lookups": 108509
+                "sup_instances_made": 26144,
+                "sup_scope_walks": 278639,
+                "sup_scope_walks_cached": 164012,
+                "type_key_interns": 1337177,
+                "type_keys_distinct": 69598,
+                "type_structure_generation": 45453,
+                "type_symbol_lookups": 704176,
+                "type_symbol_lookups_by_stamp": 219337,
+                "var_symbol_lookups": 108549
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 900280695
+              "wall_ns": 648983965
             },
             {
               "counters": {
-                "ast_nodes_created": 844380,
+                "ast_nodes_created": 845137,
                 "cls_instances_made": 42,
                 "comp_key_interns": 14877,
                 "comp_keys_distinct": 0,
@@ -2260,44 +2260,44 @@
                 "scopes_copied": 12127,
                 "scopes_created": 0,
                 "sup_instances_made": 1097,
-                "sup_scope_walks": 71871,
-                "sup_scope_walks_cached": 60540,
-                "type_key_interns": 256062,
+                "sup_scope_walks": 71943,
+                "sup_scope_walks_cached": 60602,
+                "type_key_interns": 256439,
                 "type_keys_distinct": 3302,
                 "type_structure_generation": 1729,
-                "type_symbol_lookups": 213821,
-                "type_symbol_lookups_by_stamp": 90411,
+                "type_symbol_lookups": 214364,
+                "type_symbol_lookups_by_stamp": 90594,
                 "var_symbol_lookups": 26821
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 261339337
+              "wall_ns": 199984504
             },
             {
               "counters": {
-                "ast_nodes_created": 4110463,
+                "ast_nodes_created": 4116855,
                 "cls_instances_made": 239,
-                "comp_key_interns": 106051,
+                "comp_key_interns": 106104,
                 "comp_keys_distinct": 288,
-                "fn_instances_made": 1475,
+                "fn_instances_made": 1477,
                 "scope_linkage_generation": 22,
-                "scopes_copied": 16316,
-                "scopes_created": 11983,
+                "scopes_copied": 16320,
+                "scopes_created": 12001,
                 "sup_instances_made": 1431,
-                "sup_scope_walks": 193367,
-                "sup_scope_walks_cached": 164269,
-                "type_key_interns": 960404,
-                "type_keys_distinct": 6698,
-                "type_structure_generation": 7595,
-                "type_symbol_lookups": 1352681,
-                "type_symbol_lookups_by_stamp": 320396,
-                "var_symbol_lookups": 2429701
+                "sup_scope_walks": 195002,
+                "sup_scope_walks_cached": 165879,
+                "type_key_interns": 963744,
+                "type_keys_distinct": 6699,
+                "type_structure_generation": 7619,
+                "type_symbol_lookups": 1356385,
+                "type_symbol_lookups_by_stamp": 321841,
+                "var_symbol_lookups": 2431617
               },
               "name": "analysing-semantics",
-              "wall_ns": 1130130975
+              "wall_ns": 809904373
             },
             {
               "counters": {
-                "ast_nodes_created": 57309,
+                "ast_nodes_created": 57590,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -2306,67 +2306,67 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 130083,
-                "sup_scope_walks_cached": 128437,
-                "type_key_interns": 329989,
+                "sup_scope_walks": 130378,
+                "sup_scope_walks_cached": 128732,
+                "type_key_interns": 331261,
                 "type_keys_distinct": 1,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 262856,
-                "type_symbol_lookups_by_stamp": 71130,
-                "var_symbol_lookups": 455778
+                "type_symbol_lookups": 263164,
+                "type_symbol_lookups_by_stamp": 71316,
+                "var_symbol_lookups": 456781
               },
               "name": "checking-memory-safety",
-              "wall_ns": 1084955447
+              "wall_ns": 851365855
             },
             {
               "counters": {
-                "ast_nodes_created": 843488,
+                "ast_nodes_created": 848029,
                 "cls_instances_made": 11,
-                "comp_key_interns": 16611,
+                "comp_key_interns": 16653,
                 "comp_keys_distinct": 0,
-                "fn_instances_made": 404,
-                "scope_linkage_generation": 1292,
-                "scopes_copied": 2556,
-                "scopes_created": 1646,
+                "fn_instances_made": 406,
+                "scope_linkage_generation": 1300,
+                "scopes_copied": 2560,
+                "scopes_created": 1650,
                 "sup_instances_made": 169,
-                "sup_scope_walks": 25468,
-                "sup_scope_walks_cached": 21875,
-                "type_key_interns": 198509,
+                "sup_scope_walks": 25608,
+                "sup_scope_walks_cached": 21987,
+                "type_key_interns": 200332,
                 "type_keys_distinct": 859,
-                "type_structure_generation": 1573,
-                "type_symbol_lookups": 178082,
-                "type_symbol_lookups_by_stamp": 44890,
-                "var_symbol_lookups": 167310
+                "type_structure_generation": 1581,
+                "type_symbol_lookups": 179662,
+                "type_symbol_lookups_by_stamp": 45530,
+                "var_symbol_lookups": 167602
               },
               "name": "monomorphising-generics",
-              "wall_ns": 230319564
+              "wall_ns": 161846336
             },
             {
               "counters": {
-                "ast_nodes_created": 146466,
+                "ast_nodes_created": 146994,
                 "cls_instances_made": 0,
-                "comp_key_interns": 7072,
-                "comp_keys_distinct": 947,
+                "comp_key_interns": 7088,
+                "comp_keys_distinct": 954,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 9326,
-                "sup_scope_walks_cached": 5133,
-                "type_key_interns": 68299,
+                "sup_scope_walks": 9378,
+                "sup_scope_walks_cached": 5155,
+                "type_key_interns": 68637,
                 "type_keys_distinct": 11,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 50110,
-                "type_symbol_lookups_by_stamp": 18060,
-                "var_symbol_lookups": 8165
+                "type_symbol_lookups": 50309,
+                "type_symbol_lookups_by_stamp": 18133,
+                "var_symbol_lookups": 8181
               },
               "name": "generating-code-1",
-              "wall_ns": 105025559
+              "wall_ns": 91656061
             },
             {
               "counters": {
-                "ast_nodes_created": 199688,
+                "ast_nodes_created": 205081,
                 "cls_instances_made": 0,
                 "comp_key_interns": 28,
                 "comp_keys_distinct": 0,
@@ -2375,17 +2375,17 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 3964,
-                "sup_scope_walks_cached": 3927,
-                "type_key_interns": 217550,
-                "type_keys_distinct": 0,
+                "sup_scope_walks": 10077,
+                "sup_scope_walks_cached": 10028,
+                "type_key_interns": 242612,
+                "type_keys_distinct": 7,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 544671,
-                "type_symbol_lookups_by_stamp": 109600,
-                "var_symbol_lookups": 180332
+                "type_symbol_lookups": 555833,
+                "type_symbol_lookups_by_stamp": 115409,
+                "var_symbol_lookups": 193002
               },
               "name": "generating-code-2",
-              "wall_ns": 166304521
+              "wall_ns": 158934368
             },
             {
               "counters": {
@@ -2408,7 +2408,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 79439171
+              "wall_ns": 91891239
             },
             {
               "counters": {
@@ -2431,7 +2431,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 172423980
+              "wall_ns": 200282214
             },
             {
               "counters": {
@@ -2454,7 +2454,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 75405663
+              "wall_ns": 84344279
             },
             {
               "counters": {
@@ -2477,7 +2477,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 80890031
+              "wall_ns": 128440050
             },
             {
               "counters": {
@@ -2500,7 +2500,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 416855376
+              "wall_ns": 18417822482
             },
             {
               "counters": {
@@ -2523,51 +2523,51 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 46552872
+              "wall_ns": 57014184
             }
           ],
           "records": {
-            "executable.bytes": 680816,
+            "executable.bytes": 2128456,
             "llvm.after_opt.blocks": 17065,
             "llvm.after_opt.functions": 107,
-            "llvm.after_opt.instructions": 104355,
+            "llvm.after_opt.instructions": 104363,
             "llvm.before_opt.blocks": 8094,
             "llvm.before_opt.functions": 173,
-            "llvm.before_opt.instructions": 31909,
-            "object.bytes": 787576
+            "llvm.before_opt.instructions": 31911,
+            "object.bytes": 2514912
           },
-          "spp": "0.6.0",
+          "spp": "0.7.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 5532211253,
+          "wall_ns": 22618449415,
           "wall_ns_rounds": [
-            5532211253,
-            5630402590,
-            5681645843
+            22998626999,
+            22618449415,
+            22970906708
           ]
         },
         "rel": {
           "counters": {
-            "ast_nodes_created": 15885340,
-            "cls_instances_made": 6018,
-            "comp_key_interns": 279218,
-            "comp_keys_distinct": 1468,
-            "fn_instances_made": 1879,
-            "scope_linkage_generation": 1314,
-            "scopes_copied": 249498,
-            "scopes_created": 30344,
-            "sup_instances_made": 28781,
-            "sup_scope_walks": 818766,
-            "sup_scope_walks_cached": 646598,
-            "type_key_interns": 3796882,
-            "type_keys_distinct": 94096,
-            "type_structure_generation": 111031,
-            "type_symbol_lookups": 3905046,
-            "type_symbol_lookups_by_stamp": 997521,
-            "var_symbol_lookups": 3457049
+            "ast_nodes_created": 15922800,
+            "cls_instances_made": 6040,
+            "comp_key_interns": 279409,
+            "comp_keys_distinct": 1475,
+            "fn_instances_made": 1883,
+            "scope_linkage_generation": 1322,
+            "scopes_copied": 249748,
+            "scopes_created": 30400,
+            "sup_instances_made": 28841,
+            "sup_scope_walks": 821497,
+            "sup_scope_walks_cached": 649047,
+            "type_key_interns": 3816005,
+            "type_keys_distinct": 94249,
+            "type_structure_generation": 111192,
+            "type_symbol_lookups": 3923100,
+            "type_symbol_lookups_by_stamp": 1005622,
+            "var_symbol_lookups": 3473075
           },
           "deterministic": true,
-          "instructions": 32695085854,
-          "peak_rss_bytes": 1243594752,
+          "instructions": 33034883449,
+          "peak_rss_bytes": 1249611776,
           "phases": [
             {
               "counters": {
@@ -2590,11 +2590,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 105407725
+              "wall_ns": 82280689
             },
             {
               "counters": {
-                "ast_nodes_created": 2963367,
+                "ast_nodes_created": 2969719,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -2613,11 +2613,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 229233470
+              "wall_ns": 185529647
             },
             {
               "counters": {
-                "ast_nodes_created": 623198,
+                "ast_nodes_created": 625117,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -2636,57 +2636,57 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 55319203
+              "wall_ns": 49290202
             },
             {
               "counters": {
-                "ast_nodes_created": 123708,
+                "ast_nodes_created": 123810,
                 "cls_instances_made": 0,
                 "comp_key_interns": 268,
                 "comp_keys_distinct": 217,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 14120,
+                "scopes_created": 14153,
                 "sup_instances_made": 0,
                 "sup_scope_walks": 0,
                 "sup_scope_walks_cached": 0,
                 "type_key_interns": 1762,
                 "type_keys_distinct": 628,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 57251,
+                "type_symbol_lookups": 57277,
                 "type_symbol_lookups_by_stamp": 0,
-                "var_symbol_lookups": 12419
+                "var_symbol_lookups": 12436
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 23216097
+              "wall_ns": 20503309
             },
             {
               "counters": {
-                "ast_nodes_created": 200478,
+                "ast_nodes_created": 200513,
                 "cls_instances_made": 0,
                 "comp_key_interns": 14430,
                 "comp_keys_distinct": 9,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 2594,
+                "scopes_created": 2595,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 8846,
+                "sup_scope_walks": 8847,
                 "sup_scope_walks_cached": 6959,
-                "type_key_interns": 62747,
+                "type_key_interns": 62752,
                 "type_keys_distinct": 400,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 151624,
-                "type_symbol_lookups_by_stamp": 20106,
+                "type_symbol_lookups": 151634,
+                "type_symbol_lookups_by_stamp": 20107,
                 "var_symbol_lookups": 10822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 44240877
+              "wall_ns": 35282476
             },
             {
               "counters": {
-                "ast_nodes_created": 373402,
+                "ast_nodes_created": 373554,
                 "cls_instances_made": 231,
                 "comp_key_interns": 38321,
                 "comp_keys_distinct": 2,
@@ -2695,67 +2695,67 @@
                 "scopes_copied": 231,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 48072,
-                "sup_scope_walks_cached": 45505,
-                "type_key_interns": 175162,
-                "type_keys_distinct": 2034,
-                "type_structure_generation": 54795,
-                "type_symbol_lookups": 213941,
-                "type_symbol_lookups_by_stamp": 58467,
-                "var_symbol_lookups": 30832
+                "sup_scope_walks": 48081,
+                "sup_scope_walks_cached": 45513,
+                "type_key_interns": 175197,
+                "type_keys_distinct": 2042,
+                "type_structure_generation": 54810,
+                "type_symbol_lookups": 214009,
+                "type_symbol_lookups_by_stamp": 58474,
+                "var_symbol_lookups": 30859
               },
               "name": "qualifying-types",
-              "wall_ns": 100136802
+              "wall_ns": 78763437
             },
             {
               "counters": {
-                "ast_nodes_created": 973278,
-                "cls_instances_made": 3051,
+                "ast_nodes_created": 976594,
+                "cls_instances_made": 3061,
                 "comp_key_interns": 4017,
                 "comp_keys_distinct": 3,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 3051,
+                "scopes_copied": 3061,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 49626,
-                "sup_scope_walks_cached": 46257,
-                "type_key_interns": 192168,
-                "type_keys_distinct": 10677,
+                "sup_scope_walks": 49661,
+                "sup_scope_walks_cached": 46285,
+                "type_key_interns": 192668,
+                "type_keys_distinct": 10702,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 176965,
-                "type_symbol_lookups_by_stamp": 45567,
-                "var_symbol_lookups": 26385
+                "type_symbol_lookups": 177689,
+                "type_symbol_lookups_by_stamp": 45686,
+                "var_symbol_lookups": 26430
               },
               "name": "loading-super-scopes",
-              "wall_ns": 170960678
+              "wall_ns": 121444285
             },
             {
               "counters": {
-                "ast_nodes_created": 4426142,
-                "cls_instances_made": 2444,
-                "comp_key_interns": 77543,
+                "ast_nodes_created": 4438486,
+                "cls_instances_made": 2456,
+                "comp_key_interns": 77623,
                 "comp_keys_distinct": 2,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 215217,
+                "scopes_copied": 215449,
                 "scopes_created": 0,
-                "sup_instances_made": 26084,
-                "sup_scope_walks": 278143,
-                "sup_scope_walks_cached": 163696,
-                "type_key_interns": 1334239,
-                "type_keys_distinct": 69486,
-                "type_structure_generation": 45339,
-                "type_symbol_lookups": 703074,
-                "type_symbol_lookups_by_stamp": 218903,
-                "var_symbol_lookups": 108509
+                "sup_instances_made": 26144,
+                "sup_scope_walks": 278639,
+                "sup_scope_walks_cached": 164012,
+                "type_key_interns": 1337177,
+                "type_keys_distinct": 69598,
+                "type_structure_generation": 45453,
+                "type_symbol_lookups": 704176,
+                "type_symbol_lookups_by_stamp": 219337,
+                "var_symbol_lookups": 108549
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 904877258
+              "wall_ns": 632252493
             },
             {
               "counters": {
-                "ast_nodes_created": 844380,
+                "ast_nodes_created": 845137,
                 "cls_instances_made": 42,
                 "comp_key_interns": 14877,
                 "comp_keys_distinct": 0,
@@ -2764,44 +2764,44 @@
                 "scopes_copied": 12127,
                 "scopes_created": 0,
                 "sup_instances_made": 1097,
-                "sup_scope_walks": 71871,
-                "sup_scope_walks_cached": 60540,
-                "type_key_interns": 256062,
+                "sup_scope_walks": 71943,
+                "sup_scope_walks_cached": 60602,
+                "type_key_interns": 256439,
                 "type_keys_distinct": 3302,
                 "type_structure_generation": 1729,
-                "type_symbol_lookups": 213821,
-                "type_symbol_lookups_by_stamp": 90411,
+                "type_symbol_lookups": 214364,
+                "type_symbol_lookups_by_stamp": 90594,
                 "var_symbol_lookups": 26821
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 256182226
+              "wall_ns": 200917076
             },
             {
               "counters": {
-                "ast_nodes_created": 4110444,
+                "ast_nodes_created": 4116836,
                 "cls_instances_made": 239,
-                "comp_key_interns": 106051,
+                "comp_key_interns": 106104,
                 "comp_keys_distinct": 288,
-                "fn_instances_made": 1475,
+                "fn_instances_made": 1477,
                 "scope_linkage_generation": 22,
-                "scopes_copied": 16316,
-                "scopes_created": 11983,
+                "scopes_copied": 16320,
+                "scopes_created": 12001,
                 "sup_instances_made": 1431,
-                "sup_scope_walks": 193367,
-                "sup_scope_walks_cached": 164269,
-                "type_key_interns": 960400,
-                "type_keys_distinct": 6698,
-                "type_structure_generation": 7595,
-                "type_symbol_lookups": 1352665,
-                "type_symbol_lookups_by_stamp": 320393,
-                "var_symbol_lookups": 2429692
+                "sup_scope_walks": 195002,
+                "sup_scope_walks_cached": 165879,
+                "type_key_interns": 963740,
+                "type_keys_distinct": 6699,
+                "type_structure_generation": 7619,
+                "type_symbol_lookups": 1356369,
+                "type_symbol_lookups_by_stamp": 321838,
+                "var_symbol_lookups": 2431608
               },
               "name": "analysing-semantics",
-              "wall_ns": 1123981957
+              "wall_ns": 787664943
             },
             {
               "counters": {
-                "ast_nodes_created": 57301,
+                "ast_nodes_created": 57582,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -2810,67 +2810,67 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 130083,
-                "sup_scope_walks_cached": 128437,
-                "type_key_interns": 329985,
+                "sup_scope_walks": 130378,
+                "sup_scope_walks_cached": 128732,
+                "type_key_interns": 331257,
                 "type_keys_distinct": 1,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 262846,
-                "type_symbol_lookups_by_stamp": 71124,
-                "var_symbol_lookups": 455762
+                "type_symbol_lookups": 263154,
+                "type_symbol_lookups_by_stamp": 71310,
+                "var_symbol_lookups": 456765
               },
               "name": "checking-memory-safety",
-              "wall_ns": 1069201279
+              "wall_ns": 850920960
             },
             {
               "counters": {
-                "ast_nodes_created": 843488,
+                "ast_nodes_created": 848029,
                 "cls_instances_made": 11,
-                "comp_key_interns": 16611,
+                "comp_key_interns": 16653,
                 "comp_keys_distinct": 0,
-                "fn_instances_made": 404,
-                "scope_linkage_generation": 1292,
-                "scopes_copied": 2556,
-                "scopes_created": 1646,
+                "fn_instances_made": 406,
+                "scope_linkage_generation": 1300,
+                "scopes_copied": 2560,
+                "scopes_created": 1650,
                 "sup_instances_made": 169,
-                "sup_scope_walks": 25468,
-                "sup_scope_walks_cached": 21875,
-                "type_key_interns": 198509,
+                "sup_scope_walks": 25608,
+                "sup_scope_walks_cached": 21987,
+                "type_key_interns": 200332,
                 "type_keys_distinct": 859,
-                "type_structure_generation": 1573,
-                "type_symbol_lookups": 178082,
-                "type_symbol_lookups_by_stamp": 44890,
-                "var_symbol_lookups": 167310
+                "type_structure_generation": 1581,
+                "type_symbol_lookups": 179662,
+                "type_symbol_lookups_by_stamp": 45530,
+                "var_symbol_lookups": 167602
               },
               "name": "monomorphising-generics",
-              "wall_ns": 220770512
+              "wall_ns": 157164559
             },
             {
               "counters": {
-                "ast_nodes_created": 146466,
+                "ast_nodes_created": 146994,
                 "cls_instances_made": 0,
-                "comp_key_interns": 7072,
-                "comp_keys_distinct": 947,
+                "comp_key_interns": 7088,
+                "comp_keys_distinct": 954,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 9326,
-                "sup_scope_walks_cached": 5133,
-                "type_key_interns": 68299,
+                "sup_scope_walks": 9378,
+                "sup_scope_walks_cached": 5155,
+                "type_key_interns": 68637,
                 "type_keys_distinct": 11,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 50110,
-                "type_symbol_lookups_by_stamp": 18060,
-                "var_symbol_lookups": 8165
+                "type_symbol_lookups": 50309,
+                "type_symbol_lookups_by_stamp": 18133,
+                "var_symbol_lookups": 8181
               },
               "name": "generating-code-1",
-              "wall_ns": 100958453
+              "wall_ns": 89698520
             },
             {
               "counters": {
-                "ast_nodes_created": 199688,
+                "ast_nodes_created": 200429,
                 "cls_instances_made": 0,
                 "comp_key_interns": 28,
                 "comp_keys_distinct": 0,
@@ -2879,17 +2879,17 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 3964,
-                "sup_scope_walks_cached": 3927,
-                "type_key_interns": 217549,
-                "type_keys_distinct": 0,
+                "sup_scope_walks": 3960,
+                "sup_scope_walks_cached": 3923,
+                "type_key_interns": 226044,
+                "type_keys_distinct": 7,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 544667,
-                "type_symbol_lookups_by_stamp": 109600,
-                "var_symbol_lookups": 180332
+                "type_symbol_lookups": 554457,
+                "type_symbol_lookups_by_stamp": 114613,
+                "var_symbol_lookups": 193002
               },
               "name": "generating-code-2",
-              "wall_ns": 163308849
+              "wall_ns": 144001063
             },
             {
               "counters": {
@@ -2912,7 +2912,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 80100714
+              "wall_ns": 80768354
             },
             {
               "counters": {
@@ -2935,7 +2935,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 183595775
+              "wall_ns": 167132586
             },
             {
               "counters": {
@@ -2958,7 +2958,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 427616615
+              "wall_ns": 328033747
             },
             {
               "counters": {
@@ -2981,7 +2981,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 920005
+              "wall_ns": 1251523
             },
             {
               "counters": {
@@ -3004,7 +3004,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 20021156
+              "wall_ns": 20287885
             },
             {
               "counters": {
@@ -3027,56 +3027,56 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 24539465
+              "wall_ns": 21264134
             }
           ],
           "records": {
-            "executable.bytes": 18088,
+            "executable.bytes": 48360,
             "llvm.after_opt.blocks": 102,
             "llvm.after_opt.functions": 11,
-            "llvm.after_opt.instructions": 448,
+            "llvm.after_opt.instructions": 450,
             "llvm.before_opt.blocks": 8094,
             "llvm.before_opt.functions": 173,
-            "llvm.before_opt.instructions": 31909,
-            "object.bytes": 11992
+            "llvm.before_opt.instructions": 31911,
+            "object.bytes": 38624
           },
-          "spp": "0.6.0",
+          "spp": "0.7.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 5323770774,
+          "wall_ns": 4070148032,
           "wall_ns_rounds": [
-            5458659740,
-            5323770774,
-            5480895786
+            4070148032,
+            4239085309,
+            4185383018
           ]
         }
       }
     },
     "many-modules": {
-      "hash": "0ef662eb8931b568f058c733815ff595c6cbf4c746837e57f94e9a1779d1ac13",
+      "hash": "10319880ea344e92fe74891bc298beeb08efa498d7b4540d821ed91d2605d621",
       "modes": {
         "dev": {
           "counters": {
-            "ast_nodes_created": 15954466,
-            "cls_instances_made": 6018,
-            "comp_key_interns": 419554,
-            "comp_keys_distinct": 1468,
-            "fn_instances_made": 1877,
-            "scope_linkage_generation": 1310,
-            "scopes_copied": 249494,
-            "scopes_created": 41048,
-            "sup_instances_made": 28781,
-            "sup_scope_walks": 954500,
-            "sup_scope_walks_cached": 768139,
-            "type_key_interns": 3798119,
-            "type_keys_distinct": 94693,
-            "type_structure_generation": 580224,
-            "type_symbol_lookups": 3961024,
-            "type_symbol_lookups_by_stamp": 1066678,
-            "var_symbol_lookups": 1577291
+            "ast_nodes_created": 15996578,
+            "cls_instances_made": 6040,
+            "comp_key_interns": 419745,
+            "comp_keys_distinct": 1475,
+            "fn_instances_made": 1881,
+            "scope_linkage_generation": 1318,
+            "scopes_copied": 249744,
+            "scopes_created": 41104,
+            "sup_instances_made": 28841,
+            "sup_scope_walks": 961144,
+            "sup_scope_walks_cached": 774489,
+            "type_key_interns": 3828194,
+            "type_keys_distinct": 94846,
+            "type_structure_generation": 580385,
+            "type_symbol_lookups": 3979435,
+            "type_symbol_lookups_by_stamp": 1075071,
+            "var_symbol_lookups": 1581317
           },
           "deterministic": true,
-          "instructions": 22107674734,
-          "peak_rss_bytes": 1311870976,
+          "instructions": 22986884194,
+          "peak_rss_bytes": 1329983488,
           "phases": [
             {
               "counters": {
@@ -3099,11 +3099,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 143063994
+              "wall_ns": 111435890
             },
             {
               "counters": {
-                "ast_nodes_created": 2583577,
+                "ast_nodes_created": 2589929,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -3122,11 +3122,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 179167888
+              "wall_ns": 142794699
             },
             {
               "counters": {
-                "ast_nodes_created": 428086,
+                "ast_nodes_created": 430005,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -3145,57 +3145,57 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 45789110
+              "wall_ns": 40580915
             },
             {
               "counters": {
-                "ast_nodes_created": 317897,
+                "ast_nodes_created": 317999,
                 "cls_instances_made": 0,
                 "comp_key_interns": 268,
                 "comp_keys_distinct": 217,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 27127,
+                "scopes_created": 27160,
                 "sup_instances_made": 0,
                 "sup_scope_walks": 0,
                 "sup_scope_walks_cached": 0,
                 "type_key_interns": 1762,
                 "type_keys_distinct": 628,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 164449,
+                "type_symbol_lookups": 164475,
                 "type_symbol_lookups_by_stamp": 0,
-                "var_symbol_lookups": 24417
+                "var_symbol_lookups": 24434
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 44022307
+              "wall_ns": 37728444
             },
             {
               "counters": {
-                "ast_nodes_created": 539278,
+                "ast_nodes_created": 539313,
                 "cls_instances_made": 0,
                 "comp_key_interns": 33030,
                 "comp_keys_distinct": 9,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 7594,
+                "scopes_created": 7595,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 13846,
+                "sup_scope_walks": 13847,
                 "sup_scope_walks_cached": 8359,
-                "type_key_interns": 153747,
+                "type_key_interns": 153752,
                 "type_keys_distinct": 400,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 434624,
-                "type_symbol_lookups_by_stamp": 25106,
+                "type_symbol_lookups": 434634,
+                "type_symbol_lookups_by_stamp": 25107,
                 "var_symbol_lookups": 25822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 120084927
+              "wall_ns": 93268145
             },
             {
               "counters": {
-                "ast_nodes_created": 1138396,
+                "ast_nodes_created": 1138548,
                 "cls_instances_made": 231,
                 "comp_key_interns": 184121,
                 "comp_keys_distinct": 2,
@@ -3204,67 +3204,67 @@
                 "scopes_copied": 231,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 211472,
-                "sup_scope_walks_cached": 204705,
-                "type_key_interns": 533760,
-                "type_keys_distinct": 2233,
-                "type_structure_generation": 522795,
-                "type_symbol_lookups": 722734,
-                "type_symbol_lookups_by_stamp": 217267,
-                "var_symbol_lookups": 144432
+                "sup_scope_walks": 211481,
+                "sup_scope_walks_cached": 204713,
+                "type_key_interns": 533795,
+                "type_keys_distinct": 2241,
+                "type_structure_generation": 522810,
+                "type_symbol_lookups": 722802,
+                "type_symbol_lookups_by_stamp": 217274,
+                "var_symbol_lookups": 144459
               },
               "name": "qualifying-types",
-              "wall_ns": 304592875
+              "wall_ns": 236845763
             },
             {
               "counters": {
-                "ast_nodes_created": 1007952,
-                "cls_instances_made": 3051,
+                "ast_nodes_created": 1011268,
+                "cls_instances_made": 3061,
                 "comp_key_interns": 4017,
                 "comp_keys_distinct": 3,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 3051,
+                "scopes_copied": 3061,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 49825,
-                "sup_scope_walks_cached": 46456,
-                "type_key_interns": 200338,
-                "type_keys_distinct": 11076,
+                "sup_scope_walks": 49860,
+                "sup_scope_walks_cached": 46484,
+                "type_key_interns": 200838,
+                "type_keys_distinct": 11101,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 196495,
-                "type_symbol_lookups_by_stamp": 48557,
-                "var_symbol_lookups": 27983
+                "type_symbol_lookups": 197219,
+                "type_symbol_lookups_by_stamp": 48676,
+                "var_symbol_lookups": 28028
               },
               "name": "loading-super-scopes",
-              "wall_ns": 182919177
+              "wall_ns": 133750102
             },
             {
               "counters": {
-                "ast_nodes_created": 4426142,
-                "cls_instances_made": 2444,
-                "comp_key_interns": 77543,
+                "ast_nodes_created": 4438486,
+                "cls_instances_made": 2456,
+                "comp_key_interns": 77623,
                 "comp_keys_distinct": 2,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 215217,
+                "scopes_copied": 215449,
                 "scopes_created": 0,
-                "sup_instances_made": 26084,
-                "sup_scope_walks": 278343,
-                "sup_scope_walks_cached": 163696,
-                "type_key_interns": 1336439,
-                "type_keys_distinct": 69486,
-                "type_structure_generation": 45939,
-                "type_symbol_lookups": 703274,
-                "type_symbol_lookups_by_stamp": 218903,
-                "var_symbol_lookups": 108509
+                "sup_instances_made": 26144,
+                "sup_scope_walks": 278839,
+                "sup_scope_walks_cached": 164012,
+                "type_key_interns": 1339377,
+                "type_keys_distinct": 69598,
+                "type_structure_generation": 46053,
+                "type_symbol_lookups": 704376,
+                "type_symbol_lookups_by_stamp": 219337,
+                "var_symbol_lookups": 108549
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 909530379
+              "wall_ns": 633227954
             },
             {
               "counters": {
-                "ast_nodes_created": 854137,
+                "ast_nodes_created": 854894,
                 "cls_instances_made": 42,
                 "comp_key_interns": 14877,
                 "comp_keys_distinct": 0,
@@ -3273,44 +3273,44 @@
                 "scopes_copied": 12127,
                 "scopes_created": 0,
                 "sup_instances_made": 1097,
-                "sup_scope_walks": 72867,
-                "sup_scope_walks_cached": 61536,
-                "type_key_interns": 263229,
+                "sup_scope_walks": 72939,
+                "sup_scope_walks_cached": 61598,
+                "type_key_interns": 263606,
                 "type_keys_distinct": 3302,
                 "type_structure_generation": 1729,
-                "type_symbol_lookups": 226765,
-                "type_symbol_lookups_by_stamp": 94594,
+                "type_symbol_lookups": 227308,
+                "type_symbol_lookups_by_stamp": 94777,
                 "var_symbol_lookups": 26821
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 268121096
+              "wall_ns": 211168791
             },
             {
               "counters": {
-                "ast_nodes_created": 3475772,
+                "ast_nodes_created": 3482164,
                 "cls_instances_made": 239,
-                "comp_key_interns": 75228,
+                "comp_key_interns": 75281,
                 "comp_keys_distinct": 288,
-                "fn_instances_made": 1474,
+                "fn_instances_made": 1476,
                 "scope_linkage_generation": 22,
-                "scopes_copied": 16314,
-                "scopes_created": 4682,
+                "scopes_copied": 16318,
+                "scopes_created": 4700,
                 "sup_instances_made": 1431,
-                "sup_scope_walks": 218660,
-                "sup_scope_walks_cached": 183764,
-                "type_key_interns": 804591,
-                "type_keys_distinct": 6698,
-                "type_structure_generation": 8192,
-                "type_symbol_lookups": 1013103,
-                "type_symbol_lookups_by_stamp": 297299,
-                "var_symbol_lookups": 714375
+                "sup_scope_walks": 220295,
+                "sup_scope_walks_cached": 185374,
+                "type_key_interns": 807931,
+                "type_keys_distinct": 6699,
+                "type_structure_generation": 8216,
+                "type_symbol_lookups": 1016807,
+                "type_symbol_lookups_by_stamp": 298744,
+                "var_symbol_lookups": 716291
               },
               "name": "analysing-semantics",
-              "wall_ns": 1053904974
+              "wall_ns": 779284811
             },
             {
               "counters": {
-                "ast_nodes_created": 47700,
+                "ast_nodes_created": 47981,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -3319,67 +3319,67 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 66164,
-                "sup_scope_walks_cached": 64518,
-                "type_key_interns": 135441,
+                "sup_scope_walks": 66459,
+                "sup_scope_walks_cached": 64813,
+                "type_key_interns": 136713,
                 "type_keys_distinct": 1,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 101194,
-                "type_symbol_lookups_by_stamp": 45408,
-                "var_symbol_lookups": 270125
+                "type_symbol_lookups": 101502,
+                "type_symbol_lookups_by_stamp": 45594,
+                "var_symbol_lookups": 271128
               },
               "name": "checking-memory-safety",
-              "wall_ns": 100858893
+              "wall_ns": 83090883
             },
             {
               "counters": {
-                "ast_nodes_created": 842190,
+                "ast_nodes_created": 846731,
                 "cls_instances_made": 11,
-                "comp_key_interns": 16578,
+                "comp_key_interns": 16620,
                 "comp_keys_distinct": 0,
-                "fn_instances_made": 403,
-                "scope_linkage_generation": 1288,
-                "scopes_copied": 2554,
-                "scopes_created": 1644,
+                "fn_instances_made": 405,
+                "scope_linkage_generation": 1296,
+                "scopes_copied": 2558,
+                "scopes_created": 1648,
                 "sup_instances_made": 169,
-                "sup_scope_walks": 25434,
-                "sup_scope_walks_cached": 21845,
-                "type_key_interns": 198120,
+                "sup_scope_walks": 25574,
+                "sup_scope_walks_cached": 21957,
+                "type_key_interns": 199943,
                 "type_keys_distinct": 858,
-                "type_structure_generation": 1569,
-                "type_symbol_lookups": 177864,
-                "type_symbol_lookups_by_stamp": 44829,
-                "var_symbol_lookups": 167163
+                "type_structure_generation": 1577,
+                "type_symbol_lookups": 179444,
+                "type_symbol_lookups_by_stamp": 45469,
+                "var_symbol_lookups": 167455
               },
               "name": "monomorphising-generics",
-              "wall_ns": 223545380
+              "wall_ns": 159463078
             },
             {
               "counters": {
-                "ast_nodes_created": 151404,
+                "ast_nodes_created": 151932,
                 "cls_instances_made": 0,
-                "comp_key_interns": 13864,
-                "comp_keys_distinct": 947,
+                "comp_key_interns": 13880,
+                "comp_keys_distinct": 954,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 13125,
-                "sup_scope_walks_cached": 8533,
-                "type_key_interns": 86876,
+                "sup_scope_walks": 13177,
+                "sup_scope_walks_cached": 8555,
+                "type_key_interns": 87214,
                 "type_keys_distinct": 11,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 71058,
-                "type_symbol_lookups_by_stamp": 26246,
-                "var_symbol_lookups": 16963
+                "type_symbol_lookups": 71257,
+                "type_symbol_lookups_by_stamp": 26319,
+                "var_symbol_lookups": 16979
               },
               "name": "generating-code-1",
-              "wall_ns": 116567606
+              "wall_ns": 102651431
             },
             {
               "counters": {
-                "ast_nodes_created": 141935,
+                "ast_nodes_created": 147328,
                 "cls_instances_made": 0,
                 "comp_key_interns": 28,
                 "comp_keys_distinct": 0,
@@ -3388,17 +3388,17 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 4764,
-                "sup_scope_walks_cached": 4727,
-                "type_key_interns": 83816,
-                "type_keys_distinct": 0,
+                "sup_scope_walks": 8673,
+                "sup_scope_walks_cached": 8624,
+                "type_key_interns": 103263,
+                "type_keys_distinct": 7,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 149464,
-                "type_symbol_lookups_by_stamp": 48469,
-                "var_symbol_lookups": 50681
+                "type_symbol_lookups": 159611,
+                "type_symbol_lookups_by_stamp": 53774,
+                "var_symbol_lookups": 51351
               },
               "name": "generating-code-2",
-              "wall_ns": 87170629
+              "wall_ns": 97015513
             },
             {
               "counters": {
@@ -3421,7 +3421,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 72317811
+              "wall_ns": 75619282
             },
             {
               "counters": {
@@ -3444,7 +3444,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 127044812
+              "wall_ns": 140126821
             },
             {
               "counters": {
@@ -3467,7 +3467,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 5695304
+              "wall_ns": 6556084
             },
             {
               "counters": {
@@ -3490,7 +3490,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 7651257
+              "wall_ns": 12636231
             },
             {
               "counters": {
@@ -3513,7 +3513,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 78489921
+              "wall_ns": 102926556
             },
             {
               "counters": {
@@ -3536,51 +3536,51 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 27277817
+              "wall_ns": 25745530
             }
           ],
           "records": {
-            "executable.bytes": 103352,
+            "executable.bytes": 333232,
             "llvm.after_opt.blocks": 1163,
             "llvm.after_opt.functions": 305,
-            "llvm.after_opt.instructions": 10033,
+            "llvm.after_opt.instructions": 10041,
             "llvm.before_opt.blocks": 787,
             "llvm.before_opt.functions": 368,
-            "llvm.before_opt.instructions": 6365,
-            "object.bytes": 113952
+            "llvm.before_opt.instructions": 6367,
+            "object.bytes": 426816
           },
-          "spp": "0.6.0",
+          "spp": "0.7.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 4156237113,
+          "wall_ns": 3306359746,
           "wall_ns_rounds": [
-            4172954566,
-            4157411037,
-            4156237113
+            3306359746,
+            3380374553,
+            3412888197
           ]
         },
         "rel": {
           "counters": {
-            "ast_nodes_created": 15954418,
-            "cls_instances_made": 6018,
-            "comp_key_interns": 419554,
-            "comp_keys_distinct": 1468,
-            "fn_instances_made": 1877,
-            "scope_linkage_generation": 1310,
-            "scopes_copied": 249494,
-            "scopes_created": 41048,
-            "sup_instances_made": 28781,
-            "sup_scope_walks": 954500,
-            "sup_scope_walks_cached": 768139,
-            "type_key_interns": 3798110,
-            "type_keys_distinct": 94693,
-            "type_structure_generation": 580224,
-            "type_symbol_lookups": 3960994,
-            "type_symbol_lookups_by_stamp": 1066669,
-            "var_symbol_lookups": 1577266
+            "ast_nodes_created": 15991878,
+            "cls_instances_made": 6040,
+            "comp_key_interns": 419745,
+            "comp_keys_distinct": 1475,
+            "fn_instances_made": 1881,
+            "scope_linkage_generation": 1318,
+            "scopes_copied": 249744,
+            "scopes_created": 41104,
+            "sup_instances_made": 28841,
+            "sup_scope_walks": 957231,
+            "sup_scope_walks_cached": 770588,
+            "type_key_interns": 3814627,
+            "type_keys_distinct": 94846,
+            "type_structure_generation": 580385,
+            "type_symbol_lookups": 3977233,
+            "type_symbol_lookups_by_stamp": 1073866,
+            "var_symbol_lookups": 1581292
           },
           "deterministic": true,
-          "instructions": 22119688275,
-          "peak_rss_bytes": 1316737024,
+          "instructions": 22437014536,
+          "peak_rss_bytes": 1324015616,
           "phases": [
             {
               "counters": {
@@ -3603,11 +3603,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 142603416
+              "wall_ns": 112181196
             },
             {
               "counters": {
-                "ast_nodes_created": 2583577,
+                "ast_nodes_created": 2589929,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -3626,11 +3626,11 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 177921403
+              "wall_ns": 143974267
             },
             {
               "counters": {
-                "ast_nodes_created": 428065,
+                "ast_nodes_created": 429984,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -3649,57 +3649,57 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 45274061
+              "wall_ns": 41132249
             },
             {
               "counters": {
-                "ast_nodes_created": 317897,
+                "ast_nodes_created": 317999,
                 "cls_instances_made": 0,
                 "comp_key_interns": 268,
                 "comp_keys_distinct": 217,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 27127,
+                "scopes_created": 27160,
                 "sup_instances_made": 0,
                 "sup_scope_walks": 0,
                 "sup_scope_walks_cached": 0,
                 "type_key_interns": 1762,
                 "type_keys_distinct": 628,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 164449,
+                "type_symbol_lookups": 164475,
                 "type_symbol_lookups_by_stamp": 0,
-                "var_symbol_lookups": 24417
+                "var_symbol_lookups": 24434
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 43589491
+              "wall_ns": 39040252
             },
             {
               "counters": {
-                "ast_nodes_created": 539278,
+                "ast_nodes_created": 539313,
                 "cls_instances_made": 0,
                 "comp_key_interns": 33030,
                 "comp_keys_distinct": 9,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
-                "scopes_created": 7594,
+                "scopes_created": 7595,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 13846,
+                "sup_scope_walks": 13847,
                 "sup_scope_walks_cached": 8359,
-                "type_key_interns": 153747,
+                "type_key_interns": 153752,
                 "type_keys_distinct": 400,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 434624,
-                "type_symbol_lookups_by_stamp": 25106,
+                "type_symbol_lookups": 434634,
+                "type_symbol_lookups_by_stamp": 25107,
                 "var_symbol_lookups": 25822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 118115947
+              "wall_ns": 94619852
             },
             {
               "counters": {
-                "ast_nodes_created": 1138396,
+                "ast_nodes_created": 1138548,
                 "cls_instances_made": 231,
                 "comp_key_interns": 184121,
                 "comp_keys_distinct": 2,
@@ -3708,67 +3708,67 @@
                 "scopes_copied": 231,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 211472,
-                "sup_scope_walks_cached": 204705,
-                "type_key_interns": 533760,
-                "type_keys_distinct": 2233,
-                "type_structure_generation": 522795,
-                "type_symbol_lookups": 722734,
-                "type_symbol_lookups_by_stamp": 217267,
-                "var_symbol_lookups": 144432
+                "sup_scope_walks": 211481,
+                "sup_scope_walks_cached": 204713,
+                "type_key_interns": 533795,
+                "type_keys_distinct": 2241,
+                "type_structure_generation": 522810,
+                "type_symbol_lookups": 722802,
+                "type_symbol_lookups_by_stamp": 217274,
+                "var_symbol_lookups": 144459
               },
               "name": "qualifying-types",
-              "wall_ns": 301851304
+              "wall_ns": 236105405
             },
             {
               "counters": {
-                "ast_nodes_created": 1007952,
-                "cls_instances_made": 3051,
+                "ast_nodes_created": 1011268,
+                "cls_instances_made": 3061,
                 "comp_key_interns": 4017,
                 "comp_keys_distinct": 3,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 3051,
+                "scopes_copied": 3061,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 49825,
-                "sup_scope_walks_cached": 46456,
-                "type_key_interns": 200338,
-                "type_keys_distinct": 11076,
+                "sup_scope_walks": 49860,
+                "sup_scope_walks_cached": 46484,
+                "type_key_interns": 200838,
+                "type_keys_distinct": 11101,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 196495,
-                "type_symbol_lookups_by_stamp": 48557,
-                "var_symbol_lookups": 27983
+                "type_symbol_lookups": 197219,
+                "type_symbol_lookups_by_stamp": 48676,
+                "var_symbol_lookups": 28028
               },
               "name": "loading-super-scopes",
-              "wall_ns": 177199750
+              "wall_ns": 135504518
             },
             {
               "counters": {
-                "ast_nodes_created": 4426142,
-                "cls_instances_made": 2444,
-                "comp_key_interns": 77543,
+                "ast_nodes_created": 4438486,
+                "cls_instances_made": 2456,
+                "comp_key_interns": 77623,
                 "comp_keys_distinct": 2,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
-                "scopes_copied": 215217,
+                "scopes_copied": 215449,
                 "scopes_created": 0,
-                "sup_instances_made": 26084,
-                "sup_scope_walks": 278343,
-                "sup_scope_walks_cached": 163696,
-                "type_key_interns": 1336439,
-                "type_keys_distinct": 69486,
-                "type_structure_generation": 45939,
-                "type_symbol_lookups": 703274,
-                "type_symbol_lookups_by_stamp": 218903,
-                "var_symbol_lookups": 108509
+                "sup_instances_made": 26144,
+                "sup_scope_walks": 278839,
+                "sup_scope_walks_cached": 164012,
+                "type_key_interns": 1339377,
+                "type_keys_distinct": 69598,
+                "type_structure_generation": 46053,
+                "type_symbol_lookups": 704376,
+                "type_symbol_lookups_by_stamp": 219337,
+                "var_symbol_lookups": 108549
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 887545884
+              "wall_ns": 657839632
             },
             {
               "counters": {
-                "ast_nodes_created": 854137,
+                "ast_nodes_created": 854894,
                 "cls_instances_made": 42,
                 "comp_key_interns": 14877,
                 "comp_keys_distinct": 0,
@@ -3777,44 +3777,44 @@
                 "scopes_copied": 12127,
                 "scopes_created": 0,
                 "sup_instances_made": 1097,
-                "sup_scope_walks": 72867,
-                "sup_scope_walks_cached": 61536,
-                "type_key_interns": 263229,
+                "sup_scope_walks": 72939,
+                "sup_scope_walks_cached": 61598,
+                "type_key_interns": 263606,
                 "type_keys_distinct": 3302,
                 "type_structure_generation": 1729,
-                "type_symbol_lookups": 226765,
-                "type_symbol_lookups_by_stamp": 94594,
+                "type_symbol_lookups": 227308,
+                "type_symbol_lookups_by_stamp": 94777,
                 "var_symbol_lookups": 26821
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 260139211
+              "wall_ns": 222150446
             },
             {
               "counters": {
-                "ast_nodes_created": 3475753,
+                "ast_nodes_created": 3482145,
                 "cls_instances_made": 239,
-                "comp_key_interns": 75228,
+                "comp_key_interns": 75281,
                 "comp_keys_distinct": 288,
-                "fn_instances_made": 1474,
+                "fn_instances_made": 1476,
                 "scope_linkage_generation": 22,
-                "scopes_copied": 16314,
-                "scopes_created": 4682,
+                "scopes_copied": 16318,
+                "scopes_created": 4700,
                 "sup_instances_made": 1431,
-                "sup_scope_walks": 218660,
-                "sup_scope_walks_cached": 183764,
-                "type_key_interns": 804587,
-                "type_keys_distinct": 6698,
-                "type_structure_generation": 8192,
-                "type_symbol_lookups": 1013087,
-                "type_symbol_lookups_by_stamp": 297296,
-                "var_symbol_lookups": 714366
+                "sup_scope_walks": 220295,
+                "sup_scope_walks_cached": 185374,
+                "type_key_interns": 807927,
+                "type_keys_distinct": 6699,
+                "type_structure_generation": 8216,
+                "type_symbol_lookups": 1016791,
+                "type_symbol_lookups_by_stamp": 298741,
+                "var_symbol_lookups": 716282
               },
               "name": "analysing-semantics",
-              "wall_ns": 1026029552
+              "wall_ns": 791212122
             },
             {
               "counters": {
-                "ast_nodes_created": 47692,
+                "ast_nodes_created": 47973,
                 "cls_instances_made": 0,
                 "comp_key_interns": 0,
                 "comp_keys_distinct": 0,
@@ -3823,67 +3823,67 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 66164,
-                "sup_scope_walks_cached": 64518,
-                "type_key_interns": 135437,
+                "sup_scope_walks": 66459,
+                "sup_scope_walks_cached": 64813,
+                "type_key_interns": 136709,
                 "type_keys_distinct": 1,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 101184,
-                "type_symbol_lookups_by_stamp": 45402,
-                "var_symbol_lookups": 270109
+                "type_symbol_lookups": 101492,
+                "type_symbol_lookups_by_stamp": 45588,
+                "var_symbol_lookups": 271112
               },
               "name": "checking-memory-safety",
-              "wall_ns": 97734604
+              "wall_ns": 85060983
             },
             {
               "counters": {
-                "ast_nodes_created": 842190,
+                "ast_nodes_created": 846731,
                 "cls_instances_made": 11,
-                "comp_key_interns": 16578,
+                "comp_key_interns": 16620,
                 "comp_keys_distinct": 0,
-                "fn_instances_made": 403,
-                "scope_linkage_generation": 1288,
-                "scopes_copied": 2554,
-                "scopes_created": 1644,
+                "fn_instances_made": 405,
+                "scope_linkage_generation": 1296,
+                "scopes_copied": 2558,
+                "scopes_created": 1648,
                 "sup_instances_made": 169,
-                "sup_scope_walks": 25434,
-                "sup_scope_walks_cached": 21845,
-                "type_key_interns": 198120,
+                "sup_scope_walks": 25574,
+                "sup_scope_walks_cached": 21957,
+                "type_key_interns": 199943,
                 "type_keys_distinct": 858,
-                "type_structure_generation": 1569,
-                "type_symbol_lookups": 177864,
-                "type_symbol_lookups_by_stamp": 44829,
-                "var_symbol_lookups": 167163
+                "type_structure_generation": 1577,
+                "type_symbol_lookups": 179444,
+                "type_symbol_lookups_by_stamp": 45469,
+                "var_symbol_lookups": 167455
               },
               "name": "monomorphising-generics",
-              "wall_ns": 215834477
+              "wall_ns": 165780507
             },
             {
               "counters": {
-                "ast_nodes_created": 151404,
+                "ast_nodes_created": 151932,
                 "cls_instances_made": 0,
-                "comp_key_interns": 13864,
-                "comp_keys_distinct": 947,
+                "comp_key_interns": 13880,
+                "comp_keys_distinct": 954,
                 "fn_instances_made": 0,
                 "scope_linkage_generation": 0,
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 13125,
-                "sup_scope_walks_cached": 8533,
-                "type_key_interns": 86876,
+                "sup_scope_walks": 13177,
+                "sup_scope_walks_cached": 8555,
+                "type_key_interns": 87214,
                 "type_keys_distinct": 11,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 71058,
-                "type_symbol_lookups_by_stamp": 26246,
-                "var_symbol_lookups": 16963
+                "type_symbol_lookups": 71257,
+                "type_symbol_lookups_by_stamp": 26319,
+                "var_symbol_lookups": 16979
               },
               "name": "generating-code-1",
-              "wall_ns": 116461692
+              "wall_ns": 103757515
             },
             {
               "counters": {
-                "ast_nodes_created": 141935,
+                "ast_nodes_created": 142676,
                 "cls_instances_made": 0,
                 "comp_key_interns": 28,
                 "comp_keys_distinct": 0,
@@ -3892,17 +3892,17 @@
                 "scopes_copied": 0,
                 "scopes_created": 0,
                 "sup_instances_made": 0,
-                "sup_scope_walks": 4764,
-                "sup_scope_walks_cached": 4727,
-                "type_key_interns": 83815,
-                "type_keys_distinct": 0,
+                "sup_scope_walks": 4760,
+                "sup_scope_walks_cached": 4723,
+                "type_key_interns": 89704,
+                "type_keys_distinct": 7,
                 "type_structure_generation": 0,
-                "type_symbol_lookups": 149460,
-                "type_symbol_lookups_by_stamp": 48469,
-                "var_symbol_lookups": 50681
+                "type_symbol_lookups": 157435,
+                "type_symbol_lookups_by_stamp": 52578,
+                "var_symbol_lookups": 51351
               },
               "name": "generating-code-2",
-              "wall_ns": 84301530
+              "wall_ns": 85399212
             },
             {
               "counters": {
@@ -3925,7 +3925,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 69632253
+              "wall_ns": 67509353
             },
             {
               "counters": {
@@ -3948,7 +3948,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 120588914
+              "wall_ns": 124481347
             },
             {
               "counters": {
@@ -3971,7 +3971,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 91696089
+              "wall_ns": 70149604
             },
             {
               "counters": {
@@ -3994,7 +3994,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 862557
+              "wall_ns": 1369089
             },
             {
               "counters": {
@@ -4017,7 +4017,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 19805354
+              "wall_ns": 21016171
             },
             {
               "counters": {
@@ -4040,26 +4040,26 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 24853109
+              "wall_ns": 21471646
             }
           ],
           "records": {
-            "executable.bytes": 18088,
+            "executable.bytes": 48344,
             "llvm.after_opt.blocks": 102,
             "llvm.after_opt.functions": 11,
-            "llvm.after_opt.instructions": 448,
+            "llvm.after_opt.instructions": 450,
             "llvm.before_opt.blocks": 787,
             "llvm.before_opt.functions": 368,
-            "llvm.before_opt.instructions": 6365,
-            "object.bytes": 11992
+            "llvm.before_opt.instructions": 6367,
+            "object.bytes": 38600
           },
-          "spp": "0.6.0",
+          "spp": "0.7.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 4052476360,
+          "wall_ns": 3221999283,
           "wall_ns_rounds": [
-            4052476360,
-            4182058718,
-            4080023205
+            3221999283,
+            3291572829,
+            3358358676
           ]
         }
       }
