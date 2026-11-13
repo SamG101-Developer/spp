@@ -65,10 +65,6 @@ on:
         required: false
         type: string
         default: ""
-      gtest-workers:
-        required: false
-        type: string
-        default: ""
       asan-options:
         required: false
         type: string
@@ -125,6 +121,5 @@ jobs:
     with:
       build: ${{ toJSON(needs.build.outputs) }}
       gtest-filter: ${{ inputs.gtest-filter }}
-      gtest-workers: ${{ inputs.gtest-workers }}
       asan-options: ${{ inputs.asan-options }}
       off: ${{ inputs.off }}

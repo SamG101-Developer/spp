@@ -89,19 +89,12 @@ if [ -n "${SPP_CI_GTEST_FILTER:-}" ]; then
   echo "filter: ${SPP_CI_GTEST_FILTER}"
 fi
 
-worker_flags=()
-if [ -n "${SPP_CI_GTEST_WORKERS:-}" ]; then
-  worker_flags=("--workers=${SPP_CI_GTEST_WORKERS}")
-  echo "workers: ${SPP_CI_GTEST_WORKERS}"
-fi
-
 status=0
 # shellcheck disable=SC2086
 python3 "$runner" \
   "$binary" \
   --output_dir="$log_dir" \
   ${filter_flags[@]+"${filter_flags[@]}"} \
-  ${worker_flags[@]+"${worker_flags[@]}"} \
   $shard_flags || status=$?
 
 # An empty vcs/ passes the compiler's structure validation, so
