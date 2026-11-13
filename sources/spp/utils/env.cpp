@@ -2,46 +2,49 @@ module;
 #include <spp/macros.hpp>
 
 module spp.utils.env;
+import genex;
 import std;
 import sys;
 
 namespace spp::utils::env {
-  namespace {
-    constexpr auto kOwnPrefix = StrView("SPP_");
-    constexpr auto kCiPrefix = StrView("SPP_CI_");
+  static constexpr auto kOwnPrefix = StrView("SPP_");
+  static constexpr auto kCiPrefix = StrView("SPP_CI_");
 
-    auto ParseCount(const StrView value) -> Opt<std::uint64_t> {
-      auto count = std::uint64_t{0};
-      auto const *const end = value.data() + value.size();
-      const auto [stop, ec] = std::from_chars(value.data(), end, count);
-      if (ec != std::errc{} or stop != end) { return Nullopt; }
-      return count;
-    }
+  static auto ParseCount(StrView value) -> Opt<std::uint64_t>;
 
-    /// What is wrong with a variable's value, if anything.
-    auto ProblemWith(VarSpec const &spec, const StrView value) -> Opt<Str> {
-      const auto name = Str(spec.Name);
-      const auto given = ", not '" + Str(value) + "'";
-      switch (spec.Kind) {
-      case ValueKind::Flag:
-        if (value == "0" or value == "1") { return Nullopt; }
-        return name + " must be '0' or '1'" + given;
-      case ValueKind::Count:
-        if (ParseCount(value).has_value()) { return Nullopt; }
-        return name + " must be a whole number" + given;
-      case ValueKind::Choice: {
-        auto listing = Str();
-        for (const auto choice : spec.Choices) {
-          if (value == choice) { return Nullopt; }
-          listing += (listing.empty() ? "'" : ", '") + Str(choice) + "'";
-        }
-        return name + " must be one of " + listing + given;
-      }
-      case ValueKind::Text:
-      default:
-        return Nullopt;
-      }
+  /// What is wrong with a variable's value, if anything.
+  static auto ProblemWith(VarSpec const &spec, StrView value) -> Opt<Str>;
+}
+
+auto spp::utils::env::ParseCount(const StrView value) -> Opt<std::uint64_t> {
+  auto count = std::uint64_t{0};
+  auto const *const end = value.data() + value.size();
+  const auto [stop, ec] = std::from_chars(value.data(), end, count);
+  if (ec != std::errc{} or stop != end) { return Nullopt; }
+  return count;
+}
+
+auto spp::utils::env::ProblemWith(VarSpec const &spec, const StrView value) -> Opt<Str> {
+  const auto name = Str(spec.Name);
+  const auto given = ", not '" + Str(value) + "'";
+  switch (spec.Kind) {
+  case ValueKind::Flag:
+    if (value == "0" or value == "1") { return Nullopt; }
+    return name + " must be '0' or '1'" + given;
+  case ValueKind::Count:
+    if (ParseCount(value).has_value()) { return Nullopt; }
+    return name + " must be a whole number" + given;
+  case ValueKind::Choice: {
+    auto listing = Str();
+    for (const auto choice : spec.Choices) {
+      if (value == choice) { return Nullopt; }
+      listing += (listing.empty() ? "'" : ", '") + Str(choice) + "'";
     }
+    return name + " must be one of " + listing + given;
+  }
+  case ValueKind::Text:
+  default:
+    return Nullopt;
   }
 }
 
@@ -52,6 +55,20 @@ auto spp::utils::env::Schema() -> Vec<VarSpec> const& {
       .Name = "PATH",
       .Kind = ValueKind::Text,
       .Help = "Where the linker and other programs are looked for."
+    },
+    // The user's own directory, which is a different variable per platform;
+    // only this platform's is listed.
+    VarSpec{
+      .Key = Var::UserDir,
+#if SPP_PLATFORM_WINDOWS
+      .Name = "LOCALAPPDATA",
+      .Kind = ValueKind::Text,
+      .Help = "Where 'spp self install' installs (%LOCALAPPDATA%\\spp\\bin)."
+#else
+      .Name = "HOME",
+      .Kind = ValueKind::Text,
+      .Help = "The user's home: 'spp self install' installs into ~/.spp/bin there."
+#endif
     },
     VarSpec{
       .Key = Var::Backtrace,
@@ -83,6 +100,13 @@ auto spp::utils::env::Schema() -> Vec<VarSpec> const& {
       .Name = "SPP_TEST_ONLY",
       .Kind = ValueKind::Text,
       .Help = "The tests a built test program runs; 'spp test' sets this itself."
+    },
+    VarSpec{
+      .Key = Var::UpdateBaseUrl,
+      .Name = "SPP_UPDATE_BASE_URL",
+      .Kind = ValueKind::Text,
+      .Help = "Where 'spp self update' looks for releases, in place of GitHub's: a URL laid out as a GitHub "
+        "repository's releases (<url>/releases/latest, <url>/releases/download/<tag>/<asset>); for testing."
     },
   };
   return schema;
@@ -139,8 +163,8 @@ auto spp::utils::env::CheckEntries(
     if (not name.starts_with(kOwnPrefix) or name.starts_with(kCiPrefix)) { continue; }
 
     auto const &schema = Schema();
-    const auto spec = std::find_if(
-      schema.begin(), schema.end(), [name](VarSpec const &s) { return s.Name == name; });
+    const auto spec = genex::find_if(
+      schema, [name](VarSpec const &s) { return s.Name == name; });
     if (spec == schema.end()) {
       errors.emplace_back("unknown environment variable '" + Str(name) + "'");
       any_unknown = true;

@@ -34,6 +34,7 @@ jobs:
       cross_codegen: ${{ steps.filter.outputs.cross_codegen }}
       security: ${{ steps.filter.outputs.security }}
       codeql_python: ${{ steps.filter.outputs.codeql_python }}
+      clang_tidy: ${{ steps.filter.outputs.clang_tidy }}
       sonar: ${{ steps.filter.outputs.sonar }}
     steps:
       - name: Harden Runner
@@ -205,8 +206,7 @@ jobs:
     with:
       os: windows-2025
       compiler: msvc
-      off: &msvc-off pac_ret memory.stack.split
-      shard-count: 2
+      shard-count: 4
 
   # Todo: drop advisory once CMake 4.5 (import std for clang-cl) is pinned; see .triages/upstream-watch.md U14.
   # On the VS 2026 image, to try the newer MSVC STL before the MSVC lanes move.
@@ -220,8 +220,7 @@ jobs:
       os: windows-2025-vs2026
       compiler: clang-cl
       advisory: true
-      off: *msvc-off
-      shard-count: 2
+      shard-count: 4
 
   # Todo: drop advisory once it builds and passes as the x64 lane does; see .triages/next-steps.md N15.
   windows-arm-msvc:
@@ -234,8 +233,7 @@ jobs:
       os: windows-11-arm
       compiler: msvc
       advisory: true
-      off: *msvc-off
-      shard-count: 2
+      shard-count: 4
 
   # Todo: Add to ci-success once more stable.
   # After the Linux lanes, finished or not: its 20-odd short jobs
@@ -292,16 +290,17 @@ jobs:
       actions: read
     uses: ./.github/workflows/_security.yaml
 
-  # CodeQL and Sonar each build the whole project. Not behind
-  # cppcheck, so the build column holds only builds; on a red
-  # cppcheck they still run. Sonar is advisory inside the call,
-  # so only CodeQL can fail it.
+  # CodeQL, clang-tidy and Sonar each build the whole project.
+  # Not behind cppcheck, so the build column holds only builds;
+  # on a red cppcheck they still run. clang-tidy and Sonar are
+  # advisory inside the call, so only CodeQL can fail it.
   analysis:
     name: Analysis
     needs: [ changes ]
     if: |
       (needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true')
       || needs.changes.outputs.codeql_python == 'true'
+      || needs.changes.outputs.clang_tidy == 'true'
       || needs.changes.outputs.sonar == 'true'
     permissions:
       contents: read
@@ -311,6 +310,7 @@ jobs:
     with:
       codeql-cpp: ${{ needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true' }}
       codeql-python: ${{ needs.changes.outputs.codeql_python == 'true' }}
+      clang-tidy: ${{ needs.changes.outputs.clang_tidy == 'true' }}
       sonar: >-
         ${{ needs.changes.outputs.sonar == 'true'
         && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}

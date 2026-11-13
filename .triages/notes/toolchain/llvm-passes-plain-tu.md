@@ -1,7 +1,7 @@
 ---
 name: llvm-passes-plain-tu
 description: "The pipeline and s++'s passes are plain TUs (PassBuilder.h TU-local entity, fixed in LLVM 24 by #233326): one header llvm_passes.hpp, sources in codegen/llvm_passes/; never forward declare llvm::Value in it (GCC)"
-updated: 2026-11-10
+updated: 2026-11-12
 ---
 
 The optimisation pipeline and the passes s++ adds to it are plain TUs that `#include` LLVM, not modules: `LoopPassManager.h`, reached through
@@ -43,3 +43,12 @@ including free operators (`operator==`/`+` on StringRef/Twine are exported there
 builds a pass pipeline or defines a pass goes in `llvm_passes/`. On the LLVM 24 bump they can all become modules; recheck any LLVM
 header added to them since with the same kind of probe (upstream-watch U25).
 See [[llvm-module-wrapper-exports]].
+
+**Its functions take `void*` for `llvm::Module` and `llvm::TargetMachine` (2026-11-12), and must until it is a module.**
+The header's forward-declared `llvm::Module` is a different type to GCC from the one `import llvm` gives a module
+unit that includes it (`compiler_link.cpp`, `compiler_boot.cpp`). Passing the imported one to a function declared here
+ICEs GCC: "canonical types differ for identical types 'llvm::Module' and 'llvm::Module'". The forward decls are safe
+only while no call mixes the two. The codegen module interfaces (`llvm_cfi`, `llvm_harden_*`, `llvm_entry`,
+`llvm_artefact`, `llvm_jump_tables`, `llvm_target`) take `llvm::Module &` and `import llvm`. `ApplyCfiCoroTypes` is
+adapted to the pipeline's `void*` callback by a lambda in `compiler_link.cpp`. Once this header becomes a module,
+type the four functions and drop the lambda.

@@ -44,6 +44,7 @@ import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_coerce;
+import spp.codegen.llvm_debug;
 import spp.codegen.llvm_drop;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_mangle;
@@ -353,14 +354,20 @@ auto spp::asts::ClosureExpressionAst::_BuildDropCaptures(
     closure_fn.getName() + ".drop_captures", closure_fn.getParent());
   codegen::StampCfiClosureEnvDrop(*drop_fn);
 
+  // Made by the compiler, so artificial in the debug info, at line 0. The
+  // enclosing function's location is put back after.
   const auto saved_bb = ctx->Builder.GetInsertBlock();
+  const auto saved_loc = ctx->Builder.getCurrentDebugLocation();
   ctx->Builder.SetInsertPoint(llvm::BasicBlock::Create(*ctx->Context, "entry", drop_fn));
+  codegen::AttachSubprogram(*ctx, *drop_fn, 0);
+  codegen::SetDebugLocation(*ctx, 0);
   for (auto const &[index, cap_ref] : owned | genex::views::reverse) {
     const auto field = ctx->Builder.CreateStructGEP(env_ty, drop_fn->getArg(0), index, "closure.drop.capture");
     codegen::EmitDrop(cap_ref, field, sm, meta, ctx);
   }
   ctx->Builder.CreateRetVoid();
   ctx->Builder.SetInsertPoint(saved_bb);
+  ctx->Builder.SetCurrentDebugLocation(saved_loc);
   return drop_fn;
 }
 
@@ -427,11 +434,15 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
   const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", llvm_fn);
 
   const auto saved_bb = ctx->Builder.GetInsertBlock();
+  const auto saved_loc = ctx->Builder.getCurrentDebugLocation();
   const auto saved_current_closure_type = ctx->CurrentClosureType;
   {
-    // The body is generated as its own function: the enclosing one's context is put back after.
+    // The body is generated as its own function: the enclosing one's context is
+    // put back after. Its debug info is a subprogram at the closure.
     const auto _fn_guard = MetaGuard(meta, true);
     ctx->Builder.SetInsertPoint(entry_bb);
+    codegen::AttachSubprogram(*ctx, *llvm_fn, PosStart());
+    codegen::SetDebugLocation(*ctx, PosStart());
     sm->CurrentScope->AstNode = this;
     _LlvmFn = MakeShared<codegen::LlvmFnWrapper>(llvm_fn);
     meta->EnclosingFnScope = sm->CurrentScope;
@@ -490,6 +501,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
 
   // Restore the previous context.
   ctx->Builder.SetInsertPoint(saved_bb);
+  ctx->Builder.SetCurrentDebugLocation(saved_loc);
   ctx->CurrentClosureType = saved_current_closure_type;
 
   // An environment holding a capture by value or by "&mut" may

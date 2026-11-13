@@ -20,15 +20,17 @@ namespace spp::analyse::errors::diagnostic_sink {
       Vec<SemanticError> Errors;
       Set<Ast const*> Poisoned;
     };
-
-    /// [CHECKED]
-    /// The singleton instance of the State, used in all the
-    /// diagnostic methods. Shared on all calls.
-    auto Current() -> State& {
-      static auto state = State();
-      return state;
-    }
   }
+
+  /// The singleton instance of the State, used in all the
+  /// diagnostic methods. Shared on all calls.
+  static auto Current() -> State&;
+}
+
+/// [CHECKED]
+auto spp::analyse::errors::diagnostic_sink::Current() -> State& {
+  static auto state = State();
+  return state;
 }
 
 auto spp::analyse::errors::diagnostic_sink::Enable(

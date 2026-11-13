@@ -98,13 +98,15 @@ use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
-namespace {
+namespace spp::asts {
   /// The convention a parameter is declared with: a "self"
   /// parameter keeps it in "Conv", rather than in its type.
-  auto ParamConvention(spp::asts::FunctionParameterAst const &param) -> spp::asts::ConventionAst const* {
-    if (const auto self = param.To<spp::asts::FunctionParameterSelfAst>(); self != nullptr) { return self->Conv.get(); }
-    return param.Type->GetConvention();
-  }
+  static auto ParamConvention(spp::asts::FunctionParameterAst const &param) -> spp::asts::ConventionAst const*;
+}
+
+auto spp::asts::ParamConvention(spp::asts::FunctionParameterAst const &param) -> spp::asts::ConventionAst const* {
+  if (const auto self = param.To<spp::asts::FunctionParameterSelfAst>(); self != nullptr) { return self->Conv.get(); }
+  return param.Type->GetConvention();
 }
 
 SPP_MOD_BEGIN
@@ -855,7 +857,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::EvaluateCompTime(
   // Each nested call is a nested evaluation on the compiler's
   // own stack, so recursion that never bottoms out has to be
   // stopped here, rather than left to overflow it.
-  static thread_local auto cmp_call_depth = 0uz;
+  thread_local auto cmp_call_depth = 0uz;
   constexpr auto kMaxCompTimeCallDepth = 1000uz;
   struct CompTimeCallDepthGuard {
     decltype(cmp_call_depth) &Depth;

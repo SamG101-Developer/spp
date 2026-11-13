@@ -14,130 +14,183 @@ use_alias(spp::asts, FunctionPrototypeAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::codegen::builtins {
-  namespace {
-    namespace ct = analyse::utils::comp_time_intrinsics;
-    using fn_impls::AtomicRmwOp;
-    using fn_impls::BinOp;
-    using fn_impls::ConvOp;
-    using fn_impls::UnOp;
-    using LlvmImplFn = decltype(LoweredFnImpl::LlvmImpl);
+  namespace ct = analyse::utils::comp_time_intrinsics;
+  using fn_impls::AtomicRmwOp;
+  using fn_impls::BinOp;
+  using fn_impls::ConvOp;
+  using fn_impls::UnOp;
+  using LlvmImplFn = decltype(LoweredFnImpl::LlvmImpl);
 
-    /// File the builtin "name": how it is lowered, how it is computed at compile time if it can be, and the generic
-    /// parameter whose destructor its lowering calls, if any ("T" for "drop"), and how a direct call to it is lowered
-    /// in place, if it is (a branch hint).
-    auto Register(
-      Map<Str, LoweredFnImpl> &map, Str const &name, LlvmImplFn llvm_impl,
-      Unique<ct::CompTimeFn> cmp_impl = nullptr, Str drops_gn = "",
-      decltype(LoweredFnImpl::CallSiteImpl) call_site_impl = nullptr)
-      -> void {
-      map.emplace(name, LoweredFnImpl{
-        .LlvmImpl = std::move(llvm_impl), .CompTimeImpl = std::move(cmp_impl),
-        .Name = name, .DropsGn = std::move(drops_gn),
-        .CallSiteImpl = std::move(call_site_impl)});
-    }
+  /// File the builtin "name": how it is lowered, how it is computed at compile time if it can be, and the generic
+  /// parameter whose destructor its lowering calls, if any ("T" for "drop"), and how a direct call to it is lowered
+  /// in place, if it is (a branch hint).
+  static auto Register(
+    Map<Str, LoweredFnImpl> &map, Str const &name, LlvmImplFn llvm_impl,
+    Unique<ct::CompTimeFn> cmp_impl = nullptr, Str drops_gn = "",
+    decltype(LoweredFnImpl::CallSiteImpl) call_site_impl = nullptr)
+    -> void;
 
-    // The lowerings that are one call to a shared builder ("fn_impls::Simple*"), bound to what picks the operation:
-    // an operator, an LLVM intrinsic, a direction. A builtin that is anything more keeps a function of its own.
+  // The lowerings that are one call to a shared builder ("fn_impls::Simple*"), bound to what picks the operation:
+  // an operator, an LLVM intrinsic, a direction. A builtin that is anything more keeps a function of its own.
+  static auto Binop(const BinOp op) -> LlvmImplFn;
 
-    auto Binop(const BinOp op) -> LlvmImplFn {
-      return [op](auto sm, auto proto, auto meta, auto ctx, auto ty) {
-        fn_impls::SimpleIntrinsicBinop(sm, proto, meta, ctx, ty, op);
-      };
-    }
+  static auto BinopAssign(const BinOp op) -> LlvmImplFn;
 
-    auto BinopAssign(const BinOp op) -> LlvmImplFn {
-      return [op](auto sm, auto proto, auto meta, auto ctx, auto ty) {
-        fn_impls::SimpleIntrinsicBinopAssign(sm, proto, meta, ctx, ty, op);
-      };
-    }
+  static auto Unop(const UnOp op) -> LlvmImplFn;
 
-    auto Unop(const UnOp op) -> LlvmImplFn {
-      return [op](auto sm, auto proto, auto meta, auto ctx, auto ty) {
-        fn_impls::SimpleIntrinsicUnop(sm, proto, meta, ctx, ty, op);
-      };
-    }
+  static auto UnopAssign(const UnOp op) -> LlvmImplFn;
 
-    auto UnopAssign(const UnOp op) -> LlvmImplFn {
-      return [op](auto sm, auto proto, auto meta, auto ctx, auto ty) {
-        fn_impls::SimpleIntrinsicUnopAssign(sm, proto, meta, ctx, ty, op);
-      };
-    }
+  static auto Conv(const ConvOp op) -> LlvmImplFn;
 
-    auto Conv(const ConvOp op) -> LlvmImplFn {
-      return [op](auto sm, auto proto, auto meta, auto ctx, auto ty) {
-        fn_impls::SimpleIntrinsicConv(sm, proto, meta, ctx, ty, op);
-      };
-    }
+  static auto IsConst(const bool is_float, const double value) -> LlvmImplFn;
 
-    auto IsConst(const bool is_float, const double value) -> LlvmImplFn {
-      return [is_float, value](auto sm, auto proto, auto meta, auto ctx, auto ty) {
-        fn_impls::SimpleIntrinsicIsConst(sm, proto, meta, ctx, ty, is_float, value);
-      };
-    }
+  static auto BinaryIntrinsic(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn;
 
-    auto BinaryIntrinsic(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
-      return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
-        fn_impls::SimpleBinaryIntrinsicCall(sm, proto, meta, ctx, ty, intrinsic);
-      };
-    }
+  static auto OverflowIntrinsic(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn;
 
-    auto OverflowIntrinsic(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
-      return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
-        fn_impls::SimpleBinaryIntrinsicCallOverflow(sm, proto, meta, ctx, ty, intrinsic);
-      };
-    }
+  static auto UnaryIntrinsic(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn;
 
-    auto UnaryIntrinsic(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
-      return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
-        fn_impls::SimpleUnaryIntrinsicCall(sm, proto, meta, ctx, ty, intrinsic);
-      };
-    }
+  static auto BitCount(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn;
 
-    auto BitCount(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
-      return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
-        fn_impls::SimpleBitCount(sm, proto, meta, ctx, ty, intrinsic);
-      };
-    }
+  static auto FunnelShift(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn;
 
-    auto FunnelShift(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
-      return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
-        fn_impls::SimpleFunnelShift(sm, proto, meta, ctx, ty, intrinsic);
-      };
-    }
+  static auto AtomicRmw(const AtomicRmwOp op) -> LlvmImplFn;
 
-    auto AtomicRmw(const AtomicRmwOp op) -> LlvmImplFn {
-      return [op](auto sm, auto proto, auto meta, auto ctx, auto) {
-        fn_impls::SimpleAtomicFetchRmw(sm, proto, meta, ctx, op);
-      };
-    }
+  static auto CoroIter(const bool reverse, const bool borrow) -> LlvmImplFn;
 
-    auto CoroIter(const bool reverse, const bool borrow) -> LlvmImplFn {
-      return [reverse, borrow](auto sm, auto proto, auto meta, auto ctx, auto) {
-        fn_impls::SimpleCoroIter(sm, proto, meta, ctx, reverse, borrow);
-      };
-    }
+  static auto CoroViewIter(const bool reverse, const bool borrow) -> LlvmImplFn;
 
-    auto CoroViewIter(const bool reverse, const bool borrow) -> LlvmImplFn {
-      return [reverse, borrow](auto sm, auto proto, auto meta, auto ctx, auto) {
-        fn_impls::SimpleCoroViewIter(sm, proto, meta, ctx, reverse, borrow);
-      };
-    }
+  /// A builder that reads everything it needs off the prototype (a "&" and a
+  /// "&mut" form lower alike), so it takes no return type.
+  static auto Untyped(
+    void (*build)(ScopeManager *, FunctionPrototypeAst const *, CompilerMetaData *, LlvmCtx *))
+    -> LlvmImplFn;
 
-    /// A builder that reads everything it needs off the prototype (a "&" and a "&mut" form lower alike), so it takes
-    /// no return type.
-    auto Untyped(
-      void (*build)(ScopeManager *, FunctionPrototypeAst const *, CompilerMetaData *, LlvmCtx *))
-      -> LlvmImplFn {
-      return [build](auto sm, auto proto, auto meta, auto ctx, auto) { build(sm, proto, meta, ctx); };
-    }
+  /// A branch hint, lowered at the call site to the condition expected to be
+  /// "expected".
+  static auto Expect(const bool expected) -> decltype(LoweredFnImpl::CallSiteImpl);
+}
 
-    /// A branch hint, lowered at the call site to the condition expected to be "expected".
-    auto Expect(const bool expected) -> decltype(LoweredFnImpl::CallSiteImpl) {
-      return [expected](auto const &args, auto ctx) {
-        return fn_impls::StdHintsExpect(args, ctx, expected);
-      };
-    }
-  }
+auto spp::codegen::builtins::Register(
+  Map<Str, LoweredFnImpl> &map, Str const &name, LlvmImplFn llvm_impl,
+  Unique<ct::CompTimeFn> cmp_impl, Str drops_gn,
+  decltype(LoweredFnImpl::CallSiteImpl) call_site_impl)
+  -> void {
+  map.emplace(name, LoweredFnImpl{
+    .LlvmImpl = std::move(llvm_impl), .CompTimeImpl = std::move(cmp_impl),
+    .Name = name, .DropsGn = std::move(drops_gn),
+    .CallSiteImpl = std::move(call_site_impl)});
+}
+
+auto spp::codegen::builtins::Binop(
+  const BinOp op) -> LlvmImplFn {
+  return [op](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleIntrinsicBinop(sm, proto, meta, ctx, ty, op);
+  };
+}
+
+auto spp::codegen::builtins::BinopAssign(
+  const BinOp op) -> LlvmImplFn {
+  return [op](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleIntrinsicBinopAssign(sm, proto, meta, ctx, ty, op);
+  };
+}
+
+auto spp::codegen::builtins::Unop(
+  const UnOp op) -> LlvmImplFn {
+  return [op](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleIntrinsicUnop(sm, proto, meta, ctx, ty, op);
+  };
+}
+
+auto spp::codegen::builtins::UnopAssign(
+  const UnOp op) -> LlvmImplFn {
+  return [op](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleIntrinsicUnopAssign(sm, proto, meta, ctx, ty, op);
+  };
+}
+
+auto spp::codegen::builtins::Conv(
+  const ConvOp op) -> LlvmImplFn {
+  return [op](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleIntrinsicConv(sm, proto, meta, ctx, ty, op);
+  };
+}
+
+auto spp::codegen::builtins::IsConst(
+  const bool is_float, const double value) -> LlvmImplFn {
+  return [is_float, value](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleIntrinsicIsConst(sm, proto, meta, ctx, ty, is_float, value);
+  };
+}
+
+auto spp::codegen::builtins::BinaryIntrinsic(
+  const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
+  return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleBinaryIntrinsicCall(sm, proto, meta, ctx, ty, intrinsic);
+  };
+}
+
+auto spp::codegen::builtins::OverflowIntrinsic(
+  const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
+  return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleBinaryIntrinsicCallOverflow(sm, proto, meta, ctx, ty, intrinsic);
+  };
+}
+
+auto spp::codegen::builtins::UnaryIntrinsic(
+  const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
+  return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleUnaryIntrinsicCall(sm, proto, meta, ctx, ty, intrinsic);
+  };
+}
+
+auto spp::codegen::builtins::BitCount(
+  const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
+  return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleBitCount(sm, proto, meta, ctx, ty, intrinsic);
+  };
+}
+
+auto spp::codegen::builtins::FunnelShift(
+  const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
+  return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleFunnelShift(sm, proto, meta, ctx, ty, intrinsic);
+  };
+}
+
+auto spp::codegen::builtins::AtomicRmw(
+  const AtomicRmwOp op) -> LlvmImplFn {
+  return [op](auto sm, auto proto, auto meta, auto ctx, auto) {
+    fn_impls::SimpleAtomicFetchRmw(sm, proto, meta, ctx, op);
+  };
+}
+
+auto spp::codegen::builtins::CoroIter(
+  const bool reverse, const bool borrow) -> LlvmImplFn {
+  return [reverse, borrow](auto sm, auto proto, auto meta, auto ctx, auto) {
+    fn_impls::SimpleCoroIter(sm, proto, meta, ctx, reverse, borrow);
+  };
+}
+
+auto spp::codegen::builtins::CoroViewIter(
+  const bool reverse, const bool borrow) -> LlvmImplFn {
+  return [reverse, borrow](auto sm, auto proto, auto meta, auto ctx, auto) {
+    fn_impls::SimpleCoroViewIter(sm, proto, meta, ctx, reverse, borrow);
+  };
+}
+
+auto spp::codegen::builtins::Untyped(
+  void (*build)(ScopeManager *, FunctionPrototypeAst const *, CompilerMetaData *, LlvmCtx *))
+  -> LlvmImplFn {
+  return [build](auto sm, auto proto, auto meta, auto ctx, auto) { build(sm, proto, meta, ctx); };
+}
+
+auto spp::codegen::builtins::Expect(
+  const bool expected) -> decltype(LoweredFnImpl::CallSiteImpl) {
+  return [expected](auto const &args, auto ctx) {
+    return fn_impls::StdHintsExpect(args, ctx, expected);
+  };
 }
 
 auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {

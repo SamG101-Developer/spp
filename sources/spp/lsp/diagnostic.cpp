@@ -8,134 +8,148 @@ import spp.compiler.compiler;
 import spp.lsp.resolution_index;
 import spp.parse.errors.parser_error;
 import spp.utils.error_formatter;
+import spp.utils.files;
 import genex;
 import std;
 
 namespace spp::lsp {
-  namespace {
-    /// Strip off the bytes that provide ANSI colour codes
-    /// on the error string. Todo: Move this to ColEx.
-    auto StripAnsi(StrView text) -> Str {
-      auto out = Str();
-      out.reserve(text.length());
-      for (auto i = 0uz; i < text.length(); ++i) {
-        if (text[i] != '\x1b') {
-          out += text[i];
-          continue;
+  /// The colours "INLINE_INFO" and friends open a highlighted
+  /// span with (bright yellow, italic), and the reset that
+  /// always closes it. Nothing else in an error opens with this
+  /// pair, so it marks exactly the spans the terminal shows in
+  /// yellow.
+  static constexpr auto kInlineOpen = StrView("\x1b[93m\x1b[3m");
+
+  static constexpr auto kInlineClose = StrView("\x1b[0m");
+
+  /// Strip off the bytes that provide ANSI colour codes
+  /// on the error string. Todo: Move this to ColEx.
+  static auto StripAnsi(StrView text) -> Str;
+
+  /// Strip the ANSI colours like StripAnsi, but keep each inline
+  /// highlight as a backtick-quoted span, so a reader that has
+  /// no colours can still tell the type or name apart from the
+  /// prose around it ("Found type `S32`").
+  static auto MarkInline(StrView text) -> Str;
+
+  /// Convert a string to be JSON compatible, the key part being
+  /// the escape characters.
+  static auto JsonString(StrView text) -> Str;
+
+  /// Create a JSON block representing the source position
+  /// information provided off of a span, with a note for
+  /// compiler-generated code (preventing a 0-pos jump).
+  static auto JsonSpan(utils::errors::SourceSpan const &span) -> Str;
+
+  /// A label as json. A span with no place in the author's
+  /// source says so rather than reporting line zero, which an
+  /// editor would happily jump to.
+  static auto JsonLabel(DiagnosticLabel const &label) -> Str;
+
+  /// The members of a list, as json, shared by everything that
+  /// reports a set of names.
+  static auto JsonMembers(
+    Vec<lsp::resolution_index::Member> const &members)
+    -> Str;
+}
+
+auto spp::lsp::StripAnsi(StrView text) -> Str {
+  auto out = Str();
+  out.reserve(text.length());
+  for (auto i = 0uz; i < text.length(); ++i) {
+    if (text[i] != '\x1b') {
+      out += text[i];
+      continue;
+    }
+    while (i < text.length() and text[i] != 'm') { ++i; }
+  }
+  return out;
+}
+
+auto spp::lsp::MarkInline(StrView text) -> Str {
+  auto out = Str();
+  out.reserve(text.length());
+  auto inside = false;
+  for (auto i = 0uz; i < text.length(); ++i) {
+    if (text[i] != '\x1b') {
+      out += text[i];
+      continue;
+    }
+    if (not inside and text.substr(i).starts_with(kInlineOpen)) {
+      out += '`';
+      inside = true;
+      i += kInlineOpen.length() - 1;
+      continue;
+    }
+    if (inside and text.substr(i).starts_with(kInlineClose)) {
+      out += '`';
+      inside = false;
+    }
+    while (i < text.length() and text[i] != 'm') { ++i; }
+  }
+  if (inside) { out += '`'; }
+  return out;
+}
+
+auto spp::lsp::JsonString(StrView text) -> Str {
+  auto out = Str("\"");
+  for (auto const c : text) {
+    switch (c) {
+      case '"': out += "\\\"";
+        break;
+      case '\\': out += "\\\\";
+        break;
+      case '\n': out += "\\n";
+        break;
+      case '\r': out += "\\r";
+        break;
+      case '\t': out += "\\t";
+        break;
+      default: {
+        if (static_cast<unsigned char>(c) < 0x20u) {
+          out += std::format("\\u{:04x}", static_cast<unsigned int>(static_cast<unsigned char>(c)));
         }
-        while (i < text.length() and text[i] != 'm') { ++i; }
+        else { out += c; }
       }
-      return out;
-    }
-
-    /// The colours "INLINE_INFO" and friends open a highlighted
-    /// span with (bright yellow, italic), and the reset that
-    /// always closes it. Nothing else in an error opens with this
-    /// pair, so it marks exactly the spans the terminal shows in
-    /// yellow.
-    constexpr auto kInlineOpen = StrView("\x1b[93m\x1b[3m");
-    constexpr auto kInlineClose = StrView("\x1b[0m");
-
-    /// Strip the ANSI colours like StripAnsi, but keep each inline
-    /// highlight as a backtick-quoted span, so a reader that has
-    /// no colours can still tell the type or name apart from the
-    /// prose around it ("Found type `S32`").
-    auto MarkInline(StrView text) -> Str {
-      auto out = Str();
-      out.reserve(text.length());
-      auto inside = false;
-      for (auto i = 0uz; i < text.length(); ++i) {
-        if (text[i] != '\x1b') {
-          out += text[i];
-          continue;
-        }
-        if (not inside and text.substr(i).starts_with(kInlineOpen)) {
-          out += '`';
-          inside = true;
-          i += kInlineOpen.length() - 1;
-          continue;
-        }
-        if (inside and text.substr(i).starts_with(kInlineClose)) {
-          out += '`';
-          inside = false;
-        }
-        while (i < text.length() and text[i] != 'm') { ++i; }
-      }
-      if (inside) { out += '`'; }
-      return out;
-    }
-
-    /// Convert a string to be JSON compatible, the key part being
-    /// the escape characters.
-    auto JsonString(StrView text) -> Str {
-      auto out = Str("\"");
-      for (auto const c : text) {
-        switch (c) {
-          case '"': out += "\\\"";
-            break;
-          case '\\': out += "\\\\";
-            break;
-          case '\n': out += "\\n";
-            break;
-          case '\r': out += "\\r";
-            break;
-          case '\t': out += "\\t";
-            break;
-          default: {
-            if (static_cast<unsigned char>(c) < 0x20u) {
-              out += std::format("\\u{:04x}", static_cast<unsigned int>(static_cast<unsigned char>(c)));
-            }
-            else { out += c; }
-          }
-        }
-      }
-      return out + "\"";
-    }
-
-    /// Create a JSON block representing the source position
-    /// information provided off of a span, with a note for
-    /// compiler-generated code (preventing a 0-pos jump).
-    auto JsonSpan(utils::errors::SourceSpan const &span) -> Str {
-      auto out = Str("\"file\":") + JsonString(span.File);
-      if (span.Generated) { return out + ",\"generated\":true"; }
-      return out + std::format(
-        ",\"start\":{{\"line\":{},\"character\":{}}},\"end\":{{\"line\":{},\"character\":{}}}",
-        span.StartLine, span.StartCol, span.EndLine, span.EndCol);
-    }
-
-    /// A label as json. A span with no place in the author's
-    /// source says so rather than reporting line zero, which an
-    /// editor would happily jump to.
-    auto JsonLabel(DiagnosticLabel const &label) -> Str {
-      auto out = Str("{\"primary\":") + (label.Primary ? "true" : "false");
-      out += ",\"message\":" + JsonString(label.Message);
-      return out + "," + JsonSpan(label.Span) + "}";
-    }
-
-    /// The members of a list, as json, shared by everything that
-    /// reports a set of names.
-    auto JsonMembers(
-      Vec<lsp::resolution_index::Member> const &members)
-      -> Str {
-      auto out = Str("[");
-      for (auto i = 0uz; i < members.size(); ++i) {
-        auto const &member = members[i];
-        out += i > 0 ? "," : "";
-        out += "{\"name\":" + JsonString(member.Name);
-        out += ",\"member\":" + JsonString(member.Kind);
-        out += ",\"type\":" + JsonString(member.Type);
-        out += ",\"definition\":{" + JsonSpan(member.Definition) + "}";
-        if (not member.Visibility.empty()) { out += ",\"visibility\":" + JsonString(member.Visibility); }
-
-        out += ",\"signatures\":[";
-        for (auto j = 0uz; j < member.Signatures.size(); ++j) {
-          out += (j > 0 ? "," : "") + JsonString(member.Signatures[j]);
-        }
-        out += "]}";
-      }
-      return out + "]";
     }
   }
+  return out + "\"";
+}
+
+auto spp::lsp::JsonSpan(utils::errors::SourceSpan const &span) -> Str {
+  auto out = Str("\"file\":") + JsonString(span.File);
+  if (span.Generated) { return out + ",\"generated\":true"; }
+  return out + std::format(
+    ",\"start\":{{\"line\":{},\"character\":{}}},\"end\":{{\"line\":{},\"character\":{}}}",
+    span.StartLine, span.StartCol, span.EndLine, span.EndCol);
+}
+
+auto spp::lsp::JsonLabel(DiagnosticLabel const &label) -> Str {
+  auto out = Str("{\"primary\":") + (label.Primary ? "true" : "false");
+  out += ",\"message\":" + JsonString(label.Message);
+  return out + "," + JsonSpan(label.Span) + "}";
+}
+
+auto spp::lsp::JsonMembers(
+  Vec<lsp::resolution_index::Member> const &members)
+  -> Str {
+  auto out = Str("[");
+  for (auto i = 0uz; i < members.size(); ++i) {
+    auto const &member = members[i];
+    out += i > 0 ? "," : "";
+    out += "{\"name\":" + JsonString(member.Name);
+    out += ",\"member\":" + JsonString(member.Kind);
+    out += ",\"type\":" + JsonString(member.Type);
+    out += ",\"definition\":{" + JsonSpan(member.Definition) + "}";
+    if (not member.Visibility.empty()) { out += ",\"visibility\":" + JsonString(member.Visibility); }
+
+    out += ",\"signatures\":[";
+    for (auto j = 0uz; j < member.Signatures.size(); ++j) {
+      out += (j > 0 ? "," : "") + JsonString(member.Signatures[j]);
+    }
+    out += "]}";
+  }
+  return out + "]";
 }
 
 auto spp::lsp::DiagnosticFrom(
@@ -246,6 +260,10 @@ auto spp::lsp::ToJson(Diagnostic const &diagnostic) -> Str {
     out += (i > 0 ? "," : "") + JsonString(diagnostic.Wrapped[i]);
   }
   return out + "]}";
+}
+
+auto spp::lsp::ArtifactJson(Path const &executable) -> Str {
+  return Str("{\"kind\":\"artifact\",\"executable\":") + JsonString(utils::files::NativeString(executable)) + "}";
 }
 
 auto spp::lsp::ToJson(lsp::resolution_index::ResolvedName const &name) -> Str {

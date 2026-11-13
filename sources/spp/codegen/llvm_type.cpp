@@ -82,10 +82,17 @@ auto spp::codegen::LlvmTypeOfSymbol(
     return llvm::PointerType::get(*ctx->Context, 0);
   }
 
-  // Otherwise lower it now if nothing has yet. Types are minted right through
+  // Otherwise lower it now if nothing has yet, or finish it if it is still the
+  // empty struct a class is given when it is registered: its own stage 10 may
+  // not have run yet (another module's), and a struct with no body has no size,
+  // which a layout around it would ask for. Types are minted right through
   // monomorphisation and code generation, so asking for the type is what makes
   // it exist.
-  if (type_sym.LlvmInfo->LlvmType == nullptr and ctx->Sm != nullptr) {
+  const auto llvm_type = type_sym.LlvmInfo->LlvmType;
+  const auto placeholder = llvm::dyn_cast_or_null<llvm::StructType>(llvm_type);
+  const auto unfinished = llvm_type == nullptr
+    or (placeholder != nullptr and placeholder->isOpaque());
+  if (unfinished and ctx->Sm != nullptr) {
     EnsureLlvmTypeComplete(type_sym, *ctx->Sm, ctx);
   }
   return type_sym.LlvmInfo->LlvmType;
@@ -298,7 +305,7 @@ auto spp::codegen::EnsureLlvmTypeComplete(
   if (linked_sym != &type_sym) {
     // Stand-ins can name each other - the "Self" of a scope whose class scope
     // carries another "Self" - and following the chain would then never end.
-    static thread_local auto in_progress = Set<TypeSymbol const*>();
+    thread_local auto in_progress = Set<TypeSymbol const*>();
     if (not in_progress.insert(&type_sym).second) { return; }
     EnsureLlvmTypeComplete(*linked_sym, sm, ctx);
     AdoptLlvmTypeInfo(*type_sym.LlvmInfo, *linked_sym->LlvmInfo);
@@ -334,7 +341,7 @@ auto spp::codegen::EnsureLlvmTypeComplete(
   // Laying the body out asks for the sizes of the attributes, which comes back
   // through here for each of them, so a type that contains itself would recurse
   // forever. Prevent this with a guard.
-  static thread_local auto in_progress = Set<llvm::StructType const*>();
+  thread_local auto in_progress = Set<llvm::StructType const*>();
   if (not in_progress.insert(struct_type).second) { return; }
   type_sym.Type->FillLlvmLayout(&sm, &type_sym, ctx);
   in_progress.erase(struct_type);

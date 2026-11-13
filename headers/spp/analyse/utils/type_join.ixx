@@ -28,13 +28,13 @@ namespace spp::analyse::utils::type_join {
 
 /// The one type many values agree on: a "case"'s branches, a
 /// loop's "exit"s and its "else", a closure's "ret"s. It is the
-/// type the whole is assigned to, when there is one ("target");
-/// otherwise the widest variant among the values, which each
-/// member widens into; otherwise the first value's. Every other
-/// value must go into it ("Assignable"), or it is a type
-/// mismatch (E1). A value on a path that diverges is no value:
-/// when every path does, the ones typed "!" stand for the whole,
-/// and nothing has to agree.
+/// type the whole is assigned to, when there is one ("target")
+/// and every value fits it; otherwise the widest variant among
+/// the values, which each member widens into; otherwise the
+/// first value's. Every other value must go into it
+/// ("Assignable"), or it is a type mismatch (E1). A value on a
+/// path that diverges is no value: when every path does, the
+/// ones typed "!" stand for the whole, and nothing has to agree.
 SPP_EXP_CLS class spp::analyse::utils::type_join::TypeJoin {
 public:
   /// A join that the values agree on among themselves, or on

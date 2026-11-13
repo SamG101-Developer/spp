@@ -32,37 +32,50 @@ use_alias(spp::asts, TupleLiteralAst);
 use_alias(spp::asts, TypeAst);
 use_alias(spp::asts, TypeIdentifierAst);
 
-namespace {
+namespace spp::analyse::utils::packs {
   using spp::analyse::scopes::TypeSymbol;
   using spp::analyse::scopes::VariableSymbol;
 
   /// A pack is a generic symbol that is variadic: a parameter
   // ("Ts" for "..Ts"), or the argument binding one.
-  auto IsTypePack(
-    TypeSymbol const &sym) -> bool {
-    return sym.IsGn() and sym.IsVariadic;
-  }
+  static auto IsTypePack(
+    TypeSymbol const &sym) -> bool;
 
-  auto IsCompPack(
-    VariableSymbol const &sym) -> bool {
-    return sym.IsGn() and sym.IsVariadic;
-  }
+  static auto IsCompPack(
+    VariableSymbol const &sym) -> bool;
 
   /// The comp pack an identifier names, if it names one.
-  auto FindCompPack(
+  static auto FindCompPack(
     ExpressionAst const &value, Scope const &scope)
-    -> VariableSymbol const* {
-    auto const *const id = value.To<IdentifierAst>();
-    auto const *const sym = id != nullptr ? scope.FindVarSymbol(id) : nullptr;
-    return sym != nullptr and IsCompPack(*sym) ? sym : nullptr;
-  }
+    -> VariableSymbol const*;
 
   /// "FindCompPack" for a type pack.
-  auto FindTypePack(
-    TypeAst const &type, Scope const &scope) -> TypeSymbol* {
-    auto *const sym = scope.FindHeadSymbol(type);
-    return sym != nullptr and IsTypePack(*sym) ? sym : nullptr;
-  }
+  static auto FindTypePack(
+    TypeAst const &type, Scope const &scope) -> TypeSymbol*;
+}
+
+auto spp::analyse::utils::packs::IsTypePack(
+  TypeSymbol const &sym) -> bool {
+  return sym.IsGn() and sym.IsVariadic;
+}
+
+auto spp::analyse::utils::packs::IsCompPack(
+  VariableSymbol const &sym) -> bool {
+  return sym.IsGn() and sym.IsVariadic;
+}
+
+auto spp::analyse::utils::packs::FindCompPack(
+  ExpressionAst const &value, Scope const &scope)
+  -> VariableSymbol const* {
+  auto const *const id = value.To<IdentifierAst>();
+  auto const *const sym = id != nullptr ? scope.FindVarSymbol(id) : nullptr;
+  return sym != nullptr and IsCompPack(*sym) ? sym : nullptr;
+}
+
+auto spp::analyse::utils::packs::FindTypePack(
+  TypeAst const &type, Scope const &scope) -> TypeSymbol* {
+  auto *const sym = scope.FindHeadSymbol(type);
+  return sym != nullptr and IsTypePack(*sym) ? sym : nullptr;
 }
 
 auto spp::analyse::utils::packs::CompPackElements(

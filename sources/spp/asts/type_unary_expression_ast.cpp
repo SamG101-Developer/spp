@@ -52,7 +52,7 @@ auto spp::asts::TypeUnaryExpressionAst::operator==(
 auto spp::asts::TypeUnaryExpressionAst::EqualsTypeUnaryExpression(
   TypeUnaryExpressionAst const &other) const -> Ordering {
   // Equality is based on the operator and rhs.
-  return *Op == *other.Op && *Rhs == *other.Rhs ? Ordering::equal : Ordering::less;
+  return *Op == *other.Op and *Rhs == *other.Rhs ? Ordering::equal : Ordering::less;
 }
 
 auto spp::asts::TypeUnaryExpressionAst::Equals(

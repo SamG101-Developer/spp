@@ -1,7 +1,7 @@
 ---
 name: msvc-needs-member-type-imported
 description: "Calling through a member whose type another module defines (postfix->Op->To<..>()) needs that module imported; GCC/clang reach it transitively, MSVC errors C2027"
-updated: 2026-11-10
+updated: 2026-11-12
 ---
 
 `postfix->Op->To<X>()` with only `spp.asts.postfix_expression_ast` and X's module imported builds on GCC and clang,
@@ -14,3 +14,8 @@ Seen in run 42738268101 (2026-11-10, `linear_utils.cpp`'s `IsLinearTemporary`).
 
 **How to apply:** when a file calls a method on a member (`->Op`, `->Lhs`) of an AST it imports, import the
 module defining that member's type too, as `regions.cpp` does for every postfix operator it touches.
+
+Seen again in run 43328587771 (2026-11-12): moving a helper out of `SPP_MOD_BEGIN` (the static top-block layout,
+[[internal-functions-static-top-block]]) made `UnboundPack`'s `lhs.To<IdentifierAst>()` fail with C2027 on
+`ExpressionAst`. Inside the `extern "C++"` block MSVC had resolved it. When moving code out of `SPP_MOD_BEGIN`, check
+the AST types it uses are imported directly.

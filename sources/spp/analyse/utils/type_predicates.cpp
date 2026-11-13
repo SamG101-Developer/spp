@@ -52,6 +52,20 @@ use_alias(spp::asts, TypeIdentifierAst);
 use_alias(spp::asts, TypePostfixExpressionAst);
 use_alias(spp::asts, TypeUnaryExpressionAst);
 
+namespace spp::analyse::utils::type_predicates {
+  /// A generic template named with no arguments: it stands for itself over its own parameters, which nothing has bound
+  /// - unless every parameter is a pack, which no arguments bind to the empty pack: "Tup" with none is the empty tuple,
+  /// which is how "()" is named.
+  static auto IsUnboundTemplate(
+    spp::analyse::scopes::TypeSymbol const &sym) -> bool;
+}
+
+auto spp::analyse::utils::type_predicates::IsUnboundTemplate(
+  spp::analyse::scopes::TypeSymbol const &sym) -> bool {
+  return sym.IsBareTemplate() and not genex::all_of(
+    sym.Type->GnParamGroup->Params, [](auto const &param) { return param->IsVariadic(); });
+}
+
 /// [CHECKED]
 auto spp::analyse::utils::type_predicates::AnyTypePart(
   TypeAst const &type,
@@ -205,17 +219,6 @@ auto spp::analyse::utils::type_predicates::IsTypeTry(
   TypeRef const &ref, Scope const &scope) -> bool {
   using asts::generate::common_types_precompiled::TRY;
   return ref.KindSymbol() != nullptr and ref.IsA(*TRY, scope);
-}
-
-namespace {
-  /// A generic template named with no arguments: it stands for itself over its own parameters, which nothing has bound
-  /// - unless every parameter is a pack, which no arguments bind to the empty pack: "Tup" with none is the empty tuple,
-  /// which is how "()" is named.
-  auto IsUnboundTemplate(
-    spp::analyse::scopes::TypeSymbol const &sym) -> bool {
-    return sym.IsBareTemplate() and not genex::all_of(
-      sym.Type->GnParamGroup->Params, [](auto const &param) { return param->IsVariadic(); });
-  }
 }
 
 auto spp::analyse::utils::type_predicates::IsTypeSignedInteger(

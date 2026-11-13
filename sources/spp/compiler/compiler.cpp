@@ -31,36 +31,40 @@ import spp.utils.stats;
 import genex;
 import std;
 
-SPP_MOD_BEGIN
-namespace {
+namespace spp::compiler {
   /// A stage's progress label as a phase name for the stats report: "Generating
   /// Code (2)....... " is "generating-code-2".
-  auto PhaseName(const spp::StrView label) -> spp::Str {
-    auto out = spp::Str();
-    for (const auto c : label) {
-      if (c == '.' or c == '(' or c == ')') { continue; }
-      if (c == ' ') {
-        if (not out.empty() and out.back() != '-') { out += '-'; }
-        continue;
-      }
-      out += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    }
-    while (not out.empty() and out.back() == '-') { out.pop_back(); }
-    return out;
-  }
+  static auto PhaseName(const spp::StrView label) -> spp::Str;
 
   /// The counters that mirror what the analysis keeps itself: how many
   /// identities are interned, and how often each cache generation has moved.
-  auto SampleAnalysisCounters() -> void {
-    using spp::utils::stats::Counter;
-    using spp::utils::stats::Set;
-    Set(Counter::TypeKeysDistinct, spp::analyse::scopes::InternedTypeKeys().size());
-    Set(Counter::CompKeysDistinct, spp::analyse::scopes::InternedCompKeys().size());
-    Set(Counter::ScopeLinkageGeneration, spp::analyse::scopes::ScopeLinkageGeneration());
-    Set(Counter::TypeStructureGeneration, spp::analyse::scopes::TypeStructureGeneration());
-  }
+  static auto SampleAnalysisCounters() -> void;
 }
 
+auto spp::compiler::PhaseName(const spp::StrView label) -> spp::Str {
+  auto out = spp::Str();
+  for (const auto c : label) {
+    if (c == '.' or c == '(' or c == ')') { continue; }
+    if (c == ' ') {
+      if (not out.empty() and out.back() != '-') { out += '-'; }
+      continue;
+    }
+    out += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  }
+  while (not out.empty() and out.back() == '-') { out.pop_back(); }
+  return out;
+}
+
+auto spp::compiler::SampleAnalysisCounters() -> void {
+  using spp::utils::stats::Counter;
+  using spp::utils::stats::Set;
+  Set(Counter::TypeKeysDistinct, spp::analyse::scopes::InternedTypeKeys().size());
+  Set(Counter::CompKeysDistinct, spp::analyse::scopes::InternedCompKeys().size());
+  Set(Counter::ScopeLinkageGeneration, spp::analyse::scopes::ScopeLinkageGeneration());
+  Set(Counter::TypeStructureGeneration, spp::analyse::scopes::TypeStructureGeneration());
+}
+
+SPP_MOD_BEGIN
 /// [CHECKED]
 spp::compiler::Compiler::Compiler(
   const BuildMode mode, const BuildType build_type, TestScope const &tests) :

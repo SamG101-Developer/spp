@@ -47,342 +47,364 @@ use_alias(spp::asts, ConventionTag);
 use_alias(spp::asts, TypeAst);
 
 namespace spp::analyse::utils::type_compare {
-  namespace {
-    /// [CHECKED]
-    /// 2 conventions are only equal if they are the same, or if
-    /// we are coalescing &mut into &
-    auto ConventionTagEq(
-      const ConventionTag lhs,
-      const ConventionTag rhs)
-      -> bool {
-      // Guard against an auto-match for true, and anything that
-      // involves only 1 borrow for false. Coalesce "&mut" -> "&".
-      if (lhs == rhs) { return true; }
-      if (lhs == ConventionTag::MOV or rhs == ConventionTag::MOV) { return false; }
-      return not(lhs == ConventionTag::MUT and rhs == ConventionTag::REF);
-    }
+  /// 2 conventions are only equal if they are the same, or if
+  /// we are coalescing &mut into &
+  static auto ConventionTagEq(
+    const ConventionTag lhs,
+    const ConventionTag rhs)
+    -> bool;
 
-    /// [CHECKED]
-    /// If the type has a convention, then get its tag; otherwise,
-    /// use the "MOV" convention (the default no-token convention).
-    auto ConventionTagOf(
-      TypeAst const &type) -> ConventionTag {
-      // Extract the convention, and do a nullptr -> MOV mapping
-      // if it doesn't exist.
-      const auto conv = type.GetConvention();
-      return conv != nullptr ? conv->Tag() : ConventionTag::MOV;
-    }
+  /// If the type has a convention, then get its tag; otherwise,
+  /// use the "MOV" convention (the default no-token convention).
+  static auto ConventionTagOf(
+    TypeAst const &type) -> ConventionTag;
 
-    auto AssignableCore(
-      TypeRef const &target, TypeRef const &value, Scope const &target_scope, Scope const &value_scope,
-      bool widen_variant) -> bool;
+  /// Do a variant check - this checks if the type fits in the
+  /// variant, either as a single element of it, or a subset
+  /// variant.
+  static auto VariantAccepts(
+    TypeRef const &variant, TypeRef const &type, Scope const &variant_scope, Scope const &type_scope) -> bool;
 
-    auto SameType(
-      TypeRef const &lhs, TypeRef const &rhs, Scope const &lhs_scope, Scope const &rhs_scope) -> bool;
+  /// The type forwarding matcher. This allows "&Str" to go
+  /// into an "&StrView", because a forwarding extension has
+  /// been defined on "Str", targeting "&StrView". Convention
+  /// must match.
+  static auto ForwardsTo(
+    TypeRef const &arg, TypeRef const &param, Scope const &arg_scope, Scope const &param_scope) -> bool;
 
-    /// [CHECKED]
-    /// Do a variant check - this checks if the type fits in the
-    /// variant, either as a single element of it, or a subset
-    /// variant.
-    auto VariantAccepts(
-      TypeRef const &variant, TypeRef const &type, Scope const &variant_scope, Scope const &type_scope) -> bool {
-      // Get all the members of the variant as a vector of type
-      // references; if empty, then return false (shortcut guard).
-      const auto variant_members = type_members::VariantMemberRefs(variant, variant_scope);
-      if (variant_members.empty()) { return false; }
+  /// Determine if a $ mock type's overload function types
+  /// include the "func" type. The "func" type will be one of
+  /// the 3 FunXXX types, generically instantiated.
+  static auto MockMatches(
+    TypeRef const &mock, TypeRef const &func, Scope const &mock_scope, Scope const &func_scope) -> bool;
 
-      // Get the members of the type (assuming it is a subset
-      // variant). A borrow of a variant ("&Opt[S32]") is one
-      // member, not a subset: its members are behind the pointer.
-      const auto subset_members = type.IsBorrowed() and not variant.IsBorrowed()
-        ? Vec<TypeRef>()
-        : type_members::VariantMemberRefs(type, type_scope);
-      if (not subset_members.empty()) {
-        return genex::all_of(subset_members, [&](auto const &t) {
-          return genex::any_of(variant_members, [&](auto const &v) {
-            return SameType(v, t, variant_scope, type_scope);
-          });
-        });
-      }
+  /// If either type is "Self", the class it stands for where
+  /// the other side is read (a binding's bound type when the
+  /// other side is a binding), read where its own side is;
+  /// otherwise the types as they are. Both are none when a
+  /// "Self" stands for nothing there. "both_self" is set when
+  /// both are "Self", which is all a comparison needs.
+  static auto ReadSelfPair(
+    TypeRef const &lhs, TypeRef const &rhs, Scope const &lhs_scope, Scope const &rhs_scope, bool &both_self)
+    -> Pair<TypeRef, TypeRef>;
 
-      // Otherwise, the "type" is a single type, so just check
-      // that it is can be assigned into one of the variant members.
+  /// Check to type identity, shortcutting on never types,
+  /// then a nullptr and convention check. Finally we do a
+  /// "Self"-pair resolution/comparison, before comparing
+  /// the identities.
+  static auto SameType(
+    TypeRef const &lhs, TypeRef const &rhs, Scope const &lhs_scope, Scope const &rhs_scope) -> bool;
+
+  /// There are a number of tests that allow one type to be
+  /// assignable into another, detailed in the .ixx file.
+  static auto AssignableCore(
+    TypeRef const &target, TypeRef const &value, Scope const &target_scope, Scope const &value_scope,
+    const bool widen_variant) -> bool;
+
+  /// The arguments an identity holds: an instance's (a type
+  /// pack's list spliced in as its elements), or a variant's
+  /// members (positionally, in their canonical order). None for
+  /// anything else.
+  static auto IdArgs(const TypeId id) -> Vec<TypeIdArg>;
+
+  /// Whether an identity's argument is a variadic parameter
+  /// nothing has bound where it was read: a pack, which stands
+  /// for any number of arguments.
+  static auto IsUnboundPackArg(TypeIdArg const &arg) -> bool;
+
+  /// Run the assignable core for pairs of generic arguments,
+  /// read off the two identities, but also consider the
+  /// variadic case: a trailing unbound pack on the value
+  /// absorbs what is left.
+  static auto AssignableArgs(
+    TypeRef const &target, TypeRef const &value, Scope const &target_scope, Scope const &value_scope) -> bool;
+}
+
+/// [CHECKED]
+auto spp::analyse::utils::type_compare::ConventionTagEq(
+  const ConventionTag lhs,
+  const ConventionTag rhs)
+  -> bool {
+  // Guard against an auto-match for true, and anything that
+  // involves only 1 borrow for false. Coalesce "&mut" -> "&".
+  if (lhs == rhs) { return true; }
+  if (lhs == ConventionTag::MOV or rhs == ConventionTag::MOV) { return false; }
+  return not(lhs == ConventionTag::MUT and rhs == ConventionTag::REF);
+}
+
+/// [CHECKED]
+auto spp::analyse::utils::type_compare::ConventionTagOf(
+  TypeAst const &type) -> ConventionTag {
+  // Extract the convention, and do a nullptr -> MOV mapping
+  // if it doesn't exist.
+  const auto conv = type.GetConvention();
+  return conv != nullptr ? conv->Tag() : ConventionTag::MOV;
+}
+
+/// [CHECKED]
+auto spp::analyse::utils::type_compare::VariantAccepts(
+  TypeRef const &variant, TypeRef const &type, Scope const &variant_scope, Scope const &type_scope) -> bool {
+  // Get all the members of the variant as a vector of type
+  // references; if empty, then return false (shortcut guard).
+  const auto variant_members = type_members::VariantMemberRefs(variant, variant_scope);
+  if (variant_members.empty()) { return false; }
+
+  // Get the members of the type (assuming it is a subset
+  // variant). A borrow of a variant ("&Opt[S32]") is one
+  // member, not a subset: its members are behind the pointer.
+  const auto subset_members = type.IsBorrowed() and not variant.IsBorrowed()
+    ? Vec<TypeRef>()
+    : type_members::VariantMemberRefs(type, type_scope);
+  if (not subset_members.empty()) {
+    return genex::all_of(subset_members, [&](auto const &t) {
       return genex::any_of(variant_members, [&](auto const &v) {
-        return AssignableCore(v, type, variant_scope, type_scope, true);
+        return SameType(v, t, variant_scope, type_scope);
       });
-    }
+    });
+  }
 
-    /// [CHECKED]
-    /// The type forwarding matcher. This allows "&Str" to go
-    /// into an "&StrView", because a forwarding extension has
-    /// been defined on "Str", targeting "&StrView". Convention
-    /// must match.
-    auto ForwardsTo(
-      TypeRef const &arg, TypeRef const &param, Scope const &arg_scope, Scope const &param_scope) -> bool {
-      using asts::generate::common_types_precompiled::FWD_REF;
-      using asts::generate::common_types_precompiled::FWD_MUT;
+  // Otherwise, the "type" is a single type, so just check
+  // that it is can be assigned into one of the variant members.
+  return genex::any_of(variant_members, [&](auto const &v) {
+    return AssignableCore(v, type, variant_scope, type_scope, true);
+  });
+}
 
-      // Do a convention match. "Str" cannot go to "&StrView, but
-      // "&Str" can. Same for mutable borrows.
-      const auto both_ref = arg.Conv == ConventionTag::REF and param.Conv == ConventionTag::REF;
-      const auto both_mut = arg.Conv == ConventionTag::MUT and param.Conv == ConventionTag::MUT;
-      if (not both_ref and not both_mut) { return false; }
+/// [CHECKED]
+auto spp::analyse::utils::type_compare::ForwardsTo(
+  TypeRef const &arg, TypeRef const &param, Scope const &arg_scope, Scope const &param_scope) -> bool {
+  using asts::generate::common_types_precompiled::FWD_REF;
+  using asts::generate::common_types_precompiled::FWD_MUT;
 
-      // There are no forwarding extensions definable over the
-      // generic, so this will always be false.
-      // Todo: Enforce this ^^^ (currently can be done).
-      if (arg.Symbol == nullptr or arg.Symbol->IsGn() or arg.Symbol->LinkedScope == nullptr) { return false; }
+  // Do a convention match. "Str" cannot go to "&StrView, but
+  // "&Str" can. Same for mutable borrows.
+  const auto both_ref = arg.Conv == ConventionTag::REF and param.Conv == ConventionTag::REF;
+  const auto both_mut = arg.Conv == ConventionTag::MUT and param.Conv == ConventionTag::MUT;
+  if (not both_ref and not both_mut) { return false; }
 
-      // An argument already naming the parameter's own class is
-      // not forwarded to it (see "TypeFwdEq").
-      if (param.Symbol != nullptr and
-        arg.Symbol->LinkedScope->NonGnScope == (
-          param.Symbol->LinkedScope != nullptr ? param.Symbol->LinkedScope->NonGnScope : nullptr)) {
-        return false;
-      }
+  // There are no forwarding extensions definable over the
+  // generic, so this will always be false.
+  // Todo: Enforce this ^^^ (currently can be done).
+  if (arg.Symbol == nullptr or arg.Symbol->IsGn() or arg.Symbol->LinkedScope == nullptr) { return false; }
 
-      // Check each super type on the type for a FwdRef or FwdMut
-      // superimposition extension and select it.
-      // Todo: Move to "marker_sups" util package?
-      auto const &fwd_target = both_ref ? *FWD_REF : *FWD_MUT;
-      auto candidates = Vec{arg};
-      candidates.append_range(type_members::SuperClsRefs(arg, arg_scope));
-      for (auto const &candidate : candidates) {
-        if (candidate.Symbol == nullptr or not candidate.IsA(fwd_target, arg_scope)) { continue; }
-        auto inner = candidate.Symbol->TypeArgRef("T");
-        if (inner.Symbol == nullptr) { continue; }
-        inner.Conv = param.Conv;
-        if (AssignableCore(inner, param, param_scope, param_scope, true)) { return true; }
-      }
-      return false;
-    }
+  // An argument already naming the parameter's own class is
+  // not forwarded to it (see "TypeFwdEq").
+  if (param.Symbol != nullptr and
+    arg.Symbol->LinkedScope->NonGnScope == (
+      param.Symbol->LinkedScope != nullptr ? param.Symbol->LinkedScope->NonGnScope : nullptr)) {
+    return false;
+  }
 
-    /// [CHECKED]
-    /// Determine if a $ mock type's overload function types
-    /// include the "func" type. The "func" type will be one of
-    /// the 3 FunXXX types, generically instantiated.
-    auto MockMatches(
-      TypeRef const &mock, TypeRef const &func, Scope const &mock_scope, Scope const &func_scope) -> bool {
-      // A closure borrowed as a function type ("&c" for a
-      // "&FunMut[..]" parameter) is that type's fat pointer
-      // already, so its superimposed types are compared with the
-      // target's convention dropped: the caller has matched the
-      // conventions. A named function has no storage to borrow,
-      // so it keeps the convention (and fails a borrowed target).
-      const auto target = mock.Symbol->Kind == scopes::TypeKind::ClosureMock
-        ? func.WithoutConvention()
-        : func;
+  // Check each super type on the type for a FwdRef or FwdMut
+  // superimposition extension and select it.
+  // Todo: Move to "marker_sups" util package?
+  auto const &fwd_target = both_ref ? *FWD_REF : *FWD_MUT;
+  auto candidates = Vec{arg};
+  candidates.append_range(type_members::SuperClsRefs(arg, arg_scope));
+  for (auto const &candidate : candidates) {
+    if (candidate.Symbol == nullptr or not candidate.IsA(fwd_target, arg_scope)) { continue; }
+    auto inner = candidate.Symbol->TypeArgRef("T");
+    if (inner.Symbol == nullptr) { continue; }
+    inner.Conv = param.Conv;
+    if (AssignableCore(inner, param, param_scope, param_scope, true)) { return true; }
+  }
+  return false;
+}
 
-      // Iterate every super class of the mock type (this gets
-      // the list of FunXXX overloads), and check the type
-      // against the "func" type.
-      for (auto const &sup : type_members::SuperClsRefs(mock, mock_scope)) {
-        if (type_predicates::IsTypeFunction(sup, mock_scope)
-          and AssignableCore(sup, target, mock_scope, func_scope, true)) {
-          return true;
-        }
-      }
-      return fn_values::MatchFnValue(mock, func, func_scope).has_value();
-    }
+/// [CHECKED]
+auto spp::analyse::utils::type_compare::MockMatches(
+  TypeRef const &mock, TypeRef const &func, Scope const &mock_scope, Scope const &func_scope) -> bool {
+  // A closure borrowed as a function type ("&c" for a
+  // "&FunMut[..]" parameter) is that type's fat pointer
+  // already, so its superimposed types are compared with the
+  // target's convention dropped: the caller has matched the
+  // conventions. A named function has no storage to borrow,
+  // so it keeps the convention (and fails a borrowed target).
+  const auto target = mock.Symbol->Kind == scopes::TypeKind::ClosureMock
+    ? func.WithoutConvention()
+    : func;
 
-    /// [CHECKED]
-    /// If either type is "Self", the class it stands for where
-    /// the other side is read (a binding's bound type when the
-    /// other side is a binding), read where its own side is;
-    /// otherwise the types as they are. Both are none when a
-    /// "Self" stands for nothing there. "both_self" is set when
-    /// both are "Self", which is all a comparison needs.
-    auto ReadSelfPair(
-      TypeRef const &lhs, TypeRef const &rhs, Scope const &lhs_scope, Scope const &rhs_scope, bool &both_self)
-      -> Pair<TypeRef, TypeRef> {
-      //
-      const auto lhs_self = lhs.Symbol->IsSelf();
-      const auto rhs_self = rhs.Symbol->IsSelf();
-      both_self = lhs_self and rhs_self;
-      if (not lhs_self and not rhs_self) { return {lhs, rhs}; }
-
-      //
-      auto lhs_sym = lhs_self ? rhs_scope.FindSelfSymbol() : lhs.Symbol;
-      auto rhs_sym = rhs_self ? lhs_scope.FindSelfSymbol() : rhs.Symbol;
-      if (lhs_sym == nullptr or rhs_sym == nullptr) { return {}; }
-      if (lhs_self and rhs_sym->Type != nullptr) { lhs_sym = lhs_sym->AsBound(); }
-      if (rhs_self and lhs_sym->Type != nullptr) { rhs_sym = rhs_sym->AsBound(); }
-      return {
-        lhs_self ? TypeRef::Of(*lhs_sym, lhs_scope, lhs.Conv, TypeRef::OnMissing::Open) : lhs,
-        rhs_self ? TypeRef::Of(*rhs_sym, rhs_scope, rhs.Conv, TypeRef::OnMissing::Open) : rhs
-      };
-    }
-
-    /// [FWD]
-    auto AssignableArgs(
-      TypeRef const &target, TypeRef const &value, Scope const &target_scope, Scope const &value_scope) -> bool;
-
-    /// [CHECKED]
-    /// Check to type identity, shortcutting on never types,
-    /// then a nullptr and convention check. Finally we do a
-    /// "Self"-pair resolution/comparison, before comparing
-    /// the identities.
-    auto SameType(
-      TypeRef const &lhs, TypeRef const &rhs, Scope const &lhs_scope, Scope const &rhs_scope) -> bool {
-      // Never and convention shortcut guards to avoid unnecessary
-      // symbol lookups.
-      if (lhs.IsNever or rhs.IsNever) { return lhs.IsNever and rhs.IsNever; }
-      if (lhs.Symbol == nullptr or rhs.Symbol == nullptr or lhs.Conv != rhs.Conv) { return false; }
-
-      // Do the "Self" resolution for the two types, and if they
-      // are both "Self" types, return true.
-      auto both_self = false;
-      const auto [l, r] = ReadSelfPair(lhs, rhs, lhs_scope, rhs_scope, both_self);
-      return both_self or l.SameAs(r);
-    }
-
-    /// [CHECKED]
-    /// There are a number of tests that allow one type to be
-    /// assignable into another, detailed in the .ixx file.
-    auto AssignableCore(
-      TypeRef const &target, TypeRef const &value, Scope const &target_scope, Scope const &value_scope,
-      const bool widen_variant) -> bool {
-      // Shortcut guards - if the value is the never type, it
-      // fits anywhere; if it's the target, nothing can match
-      // it (except never, which is pre-checked).
-      if (value.IsNever) { return true; }
-      if (target.IsNever) { return false; }
-      if (target.Symbol == nullptr or value.Symbol == nullptr) { return false; }
-
-      // Run the "Self" check; if both types are "Self" then
-      // return true.
-      auto both_self = false;
-      const auto [t, v] = ReadSelfPair(target, value, target_scope, value_scope, both_self);
-      if (both_self) { return true; }
-      if (t.Symbol == nullptr) { return false; }
-
-      // If we are allowing variant checks, then check the value
-      // can be accepted by the target variant; return early.
-      if (widen_variant and VariantAccepts(target, value, target_scope, value_scope)) {
-        return true;
-      }
-
-      // Check the conventions are compatible. A mismatch here,
-      // aside from permitted coalescing, is an early return false.
-      if (not ConventionTagEq(target.Conv, value.Conv)) { return false; }
-
-      // Next compare the identities of the types from the "Self"
-      // check, the conventions having been compared above.
-      if (t.Id != nullptr and t.Id == v.Id) { return true; }
-
-      // A named function's mock stands for that one function: it
-      // carries nothing at runtime, so whatever reads a value of
-      // that type calls that function. Nothing else fits one, not
-      // even another function of the same signature. (But can be
-      // coerced into its "FunRef[...]" etc).
-      if (t.Symbol->IsMock()
-        and (t.Symbol->Kind != scopes::TypeKind::ClosureMock or v.Symbol->Kind != scopes::TypeKind::ClosureMock)) {
-        return false;
-      }
-
-      // Different templates: a function mock against a function
-      // type, or a forwarding type against its target.
-      if (t.Symbol->Type != v.Symbol->Type) {
-        // The value is a $MockType (a function named as a value),
-        // so check it against the FunXXX family overload types it
-        // is superimposed with.
-        if (v.Symbol->IsMock()) { return MockMatches(v, target, value_scope, target_scope); }
-
-        // Otherwise, consider a forwarding check, of "Vec" to the
-        // "&View" type for example.
-        return ForwardsTo(v, t, value_scope, target_scope);
-      }
-
-      // If we reach this point, then the templates are the same,
-      // but the ids are not, and therefore we need to consider
-      // the generic arguments.
-      return AssignableArgs(t, v, target_scope, value_scope);
-    }
-
-    /// The arguments an identity holds: an instance's (a type
-    /// pack's list spliced in as its elements), or a variant's
-    /// members (positionally, in their canonical order). None for
-    /// anything else.
-    auto IdArgs(const TypeId id) -> Vec<TypeIdArg> {
-      if (id == nullptr) { return {}; }
-      auto const &head = scopes::HeaderOf(id);
-      if (head.Kind == TypeKey::Tag::Inst) {
-        // A type pack's list is its elements, positionally, as written ("Tup[A, Ts]" is "A", then "Ts").
-        auto out = Vec<TypeIdArg>();
-        for (auto const &arg : scopes::ArgsOf(head.Args)) {
-          if (scopes::IsPackTypeId(arg.TypeVal)) {
-            for (const auto elem : scopes::HeaderOf(arg.TypeVal).PackElements) { out.push_back({.TypeVal = elem}); }
-          }
-          else if (scopes::IsPackCompId(arg.CompVal)) {
-            for (const auto elem : arg.CompVal->Kids) { out.push_back({.CompVal = elem}); }
-          }
-          else { out.push_back(arg); }
-        }
-        return out;
-      }
-      auto members = Vec<TypeIdArg>();
-      if (head.Kind == TypeKey::Tag::Variant) {
-        for (const auto m : head.VariantMembers) { members.push_back({.TypeVal = m}); }
-      }
-      return members;
-    }
-
-    /// Whether an identity's argument is a variadic parameter
-    /// nothing has bound where it was read: a pack, which stands
-    /// for any number of arguments.
-    auto IsUnboundPackArg(TypeIdArg const &arg) -> bool {
-      if (arg.TypeVal != nullptr) {
-        auto const &head = scopes::HeaderOf(arg.TypeVal);
-        auto const *const param = head.Kind == TypeKey::Tag::TypeParam
-          ? FindGnTypeParamById(head.TypeParamId)
-          : nullptr;
-        return param != nullptr and param->IsVariadic;
-      }
-      auto const *const node = arg.CompVal;
-      auto const *const param = node != nullptr and node->Kind == CompKey::Part::Param
-        ? FindGnCompParamById(node->ParamId)
-        : nullptr;
-      return param != nullptr and param->IsVariadic;
-    }
-
-    /// [CHECKED]
-    /// Run the assignable core for pairs of generic arguments,
-    /// read off the two identities, but also consider the
-    /// variadic case: a trailing unbound pack on the value
-    /// absorbs what is left.
-    auto AssignableArgs(
-      TypeRef const &target, TypeRef const &value, Scope const &target_scope, Scope const &value_scope) -> bool {
-      using Tag = TypeKey::Tag;
-      const auto target_args = IdArgs(target.Id);
-      const auto value_args = IdArgs(value.Id);
-
-      // Without a pack, a variadic template's (or a variant's)
-      // two lists have to be the same length, or the shorter
-      // would be read as a prefix of the longer. A fixed
-      // template needs no check: its parameters fix the length.
-      const auto has_pack = not value_args.empty() and IsUnboundPackArg(value_args.back());
-      const auto fixed_len = has_pack ? value_args.size() - 1 : std::min(target_args.size(), value_args.size());
-      const auto is_variadic = scopes::HeaderOf(target.Id).Kind == Tag::Variant
-        or (target.Symbol->Type != nullptr and target.Symbol->Type->GnParamGroup->GetVariadicParam() != nullptr);
-      if (has_pack ? target_args.size() < fixed_len : is_variadic and target_args.size() != value_args.size()) {
-        return false;
-      }
-
-      // Every argument has to match: types by assignability
-      // ("Self" matching "Self"), comp values by identity.
-      for (auto i = 0uz; i < fixed_len; ++i) {
-        auto const &t = target_args[i];
-        auto const &v = value_args[i];
-        const auto ok = t.TypeVal != nullptr and v.TypeVal != nullptr
-          ? (IsSelfTypeId(t.TypeVal) and IsSelfTypeId(v.TypeVal))
-          or AssignableCore(
-            TypeRef::Of(t.TypeVal, target_scope), TypeRef::Of(v.TypeVal, value_scope), target_scope, value_scope, true)
-          : t.TypeVal == nullptr and v.TypeVal == nullptr and t.CompVal == v.CompVal;
-        if (not ok) { return false; }
-      }
+  // Iterate every super class of the mock type (this gets
+  // the list of FunXXX overloads), and check the type
+  // against the "func" type.
+  for (auto const &sup : type_members::SuperClsRefs(mock, mock_scope)) {
+    if (type_predicates::IsTypeFunction(sup, mock_scope)
+      and AssignableCore(sup, target, mock_scope, func_scope, true)) {
       return true;
     }
   }
+  return fn_values::MatchFnValue(mock, func, func_scope).has_value();
+}
+
+/// [CHECKED]
+auto spp::analyse::utils::type_compare::ReadSelfPair(
+  TypeRef const &lhs, TypeRef const &rhs, Scope const &lhs_scope, Scope const &rhs_scope, bool &both_self)
+  -> Pair<TypeRef, TypeRef> {
+  //
+  const auto lhs_self = lhs.Symbol->IsSelf();
+  const auto rhs_self = rhs.Symbol->IsSelf();
+  both_self = lhs_self and rhs_self;
+  if (not lhs_self and not rhs_self) { return {lhs, rhs}; }
+
+  //
+  auto lhs_sym = lhs_self ? rhs_scope.FindSelfSymbol() : lhs.Symbol;
+  auto rhs_sym = rhs_self ? lhs_scope.FindSelfSymbol() : rhs.Symbol;
+  if (lhs_sym == nullptr or rhs_sym == nullptr) { return {}; }
+  if (lhs_self and rhs_sym->Type != nullptr) { lhs_sym = lhs_sym->AsBound(); }
+  if (rhs_self and lhs_sym->Type != nullptr) { rhs_sym = rhs_sym->AsBound(); }
+  return {
+    lhs_self ? TypeRef::Of(*lhs_sym, lhs_scope, lhs.Conv, TypeRef::OnMissing::Open) : lhs,
+    rhs_self ? TypeRef::Of(*rhs_sym, rhs_scope, rhs.Conv, TypeRef::OnMissing::Open) : rhs
+  };
+}
+
+/// [CHECKED]
+auto spp::analyse::utils::type_compare::SameType(
+  TypeRef const &lhs, TypeRef const &rhs, Scope const &lhs_scope, Scope const &rhs_scope) -> bool {
+  // Never and convention shortcut guards to avoid unnecessary
+  // symbol lookups.
+  if (lhs.IsNever or rhs.IsNever) { return lhs.IsNever and rhs.IsNever; }
+  if (lhs.Symbol == nullptr or rhs.Symbol == nullptr or lhs.Conv != rhs.Conv) { return false; }
+
+  // Do the "Self" resolution for the two types, and if they
+  // are both "Self" types, return true.
+  auto both_self = false;
+  const auto [l, r] = ReadSelfPair(lhs, rhs, lhs_scope, rhs_scope, both_self);
+  return both_self or l.SameAs(r);
+}
+
+/// [CHECKED]
+auto spp::analyse::utils::type_compare::AssignableCore(
+  TypeRef const &target, TypeRef const &value, Scope const &target_scope, Scope const &value_scope,
+  const bool widen_variant) -> bool {
+  // Shortcut guards - if the value is the never type, it
+  // fits anywhere; if it's the target, nothing can match
+  // it (except never, which is pre-checked).
+  if (value.IsNever) { return true; }
+  if (target.IsNever) { return false; }
+  if (target.Symbol == nullptr or value.Symbol == nullptr) { return false; }
+
+  // Run the "Self" check; if both types are "Self" then
+  // return true.
+  auto both_self = false;
+  const auto [t, v] = ReadSelfPair(target, value, target_scope, value_scope, both_self);
+  if (both_self) { return true; }
+  if (t.Symbol == nullptr) { return false; }
+
+  // If we are allowing variant checks, then check the value
+  // can be accepted by the target variant; return early.
+  if (widen_variant and VariantAccepts(target, value, target_scope, value_scope)) {
+    return true;
+  }
+
+  // Check the conventions are compatible. A mismatch here,
+  // aside from permitted coalescing, is an early return false.
+  if (not ConventionTagEq(target.Conv, value.Conv)) { return false; }
+
+  // Next compare the identities of the types from the "Self"
+  // check, the conventions having been compared above.
+  if (t.Id != nullptr and t.Id == v.Id) { return true; }
+
+  // A named function's mock stands for that one function: it
+  // carries nothing at runtime, so whatever reads a value of
+  // that type calls that function. Nothing else fits one, not
+  // even another function of the same signature. (But can be
+  // coerced into its "FunRef[...]" etc).
+  if (t.Symbol->IsMock()
+    and (t.Symbol->Kind != scopes::TypeKind::ClosureMock or v.Symbol->Kind != scopes::TypeKind::ClosureMock)) {
+    return false;
+  }
+
+  // Different templates: a function mock against a function
+  // type, or a forwarding type against its target.
+  if (t.Symbol->Type != v.Symbol->Type) {
+    // The value is a $MockType (a function named as a value),
+    // so check it against the FunXXX family overload types it
+    // is superimposed with.
+    if (v.Symbol->IsMock()) { return MockMatches(v, target, value_scope, target_scope); }
+
+    // Otherwise, consider a forwarding check, of "Vec" to the
+    // "&View" type for example.
+    return ForwardsTo(v, t, value_scope, target_scope);
+  }
+
+  // If we reach this point, then the templates are the same,
+  // but the ids are not, and therefore we need to consider
+  // the generic arguments.
+  return AssignableArgs(t, v, target_scope, value_scope);
+}
+
+auto spp::analyse::utils::type_compare::IdArgs(const TypeId id) -> Vec<TypeIdArg> {
+  if (id == nullptr) { return {}; }
+  auto const &head = scopes::HeaderOf(id);
+  if (head.Kind == TypeKey::Tag::Inst) {
+    // A type pack's list is its elements, positionally, as written ("Tup[A, Ts]" is "A", then "Ts").
+    auto out = Vec<TypeIdArg>();
+    for (auto const &arg : scopes::ArgsOf(head.Args)) {
+      if (scopes::IsPackTypeId(arg.TypeVal)) {
+        for (const auto elem : scopes::HeaderOf(arg.TypeVal).PackElements) { out.push_back({.TypeVal = elem}); }
+      }
+      else if (scopes::IsPackCompId(arg.CompVal)) {
+        for (const auto elem : arg.CompVal->Kids) { out.push_back({.CompVal = elem}); }
+      }
+      else { out.push_back(arg); }
+    }
+    return out;
+  }
+  auto members = Vec<TypeIdArg>();
+  if (head.Kind == TypeKey::Tag::Variant) {
+    for (const auto m : head.VariantMembers) { members.push_back({.TypeVal = m}); }
+  }
+  return members;
+}
+
+auto spp::analyse::utils::type_compare::IsUnboundPackArg(TypeIdArg const &arg) -> bool {
+  if (arg.TypeVal != nullptr) {
+    auto const &head = scopes::HeaderOf(arg.TypeVal);
+    auto const *const param = head.Kind == TypeKey::Tag::TypeParam
+      ? FindGnTypeParamById(head.TypeParamId)
+      : nullptr;
+    return param != nullptr and param->IsVariadic;
+  }
+  auto const *const node = arg.CompVal;
+  auto const *const param = node != nullptr and node->Kind == CompKey::Part::Param
+    ? FindGnCompParamById(node->ParamId)
+    : nullptr;
+  return param != nullptr and param->IsVariadic;
+}
+
+/// [CHECKED]
+auto spp::analyse::utils::type_compare::AssignableArgs(
+  TypeRef const &target, TypeRef const &value, Scope const &target_scope, Scope const &value_scope) -> bool {
+  using Tag = TypeKey::Tag;
+  const auto target_args = IdArgs(target.Id);
+  const auto value_args = IdArgs(value.Id);
+
+  // Without a pack, a variadic template's (or a variant's)
+  // two lists have to be the same length, or the shorter
+  // would be read as a prefix of the longer. A fixed
+  // template needs no check: its parameters fix the length.
+  const auto has_pack = not value_args.empty() and IsUnboundPackArg(value_args.back());
+  const auto fixed_len = has_pack ? value_args.size() - 1 : std::min(target_args.size(), value_args.size());
+  const auto is_variadic = scopes::HeaderOf(target.Id).Kind == Tag::Variant
+    or (target.Symbol->Type != nullptr and target.Symbol->Type->GnParamGroup->GetVariadicParam() != nullptr);
+  if (has_pack ? target_args.size() < fixed_len : is_variadic and target_args.size() != value_args.size()) {
+    return false;
+  }
+
+  // Every argument has to match: types by assignability
+  // ("Self" matching "Self"), comp values by identity.
+  for (auto i = 0uz; i < fixed_len; ++i) {
+    auto const &t = target_args[i];
+    auto const &v = value_args[i];
+    const auto ok = t.TypeVal != nullptr and v.TypeVal != nullptr
+      ? (IsSelfTypeId(t.TypeVal) and IsSelfTypeId(v.TypeVal))
+      or AssignableCore(
+        TypeRef::Of(t.TypeVal, target_scope), TypeRef::Of(v.TypeVal, value_scope), target_scope, value_scope, true)
+      : t.TypeVal == nullptr and v.TypeVal == nullptr and t.CompVal == v.CompVal;
+    if (not ok) { return false; }
+  }
+  return true;
 }
 
 /// [CHECKED]

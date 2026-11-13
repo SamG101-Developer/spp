@@ -1,0 +1,23 @@
+# A vector indexed one past its end: the elements read so far print, then the index check fails, at dev and at rel.
+
+fun show(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun main() -> Void {
+  let mut v = Vec[U64]::new()
+  let mut i = 0_u64
+  loop i < 5_u64 {
+    v.append(i * 11_u64)
+    i += 1_u64
+  }
+  let mut k = 0_uz
+  loop k <= v.len() {
+    show("element", Str::from(v[k]@))
+    k += 1_uz
+  }
+  std::mem::ops::drop(v)
+}

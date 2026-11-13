@@ -14,9 +14,15 @@ namespace spp::utils::files {
   /// correct behaviour.
   SPP_EXP_FUN auto NativeString(Path const &path) -> Str;
 
-  /// Read the contents of a file into a string. The only file-read function,
-  /// for uniform handling in all areas.
+  /// Read the contents of a file into a string, as text: on Windows, "\r\n"
+  /// arrives as "\n". Empty for a file that cannot be read. With "ReadBytes",
+  /// the only file-read functions, for uniform handling in all areas.
   SPP_EXP_FUN auto ReadFile(Path const &path) -> Str;
+
+  /// Read the exact bytes of a file (a download, an executable, anything to be
+  /// hashed or compared), which text mode would alter on Windows. None when it
+  /// cannot be read, so that is told apart from an empty file.
+  SPP_EXP_FUN auto ReadBytes(Path const &path) -> Opt<Str>;
 
   /// Write a string to a file. The only file-write function, for uniform
   /// handling in all areas.

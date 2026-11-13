@@ -257,3 +257,20 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let a: [S32; 4_uz] = [1; case true { 3_uz } else { 4_uz }]
     }
 )");
+
+// A "case" giving a value as the repeated element takes the element's type, not the array's (open-bugs #61).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ArrayLiteralRepeatedElementAst,
+  test_valid_case_expression_as_the_element_of_a_let, R"(
+    fun f(c: Bool) -> Void {
+        let a = [case c { 1_u8 } else { 2_u8 }; 3_uz]
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ArrayLiteralRepeatedElementAst,
+  test_valid_case_expression_as_the_element_of_a_return, R"(
+    fun f(c: Bool) -> Arr[U8, 3_uz] {
+        ret [case c { 1_u8 } else { 2_u8 }; 3_uz]
+    }
+)");

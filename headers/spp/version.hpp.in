@@ -4,3 +4,8 @@
 // VERSION file at the repository root, which is also what the release pipeline
 // reads to name its artefacts; edit that file, never this one.
 constexpr auto SPP_VERSION = "@SPP_VERSION@";
+
+// The release this build's platform is published as ("linux-x64", ...; the
+// labels .github/workflows/post_merge.yaml collects), or empty where there is
+// none. "spp self update" downloads spp-<label>.zip.
+constexpr auto SPP_RELEASE_LABEL = "@SPP_RELEASE_LABEL@";

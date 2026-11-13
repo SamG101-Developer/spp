@@ -29,13 +29,13 @@ use_alias(spp::asts, PostfixExpressionAst);
 use_alias(spp::asts, StatementAst);
 
 namespace spp::analyse::utils::async_utils {
-  namespace {
-    /// How strongly a capture uses its variable: a move outranks
-    /// "&mut", which outranks "&".
-    auto ConvRank(ConventionAst const *conv) -> std::uint8_t {
-      return conv == nullptr ? 2 : *conv == ConventionTag::MUT ? 1 : 0;
-    }
-  }
+  /// How strongly a capture uses its variable: a move outranks "&mut", which
+  /// outranks "&".
+  static auto ConvRank(ConventionAst const *conv) -> std::uint8_t;
+}
+
+auto spp::analyse::utils::async_utils::ConvRank(ConventionAst const *conv) -> std::uint8_t {
+  return conv == nullptr ? 2 : *conv == ConventionTag::MUT ? 1 : 0;
 }
 
 auto spp::analyse::utils::async_utils::CaptureOnce(

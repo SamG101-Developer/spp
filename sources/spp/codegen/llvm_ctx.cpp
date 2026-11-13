@@ -22,7 +22,7 @@ auto spp::codegen::LlvmCtx::NewCtx(Str const &module_name, llvm::LLVMContext &co
   ctx->Module = MakeUnique<llvm::Module>(module_name, *ctx->Context);
   ctx->Module->setModuleIdentifier(module_name);
   ctx->Module->setSourceFileName(module_name);
-  ApplyTargetToModule(ctx->Module.get());
+  ApplyTargetToModule(*ctx->Module);
   return ctx;
 }
 

@@ -36,3 +36,6 @@
 - [Hardened jump tables](hardened-jump-tables.md) — our own masked tables on every target; LLVM builds none; asm barrier keeps the mask branch-free
 - [Index checks versioned](index-checks-versioned.md) — llvm_pass_bounds: one wide-width guard before a loop, a copy without its index checks; proof by comparison only
 - [AArch64 branch protection fallbacks](aarch64-branch-protection-fallbacks.md) — bti/pac_ret only on AArch64 ELF; cfi and split stand in elsewhere; bti left out where the toolchain start files lack BTI
+- [Debug info: line tables](debug-info-line-tables.md) — [binary.debug] info; CU per module, subprogram per body, location per statement; verify spp.o with dwarfdump 23; no .debug_names
+- [Source-line table](source-line-table.md) — crash-report lines: llvm_lines builds a table from spp.o's DWARF, keyed by name hash; no IR refs (BTI); LoadedObjectInfo for sections at 0
+- [Opaque struct layout cache](opaque-struct-layout-cache.md) — never size a registered-but-unfilled struct: LLVM caches an empty layout per module; Opt[BigInt] had a [0 x i8] payload

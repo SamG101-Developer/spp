@@ -196,6 +196,27 @@ export namespace sys {
     return spp_sys_legacy::IsDir(mode);
   }
 
+  // Have the console read this process's output as UTF-8 and act on ANSI
+  // escapes, as a POSIX terminal already does; a no-op elsewhere.
+  inline auto use_utf8_console() -> void {
+#if SPP_PLATFORM_WINDOWS
+    ::SetConsoleOutputCP(CP_UTF8);
+
+    // Once per stream, through a lambda rather than a loop over a braced list:
+    // this module imports no std, so std::initializer_list is not declared on
+    // Windows (Linux's C headers happen to bring it in).
+    const auto enable_vt = [](const ::DWORD which) {
+      const auto handle = ::GetStdHandle(which);
+      auto mode = ::DWORD{};
+      if (handle != spp_sys_legacy::InvalidHandleValue() and ::GetConsoleMode(handle, &mode)) {
+        ::SetConsoleMode(handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+      }
+    };
+    enable_vt(STD_OUTPUT_HANDLE);
+    enable_vt(STD_ERROR_HANDLE);
+#endif
+  }
+
   // The most memory this process has held, in bytes (0 if unknown).
   inline auto peak_rss_bytes() -> unsigned long long {
 #if SPP_PLATFORM_WINDOWS

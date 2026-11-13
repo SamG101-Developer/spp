@@ -45,8 +45,9 @@ for program in "${programs[@]}"; do
             break
         fi
         run_exe "${EXE}" "${dir}/run.log"
-        # A trap's backtrace frames name the binary and differ with inlining.
-        grep -v '^  #[0-9]' "${dir}/run.log" > "${dir}/compare.log"
+        # A trap's backtrace frames ("#N" and their "at file:line" lines)
+        # name the binary and differ with inlining.
+        grep -Ev '^ +(#[0-9]|at )' "${dir}/run.log" > "${dir}/compare.log"
         logs[${mode}]="${dir}/compare.log"
         codes[${mode}]="${RC}"
     done

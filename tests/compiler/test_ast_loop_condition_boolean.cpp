@@ -110,3 +110,23 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         }
     }
 )");
+
+// A loop giving a value inside a larger expression takes its own type, not the type the whole expression is assigned to
+// (open-bugs #61).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    LoopConditionBooleanAst,
+    test_valid_loop_value_as_a_tuple_element, R"(
+    fun f(n: U8) -> (U8, Bool) {
+        let mut i = 0_u8
+        ret (loop i < n { exit i } else { 9_u8 }, true)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    LoopConditionBooleanAst,
+    test_valid_loop_value_as_a_comparison_operand, R"(
+    fun f(n: U8) -> Bool {
+        let mut i = 0_u8
+        ret (loop i < n { exit i } else { 9_u8 }) == 9_u8
+    }
+)");

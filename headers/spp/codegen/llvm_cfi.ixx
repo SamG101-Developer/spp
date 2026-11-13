@@ -66,19 +66,19 @@ namespace spp::codegen {
   /// carries its type just before its entry, and each call compares it with the
   /// type it recorded, trapping on a mismatch, so a corrupted function pointer
   /// or coroutine frame reaches only a function of the same type.
-  SPP_EXP_FUN auto ApplyCfiTypes(void *llvm_module) -> bool;
+  SPP_EXP_FUN auto ApplyCfiTypes(llvm::Module &llvm_mod) -> bool;
 
   /// The rest of "ApplyCfiTypes": types the functions that coroutine lowering
   /// split each coroutine into (".resume", ".destroy", ".cleanup"), which only
   /// exist part-way through the optimiser. Runs after the split, but before
   /// function merging could fold a part into a thunk that keeps no S++ record.
-  SPP_EXP_FUN auto ApplyCfiCoroTypes(void *llvm_module) -> void;
+  SPP_EXP_FUN auto ApplyCfiCoroTypes(llvm::Module &llvm_mod) -> void;
 
   /// The after-optimiser half of "ApplyCfiTypes". Raises an Ice for any
   /// indirect call left without a "kcfi" bundle, as that call would go
   /// unchecked: error rather than silently fail. Also apply some specific
   /// Mach-O fixes where KCFI type labels get subsumed by the previous function.
-  SPP_EXP_FUN auto FinishCfi(void *llvm_module) -> void;
+  SPP_EXP_FUN auto FinishCfi(llvm::Module &llvm_mod) -> void;
 
   /// Give every function in a "llvm::Module" a landing pad at its entry, and
   /// every block an indirect jump reaches one too (LLVM places them), and mark
@@ -88,7 +88,7 @@ namespace spp::codegen {
   /// cannot enforce it falls back on the type checks on indirect calls
   /// ("ApplyCfiTypes", stricter than any landing pad) when they are on, and
   /// otherwise fails, naming the key.
-  SPP_EXP_FUN auto ApplyBranchTargets(void *llvm_module) -> bool;
+  SPP_EXP_FUN auto ApplyBranchTargets(llvm::Module &llvm_mod) -> bool;
 
   /// Make every function in a "llvm::Module" that saves its return address
   /// sign it first, with the stack pointer as context, and authenticate it
@@ -97,5 +97,5 @@ namespace spp::codegen {
   /// hardening passes. A target that cannot sign falls back on the split stack
   /// ("ApplySafeStack"), which keeps what a callee could overflow away from
   /// return addresses, when it is on, and otherwise fails, naming the key.
-  SPP_EXP_FUN auto ApplyReturnSigning(void *llvm_module) -> bool;
+  SPP_EXP_FUN auto ApplyReturnSigning(llvm::Module &llvm_mod) -> bool;
 }

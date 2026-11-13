@@ -88,270 +88,326 @@ build = "exe"
 std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
 
 namespace spp::cli {
-  namespace {
-    /// Check the current directory has the structure a project needs, without
-    /// looking at its dependencies. This is all that can be asked before a
-    /// fetch: a dependency's checkout may be missing, or broken in a way the
-    /// fetch is about to repair. "create_missing" is for the project itself, as
-    /// filling a dependency's checkout with empty folders makes it dirty.
-    auto ValidateProject(
-      const bool is_exe, const bool create_missing) -> bool {
-      using namespace std::string_literals;
+  /// Check the current directory has the structure a project needs, without
+  /// looking at its dependencies. This is all that can be asked before a
+  /// fetch: a dependency's checkout may be missing, or broken in a way the
+  /// fetch is about to repair. "create_missing" is for the project itself, as
+  /// filling a dependency's checkout with empty folders makes it dirty.
+  static auto ValidateProject(
+    const bool is_exe, const bool create_missing) -> bool;
 
-      // Check for the key folders/files. The "src" folder holds all s++ code,
-      // the main.spp is the required entry point for executables, and the
-      // spp.toml is required for the project config.
-      const auto cwd = std::filesystem::current_path();
-      if (not std::filesystem::exists(cwd / SRC_FOLDER)) {
-        std::cerr << "Error: Missing 'src' folder.\n";
-        return false;
-      }
-      const auto main_file = cwd / SRC_FOLDER / MAIN_FILE;
-      if (not std::filesystem::exists(main_file) and is_exe) {
-        std::cerr << "Error: Missing 'src/main.spp' file.\n";
-        return false;
-      }
-      if (not std::filesystem::exists(cwd / CONFIG_FILE)) {
-        std::cerr << "Error: Missing 'spp.toml' file.\n";
-        return false;
-      }
+  /// The build type the project's "spp.toml" names. Only call this after
+  /// "ValidateProject", which checks the key is there and a known type.
+  static auto ProjectBuildType() -> compiler::BuildType;
 
-      // Create the other folders if they don't exist, but only in this project
-      // - a dependency's checkout is a fetched artifact, and filling it with
-      // empty folders makes its working tree dirty.
-      if (create_missing) {
-        std::filesystem::create_directory(cwd / OUT_FOLDER);
-        std::filesystem::create_directory(cwd / VCS_FOLDER);
-        std::filesystem::create_directory(cwd / FFI_FOLDER);
-        std::filesystem::create_directory(cwd / TST_FOLDER);
-      }
+  /// Iterate a directory that may not be there. The optional
+  /// folders are only created inside this project, so a
+  /// dependency legitimately has none of them and walking one
+  /// must not throw.
+  static auto SafeDirectoryIterator(
+    Path const &dir) -> std::filesystem::directory_iterator;
 
-      // Check the config file against the schema: every section and key it
-      // holds has to be one the compiler knows, and every required one has to
-      // be there. An unrecognised key is reported rather than ignored, because
-      // a mistyped one that silently does nothing is worse than no key - a
-      // protection turned off by a typo turns off nothing.
-      auto config_errors = Vec<Str>();
-      if (not utils::features::Validate(cwd / CONFIG_FILE, config_errors)) {
-        for (auto const &e : config_errors) {
-          std::cerr << "Error in spp.toml: " << e << "\n";
-        }
-        std::cerr << "\nRun 'spp config' for everything spp.toml accepts.\n";
-        return false;
-      }
+  /// Run a compilation and report a mistake in the source being compiled. The
+  /// "json" format using the lsp logic, and c++ debug builds don't catch any
+  /// errors, because otherwise the debug traceback would be wrong.
+  static auto CompileReportingErrors(
+    compiler::Compiler &c, Str const &message_format = "human") -> bool;
 
-      // Parse the TOML file and extract the project section, guaranteed to be
-      // present. This contains the key project metadata.
-      const auto toml = toml::parse_file(CONFIG_FILE);
-      const auto project = toml["project"].as_table();
+  /// There are three key checks that need to pass in this load function; the
+  /// features need to be loadable from the config file, the versions "floor"
+  /// needs to be met, and the target needs to be supported. If all three
+  /// pass, then the project features are determined as loadable.
+  static auto LoadProjectFeatures(const bool for_debugger = false) -> bool;
 
-      // Check the version follows the "major.minor.patch" format.
-      const auto version = project->at("version").value<Str>().value_or("");
-      const auto version_part_count = genex::count(version, '.') + 1;
-      if (version_part_count != 3) {
-        std::cerr
-          << "Error: Invalid version format in spp.toml. "
-          << "Version must follow 'major.minor.patch' format.\n";
-        return false;
-      }
+  /// Cap the memory of a command this runs (the program "spp run" starts),
+  /// from "SPP_MEMORY_LIMIT_KB" (0 for none): a runaway allocation in the
+  /// compiled program then stops it, rather than exhausting the machine. Only
+  /// needed until the s++ std allocation API is ironed out and stable.
+  static auto WithMemoryLimit(Str const &command) -> Str;
 
-      // Check the build type is a known one.
-      const auto build_type = project->at("build").value<Str>().value_or("");
-      if (not compiler::TypeFromName(build_type).has_value()) {
-        auto type_names_list = compiler::TypeNames();
-        const auto type_names = type_names_list
-          | genex::views::join_with(',')
-          | genex::to<Str>();
-        std::cerr
-          << "Error: Invalid build type in spp.toml. "
-          << "Build type must be one of {" << type_names << "}.\n";
-        return false;
-      }
+  /// Run a git command, reporting a non-zero exit instead of discarding it.
+  /// Wraps all git command calls made from the CLI.
+  static auto RunGit(Str const &args) -> bool;
 
-      // Check the dependency records, with the rest of this config file's
-      // checks. All checks passed otherwise.
-      return compiler::dependencies::Declared(cwd).has_value();
+  /// Given a url of a repository, extract the host from it. Simple parsing by
+  /// character detection at either end.
+  static auto GetUrlHost(Str const &url) -> Str;
+
+  static auto IsRemoteReachable(Str const &url) -> bool;
+
+  /// "spp info executable": print where the project's executable is built to
+  /// under "mode" and "target" (empty for the host), as an absolute path on a
+  /// line of its own, and build nothing: for a tool or script that launches
+  /// the executable itself, such as an IDE's debugger. A library has no
+  /// executable, so for one it prints nothing and returns false.
+  static auto PrintExecutable(
+    const compiler::BuildMode mode, Str const &target) -> bool;
+}
+
+auto spp::cli::ValidateProject(
+  const bool is_exe, const bool create_missing) -> bool {
+  using namespace std::string_literals;
+
+  // Check for the key folders/files. The "src" folder holds all s++ code,
+  // the main.spp is the required entry point for executables, and the
+  // spp.toml is required for the project config.
+  const auto cwd = std::filesystem::current_path();
+  if (not std::filesystem::exists(cwd / SRC_FOLDER)) {
+    std::cerr << "Error: Missing 'src' folder.\n";
+    return false;
+  }
+  const auto main_file = cwd / SRC_FOLDER / MAIN_FILE;
+  if (not std::filesystem::exists(main_file) and is_exe) {
+    std::cerr << "Error: Missing 'src/main.spp' file.\n";
+    return false;
+  }
+  if (not std::filesystem::exists(cwd / CONFIG_FILE)) {
+    std::cerr << "Error: Missing 'spp.toml' file.\n";
+    return false;
+  }
+
+  // Create the other folders if they don't exist, but only in this project
+  // - a dependency's checkout is a fetched artifact, and filling it with
+  // empty folders makes its working tree dirty.
+  if (create_missing) {
+    std::filesystem::create_directory(cwd / OUT_FOLDER);
+    std::filesystem::create_directory(cwd / VCS_FOLDER);
+    std::filesystem::create_directory(cwd / FFI_FOLDER);
+    std::filesystem::create_directory(cwd / TST_FOLDER);
+  }
+
+  // Check the config file against the schema: every section and key it
+  // holds has to be one the compiler knows, and every required one has to
+  // be there. An unrecognised key is reported rather than ignored, because
+  // a mistyped one that silently does nothing is worse than no key - a
+  // protection turned off by a typo turns off nothing.
+  auto config_errors = Vec<Str>();
+  if (not utils::features::Validate(cwd / CONFIG_FILE, config_errors)) {
+    for (auto const &e : config_errors) {
+      std::cerr << "Error in spp.toml: " << e << "\n";
     }
+    std::cerr << "\nRun 'spp config' for everything spp.toml accepts.\n";
+    return false;
+  }
 
-    /// The build type the project's "spp.toml" names. Only call this after
-    /// "ValidateProject", which checks the key is there and a known type.
-    auto ProjectBuildType() -> compiler::BuildType {
-      const auto toml = toml::parse_file(CONFIG_FILE);
-      const auto name = toml["project"].as_table()->at("build").value<Str>();
-      return *compiler::TypeFromName(*name);
-    }
+  // Parse the TOML file and extract the project section, guaranteed to be
+  // present. This contains the key project metadata.
+  const auto toml = toml::parse_file(CONFIG_FILE);
+  const auto project = toml["project"].as_table();
 
-    /// Iterate a directory that may not be there. The optional
-    /// folders are only created inside this project, so a
-    /// dependency legitimately has none of them and walking one
-    /// must not throw.
-    auto SafeDirectoryIterator(
-      Path const &dir) -> std::filesystem::directory_iterator {
-      return std::filesystem::exists(dir)
-        ? std::filesystem::directory_iterator(dir)
-        : std::filesystem::directory_iterator();
-    }
+  // Check the version follows the "major.minor.patch" format.
+  const auto version = project->at("version").value<Str>().value_or("");
+  const auto version_part_count = genex::count(version, '.') + 1;
+  if (version_part_count != 3) {
+    std::cerr
+      << "Error: Invalid version format in spp.toml. "
+      << "Version must follow 'major.minor.patch' format.\n";
+    return false;
+  }
 
-    /// [CHECKED]
-    /// Run a compilation and report a mistake in the source being compiled. The
-    /// "json" format using the lsp logic, and c++ debug builds don't catch any
-    /// errors, because otherwise the debug traceback would be wrong.
-    auto CompileReportingErrors(
-      compiler::Compiler &c, Str const &message_format = "human") -> bool {
-      // Json is asked for by something reading the output rather than someone
-      // looking at it, such as the IDEA plugin. Any other plugins can parse the
-      // json.
-      if (message_format == "json") {
-        return lsp::CompileReportingJson(c);
-      }
+  // Check the build type is a known one.
+  const auto build_type = project->at("build").value<Str>().value_or("");
+  if (not compiler::TypeFromName(build_type).has_value()) {
+    auto type_names_list = compiler::TypeNames();
+    const auto type_names = type_names_list
+      | genex::views::join_with(',')
+      | genex::to<Str>();
+    std::cerr
+      << "Error: Invalid build type in spp.toml. "
+      << "Build type must be one of {" << type_names << "}.\n";
+    return false;
+  }
 
-      // Debug builds omit the catch, so that the traceback is correct for
-      // proper debugging.
-      #if SPP_DEBUG
-      return c.Compile();
-      #else
+  // Check the dependency records, with the rest of this config file's
+  // checks. All checks passed otherwise.
+  return compiler::dependencies::Declared(cwd).has_value();
+}
 
-      // For normal builds, run the compiler, and catch a syntax-/semantic-based
-      // error, print the formatted version and return false, so the correct
-      // exit code can be used.
-      try {
-        return c.Compile();
-      }
-      catch (utils::errors::AbstractError const &e) {
-        std::cerr << e.what() << "\n";
-        return false;
-      }
-      catch (InternalCompilerError const &e) {
-        std::cerr << e.what() << "\n";
-        return false;
-      }
-      #endif
-    }
+auto spp::cli::ProjectBuildType() -> compiler::BuildType {
+  const auto toml = toml::parse_file(CONFIG_FILE);
+  const auto name = toml["project"].as_table()->at("build").value<Str>();
+  return *compiler::TypeFromName(*name);
+}
 
-    /// [CHECKED]
-    /// There are three key checks that need to pass in this load function; the
-    /// features need to be loadable from the config file, the versions "floor"
-    /// needs to be met, and the target needs to be supported. If all three
-    /// pass, then the project features are determined as loadable.
-    auto LoadProjectFeatures() -> bool {
-      // Create the config errors list to mutate inside the loading functions,
-      // and define the config file path for loading.
-      auto config_errors = Vec<Str>();
-      const auto config_file = std::filesystem::current_path() / CONFIG_FILE;
-      const auto target = utils::features::TargetFacts{
-        .SafeStack = codegen::DoesTargetSupportSafeStack(),
-        .SafeStackCanary = codegen::DoesTargetSupportSafeStackCanary(),
-        .IsLinux = codegen::TargetIsLinux(),
-        .Folder = codegen::TargetFolderName()
-      };
+auto spp::cli::SafeDirectoryIterator(
+  Path const &dir) -> std::filesystem::directory_iterator {
+  return std::filesystem::exists(dir)
+    ? std::filesystem::directory_iterator(dir)
+    : std::filesystem::directory_iterator();
+}
 
-      // The CPU is chosen once the config is known, before anything
-      // builds the target machine; "SelectCpu" reports its own error.
-      if (
-        utils::features::Load(config_file, config_errors)
-        and utils::features::CheckFloor(target, config_errors)
-        and utils::features::CheckTargetSupport(target, config_errors)) {
-        return codegen::SelectCpu(utils::features::Text(utils::features::ConfigKey::TargetFloorCpu).c_str());
-      }
+/// [CHECKED]
+auto spp::cli::CompileReportingErrors(
+  compiler::Compiler &c, Str const &message_format) -> bool {
+  // Json is asked for by something reading the output rather than someone
+  // looking at it, such as the IDEA plugin. Any other plugins can parse the
+  // json.
+  if (message_format == "json") {
+    return lsp::CompileReportingJson(c);
+  }
 
-      // One (or more) of the loading functions have failed, so print the errors
-      // to the console and return false.
-      for (auto const &e : config_errors) {
-        std::cerr << "Error in spp.toml: " << e << "\n";
-      }
-      return false;
-    }
+  // Debug builds omit the catch, so that the traceback is correct for
+  // proper debugging.
+  #if SPP_DEBUG
+  return c.Compile();
+  #else
 
-    /// [CHECKED]
-    /// Cap the memory of a command this runs (the program "spp run" starts),
-    /// from "SPP_MEMORY_LIMIT_KB" (0 for none): a runaway allocation in the
-    /// compiled program then stops it, rather than exhausting the machine. Only
-    /// needed until the s++ std allocation API is ironed out and stable.
-    auto WithMemoryLimit(Str const &command) -> Str {
-      // Nothing can be done for windows. Todo: There is possible scope to use
-      // windows.h "CreateJobObjectW" and related APIs. On macOS, "ulimit -v"
-      // fails with EINVAL, and the "&&" below would then skip the command.
-      #if SPP_PLATFORM_WINDOWS or SPP_PLATFORM_MACOS
-      return command;
-      #else
+  // For normal builds, run the compiler, and catch a syntax-/semantic-based
+  // error, print the formatted version and return false, so the correct
+  // exit code can be used.
+  try {
+    return c.Compile();
+  }
+  catch (utils::errors::AbstractError const &e) {
+    std::cerr << e.what() << "\n";
+    return false;
+  }
+  catch (InternalCompilerError const &e) {
+    std::cerr << e.what() << "\n";
+    return false;
+  }
+  #endif
+}
 
-      // For UNIX systems, get the limit from the environment variable if
-      // provided, otherwise 16GB. As long as the limit > 0, then run the
-      // program inside "ulimit".
-      const auto limit_kb = utils::env::GetCount(utils::env::Var::MemoryLimitKb)
-        .value_or(16ull * 1024 * 1024);
-      return limit_kb == 0
-        ? command
-        : "ulimit -v " + std::to_string(limit_kb) + " && " + command;
-      #endif
-    }
+/// [CHECKED]
+auto spp::cli::LoadProjectFeatures(const bool for_debugger) -> bool {
+  // Create the config errors list to mutate inside the loading functions,
+  // and define the config file path for loading.
+  auto config_errors = Vec<Str>();
+  const auto config_file = std::filesystem::current_path() / CONFIG_FILE;
+  const auto target = utils::features::TargetFacts{
+    .SafeStack = codegen::DoesTargetSupportSafeStack(),
+    .SafeStackCanary = codegen::DoesTargetSupportSafeStackCanary(),
+    .PacRet = codegen::DoesTargetSupportPacRet(),
+    .IsLinux = codegen::TargetIsLinux(),
+    .Folder = codegen::TargetFolderName()
+  };
 
-    /// [CHECKED]
-    /// Run a git command, reporting a non-zero exit instead of discarding it.
-    /// Wraps all git command calls made from the CLI.
-    auto RunGit(Str const &args) -> bool {
-      // Form the full command by prepending the "git" part, and then run the
-      // command though the local system. Record the returned status.
-      const auto command = "git " + args;
-      const auto status = utils::shell::Run(command);
+  // The CPU is chosen once the config is known, before anything
+  // builds the target machine; "SelectCpu" reports its own error.
+  if (
+    utils::features::Load(config_file, config_errors)
+    and utils::features::CheckFloor(target, config_errors)
+    and utils::features::CheckTargetSupport(target, config_errors)) {
+    if (for_debugger) { utils::features::LeaveOutForDebugger(target); }
+    return codegen::SelectCpu(utils::features::Text(utils::features::ConfigKey::TargetFloorCpu).c_str());
+  }
 
-      // If the status is not 0, it errored, so print that to terminal, and
-      // return "false" from this function.
-      if (status != 0) {
-        std::cerr << "Error: git failed (" << status << "): " << command << "\n";
-        return false;
-      }
-      return true;
-    }
+  // One (or more) of the loading functions have failed, so print the errors
+  // to the console and return false.
+  for (auto const &e : config_errors) {
+    std::cerr << "Error in spp.toml: " << e << "\n";
+  }
+  return false;
+}
 
-    /// [CHECKED]
-    /// Given a url of a repository, extract the host from it. Simple parsing by
-    /// character detection at either end.
-    auto GetUrlHost(Str const &url) -> Str {
-      // Strip a scheme prefix off of the url, searching for "://" and removing
-      // everything before it, and those 3 characters too.
-      auto rest = StrView(url);
-      if (const auto scheme = rest.find("://"); scheme != StrView::npos) {
-        rest.remove_prefix(scheme + 3);
-      }
+/// [CHECKED]
+auto spp::cli::WithMemoryLimit(Str const &command) -> Str {
+  // Nothing can be done for windows. Todo: There is possible scope to use
+  // windows.h "CreateJobObjectW" and related APIs. On macOS, "ulimit -v"
+  // fails with EINVAL, and the "&&" below would then skip the command.
+  #if SPP_PLATFORM_WINDOWS or SPP_PLATFORM_MACOS
+  return command;
+  #else
 
-      // Only a "user@" before the first "/" is credentials; an "@" further in
-      // belongs to the path.
-      const auto slash = rest.find('/');
-      if (const auto at = rest.find('@');
-        at != StrView::npos and (slash == StrView::npos or at < slash)) {
-        rest.remove_prefix(at + 1);
-      }
-      return Str(rest.substr(0, rest.find_first_of(":/?")));
-    }
+  // For UNIX systems, get the limit from the environment variable if
+  // provided, otherwise 16GB. As long as the limit > 0, then run the
+  // program inside "ulimit".
+  const auto limit_kb = utils::env::GetCount(utils::env::Var::MemoryLimitKb)
+    .value_or(16ull * 1024 * 1024);
+  return limit_kb == 0
+    ? command
+    : "ulimit -v " + std::to_string(limit_kb) + " && " + command;
+  #endif
+}
 
-    auto IsRemoteReachable(Str const &url) -> bool {
-      // Bypass the check when there is no url being checked (failsafe), or the
-      // env var has been provided to bypass network checks.
-      if (url.empty()
-        or utils::env::IsEnabled(utils::env::Var::NoNetworkCheck)) {
-        return true;
-      }
+/// [CHECKED]
+auto spp::cli::RunGit(Str const &args) -> bool {
+  // Form the full command by prepending the "git" part, and then run the
+  // command though the local system. Record the returned status.
+  const auto command = "git " + args;
+  const auto status = utils::shell::Run(command);
 
-      // Otherwise, add arguments to the git command that query the repository
-      // host.
-      const auto args =
-        " -c credential.helper= -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 ls-remote --exit-code --heads "
-        + utils::shell::Quote(url);
+  // If the status is not 0, it errored, so print that to terminal, and
+  // return "false" from this function.
+  if (status != 0) {
+    std::cerr << "Error: git failed (" << status << "): " << command << "\n";
+    return false;
+  }
+  return true;
+}
+
+/// [CHECKED]
+auto spp::cli::GetUrlHost(Str const &url) -> Str {
+  // Strip a scheme prefix off of the url, searching for "://" and removing
+  // everything before it, and those 3 characters too.
+  auto rest = StrView(url);
+  if (const auto scheme = rest.find("://"); scheme != StrView::npos) {
+    rest.remove_prefix(scheme + 3);
+  }
+
+  // Only a "user@" before the first "/" is credentials; an "@" further in
+  // belongs to the path.
+  const auto slash = rest.find('/');
+  if (const auto at = rest.find('@');
+    at != StrView::npos and (slash == StrView::npos or at < slash)) {
+    rest.remove_prefix(at + 1);
+  }
+  return Str(rest.substr(0, rest.find_first_of(":/?")));
+}
+
+auto spp::cli::IsRemoteReachable(Str const &url) -> bool {
+  // Bypass the check when there is no url being checked (failsafe), or the
+  // env var has been provided to bypass network checks.
+  if (url.empty()
+    or utils::env::IsEnabled(utils::env::Var::NoNetworkCheck)) {
+    return true;
+  }
+
+  // Otherwise, add arguments to the git command that query the repository
+  // host.
+  const auto args =
+    " -c credential.helper= -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 ls-remote --exit-code --heads "
+    + utils::shell::Quote(url);
 
 #if SPP_PLATFORM_WINDOWS
-      const auto command = "set GIT_TERMINAL_PROMPT=0&& git" + args + " >NUL 2>&1";
+  const auto command = "set GIT_TERMINAL_PROMPT=0&& git" + args + " >NUL 2>&1";
 #else
-      const auto command = "GIT_TERMINAL_PROMPT=0 git" + args + " >/dev/null 2>&1";
+  const auto command = "GIT_TERMINAL_PROMPT=0 git" + args + " >/dev/null 2>&1";
 #endif
-      return utils::shell::Run(command) == 0;
-    }
+  return utils::shell::Run(command) == 0;
+}
+
+auto spp::cli::PrintExecutable(
+  const compiler::BuildMode mode, Str const &target) -> bool {
+  SPP_VALIDATE_PROJECT_OR(false, false);
+  if (ProjectBuildType() == compiler::BuildType::LIB) {
+    std::cerr
+      << "Error: This project is a library ('build = \"lib\"' in spp.toml), "
+      << "so it has no executable.\n";
+    return false;
   }
+
+  // The path "spp build" links to, worked out the same way; nothing is
+  // fetched or compiled, so it is printed whether or not it has been built
+  // yet.
+  if (not codegen::SelectTarget(target.c_str())) { return false; }
+  const auto out = compiler::OutLayout{
+    .Root = std::filesystem::current_path(),
+    .Target = codegen::TargetFolderName(),
+    .Mode = mode
+  };
+  std::cout << utils::files::NativeString(out.ExecutablePath()) << '\n';
+  return true;
 }
 
 /// [CHECKED]
 auto spp::cli::RunCli(
   const std::int32_t argc, char **argv) -> std::int32_t {
+  // The progress bar and messages are UTF-8, and errors are coloured.
+  sys::use_utf8_console();
+  RemoveUpdateLeftover();
+
   // Refuse an unknown or malformed "SPP_" variable before anything reads it: a
   // typo would otherwise silently do nothing.
   auto env_errors = Vec<Str>();
@@ -448,11 +504,17 @@ auto spp::cli::RunCli(
     "Write a json report of the work each stage did, its time and peak memory, "
     "to this file");
 
+  auto build_for_debugger = false;
+  build_cmd->add_flag(
+    "--for-debugger", build_for_debugger,
+    "Build for a debugger to run: the split stack is left out unless spp.toml "
+    "sets it, as a debugger loses track of the variables it moves");
+
   build_cmd->callback([&] {
     if (not HandleBuild(
       *compiler::ModeFromName(build_mode), build_target, build_skip_vcs,
       build_message_format, build_analyse_only, build_index_files,
-      build_index_project, build_stats_file)) {
+      build_index_project, build_stats_file, build_for_debugger)) {
       throw CLI_ERR;
     }
   });
@@ -475,8 +537,13 @@ auto spp::cli::RunCli(
     "-t,--target", run_target,
     CMD_HELP_TEXT_BUILD_TARGET);
 
+  auto run_args = Vec<Str>();
+  run_cmd->add_option(
+    "args", run_args,
+    "Arguments for the program, after '--' (spp run -- a b)");
+
   run_cmd->callback([&] {
-    if (not HandleRun(*compiler::ModeFromName(run_mode), run_target)) { throw CLI_ERR; }
+    if (not HandleRun(*compiler::ModeFromName(run_mode), run_target, run_args)) { throw CLI_ERR; }
   });
 
   // The "spp clean" command, which deletes artefacts created by the build (such
@@ -564,6 +631,83 @@ auto spp::cli::RunCli(
       std::filesystem::current_path())) {
       throw CLI_ERR;
     }
+  });
+
+  // The "spp info" command answers questions about the project without
+  // building it, for tools and scripts: "spp info executable" prints the path
+  // the executable is built to for a mode and target.
+  const auto info_cmd = app.add_subcommand(
+    "info", "Show facts about the project, without building it");
+  info_cmd->fallthrough();
+  info_cmd->require_subcommand(1);
+
+  const auto info_exe_cmd = info_cmd->add_subcommand(
+    "executable", "Print the absolute path the executable is built to");
+  auto info_mode = Str("dev");
+  const auto info_exe_mode_option = info_exe_cmd->add_option(
+    "-m,--mode", info_mode, "Build mode");
+  info_exe_mode_option->check(CLI::IsMember(compiler::ModeNames()));
+  info_exe_mode_option->default_val("dev");
+
+  auto info_target = Str();
+  info_exe_cmd->add_option(
+    "-t,--target", info_target,
+    CMD_HELP_TEXT_BUILD_TARGET);
+
+  info_exe_cmd->callback([&] {
+    if (not PrintExecutable(*compiler::ModeFromName(info_mode), info_target)) { throw CLI_ERR; }
+  });
+
+  // The "spp self" commands manage this spp itself rather than a project:
+  // "spp self install" installs it for the user and puts it on PATH, "spp self
+  // update" replaces it with the latest release (or "--version"'s), and
+  // "spp self uninstall" removes it, and what install set up.
+  const auto self_cmd = app.add_subcommand(
+    "self", "Manage this spp install");
+  self_cmd->fallthrough();
+  self_cmd->require_subcommand(1);
+
+  const auto self_update_cmd = self_cmd->add_subcommand(
+    "update", "Replace this spp with the latest release, or the one --version names");
+  auto self_update_version = Str();
+  self_update_cmd->add_option(
+    "--version", self_update_version,
+    "The release to install instead of the latest, up or down (0.7.0 or later)");
+  self_update_cmd->callback([&] {
+    const auto version = self_update_version.empty() ? Opt<Str>() : Opt<Str>(self_update_version);
+    if (not HandleSelfUpdate(version)) { throw CLI_ERR; }
+  });
+
+  const auto self_install_cmd = self_cmd->add_subcommand(
+    "install",
+    "Install this spp for the user, and put it on PATH");
+  auto self_install_dir = Str();
+  auto self_install_force = false;
+  auto self_install_no_path = false;
+  self_install_cmd->add_option(
+    "--dir", self_install_dir,
+    "Install into this directory (default ~/.spp/bin; %LOCALAPPDATA%\\spp\\bin)");
+  self_install_cmd->add_flag(
+    "-f,--force", self_install_force,
+    "Install even when it is installed already, a different spp is there, or "
+    "another is on PATH");
+  self_install_cmd->add_flag(
+    "--no-modify-path", self_install_no_path,
+    "Leave PATH and the shell start-up files alone");
+  self_install_cmd->callback([&] {
+    const auto dir = self_install_dir.empty() ? Opt<Str>() : Opt<Str>(self_install_dir);
+    if (not HandleSelfInstall(dir, self_install_force, not self_install_no_path)) { throw CLI_ERR; }
+  });
+
+  const auto self_uninstall_cmd = self_cmd->add_subcommand(
+    "uninstall",
+    "Remove this spp (projects' vcs and out folders are left as they are)");
+  auto self_uninstall_yes = false;
+  self_uninstall_cmd->add_flag(
+    "-y,--yes", self_uninstall_yes,
+    "Remove it without asking");
+  self_uninstall_cmd->callback([&] {
+    if (not HandleSelfUninstall(self_uninstall_yes)) { throw CLI_ERR; }
   });
 
   // The "spp config" command lists all the possible keys available for the
@@ -739,8 +883,8 @@ auto spp::cli::HandleVcs() -> bool {
     // Otherwise, update the branch (for mutating tags like "master"). Same
     // error system as above; attempt, then check if host is up etc.
     else if (
-      not RunGit("-C " + quoted_target + " checkout " + quoted_branch) or
-      not RunGit("-C " + quoted_target + " pull origin " + quoted_branch)) {
+      not RunGit("-C " + quoted_target + " checkout --quiet " + quoted_branch) or
+      not RunGit("-C " + quoted_target + " pull --quiet origin " + quoted_branch)) {
       if (host_is_up()) { return false; }
       std::cerr
         << "Warning: '"s << host
@@ -763,7 +907,7 @@ auto spp::cli::HandleBuild(
   const compiler::BuildMode build_mode, Str const &target, const bool skip_vcs,
   Str const &message_format, const bool analyse_only,
   Vec<Str> const &index_files, const bool index_project,
-  Str const &stats_file) -> bool {
+  Str const &stats_file, const bool for_debugger) -> bool {
   // Validate the project structure first. This is a failsafe to prevent
   // downstream errors. Select the LLVM target, and perform a failsafe assertion
   // on intrinsic names.
@@ -798,7 +942,7 @@ auto spp::cli::HandleBuild(
   // the fetch brought. Try to load the project features too.
   SPP_VALIDATE_STRUCTURE_OR(false, false);
   if (not compiler::ffi::Validate(std::filesystem::current_path())
-    or not LoadProjectFeatures()) {
+    or not LoadProjectFeatures(for_debugger)) {
     return false;
   }
 
@@ -815,17 +959,24 @@ auto spp::cli::HandleBuild(
 
   // The report is written whether or not the build succeeded: how long a
   // project full of errors takes to reject is worth measuring too.
-  if (stats_file.empty()) { return CompileReportingErrors(c, message_format); }
-  utils::stats::Enable(std::filesystem::absolute(stats_file));
+  if (not stats_file.empty()) { utils::stats::Enable(std::filesystem::absolute(stats_file)); }
   const auto built = CompileReportingErrors(c, message_format);
-  const auto written = utils::stats::Finish(
+  const auto written = stats_file.empty() or utils::stats::Finish(
     compiler::ModeName(build_mode), codegen::TargetFolderName(), built);
+
+  // Json is read by a tool, which is told what the build linked, last, so it
+  // can launch the executable without working out where it is.
+  if (built and message_format == "json" and not analyse_only
+    and ProjectBuildType() == compiler::BuildType::EXE) {
+    std::cout << lsp::ArtifactJson(out.ExecutablePath()) << '\n';
+  }
   return built and written;
 }
 
 /// [CHECKED]
 auto spp::cli::HandleRun(
-  const compiler::BuildMode mode, Str const &target) -> bool {
+  const compiler::BuildMode mode, Str const &target,
+  Vec<Str> const &args) -> bool {
   // A library has no entry point, so there is nothing to run. Say so before
   // the fetch and compile, rather than after them as a missing executable.
   SPP_VALIDATE_PROJECT_OR(false, false);
@@ -879,8 +1030,9 @@ auto spp::cli::HandleRun(
 
   // Use the memory bound until the stl is stable; todo: also wire to a flag?
   // There have been instances where allocation issues mangled the WSL instance.
-  const auto status = utils::shell::Run(
-    WithMemoryLimit(utils::shell::Quote(utils::files::NativeString(exe_file))));
+  auto command = utils::shell::Quote(utils::files::NativeString(exe_file));
+  for (auto const &arg : args) { command += " " + utils::shell::Quote(arg); }
+  const auto status = utils::shell::Run(WithMemoryLimit(command));
   const auto exited_normally = sys::WIFEXITED(status);
   const auto exit_code = exited_normally
     ? sys::WEXITSTATUS(status)
@@ -918,7 +1070,7 @@ auto spp::cli::HandleClean(
   // folder, and emplace every target folder into the list.
   else {
     for (auto const &entry : SafeDirectoryIterator(cwd / OUT_FOLDER)) {
-      if (!entry.is_directory()) { continue; }
+      if (not entry.is_directory()) { continue; }
       targets.emplace_back(
         utils::files::NativeString(entry.path().filename()));
     }
@@ -1037,7 +1189,7 @@ auto spp::cli::HandleTest(
 
   // Prep the test runner, printing some debug info before the built test exe is
   // ran. Generate the exe path from the file too.
-  std::cout << "Running " << c.TestCount() << " test(s)." << std::endl;
+  std::cout << "Running " << c.TestCount() << " test(s)." << '\n';
   std::cout.flush();
   const auto exe = utils::shell::Quote(utils::files::NativeString(exe_file));
 
@@ -1064,7 +1216,7 @@ auto spp::cli::HandleTest(
   // Run the tests, and check for a exit status of 0 (this can include failed
   // tests, but it means all the tests ran without crashing / aborting).
   if (run("") == 0) {
-    std::cout << "All " << c.TestCount() << " test(s) passed." << std::endl;
+    std::cout << "All " << c.TestCount() << " test(s) passed." << '\n';
     return;
   }
 
@@ -1074,7 +1226,7 @@ auto spp::cli::HandleTest(
   // one result rather than the rest of the suite.
   std::cout
     << "\nA test did not finish. Re-running each test in its own process.\n"
-    << std::endl;
+    << '\n';
   std::cout.flush();
 
   // Collect the crashing tests by running one at a time and collecting the exit
@@ -1087,7 +1239,7 @@ auto spp::cli::HandleTest(
   // Dump all the failed test information.
   std::cout
     << "\n" << (c.TestCount() - failed.size()) << "/" << c.TestCount()
-    << " test(s) passed." << std::endl;
+    << " test(s) passed." << '\n';
   if (failed.empty()) {
     // Every test passes on its own, so what failed is something they share
     // rather than any one of them.

@@ -48,109 +48,115 @@ use_alias(spp::asts, StringLiteralAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::drop_utils {
-  namespace {
-    using overload_resolution::FnOverload;
+  using overload_resolution::FnOverload;
 
-    /// Find an overload for a types destructor, rather than
-    /// just the prototype; instantiating it needs the block
-    /// that declares it and the arguments that block was bound
-    /// with too.
-    auto FindDropOverloadInfo(
-      TypeSymbol const &type_sym, ScopeManager &sm,
-      CompilerMetaData *meta) -> FnOverload {
+  /// Find an overload for a types destructor, rather than
+  /// just the prototype; instantiating it needs the block
+  /// that declares it and the arguments that block was bound
+  /// with too.
+  static auto FindDropOverloadInfo(
+    TypeSymbol const &type_sym, ScopeManager &sm,
+    CompilerMetaData *meta) -> FnOverload;
 
-      // The "none" mini-constructor for the function overload
-      // type, setting every field to nullptr.
-      const auto none = [] {
-        return FnOverload{
-          .FnScope = nullptr,
-          .Proto = nullptr,
-          .ReachedThrough = nullptr,
-          .FwdType = nullptr
-        };
-      };
+  /// The prototype a destructor call is actually made against,
+  /// which for a destructor declared in a generic "sup" block
+  /// is the instantiation for that block's arguments rather
+  /// than the template. The lookup and the minting are driven
+  /// from the same scope (the type symbol's), so that both
+  /// normalise the arguments identically.
+  static auto DropProtoFor(
+    TypeSymbol const &type_sym, ScopeManager &sm, CompilerMetaData *meta,
+    const bool instantiate) -> FunctionPrototypeAst*;
+}
 
-      // A bound generic parameter stands for its argument, and it
-      // is the argument that has the methods.
-      if (const auto bound = type_sym.AsBound(); bound != &type_sym) {
-        return FindDropOverloadInfo(*bound, sm, meta);
-      }
+auto spp::analyse::utils::drop_utils::FindDropOverloadInfo(
+  TypeSymbol const &type_sym, ScopeManager &sm,
+  CompilerMetaData *meta) -> FnOverload {
 
-      // A generic that was never bound, or a symbol with no
-      // scope of its own, has no attributes and no methods
-      // to find. Todo: What if we constrain generic with Drop?
-      if (type_sym.LinkedScope == nullptr) { return none(); }
+  // The "none" mini-constructor for the function overload
+  // type, setting every field to nullptr.
+  const auto none = [] {
+    return FnOverload{
+      .FnScope = nullptr,
+      .Proto = nullptr,
+      .ReachedThrough = nullptr,
+      .FwdType = nullptr
+    };
+  };
 
-      // The type only has a destructor if it superimposes
-      // "Drop". This is checked before looking for the method,
-      // because a class is free to declare a method called
-      // "drop" without meaning this at all.
-      const auto superimposes_drop = genex::any_of(
-        type_sym.LinkedScope->GetSupScopes(), [&](auto const *sup_scope) {
-          if (sup_scope->LinkedTypeSymbol == nullptr) { return false; }
-          return marker_sups::IsDropMarker(TypeRef::ForKindCheck(*sup_scope), *sup_scope);
-        });
-      if (not superimposes_drop) { return none(); }
-
-      // Find the "drop" the type actually inherits.
-      // "GetAllFnScopes" searches the sup scopes,
-      // so an override on the type itself and an
-      // implementation inherited from a type it extends
-      // are both found here.
-      const auto drop_name = IdentifierAst(0, "drop");
-      auto overloads = overload_resolution::GetAllFnScopes(
-        drop_name, type_sym.LinkedScope, sm, meta);
-
-      for (auto &overload : overloads) {
-        // "Drop::drop" itself is abstract with an empty body:
-        // a type that superimposes "Drop" but never overrides
-        // "drop" resolves to it, and calling it would be a call
-        // into nothing.
-        if (overload.Proto->AbstractAnnotation != nullptr) { continue; }
-
-        // Destroying a value consumes it, so the destructor is
-        // the "self" overload taking nothing else. Anything with
-        // a borrow convention, or with other parameters, is an
-        // unrelated method that happens to share the name.
-        const auto self_param = overload.Proto->FnParamGroup->GetSelfParam();
-        if (self_param == nullptr or self_param->Conv != nullptr) { continue; }
-        if (not overload.Proto->FnParamGroup->GetNonSelfParams().empty()) { continue; }
-        return std::move(overload);
-      }
-
-      return none();
-    }
-
-    /// The prototype a destructor call is actually made against,
-    /// which for a destructor declared in a generic "sup" block
-    /// is the instantiation for that block's arguments rather
-    /// than the template. The lookup and the minting are driven
-    /// from the same scope (the type symbol's), so that both
-    /// normalise the arguments identically.
-    auto DropProtoFor(
-      TypeSymbol const &type_sym, ScopeManager &sm, CompilerMetaData *meta,
-      const bool instantiate) -> FunctionPrototypeAst* {
-      // Get the type symbol and find the drop overload. A nullptr
-      // overload means that std::mem::ops::drop will be used (ie
-      // consume all and drop in reverse attribute order). Todo
-      // verify this about nullptr overload proto retrieved.
-      auto const &sym = *type_sym.AsBound();
-      const auto overload = FindDropOverloadInfo(sym, sm, meta);
-      if (overload.Proto == nullptr or sym.LinkedScope == nullptr) { return overload.Proto; }
-
-      // Either just find the overload or instantiate it too (this
-      // will only instantiate it if it hasn't already been).
-      auto tm = sm.NewManagerAt(sym.LinkedScope);
-      const auto sup_gns = overload.ReachedThrough != nullptr
-        ? overload.ReachedThrough->GetGns()
-        : Vec<Unique<GenericArgumentAst>>();
-      const auto args_id = tm.CurrentScope->ArgsIdOf(
-        sup_gns | genex::views::transform([](auto const &a) { return a.get(); }) | genex::to<Vec>(), nullptr);
-      return instantiate
-        ? monomorphization::RequireFnInstance(overload.Proto, overload.FnScope, args_id, &tm, meta)
-        : monomorphization::FindRequiredFnInstance(overload.Proto, args_id);
-    }
+  // A bound generic parameter stands for its argument, and it
+  // is the argument that has the methods.
+  if (const auto bound = type_sym.AsBound(); bound != &type_sym) {
+    return FindDropOverloadInfo(*bound, sm, meta);
   }
+
+  // A generic that was never bound, or a symbol with no
+  // scope of its own, has no attributes and no methods
+  // to find. Todo: What if we constrain generic with Drop?
+  if (type_sym.LinkedScope == nullptr) { return none(); }
+
+  // The type only has a destructor if it superimposes
+  // "Drop". This is checked before looking for the method,
+  // because a class is free to declare a method called
+  // "drop" without meaning this at all.
+  const auto superimposes_drop = genex::any_of(
+    type_sym.LinkedScope->GetSupScopes(), [&](auto const *sup_scope) {
+      if (sup_scope->LinkedTypeSymbol == nullptr) { return false; }
+      return marker_sups::IsDropMarker(TypeRef::ForKindCheck(*sup_scope), *sup_scope);
+    });
+  if (not superimposes_drop) { return none(); }
+
+  // Find the "drop" the type actually inherits.
+  // "GetAllFnScopes" searches the sup scopes,
+  // so an override on the type itself and an
+  // implementation inherited from a type it extends
+  // are both found here.
+  const auto drop_name = IdentifierAst(0, "drop");
+  auto overloads = overload_resolution::GetAllFnScopes(
+    drop_name, type_sym.LinkedScope, sm, meta);
+
+  for (auto &overload : overloads) {
+    // "Drop::drop" itself is abstract with an empty body:
+    // a type that superimposes "Drop" but never overrides
+    // "drop" resolves to it, and calling it would be a call
+    // into nothing.
+    if (overload.Proto->AbstractAnnotation != nullptr) { continue; }
+
+    // Destroying a value consumes it, so the destructor is
+    // the "self" overload taking nothing else. Anything with
+    // a borrow convention, or with other parameters, is an
+    // unrelated method that happens to share the name.
+    const auto self_param = overload.Proto->FnParamGroup->GetSelfParam();
+    if (self_param == nullptr or self_param->Conv != nullptr) { continue; }
+    if (not overload.Proto->FnParamGroup->GetNonSelfParams().empty()) { continue; }
+    return std::move(overload);
+  }
+
+  return none();
+}
+
+auto spp::analyse::utils::drop_utils::DropProtoFor(
+  TypeSymbol const &type_sym, ScopeManager &sm, CompilerMetaData *meta,
+  const bool instantiate) -> FunctionPrototypeAst* {
+  // Get the type symbol and find the drop overload. A nullptr
+  // overload means that std::mem::ops::drop will be used (ie
+  // consume all and drop in reverse attribute order). Todo
+  // verify this about nullptr overload proto retrieved.
+  auto const &sym = *type_sym.AsBound();
+  const auto overload = FindDropOverloadInfo(sym, sm, meta);
+  if (overload.Proto == nullptr or sym.LinkedScope == nullptr) { return overload.Proto; }
+
+  // Either just find the overload or instantiate it too (this
+  // will only instantiate it if it hasn't already been).
+  auto tm = sm.NewManagerAt(sym.LinkedScope);
+  const auto sup_gns = overload.ReachedThrough != nullptr
+    ? overload.ReachedThrough->GetGns()
+    : Vec<Unique<GenericArgumentAst>>();
+  const auto args_id = tm.CurrentScope->ArgsIdOf(
+    sup_gns | genex::views::transform([](auto const &a) { return a.get(); }) | genex::to<Vec>(), nullptr);
+  return instantiate
+    ? monomorphization::RequireFnInstance(overload.Proto, overload.FnScope, args_id, &tm, meta)
+    : monomorphization::FindRequiredFnInstance(overload.Proto, args_id);
 }
 
 auto spp::analyse::utils::drop_utils::FindDropOverload(

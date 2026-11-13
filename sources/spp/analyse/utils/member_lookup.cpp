@@ -29,83 +29,96 @@ use_alias(spp::asts, TypeAst);
 use_alias(spp::asts, TypeIdentifierAst);
 
 namespace spp::analyse::utils::member_lookup {
-  namespace {
-    /// The body that both the wrapper function "ScopesDeclaringVar"
-    /// and "ScopesDeclaringType" use; walk the type's own scope and
-    /// its superimpositions, asking each one for the name and
-    /// record how far it sits from where the lookup began.
-    template <typename Entry, typename Name, typename Lookup>
-    auto ScopesDeclaring(
-      Scope &type_scope, Name const &name, Lookup &&lookup) -> Vec<Entry> {
-      // Build a vector of the type scope and all of its super scopes
-      // (of any level).
-      auto scopes = Vec{&type_scope};
-      scopes.append_range(type_scope.GetSupScopes());
+  /// The body that both the wrapper function "ScopesDeclaringVar"
+  /// and "ScopesDeclaringType" use; walk the type's own scope and
+  /// its superimpositions, asking each one for the name and
+  /// record how far it sits from where the lookup began.
+  template <typename Entry, typename Name, typename Lookup>
+  static auto ScopesDeclaring(
+    Scope &type_scope, Name const &name, Lookup &&lookup) -> Vec<Entry>;
 
-      // If we discover the symbol within the scope, keep it, otherwise
-      // discard. We are left only with the scopes that found contain
-      // the symbol directly.
-      auto out = Vec<Entry>();
-      for (const auto scope : scopes) {
-        if (const auto sym = lookup(*scope, name); sym != nullptr) {
-          out.emplace_back(Entry{.Depth = type_scope.DepthDiff(scope), .Where = scope, .Symbol = sym});
-        }
-      }
-      return out;
-    }
+  /// The body both the "ClosestScopes" wrap.
+  template <typename Entry>
+  static auto ClosestScopesImpl(
+    Vec<Entry> const &candidates) -> Vec<Entry>;
 
-    /// The body both the "ClosestScopes" wrap.
-    template <typename Entry>
-    auto ClosestScopesImpl(
-      Vec<Entry> const &candidates) -> Vec<Entry> {
-      // Find the minimum depth from all the provided info
-      // blocks. This is the depth that must be unique for
-      // a non-ambiguous lookup.
-      if (candidates.empty()) { return {}; }
-      auto min_depth = candidates[0].Depth;
-      for (auto const &c : candidates) { min_depth = std::min(min_depth, c.Depth); }
+  /// The body both the "RaiseIfAmbiguous" wrap.
+  template <typename Entry>
+  static auto RaiseIfAmbiguousImpl(
+    Vec<Entry> const &closest, Ast const &access) -> void;
 
-      // Only keep the info blocks whose depth matches the
-      // minimum depth. This could be any number of the
-      // scopes, and we check the count for an error later.
-      auto out = Vec<Entry>();
-      for (auto const &c : candidates) {
-        if (c.Depth == min_depth) { out.emplace_back(c); }
-      }
-      return out;
-    }
+  /// Raise an error for a missing type identifier, and provide
+  /// the closest options; a singular place to uniformly handle
+  /// these errors.
+  SPP_ATTR_COLD SPP_ATTR_NORETURN static auto RaiseMissingTypeIdentifierAndClosestOptions(
+    TypeIdentifierAst const &identifier, Vec<TypeSymbol*> const &symbols) -> void;
+}
 
-    /// The body both the "RaiseIfAmbiguous" wrap.
-    template <typename Entry>
-    auto RaiseIfAmbiguousImpl(
-      Vec<Entry> const &closest, Ast const &access) -> void {
-      // If there is a maximum of 1 scope containing the
-      // target identifier/type-identifier, then return.
-      // Otherwise, there is an ambiguity, so raise an
-      // error.
-      using errors::SppAmbiguousMemberAccessError;
-      if (closest.size() <= 1) { return; }
-      Raise<SppAmbiguousMemberAccessError>(ERR_ARGS(*closest[0].Symbol->Name, *closest[1].Symbol->Name, access));
-    }
+template <typename Entry, typename Name, typename Lookup>
+auto spp::analyse::utils::member_lookup::ScopesDeclaring(
+  Scope &type_scope, Name const &name, Lookup &&lookup) -> Vec<Entry> {
+  // Build a vector of the type scope and all of its super scopes
+  // (of any level).
+  auto scopes = Vec{&type_scope};
+  scopes.append_range(type_scope.GetSupScopes());
 
-    /// Raise an error for a missing type identifier, and provide
-    /// the closest options; a singular place to uniformly handle
-    /// these errors.
-    SPP_ATTR_COLD SPP_ATTR_NORETURN auto RaiseMissingTypeIdentifierAndClosestOptions(
-      TypeIdentifierAst const &identifier, Vec<TypeSymbol*> const &symbols) -> void {
-      using spp::utils::strings::ClosestMatch;
-
-      //
-      const auto alternatives = symbols
-        | genex::views::filter([](auto const &x) { return not x->IsMock(); })
-        | genex::views::transform([](auto const &x) { return x->Name->Name; })
-        | genex::to<Vec>();
-
-      //
-      const auto closest_match = ClosestMatch(identifier.Name, alternatives);
-      Raise<errors::SppIdentifierUnknownError>(ERR_ARGS(identifier, "type identifier", closest_match));
+  // If we discover the symbol within the scope, keep it, otherwise
+  // discard. We are left only with the scopes that found contain
+  // the symbol directly.
+  auto out = Vec<Entry>();
+  for (const auto scope : scopes) {
+    if (const auto sym = lookup(*scope, name); sym != nullptr) {
+      out.emplace_back(Entry{.Depth = type_scope.DepthDiff(scope), .Where = scope, .Symbol = sym});
     }
   }
+  return out;
+}
+
+template <typename Entry>
+auto spp::analyse::utils::member_lookup::ClosestScopesImpl(
+  Vec<Entry> const &candidates) -> Vec<Entry> {
+  // Find the minimum depth from all the provided info
+  // blocks. This is the depth that must be unique for
+  // a non-ambiguous lookup.
+  if (candidates.empty()) { return {}; }
+  auto min_depth = candidates[0].Depth;
+  for (auto const &c : candidates) { min_depth = std::min(min_depth, c.Depth); }
+
+  // Only keep the info blocks whose depth matches the
+  // minimum depth. This could be any number of the
+  // scopes, and we check the count for an error later.
+  auto out = Vec<Entry>();
+  for (auto const &c : candidates) {
+    if (c.Depth == min_depth) { out.emplace_back(c); }
+  }
+  return out;
+}
+
+template <typename Entry>
+auto spp::analyse::utils::member_lookup::RaiseIfAmbiguousImpl(
+  Vec<Entry> const &closest, Ast const &access) -> void {
+  // If there is a maximum of 1 scope containing the
+  // target identifier/type-identifier, then return.
+  // Otherwise, there is an ambiguity, so raise an
+  // error.
+  using errors::SppAmbiguousMemberAccessError;
+  if (closest.size() <= 1) { return; }
+  Raise<SppAmbiguousMemberAccessError>(ERR_ARGS(*closest[0].Symbol->Name, *closest[1].Symbol->Name, access));
+}
+
+SPP_ATTR_COLD SPP_ATTR_NORETURN auto spp::analyse::utils::member_lookup::RaiseMissingTypeIdentifierAndClosestOptions(
+  TypeIdentifierAst const &identifier, Vec<TypeSymbol*> const &symbols) -> void {
+  using spp::utils::strings::ClosestMatch;
+
+  //
+  const auto alternatives = symbols
+    | genex::views::filter([](auto const &x) { return not x->IsMock(); })
+    | genex::views::transform([](auto const &x) { return x->Name->Name; })
+    | genex::to<Vec>();
+
+  //
+  const auto closest_match = ClosestMatch(identifier.Name, alternatives);
+  Raise<errors::SppIdentifierUnknownError>(ERR_ARGS(identifier, "type identifier", closest_match));
 }
 
 auto spp::analyse::utils::member_lookup::RaiseMissingIdentifierAndClosestOptions(

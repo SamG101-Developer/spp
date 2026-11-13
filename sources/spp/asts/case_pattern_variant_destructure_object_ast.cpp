@@ -46,45 +46,47 @@ use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
-SPP_MOD_BEGIN
 namespace spp::asts {
-  namespace {
-    /// A pattern can name a type narrower than any one alternative
-    /// of its subject. For example, given a condition of the type
-    /// "Opt[Opt[T]]", we need to allow "Some[Some[T]]" - ie inner
-    /// variant narrowing.
-    auto NarrowedLevel(
-      TypeAst const &pattern, TypeAst const &alt,
-      Scope const &scope) -> Pair<Shared<TypeAst>, Shared<TypeAst>> {
-      IMPORT_UTILS;
-
-      const auto arg_at = [](TypeAst const &t, const std::size_t i) -> Shared<TypeAst> {
-        auto const &args = t.LastTypePart()->GnArgGroup->Args;
-        return i < args.size() ? args[i]->TypeVal : nullptr;
-      };
-
-      for (auto i = 0uz; i < pattern.LastTypePart()->GnArgGroup->Args.size(); ++i) {
-        const auto p = arg_at(pattern, i);
-        const auto a = arg_at(alt, i);
-        // An argument can be absent on either side: the accessor above reads "TypeVal", which a comp argument
-        // does not have, and the two argument lists need not be the same length.
-        if (p == nullptr or a == nullptr) { continue; }
-
-        // Check that a variant is being considered, and that
-        // we don't have a direct (non-narrowing) match.
-        if (not type_predicates::IsTypeVariant(TypeRef::ForKindCheck(*a, scope), scope)) { continue; }
-        const auto a_ref = TypeRef::Of(*a, scope);
-        const auto p_ref = TypeRef::Of(*p, scope);
-        if (type_compare::TypeEq(a_ref, p_ref, scope, scope)) { continue; }
-        if (codegen::GetVariantIndexOfMember(a_ref, p_ref, scope).has_value()) {
-          return {p, a};
-        }
-      }
-      return {nullptr, nullptr};
-    }
-  }
+  /// A pattern can name a type narrower than any one alternative
+  /// of its subject. For example, given a condition of the type
+  /// "Opt[Opt[T]]", we need to allow "Some[Some[T]]" - ie inner
+  /// variant narrowing.
+  static auto NarrowedLevel(
+    TypeAst const &pattern, TypeAst const &alt,
+    Scope const &scope) -> Pair<Shared<TypeAst>, Shared<TypeAst>>;
 }
 
+auto spp::asts::NarrowedLevel(
+  TypeAst const &pattern, TypeAst const &alt,
+  Scope const &scope) -> Pair<Shared<TypeAst>, Shared<TypeAst>> {
+  IMPORT_UTILS;
+
+  const auto arg_at = [](TypeAst const &t, const std::size_t i) -> Shared<TypeAst> {
+    auto const &args = t.LastTypePart()->GnArgGroup->Args;
+    return i < args.size() ? args[i]->TypeVal : nullptr;
+  };
+
+  for (auto i = 0uz; i < pattern.LastTypePart()->GnArgGroup->Args.size(); ++i) {
+    const auto p = arg_at(pattern, i);
+    const auto a = arg_at(alt, i);
+    // An argument can be absent on either side: the accessor above reads "TypeVal", which a comp argument
+    // does not have, and the two argument lists need not be the same length.
+    if (p == nullptr or a == nullptr) { continue; }
+
+    // Check that a variant is being considered, and that
+    // we don't have a direct (non-narrowing) match.
+    if (not type_predicates::IsTypeVariant(TypeRef::ForKindCheck(*a, scope), scope)) { continue; }
+    const auto a_ref = TypeRef::Of(*a, scope);
+    const auto p_ref = TypeRef::Of(*p, scope);
+    if (type_compare::TypeEq(a_ref, p_ref, scope, scope)) { continue; }
+    if (codegen::GetVariantIndexOfMember(a_ref, p_ref, scope).has_value()) {
+      return {p, a};
+    }
+  }
+  return {nullptr, nullptr};
+}
+
+SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureObjectAst::CasePatternVariantDestructureObjectAst(
   decltype(Type) type,
   decltype(TokL) &&tok_l,

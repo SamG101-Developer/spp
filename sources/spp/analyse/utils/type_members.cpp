@@ -60,62 +60,6 @@ use_alias(spp::asts, TypeAst);
 
 namespace spp::analyse::utils::type_members {
   namespace {
-    auto FindHeldByValueImpl(
-      TypeRef const &ref,
-      Scope const &scope,
-      FuncRef<bool(TypeRef const &)> matches,
-      Set<TypeSymbol const*> &seen)
-      -> TypeRef {
-      if (ref.Symbol == nullptr or ref.IsBorrowed() or ref.IsNever) { return TypeRef(); }
-      auto *const sym = ref.Symbol->AsBound();
-      if (sym == nullptr or sym->IsGn()) { return TypeRef(); }
-      if (matches(ref)) { return ref; }
-      if (not seen.insert(sym).second) { return TypeRef(); }
-
-      // A variant's storage is raw bytes sized for its members,
-      // so it is the members themselves that are held.
-      if (type_predicates::IsTypeVariant(ref, scope)) {
-        for (auto const &member : type_members::VariantMemberRefs(ref, scope)) {
-          if (auto found = FindHeldByValueImpl(member, scope, matches, seen); found.Symbol != nullptr) { return found; }
-        }
-        return TypeRef();
-      }
-
-      if (sym->LinkedScope == nullptr) { return TypeRef(); }
-      for (auto const &part : type_members::GetAllParts(ref, scope, true)) {
-        // The part's type itself, by value: a part bound to a borrow holds the borrowed type no more than "&T" does.
-        auto const &where = part.Where != nullptr ? *part.Where : scope;
-        if (auto found = FindHeldByValueImpl(part.Ref.WithoutConvention(), where, matches, seen);
-          found.Symbol != nullptr) {
-          return found;
-        }
-      }
-      return TypeRef();
-    }
-
-    /** A tuple's or array's number of elements (an array's own binding of "n", however written); none if unknown. */
-    auto IndexableLen(
-      TypeRef const &ref,
-      Scope const &scope)
-      -> Opt<std::size_t> {
-      if (type_predicates::IsTypeTuple(ref, scope)) { return ref.Symbol->TypeArgRefs().size(); }
-      if (not type_predicates::IsTypeArray(ref, scope)) { return Nullopt; }
-      const auto size = U64Of(ref.Symbol->CompArgId("n"));
-      return size.has_value() ? Opt(static_cast<std::size_t>(*size)) : Nullopt;
-    }
-
-    /** The type of a tuple's or array's element "index": per element for a tuple, the one "T" for an array; read off
-     * the instance's identity ("TypeSymbol::TypeArgRefs"). No type past the end. */
-    auto IndexableElem(
-      TypeRef const &ref,
-      Scope const &scope,
-      const std::size_t index)
-      -> TypeRef {
-      const auto args = ref.Symbol->TypeArgRefs();
-      const auto at = type_predicates::IsTypeArray(ref, scope) ? 0uz : index;
-      return at < args.size() ? args[at] : TypeRef();
-    }
-
     /// A type's unimplemented abstract methods, with what the answer was read off: the generation it was last known
     /// current at, and the super scopes it was gathered from.
     struct UnimplementedAbstractMethods {
@@ -123,58 +67,145 @@ namespace spp::analyse::utils::type_members {
       Vec<Scope*> Sups;
       Vec<FunctionPrototypeAst const*> Methods;
     };
-
-    auto _UnimplementedAbstractMethodsCache() -> Map<Scope const*, UnimplementedAbstractMethods>& {
-      static auto cache = Map<Scope const*, UnimplementedAbstractMethods>();
-      return cache;
-    }
-
-    auto SupMemberAsMethod(
-      Ast const *member)
-      -> FunctionPrototypeAst const* {
-      if (const auto fn = member->To<FunctionPrototypeAst>(); fn != nullptr) { return fn; }
-      if (const auto ext = member->To<SupPrototypeExtensionAst>(); ext != nullptr and ext->Impl != nullptr) {
-        const auto final_member = ext->Impl->FinalMember();
-        return final_member != nullptr ? final_member->To<FunctionPrototypeAst>() : nullptr;
-      }
-      return nullptr;
-    }
-
-    /**
-     * The attributes of a type and everything superimposed on it, as (owning scope, symbol) pairs. Both public
-     * attribute walks go through this so that their results line up index for index, which callers rely on. They used
-     * to walk separately - one over the symbol table, one over the class prototype's members, and only one of them
-     * skipping generic symbols - so a single generic-typed attribute silently desynchronised them.
-     * @param cls_sym The symbol of the type whose attributes are wanted.
-     * @return One pair per attribute, ordered by the type itself then its super scopes.
-     */
-    SPP_ATTR_HOT auto CollectAttrSymbols(
-      TypeSymbol const &cls_sym)
-      -> Vec<Pair<Scope*, VariableSymbol*>> {
-      auto all_scopes = Vec{cls_sym.LinkedScope};
-      all_scopes.append_range(cls_sym.LinkedScope->GetSupScopes());
-
-      auto attrs = Vec<Pair<Scope*, VariableSymbol*>>{};
-      for (auto *sup_scope : all_scopes) {
-        if (AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
-        for (auto *sym : sup_scope->GetAllVarSymbols(true)) {
-          if (sym->Kind != VariableKind::Attribute) { continue; }
-          attrs.push_back(MakePair(sup_scope, sym));
-        }
-      }
-      return attrs;
-    }
-
-    /// A resolved type named as its symbol names it, under its
-    /// convention: how a variant's members are listed.
-    auto AsType(
-      TypeRef const &ref)
-      -> Shared<TypeAst> {
-      auto name = ref.Symbol->FqName();
-      return ref.Conv != ConventionTag::MOV ? name->WithConvention(ConventionAstOf(ref.Conv)) : name;
-    }
-
   }
+
+  static auto FindHeldByValueImpl(
+    TypeRef const &ref,
+    Scope const &scope,
+    FuncRef<bool(TypeRef const &)> matches,
+    Set<TypeSymbol const*> &seen)
+    -> TypeRef;
+
+  /** A tuple's or array's number of elements (an array's own binding of "n", however written); none if unknown. */
+  static auto IndexableLen(
+    TypeRef const &ref,
+    Scope const &scope)
+    -> Opt<std::size_t>;
+
+  /** The type of a tuple's or array's element "index": per element for a tuple, the one "T" for an array; read off
+   * the instance's identity ("TypeSymbol::TypeArgRefs"). No type past the end. */
+  static auto IndexableElem(
+    TypeRef const &ref,
+    Scope const &scope,
+    const std::size_t index)
+    -> TypeRef;
+
+  static auto _UnimplementedAbstractMethodsCache() -> Map<Scope const*, UnimplementedAbstractMethods>&;
+
+  static auto SupMemberAsMethod(
+    Ast const *member)
+    -> FunctionPrototypeAst const*;
+
+  /**
+   * The attributes of a type and everything superimposed on it, as (owning scope, symbol) pairs. Both public
+   * attribute walks go through this so that their results line up index for index, which callers rely on. They used
+   * to walk separately - one over the symbol table, one over the class prototype's members, and only one of them
+   * skipping generic symbols - so a single generic-typed attribute silently desynchronised them.
+   * @param cls_sym The symbol of the type whose attributes are wanted.
+   * @return One pair per attribute, ordered by the type itself then its super scopes.
+   */
+  SPP_ATTR_HOT static auto CollectAttrSymbols(
+    TypeSymbol const &cls_sym)
+    -> Vec<Pair<Scope*, VariableSymbol*>>;
+
+  /// A resolved type named as its symbol names it, under its
+  /// convention: how a variant's members are listed.
+  static auto AsType(
+    TypeRef const &ref)
+    -> Shared<TypeAst>;
+}
+
+auto spp::analyse::utils::type_members::FindHeldByValueImpl(
+  TypeRef const &ref,
+  Scope const &scope,
+  FuncRef<bool(TypeRef const &)> matches,
+  Set<TypeSymbol const*> &seen)
+  -> TypeRef {
+  if (ref.Symbol == nullptr or ref.IsBorrowed() or ref.IsNever) { return TypeRef(); }
+  auto *const sym = ref.Symbol->AsBound();
+  if (sym == nullptr or sym->IsGn()) { return TypeRef(); }
+  if (matches(ref)) { return ref; }
+  if (not seen.insert(sym).second) { return TypeRef(); }
+
+  // A variant's storage is raw bytes sized for its members,
+  // so it is the members themselves that are held.
+  if (type_predicates::IsTypeVariant(ref, scope)) {
+    for (auto const &member : type_members::VariantMemberRefs(ref, scope)) {
+      if (auto found = FindHeldByValueImpl(member, scope, matches, seen); found.Symbol != nullptr) { return found; }
+    }
+    return TypeRef();
+  }
+
+  if (sym->LinkedScope == nullptr) { return TypeRef(); }
+  for (auto const &part : type_members::GetAllParts(ref, scope, true)) {
+    // The part's type itself, by value: a part bound to a borrow holds the borrowed type no more than "&T" does.
+    auto const &where = part.Where != nullptr ? *part.Where : scope;
+    if (auto found = FindHeldByValueImpl(part.Ref.WithoutConvention(), where, matches, seen);
+      found.Symbol != nullptr) {
+      return found;
+    }
+  }
+  return TypeRef();
+}
+
+auto spp::analyse::utils::type_members::IndexableLen(
+  TypeRef const &ref,
+  Scope const &scope)
+  -> Opt<std::size_t> {
+  if (type_predicates::IsTypeTuple(ref, scope)) { return ref.Symbol->TypeArgRefs().size(); }
+  if (not type_predicates::IsTypeArray(ref, scope)) { return Nullopt; }
+  const auto size = U64Of(ref.Symbol->CompArgId("n"));
+  return size.has_value() ? Opt(static_cast<std::size_t>(*size)) : Nullopt;
+}
+
+auto spp::analyse::utils::type_members::IndexableElem(
+  TypeRef const &ref,
+  Scope const &scope,
+  const std::size_t index)
+  -> TypeRef {
+  const auto args = ref.Symbol->TypeArgRefs();
+  const auto at = type_predicates::IsTypeArray(ref, scope) ? 0uz : index;
+  return at < args.size() ? args[at] : TypeRef();
+}
+
+auto spp::analyse::utils::type_members::_UnimplementedAbstractMethodsCache() -> Map<Scope const*, UnimplementedAbstractMethods>& {
+  static auto cache = Map<Scope const*, UnimplementedAbstractMethods>();
+  return cache;
+}
+
+auto spp::analyse::utils::type_members::SupMemberAsMethod(
+  Ast const *member)
+  -> FunctionPrototypeAst const* {
+  if (const auto fn = member->To<FunctionPrototypeAst>(); fn != nullptr) { return fn; }
+  if (const auto ext = member->To<SupPrototypeExtensionAst>(); ext != nullptr and ext->Impl != nullptr) {
+    const auto final_member = ext->Impl->FinalMember();
+    return final_member != nullptr ? final_member->To<FunctionPrototypeAst>() : nullptr;
+  }
+  return nullptr;
+}
+
+SPP_ATTR_HOT auto spp::analyse::utils::type_members::CollectAttrSymbols(
+  TypeSymbol const &cls_sym)
+  -> Vec<Pair<Scope*, VariableSymbol*>> {
+  auto all_scopes = Vec{cls_sym.LinkedScope};
+  all_scopes.append_range(cls_sym.LinkedScope->GetSupScopes());
+
+  auto attrs = Vec<Pair<Scope*, VariableSymbol*>>{};
+  for (auto *sup_scope : all_scopes) {
+    if (AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
+    for (auto *sym : sup_scope->GetAllVarSymbols(true)) {
+      if (sym->Kind != VariableKind::Attribute) { continue; }
+      attrs.push_back(MakePair(sup_scope, sym));
+    }
+  }
+  return attrs;
+}
+
+auto spp::analyse::utils::type_members::AsType(
+  TypeRef const &ref)
+  -> Shared<TypeAst> {
+  auto name = ref.Symbol->FqName();
+  return ref.Conv != ConventionTag::MOV ? name->WithConvention(ConventionAstOf(ref.Conv)) : name;
 }
 
 auto spp::analyse::utils::type_members::GetAllParts(

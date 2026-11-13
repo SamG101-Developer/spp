@@ -79,7 +79,7 @@ public:
   /// types are "value_types", "is_signed" saying which are signed integers.
   SPP_ATTR_NODISCARD virtual auto ParamsOf(
     Vec<llvm::Type*> const &value_types, Vec<bool> const &is_signed,
-    llvm::Module const &module) const -> Vec<AbiParam> = 0;
+    llvm::Module const &llvm_mod) const -> Vec<AbiParam> = 0;
 
   /// The type a function declares it returns, for a return of LLVM value
   /// type "type".

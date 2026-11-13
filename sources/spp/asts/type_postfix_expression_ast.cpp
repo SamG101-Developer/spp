@@ -56,7 +56,7 @@ auto spp::asts::TypePostfixExpressionAst::operator==(
 auto spp::asts::TypePostfixExpressionAst::EqualsTypePostfixExpression(
   TypePostfixExpressionAst const &other) const -> Ordering {
   // Check the lhs and operator are the same.
-  if (*Lhs == *other.Lhs && *TokOp == *other.TokOp) {
+  if (*Lhs == *other.Lhs and *TokOp == *other.TokOp) {
     return Ordering::equal;
   }
   return Ordering::less;

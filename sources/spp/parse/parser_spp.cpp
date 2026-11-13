@@ -669,7 +669,7 @@ auto spp::parse::ParserSpp::ParseBinaryExpression(const std::uint8_t min_prec)
 
   auto try_bin_op = [&]() -> BinOpInfo {
     auto peek = _Pos;
-    while (peek < _TokensLen && (_Tokens[peek].Type == RT::TK_LINE_FEED || _Tokens[peek].Type == RT::TK_SPACE))
+    while (peek < _TokensLen and (_Tokens[peek].Type == RT::TK_LINE_FEED or _Tokens[peek].Type == RT::TK_SPACE))
       peek++;
     if (peek >= _TokensLen) return {};
 
@@ -745,7 +745,7 @@ auto spp::parse::ParserSpp::ParseBinaryExpression(const std::uint8_t min_prec)
   while (true) {
     const auto saved = _Pos;
     auto bin_op = try_bin_op();
-    if (!bin_op.Tok || bin_op.Prec < min_prec) {
+    if (not bin_op.Tok or bin_op.Prec < min_prec) {
       _Pos = saved;
       break;
     }
@@ -756,7 +756,7 @@ auto spp::parse::ParserSpp::ParseBinaryExpression(const std::uint8_t min_prec)
     }
     else {
       auto rhs = ParseBinaryExpression(static_cast<std::uint8_t>(bin_op.Prec + 1));
-      if (!rhs) {
+      if (not rhs) {
         _Pos = saved;
         break;
       }
@@ -1755,7 +1755,7 @@ auto spp::parse::ParserSpp::ParseBinaryTypeExpression(const std::uint8_t min_pre
 
   auto try_bin_op = [&]() -> BinOpInfo {
     auto peek = _Pos;
-    while (peek < _TokensLen && (_Tokens[peek].Type == RT::TK_LINE_FEED || _Tokens[peek].Type == RT::TK_SPACE))
+    while (peek < _TokensLen and (_Tokens[peek].Type == RT::TK_LINE_FEED or _Tokens[peek].Type == RT::TK_SPACE))
       peek++;
     if (peek >= _TokensLen) return {};
 
@@ -1780,13 +1780,13 @@ auto spp::parse::ParserSpp::ParseBinaryTypeExpression(const std::uint8_t min_pre
     const auto saved = _Pos;
     auto [op, prec] = try_bin_op();
 
-    if (!op || prec < min_prec) {
+    if (not op or prec < min_prec) {
       _Pos = saved;
       break;
     }
 
     auto rhs = ParseBinaryTypeExpression(static_cast<std::uint8_t>(prec + 1));
-    if (!rhs) {
+    if (not rhs) {
       _Pos = saved;
       break;
     }

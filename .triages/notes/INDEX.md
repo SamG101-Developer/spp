@@ -7,6 +7,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Add tests even if failing](conventions/add-tests-even-if-failing.md) — red tests for known bugs wanted, plus a Todo at the site
 - [Code reduction means functions](conventions/code-reduction-means-functions.md) — remove dead/duplicate fns; not macros; single-use utils stay (de-bloat ASTs)
 - [Split at natural seams](conventions/split-functions-at-natural-seams.md) — no line target; private if one AST uses it, else utils/codegen module; dedupe siblings
+- [Internal fns: static top block](conventions/internal-functions-static-top-block.md) — one ns block at the top of static decls (types in namespace {}); defs below as ns::Name at the margin
 - [Symmetry levels up](conventions/symmetry-levels-up.md) — make the worse of a pair match the better
 - [Type/comp symmetry helpers](conventions/type-comp-symmetry-helpers.md) — comp generics mirror type generics; shared helpers
 - [Switch impls off TypeAst](conventions/switch-impls-off-typeast.md) — analysis/codegen move to symbols/TypeRef; big rewrites OK
@@ -27,6 +28,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Env vars are registered](conventions/env-vars-registered.md) — SPP_ names live in utils/env.cpp, CI's are SPP_CI_; anything else stops spp at startup
 - [sys:: names vs C macros](conventions/sys-names-vs-c-macros.md) — a macro-named sys:: export breaks where the C header is included (gtest); #undef there
 - [Shell through utils::shell](conventions/shell-through-utils-shell.md) — shell::Run and shell::Quote only; why cmd /c needs an outer pair of quotes
+- [and/or/not, not &&/||/!](conventions/alternative-operator-keywords.md) — keyword logical ops; Sonar S3659 ignored; clang-tidy readability-operators-representation enforces
 - [Enums over strings](conventions/enums-over-strings.md) — fields and params hold the enum; convert once where a user writes it; "any" is Opt<Enum>
 - [Tickets: a folder each](conventions/tickets-one-folder-each.md) — .triages/tickets/<slug>/ with README.md + repro files; URL in the status line once filed
 
@@ -46,6 +48,8 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Stale module objects](build/cmake-stale-module-objects.md) — a changed .cpp may not rebuild; touch it
 - [Split macro headers](build/split-macro-headers.md) — macros.hpp edit = 11 min rebuild; use narrow headers
 - [Genex on one line](build/cmake-genex-no-line-breaks.md) — a wrapped generator expression splits into args; ninja "bad $-escape"; use a variable
+- [Windows local setup](build/windows-local-setup.md) — .tools/setup-windows.sh runs CI's MSVC-lane setup locally; LF clone, Native Tools prompt
+- [Enable debugging](build/enable-debugging-script.md) — .tools/enable-debugging.sh: perf + gdb -p permissions (sysctl, until WSL restarts); --off restores
 - [ASAN for LLVM crashes](build/asan-build-for-llvm-crashes.md) — gdb can't unwind LLVM; -DSPP_SANITIZER=address
 - [heaptrack needs mimalloc removed](build/heaptrack-needs-mimalloc-removed.md) — -DSPP_NO_MIMALLOC build + patchelf out libmimalloc
 - [Stderr behind progress bar](build/spp-stderr-behind-progress-bar.md) — tr '\r' '\n' before grepping
@@ -55,10 +59,10 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 
 ## Areas (open the area's INDEX.md when the work touches it)
 - [Toolchain](toolchain/INDEX.md) — GCC/clang C++20 module bugs and workarounds, LLVM wrapper module, linters (17)
-- [CI and platforms](ci/INDEX.md) — workflow quirks, compiler caches, macOS libc++, MSVC bugs, cross-target blockers (35)
+- [CI and platforms](ci/INDEX.md) — workflow quirks, compiler caches, macOS libc++, MSVC bugs, cross-target blockers (40)
 - [Type identity](types/INDEX.md) — TypeKey/stamps, aliases, variant order, TypeEq vs Assignable, Self, comp key folding (13)
 - [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (23)
 - [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (25)
 - [Language semantics](language/INDEX.md) — linear types, drops, borrows, case/patterns, closures, generators (27)
-- [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path (38)
+- [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path, source lines (41)
 - [Std and sibling repos](repos/INDEX.md) — SPP-STL and sppc: what lives where, prelude, link-time library checks (7)

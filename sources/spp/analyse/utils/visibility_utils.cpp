@@ -29,188 +29,245 @@ use_alias(spp::asts, SupPrototypeFunctionsAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::visibility_utils {
-  namespace {
-    /// [CHECKED]
-    /// Internal helper to extract an error-printing name from
-    /// the visibility enum.
-    auto VisibilityName(
-      const asts::utils::Visibility vis) -> Str {
-      using V = asts::utils::Visibility;
-      switch (vis) {
-        case V::kPublic: return "public";
-        case V::kPackage: return "package";
-        case V::kProtected: return "protected";
-        case V::kPrivate: return "private";
-        default: Ice(std::format("unhandled visibility: {}", static_cast<int>(vis)));
-      }
-    }
+  /// Internal helper to extract an error-printing name from
+  /// the visibility enum.
+  static auto VisibilityName(
+    const asts::utils::Visibility vis) -> Str;
 
-    /// Whether a symbol is something a package declares, rather
-    /// than a generic standing in one of its declarations (an
-    /// alias's parameter), read wherever the compiler resolves it.
-    auto IsPackageMember(VariableSymbol const &sym) -> bool {
-      return sym.Kind != scopes::VariableKind::GnCompParam and sym.Kind != scopes::VariableKind::GnCompArg;
-    }
+  /// Whether a symbol is something a package declares, rather
+  /// than a generic standing in one of its declarations (an
+  /// alias's parameter), read wherever the compiler resolves it.
+  static auto IsPackageMember(VariableSymbol const &sym) -> bool;
 
-    auto IsPackageMember(TypeSymbol const &sym) -> bool {
-      return not sym.IsGn();
-    }
+  static auto IsPackageMember(TypeSymbol const &sym) -> bool;
 
-    /// The package a module member is in, when the module naming
-    /// it cannot: an ffi package is for its owner's own modules,
-    /// which is how it is linked, and any other package is for
-    /// its owner and whoever declares it. The test harness names
-    /// each library's tests, declared or not, and is no package.
-    template <typename Symbol>
-    auto ForeignPackage(
-      Symbol const &sym, Scope const &definition_scope, ScopeManager const &sm,
-      CompilerMetaData const &meta) -> scopes::NamespaceSymbol const* {
-      if (not IsPackageMember(sym)) { return nullptr; }
-      auto const *const package_scope = definition_scope.GetTopLevelParentModule();
-      auto const *const accessing_scope = sm.CurrentScope->GetTopLevelParentModule();
-      if (package_scope == nullptr or accessing_scope == nullptr) { return nullptr; }
+  /// The package a module member is in, when the module naming
+  /// it cannot: an ffi package is for its owner's own modules,
+  /// which is how it is linked, and any other package is for
+  /// its owner and whoever declares it. The test harness names
+  /// each library's tests, declared or not, and is no package.
+  template <typename Symbol>
+  static auto ForeignPackage(
+    Symbol const &sym, Scope const &definition_scope, ScopeManager const &sm,
+    CompilerMetaData const &meta) -> scopes::NamespaceSymbol const*;
 
-      auto const *const package = package_scope->LinkedNamespaceSymbol.get();
-      auto const *const accessing = accessing_scope->LinkedNamespaceSymbol.get();
-      if (package == nullptr or accessing == nullptr or package->Owner == accessing->Owner) { return nullptr; }
-      if (package->IsFfiPackage) { return package; }
-      if (meta.IsTestHarness) { return nullptr; }
-      const auto declared = package->Owner.has_value() and genex::contains(accessing->Declares, *package->Owner);
-      return declared ? nullptr : package;
-    }
+  /// Who an owner is, for an error: the project or a dependency.
+  static auto OwnerText(Opt<Str> const &owner) -> Str;
 
-    /// Who an owner is, for an error: the project or a dependency.
-    auto OwnerText(Opt<Str> const &owner) -> Str {
-      return owner.has_value() ? "the dependency '" + *owner + "'" : Str("this project");
-    }
+  /// Module-level visibility, which is one rule whatever the
+  /// symbol is. Each level widens the one above it, so the
+  /// checks are cumulative, not exclusive.
+  /// - private: reaches the definition module.
+  /// - protected: extends private to its descendants.
+  /// - package: extends protected to the same top level module.
+  /// - public: extends package to all modules.
+  template <typename Symbol>
+  static auto IsModuleMemberVisibleImpl(
+    Symbol const &sym, Scope const &definition_scope,
+    ScopeManager const &sm, CompilerMetaData const &meta) -> bool;
 
-    /// [CHECKED]
-    /// Module-level visibility, which is one rule whatever the
-    /// symbol is. Each level widens the one above it, so the
-    /// checks are cumulative, not exclusive.
-    /// - private: reaches the definition module.
-    /// - protected: extends private to its descendants.
-    /// - package: extends protected to the same top level module.
-    /// - public: extends package to all modules.
-    template <typename Symbol>
-    auto IsModuleMemberVisibleImpl(
-      Symbol const &sym, Scope const &definition_scope,
-      ScopeManager const &sm, CompilerMetaData const &meta) -> bool {
-      // Early return guard for visibility bypass or public
-      // visibility.
-      using V = asts::utils::Visibility;
-      if (meta.IgnoreAccessModifierViolations) { return true; }
-      if (ForeignPackage(sym, definition_scope, sm, meta) != nullptr) { return false; }
-      if (sym.GetVisibility() == V::kPublic) { return true; }
+  /// The module a type member is defined in: a method's or
+  /// attribute's own scope's, which a "sup" block over a type
+  /// with no module of its own (a closure) still has; otherwise
+  /// the type's.
+  template <typename Symbol>
+  static auto DefinitionModuleOf(Symbol const &sym, Scope const &type_scope) -> Scope const*;
 
-      // Get the module owning the access, and the module owning
-      // the definition, by scope, for module comparisons.
-      const auto accessing_module = sm.CurrentScope->GetParentModule();
-      const auto definition_module = definition_scope.GetParentModule();
+  /// Type-level visibility, which is one rule whatever the
+  /// member is (field, method, constant, nested type). Each
+  /// level widens the one above it, so the checks are
+  /// cumulative, not exclusive.
+  /// - private: reaches the owning type in its own module.
+  /// - protected: extends private to its subtypes in theirs.
+  /// - package: extends protected to anything sharing a top-
+  /// level module with the owner.
+  /// - public: extends package to all types in all modules.
+  template <typename Symbol>
+  static auto IsTypeMemberVisibleImpl(
+    Symbol const &sym, Scope const &type_scope,
+    ScopeManager const &sm, CompilerMetaData const &meta) -> bool;
 
-      // Private: the defining module only.
-      const auto good_private = accessing_module == definition_module;
-      if (sym.GetVisibility() == V::kPrivate) { return good_private; }
+  /// Raises a unified error if a visibility checks fails.
+  /// Sometimes, like for the LSP, we don't want to raise an
+  /// error, so this isn't always called.
+  template <typename Symbol>
+  static auto RaiseIfNotVisible(
+    const bool visible, Symbol const &sym, Ast const &access_ast, char const *what) -> void;
 
-      // Protected: and its descendant modules.
-      const auto good_protected = good_private or genex::contains(
-        accessing_module->GetAncestors(), definition_module);
-      if (sym.GetVisibility() == V::kProtected) { return good_protected; }
+  /// Raises the error for "CheckPackageAccess".
+  template <typename Symbol>
+  static auto CheckPackageAccessImpl(
+    Symbol const &sym, Scope const &definition_scope, Ast const &access_ast,
+    ScopeManager const &sm, CompilerMetaData const &meta) -> void;
+}
 
-      // Package: and anything sharing a top-level module with it.
-      return good_protected
-        or accessing_module->GetTopLevelParentModule() == definition_module->GetTopLevelParentModule();
-    }
+/// [CHECKED]
+auto spp::analyse::utils::visibility_utils::VisibilityName(
+  const asts::utils::Visibility vis) -> Str {
+  using V = asts::utils::Visibility;
+  switch (vis) {
+    case V::kPublic: return "public";
+    case V::kPackage: return "package";
+    case V::kProtected: return "protected";
+    case V::kPrivate: return "private";
+    default: Ice(std::format("unhandled visibility: {}", static_cast<int>(vis)));
+  }
+}
 
-    /// The module a type member is defined in: a method's or
-    /// attribute's own scope's, which a "sup" block over a type
-    /// with no module of its own (a closure) still has; otherwise
-    /// the type's.
-    template <typename Symbol>
-    auto DefinitionModuleOf(Symbol const &sym, Scope const &type_scope) -> Scope const* {
-      if constexpr (std::same_as<Symbol, VariableSymbol>) {
-        if (sym.ScopeDefinedIn != nullptr) {
-          if (const auto module = sym.ScopeDefinedIn->GetParentModule(); module != nullptr) { return module; }
-        }
-      }
-      return type_scope.GetParentModule();
-    }
+auto spp::analyse::utils::visibility_utils::IsPackageMember(VariableSymbol const &sym) -> bool {
+  return sym.Kind != scopes::VariableKind::GnCompParam and sym.Kind != scopes::VariableKind::GnCompArg;
+}
 
-    /// Type-level visibility, which is one rule whatever the
-    /// member is (field, method, constant, nested type). Each
-    /// level widens the one above it, so the checks are
-    /// cumulative, not exclusive.
-    /// - private: reaches the owning type in its own module.
-    /// - protected: extends private to its subtypes in theirs.
-    /// - package: extends protected to anything sharing a top-
-    /// level module with the owner.
-    /// - public: extends package to all types in all modules.
-    template <typename Symbol>
-    auto IsTypeMemberVisibleImpl(
-      Symbol const &sym, Scope const &type_scope,
-      ScopeManager const &sm, CompilerMetaData const &meta) -> bool {
-      // Early return guard for visibility bypass or public
-      // visibility.
-      using V = asts::utils::Visibility;
-      if (meta.IgnoreAccessModifierViolations) { return true; }
-      if (sym.GetVisibility() == V::kPublic) { return true; }
+auto spp::analyse::utils::visibility_utils::IsPackageMember(TypeSymbol const &sym) -> bool {
+  return not sym.IsGn();
+}
 
-      // A member declared in a "sup" block belongs to the type
-      // the block is over ("Self").
-      auto const *owner_scope = &type_scope;
-      if (AstAs<SupPrototypeFunctionsAst>(type_scope.AstNode) != nullptr
-        or AstAs<SupPrototypeExtensionAst>(type_scope.AstNode) != nullptr) {
-        if (const auto self_sym = type_scope.FindSelfSymbol(true);
-          self_sym != nullptr and self_sym->LinkedScope != nullptr) {
-          owner_scope = self_sym->LinkedScope->NonGnScope;
-        }
-      }
+template <typename Symbol>
+auto spp::analyse::utils::visibility_utils::ForeignPackage(
+  Symbol const &sym, Scope const &definition_scope, ScopeManager const &sm,
+  CompilerMetaData const &meta) -> scopes::NamespaceSymbol const* {
+  if (not IsPackageMember(sym)) { return nullptr; }
+  auto const *const package_scope = definition_scope.GetTopLevelParentModule();
+  auto const *const accessing_scope = sm.CurrentScope->GetTopLevelParentModule();
+  if (package_scope == nullptr or accessing_scope == nullptr) { return nullptr; }
 
-      // Get the module owning the access, and the module owning
-      // the definition, by scope, for module comparisons.
-      const auto accessing_module = sm.CurrentScope->GetParentModule();
-      const auto definition_module = DefinitionModuleOf(sym, type_scope);
+  auto const *const package = package_scope->LinkedNamespaceSymbol.get();
+  auto const *const accessing = accessing_scope->LinkedNamespaceSymbol.get();
+  if (package == nullptr or accessing == nullptr or package->Owner == accessing->Owner) { return nullptr; }
+  if (package->IsFfiPackage) { return package; }
+  if (meta.IsTestHarness) { return nullptr; }
+  const auto declared = package->Owner.has_value() and genex::contains(accessing->Declares, *package->Owner);
+  return declared ? nullptr : package;
+}
 
-      // The type the access is made from, read as the owner is:
-      // what "Self" stands for there. A closure inherits the
-      // "Self" of the method it is written in, so it reads as
-      // that method's type.
-      const auto accessing_self = sm.CurrentScope->FindSelfSymbol();
-      const auto enclosing_scope = accessing_self != nullptr and accessing_self->LinkedScope != nullptr
-        ? accessing_self->LinkedScope->NonGnScope
-        : nullptr;
+auto spp::analyse::utils::visibility_utils::OwnerText(Opt<Str> const &owner) -> Str {
+  return owner.has_value() ? "the dependency '" + *owner + "'" : Str("this project");
+}
 
-      // Private: only from the same type, in the same module.
-      const auto good_private = enclosing_scope == owner_scope and accessing_module == definition_module;
-      if (sym.GetVisibility() == V::kPrivate) { return good_private; }
+/// [CHECKED]
+template <typename Symbol>
+auto spp::analyse::utils::visibility_utils::IsModuleMemberVisibleImpl(
+  Symbol const &sym, Scope const &definition_scope,
+  ScopeManager const &sm, CompilerMetaData const &meta) -> bool {
+  // Early return guard for visibility bypass or public
+  // visibility.
+  using V = asts::utils::Visibility;
+  if (meta.IgnoreAccessModifierViolations) { return true; }
+  if (ForeignPackage(sym, definition_scope, sm, meta) != nullptr) { return false; }
+  if (sym.GetVisibility() == V::kPublic) { return true; }
 
-      // Protected: and from its subtypes, in the module each
-      // was defined in.
-      const auto good_protected = good_private or (enclosing_scope
-        and genex::contains(enclosing_scope->GetSupScopes(), owner_scope)
-        and accessing_module == enclosing_scope->GetParentModule());
-      if (sym.GetVisibility() == V::kProtected) { return good_protected; }
+  // Get the module owning the access, and the module owning
+  // the definition, by scope, for module comparisons.
+  const auto accessing_module = sm.CurrentScope->GetParentModule();
+  const auto definition_module = definition_scope.GetParentModule();
 
-      // Package: and from any module in the same package.
-      return good_protected
-        or accessing_module->GetTopLevelParentModule() == definition_module->GetTopLevelParentModule();
-    }
+  // Private: the defining module only.
+  const auto good_private = accessing_module == definition_module;
+  if (sym.GetVisibility() == V::kPrivate) { return good_private; }
 
-    /// Raises a unified error if a visibility checks fails.
-    /// Sometimes, like for the LSP, we don't want to raise an
-    /// error, so this isn't always called.
-    template <typename Symbol>
-    auto RaiseIfNotVisible(
-      const bool visible, Symbol const &sym, Ast const &access_ast, char const *what) -> void {
-      // Flip the "visible" flag and conditionally raise on it.
-      // All the information passed into the function is unified
-      // in usage from callers.
-      using errors::SppAccessViolationError;
-      RaiseIf<SppAccessViolationError>(
-        not visible,
-        ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.GetVisibility()), what));
+  // Protected: and its descendant modules.
+  const auto good_protected = good_private or genex::contains(
+    accessing_module->GetAncestors(), definition_module);
+  if (sym.GetVisibility() == V::kProtected) { return good_protected; }
+
+  // Package: and anything sharing a top-level module with it.
+  return good_protected
+    or accessing_module->GetTopLevelParentModule() == definition_module->GetTopLevelParentModule();
+}
+
+template <typename Symbol>
+auto spp::analyse::utils::visibility_utils::DefinitionModuleOf(Symbol const &sym, Scope const &type_scope) -> Scope const* {
+  if constexpr (std::same_as<Symbol, VariableSymbol>) {
+    if (sym.ScopeDefinedIn != nullptr) {
+      const auto own_module = sym.ScopeDefinedIn->GetParentModule();
+      if (own_module != nullptr) { return own_module; }
     }
   }
+  return type_scope.GetParentModule();
+}
+
+template <typename Symbol>
+auto spp::analyse::utils::visibility_utils::IsTypeMemberVisibleImpl(
+  Symbol const &sym, Scope const &type_scope,
+  ScopeManager const &sm, CompilerMetaData const &meta) -> bool {
+  // Early return guard for visibility bypass or public
+  // visibility.
+  using V = asts::utils::Visibility;
+  if (meta.IgnoreAccessModifierViolations) { return true; }
+  if (sym.GetVisibility() == V::kPublic) { return true; }
+
+  // A member declared in a "sup" block belongs to the type
+  // the block is over ("Self").
+  auto const *owner_scope = &type_scope;
+  if (AstAs<SupPrototypeFunctionsAst>(type_scope.AstNode) != nullptr
+    or AstAs<SupPrototypeExtensionAst>(type_scope.AstNode) != nullptr) {
+    if (const auto self_sym = type_scope.FindSelfSymbol(true);
+      self_sym != nullptr and self_sym->LinkedScope != nullptr) {
+      owner_scope = self_sym->LinkedScope->NonGnScope;
+    }
+  }
+
+  // Get the module owning the access, and the module owning
+  // the definition, by scope, for module comparisons.
+  const auto accessing_module = sm.CurrentScope->GetParentModule();
+  const auto definition_module = DefinitionModuleOf(sym, type_scope);
+
+  // The type the access is made from, read as the owner is:
+  // what "Self" stands for there. A closure inherits the
+  // "Self" of the method it is written in, so it reads as
+  // that method's type.
+  const auto accessing_self = sm.CurrentScope->FindSelfSymbol();
+  const auto enclosing_scope = accessing_self != nullptr and accessing_self->LinkedScope != nullptr
+    ? accessing_self->LinkedScope->NonGnScope
+    : nullptr;
+
+  // Private: only from the same type, in the same module.
+  const auto good_private = enclosing_scope == owner_scope and accessing_module == definition_module;
+  if (sym.GetVisibility() == V::kPrivate) { return good_private; }
+
+  // Protected: and from its subtypes, in the module each
+  // was defined in.
+  const auto good_protected = good_private or (enclosing_scope
+    and genex::contains(enclosing_scope->GetSupScopes(), owner_scope)
+    and accessing_module == enclosing_scope->GetParentModule());
+  if (sym.GetVisibility() == V::kProtected) { return good_protected; }
+
+  // Package: and from any module in the same package.
+  return good_protected
+    or accessing_module->GetTopLevelParentModule() == definition_module->GetTopLevelParentModule();
+}
+
+template <typename Symbol>
+auto spp::analyse::utils::visibility_utils::RaiseIfNotVisible(
+  const bool visible, Symbol const &sym, Ast const &access_ast, char const *what) -> void {
+  // Flip the "visible" flag and conditionally raise on it.
+  // All the information passed into the function is unified
+  // in usage from callers.
+  using errors::SppAccessViolationError;
+  RaiseIf<SppAccessViolationError>(
+    not visible,
+    ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.GetVisibility()), what));
+}
+
+template <typename Symbol>
+auto spp::analyse::utils::visibility_utils::CheckPackageAccessImpl(
+  Symbol const &sym, Scope const &definition_scope, Ast const &access_ast,
+  ScopeManager const &sm, CompilerMetaData const &meta) -> void {
+  if (meta.IgnoreAccessModifierViolations) { return; }
+  auto const *const package = ForeignPackage(sym, definition_scope, sm, meta);
+  if (package == nullptr) { return; }
+
+  // Held in locals so the views handed to the error outlive them.
+  const auto package_name = package->Name->Val;
+  const auto package_owner = OwnerText(package->Owner);
+  const auto accessing_owner = OwnerText(
+    sm.CurrentScope->GetTopLevelParentModule()->LinkedNamespaceSymbol->Owner);
+  if (package->IsFfiPackage) {
+    Raise<errors::SppFfiPackageNotOwnedError>(ERR_ARGS(
+      access_ast, StrView(package_name), StrView(package_owner), StrView(accessing_owner)));
+  }
+  Raise<errors::SppDependencyNotDeclaredError>(ERR_ARGS(
+    access_ast, StrView(package_name), StrView(package_owner), StrView(accessing_owner)));
 }
 
 auto spp::analyse::utils::visibility_utils::IsTypeMemberVisible(
@@ -271,32 +328,6 @@ auto spp::analyse::utils::visibility_utils::CheckModuleTypeVisibility(
   RaiseIfNotVisible(
     IsModuleMemberVisibleImpl(
       sym, definition_scope, sm, meta), sym, access_ast, "type");
-}
-
-namespace spp::analyse::utils::visibility_utils {
-  namespace {
-    /// Raises the error for "CheckPackageAccess".
-    template <typename Symbol>
-    auto CheckPackageAccessImpl(
-      Symbol const &sym, Scope const &definition_scope, Ast const &access_ast,
-      ScopeManager const &sm, CompilerMetaData const &meta) -> void {
-      if (meta.IgnoreAccessModifierViolations) { return; }
-      auto const *const package = ForeignPackage(sym, definition_scope, sm, meta);
-      if (package == nullptr) { return; }
-
-      // Held in locals so the views handed to the error outlive them.
-      const auto package_name = package->Name->Val;
-      const auto package_owner = OwnerText(package->Owner);
-      const auto accessing_owner = OwnerText(
-        sm.CurrentScope->GetTopLevelParentModule()->LinkedNamespaceSymbol->Owner);
-      if (package->IsFfiPackage) {
-        Raise<errors::SppFfiPackageNotOwnedError>(ERR_ARGS(
-          access_ast, StrView(package_name), StrView(package_owner), StrView(accessing_owner)));
-      }
-      Raise<errors::SppDependencyNotDeclaredError>(ERR_ARGS(
-        access_ast, StrView(package_name), StrView(package_owner), StrView(accessing_owner)));
-    }
-  }
 }
 
 auto spp::analyse::utils::visibility_utils::CheckPackageAccess(

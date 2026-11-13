@@ -23,6 +23,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_debug;
 import spp.codegen.llvm_defer;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
@@ -232,6 +233,10 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   // once for each exit that runs it.
   codegen::EnterDeferScope(*sm->CurrentScope, ctx);
 
+  // The block's own lexical block, so its variables show only
+  // inside it, and one shadowing an outer one in its place.
+  codegen::EnterDebugBlock(*ctx, PosStart());
+
   // A statement's value is either bound or "Void", and a local
   // is either moved on or taken apart, because stage 8 rejects
   // anything else. So a scope leaves nothing behind to destroy,
@@ -241,6 +246,8 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   // stage 7).
   auto ret_val = static_cast<llvm::Value*>(nullptr);
   for (auto const &[i, m] : this->Members | genex::views::ptr | genex::views::enumerate) {
+    // Each member at its own line, for the debug info.
+    codegen::SetDebugLocation(*ctx, m->PosStart());
     if (i + 1 == Members.size()) {
       ret_val = m->Stage11_CodeGen(sm, meta, ctx);
       continue;
@@ -266,6 +273,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   codegen::EmitScopeExit(sm->CurrentScope->Parent, sm, meta, ctx);
 
   // Exit the scope.
+  codegen::LeaveDebugBlock(*ctx);
   sm->MoveOutOfCurrentScope();
 
   if (ret_val and meta->LlvmAssignmentTarget) {

@@ -3,6 +3,7 @@
 .gitignore
 *.spp
 cmake-build-*/
+/build/
 
 # documentation folders/files
 docs/build/

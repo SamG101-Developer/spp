@@ -3,16 +3,16 @@ module;
 
 export module spp.codegen.llvm_artefact;
 import spp.utils.types;
+import llvm;
 
 /// Handle all the LLVM logic related to the created artefact, including
 /// hardening records, fortification checks, link checks, and segment checks.
 /// Some atomic checks are in place too, to prevent undefined symbol usage.
 namespace spp::codegen {
-  /// Record in an "llvm::Module" (passed as an opaque pointer) what the program
-  /// was built with ("record": one fact per line), for "spp audit" to read back
-  /// out of the executable.
+  /// Record in an "llvm::Module" what the program was built with ("record": one
+  /// fact per line), for "spp audit" to read back out of the executable.
   SPP_EXP_FUN auto EmitHardeningRecord(
-    void *llvm_module, char const *record) -> void;
+    llvm::Module &llvm_mod, char const *record) -> void;
 
   /// Get the hardening record placed inside the binary. It is optional, because
   /// we might have a valid binary with no record, and the entire optional part

@@ -18,7 +18,7 @@ TEST(TestTargetSupport, test_safe_stack_where_llvm_has_an_unsafe_stack_pointer) 
 TEST(TestTargetSupport, test_no_safe_stack_where_llvm_has_no_unsafe_stack_pointer) {
   for (const auto triple : {
     "powerpc64le-unknown-linux-gnu", "powerpc64-unknown-linux-gnu", "powerpc-unknown-linux-gnu",
-    "wasm32-unknown-wasip1"}) {
+    "wasm32-unknown-wasip1", "x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc", "x86_64-w64-windows-gnu"}) {
     EXPECT_FALSE(spp::codegen::DoesTargetSupportSafeStack(llvm::Triple(triple))) << triple;
   }
 }
@@ -42,10 +42,10 @@ TEST(TestTargetSupport, test_no_object_after_an_llvm_error) {
     / ("spp_target_support_" + std::to_string(std::random_device()()) + ".o");
   auto context = llvm::LLVMContext();
   auto mod = llvm::Module("m", context);
-  spp::codegen::ApplyTargetToModule(&mod);
+  spp::codegen::ApplyTargetToModule(mod);
   context.emitError("an error the backend reported");
 
-  EXPECT_FALSE(spp::codegen::EmitObjectFile(&mod, spp::utils::files::NativeString(path).c_str(), 2));
+  EXPECT_FALSE(spp::codegen::EmitObjectFile(mod, spp::utils::files::NativeString(path).c_str(), 2));
   EXPECT_FALSE(std::filesystem::exists(path));
 }
 
@@ -54,9 +54,9 @@ TEST(TestTargetSupport, test_object_without_an_llvm_error) {
     / ("spp_target_support_" + std::to_string(std::random_device()()) + ".o");
   auto context = llvm::LLVMContext();
   auto mod = llvm::Module("m", context);
-  spp::codegen::ApplyTargetToModule(&mod);
+  spp::codegen::ApplyTargetToModule(mod);
 
-  EXPECT_TRUE(spp::codegen::EmitObjectFile(&mod, spp::utils::files::NativeString(path).c_str(), 2));
+  EXPECT_TRUE(spp::codegen::EmitObjectFile(mod, spp::utils::files::NativeString(path).c_str(), 2));
   EXPECT_TRUE(std::filesystem::exists(path));
   std::filesystem::remove(path);
 }

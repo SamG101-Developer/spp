@@ -32,6 +32,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
+import spp.codegen.llvm_debug;
 import spp.compiler.cfg;
 import spp.compiler.compiler_link;
 import spp.compiler.module_tree;
@@ -43,6 +44,7 @@ import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
 import spp.utils.env;
 import spp.utils.error_formatter;
+import spp.utils.features;
 import spp.utils.files;
 import spp.utils.ice;
 import spp.utils.stats;
@@ -297,6 +299,9 @@ auto spp::compiler::CompilerBoot::Stage10_PreCodeGen(
     auto ctx = codegen::LlvmCtx::NewCtx(
       utils::files::NativeString(mod->FilePath), *_LlvmContext);
     ctx->Sm = sm;
+    codegen::StartDebugInfo(
+      *ctx, utils::files::NativeString(mod->FilePath), tree.Out().Root,
+      utils::features::DebugInfoLevel(Mode == BuildMode::DEV));
     _LlvmCtxs.emplace_back(std::move(ctx));
   }
 
@@ -331,7 +336,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   const auto &out = tree.Out();
   if (not VerifyOnly) {
     std::filesystem::create_directories(out.LlvmRoot());
-    std::cout << "Writing LLVM IR to: " << out.LlvmRoot() << '\n';
+    std::cout << "Writing LLVM IR to: " << out.LlvmRoot().string() << '\n';
   }
 
   // Every module is verified before any of them stops the run, so one bad
@@ -341,7 +346,9 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
     auto const &[mod, ctx] :
     genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
     // Verified before anything transforms it, so a complaint here is about what
-    // codegen produced rather than about what a pass made of it.
+    // codegen produced rather than about what a pass made of it; its debug info
+    // resolved first, as the verifier reads it.
+    codegen::FinishDebugInfo(*ctx);
     const auto verify = [&](Str const &when) {
       auto details = Str();
       auto stream = llvm::raw_string_ostream(details);

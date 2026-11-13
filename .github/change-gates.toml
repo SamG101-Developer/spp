@@ -108,6 +108,16 @@ paths = [
 ]
 code = false
 
+[gate.clang_tidy]
+paths = [
+  ".github/workflows/pr.yaml",
+  ".github/workflows/_analysis.yaml",
+  ".github/actions/restore-mtimes/*",
+  ".github/scripts/scan/clang-tidy.sh",
+  ".clang-tidy",
+]
+include = ["toolchain"]
+
 [gate.sonar]
 paths = [
   ".github/workflows/pr.yaml",

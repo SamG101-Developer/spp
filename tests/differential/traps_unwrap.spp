@@ -1,0 +1,26 @@
+# "unwrap" of a "None" found partway through a search: the hits so far print, then the program aborts, at dev and at
+# rel.
+
+fun show(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun find_multiple(of_n: U64, below: U64) -> Opt[U64] {
+  let mut i = 1_u64
+  loop i < below {
+    case i % of_n == 0_u64 { ret Some(val=i) }
+    i += 1_u64
+  }
+  ret None
+}
+
+fun main() -> Void {
+  let mut n = 3_u64
+  loop n < 20_u64 {
+    show("first multiple", Str::from(find_multiple(n, 15_u64).unwrap()))
+    n += 4_u64
+  }
+}

@@ -260,7 +260,6 @@ jobs:
       off: sls
       shard-count: 2
 
-  # Todo: drop "off" once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
   release-windows-x64:
     name: Release · Windows x64
     needs: [ release-gate ]
@@ -271,8 +270,7 @@ jobs:
       os: windows-2025
       compiler: msvc
       check-floor: true
-      off: pac_ret memory.stack.split
-      shard-count: 2
+      shard-count: 4
 
   # Read-only: verifies each lane's tested spp against that lane's
   # digests and names it for the release. A lane that failed,

@@ -2,52 +2,58 @@ module spp.utils.strings;
 import genex;
 
 namespace spp {
-  namespace {
-    auto DecodeEscapeChar(
-      const char c) -> char {
-      switch (c) {
-        case 'n': return '\n';
-        case 't': return '\t';
-        case 'r': return '\r';
-        case '0': return '\0';
-        case '\\': return '\\';
-        case '\'': return '\'';
-        case '"': return '"';
-        default: return c;
-      }
-    }
+  /// Decode an escaped character into its legitimate character so that "\n"
+  /// actually adds a newline, not a slash and "n".
+  static auto DecodeEscapeChar(char c) -> char;
 
-    /// The value of a "\x" escape's two hex digits, or -1 when
-    /// "at" is not the position of two hex digits.
-    auto DecodeHexEscape(
-      const StrView content, const std::size_t at) -> std::int32_t {
-      // Function to extract the numeric value of a hex digit.
-      // Called to get the "hi" and "lo" part of a 2-digit hex
-      // escape sequence.
-      const auto digit = [](const char c) -> std::int32_t {
-        if (c >= '0' and c <= '9') { return c - '0'; }
-        if (c >= 'a' and c <= 'f') { return c - 'a' + 10; }
-        if (c >= 'A' and c <= 'F') { return c - 'A' + 10; }
-        return -1;
-      };
+  /// The value of a "\x" escape's two hex digits, or -1 when "at" is not the
+  /// position of two hex digits.
+  static auto DecodeHexEscape(StrView content, std::size_t at) -> std::int32_t;
 
-      // Defensive guard against an empty literal (eg "\x").
-      // Extract the two bytes, validate them, and return
-      // their combined numeric representation for the char.
-      if (at + 1 >= content.size()) { return -1; }
-      const auto hi = digit(content[at]);
-      const auto lo = digit(content[at + 1]);
-      return hi < 0 or lo < 0 ? -1 : hi * 16 + lo;
-    }
+  /// Strip the '"' character from either end of the string, used when taking
+  /// the string off of a string literal AST.
+  static auto StripLiteralQuotes(StrView token_data) -> StrView;
+}
 
-    auto StripLiteralQuotes(
-      const StrView token_data) -> StrView {
-      // Assume the presence of " characters has been checked,
-      // so strip the first and last character off of the view
-      // and return a substring view.
-      return token_data.size() >= 2 ? token_data.substr(1, token_data.size() - 2) : StrView();
-    }
+auto spp::DecodeEscapeChar(const char c) -> char {
+  switch (c) {
+    case 'n': return '\n';
+    case 't': return '\t';
+    case 'r': return '\r';
+    case '0': return '\0';
+    case '\\': return '\\';
+    case '\'': return '\'';
+    case '"': return '"';
+    default: return c;
   }
+}
+
+auto spp::DecodeHexEscape(
+  const StrView content, const std::size_t at) -> std::int32_t {
+  // Function to extract the numeric value of a hex digit.
+  // Called to get the "hi" and "lo" part of a 2-digit hex
+  // escape sequence.
+  const auto digit = [](const char c) -> std::int32_t {
+    if (c >= '0' and c <= '9') { return c - '0'; }
+    if (c >= 'a' and c <= 'f') { return c - 'a' + 10; }
+    if (c >= 'A' and c <= 'F') { return c - 'A' + 10; }
+    return -1;
+  };
+
+  // Defensive guard against an empty literal (eg "\x").
+  // Extract the two bytes, validate them, and return
+  // their combined numeric representation for the char.
+  if (at + 1 >= content.size()) { return -1; }
+  const auto hi = digit(content[at]);
+  const auto lo = digit(content[at + 1]);
+  return hi < 0 or lo < 0 ? -1 : hi * 16 + lo;
+}
+
+auto spp::StripLiteralQuotes(const StrView token_data) -> StrView {
+  // Assume the presence of " characters has been checked,
+  // so strip the first and last character off of the view
+  // and return a substring view.
+  return token_data.size() >= 2 ? token_data.substr(1, token_data.size() - 2) : StrView();
 }
 
 auto spp::utils::strings::IsAlNum(const char c) -> bool {

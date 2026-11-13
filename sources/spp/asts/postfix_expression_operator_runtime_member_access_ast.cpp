@@ -22,6 +22,7 @@ import spp.analyse.utils.visibility_utils;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.ast;
 import spp.asts.convention_ast;
+import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.generic_argument_ast;
@@ -58,6 +59,25 @@ use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
+
+namespace spp::asts {
+  /// The left-hand side's symbol, when it names a template's open pack ("PackInfo::Open"): a function pack ("..xs:
+  /// S32") or a comp pack ("cmp ..ns: Bool"). There "xs.0" reads an element, of the type the pack declares; in an
+  /// instantiation it is the tuple, read like any other.
+  static auto UnboundPack(
+    spp::asts::ExpressionAst const &lhs,
+    spp::analyse::scopes::ScopeManager const &sm)
+    -> spp::analyse::scopes::VariableSymbol const*;
+}
+
+auto spp::asts::UnboundPack(
+  spp::asts::ExpressionAst const &lhs,
+  spp::analyse::scopes::ScopeManager const &sm)
+  -> spp::analyse::scopes::VariableSymbol const* {
+  auto const *const name = lhs.To<spp::asts::IdentifierAst>();
+  auto const *const sym = name != nullptr ? sm.CurrentScope->FindVarSymbol(name) : nullptr;
+  return sym != nullptr and sym->Pack.has_value() and sym->Pack->Open ? sym : nullptr;
+}
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntimeMemberAccessAst(
@@ -106,20 +126,6 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ToString() cons
   SPP_STRING_APPEND(TokDot);
   SPP_STRING_APPEND(Name);
   SPP_STRING_END;
-}
-
-namespace {
-  /// The left-hand side's symbol, when it names a template's open pack ("PackInfo::Open"): a function pack ("..xs:
-  /// S32") or a comp pack ("cmp ..ns: Bool"). There "xs.0" reads an element, of the type the pack declares; in an
-  /// instantiation it is the tuple, read like any other.
-  auto UnboundPack(
-    spp::asts::ExpressionAst const &lhs,
-    spp::analyse::scopes::ScopeManager const &sm)
-    -> spp::analyse::scopes::VariableSymbol const* {
-    auto const *const name = lhs.To<spp::asts::IdentifierAst>();
-    auto const *const sym = name != nullptr ? sm.CurrentScope->FindVarSymbol(name) : nullptr;
-    return sym != nullptr and sym->Pack.has_value() and sym->Pack->Open ? sym : nullptr;
-  }
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(

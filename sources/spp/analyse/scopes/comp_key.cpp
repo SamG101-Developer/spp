@@ -12,20 +12,39 @@ import numex.big_dec;
 import numex.big_int;
 
 namespace spp::analyse::scopes {
-  namespace {
-    /// Whether a constant named through the "type" (a "TypeId"'s
-    /// word) cannot be read yet: its type did not resolve, or
-    /// is closed and its constant cannot be reached yet. An open
-    /// type's constant is read once a substitution closes it.
-    auto MemberUnresolved(
-      const std::uint64_t type, const StrView name) -> bool {
-      // Check if the type has the unresolved flag set, or its
-      // constant can't be reached.
-      const auto owner = TypeIdOfWord(type);
-      return owner->HasUnresolved
-        or (IsClosedTypeId(owner) and utils::comp_generics::FindCompMemberId(owner, name) == nullptr);
-    }
-  }
+  /// Whether a constant named through the "type" (a "TypeId"'s
+  /// word) cannot be read yet: its type did not resolve, or
+  /// is closed and its constant cannot be reached yet. An open
+  /// type's constant is read once a substitution closes it.
+  static auto MemberUnresolved(
+    const std::uint64_t type, const StrView name) -> bool;
+
+  /// "DoesTypeIdNameAnyGnParams" for a comp value: a comp
+  /// parameter of its own ("ParamsNamedBy"), or a parameter of a
+  /// type it names a constant through ("Box[T]::n" names "T"),
+  /// as a type's "ParamsNamedBy" counts both.
+  static auto DoesCompIdNameAnyGnParams(
+    const CompId id) -> bool;
+}
+
+auto spp::analyse::scopes::MemberUnresolved(
+  const std::uint64_t type, const StrView name) -> bool {
+  // Check if the type has the unresolved flag set, or its
+  // constant can't be reached.
+  const auto owner = TypeIdOfWord(type);
+  return owner->HasUnresolved
+    or (IsClosedTypeId(owner) and utils::comp_generics::FindCompMemberId(owner, name) == nullptr);
+}
+
+/// [CHECKED]
+auto spp::analyse::scopes::DoesCompIdNameAnyGnParams(
+  const CompId id) -> bool {
+  // Its own parameters, then those of the types it names
+  // constants through, as a type's "ParamsNamedBy"
+  // collects both.
+  return not ParamsNamedBy(id).empty() or genex::any_of(MembersNamedBy(id), [](auto const &member) {
+    return DoesTypeIdNameAnyGnParams(TypeIdOfWord(member.first));
+  });
 }
 
 /// [CHECKED]
@@ -111,25 +130,6 @@ auto spp::analyse::scopes::U64Of(
   // in the llvm manual lowering, etc.
   const auto value = id != nullptr ? id->AsInt() : nullptr;
   return value != nullptr ? spp::utils::numbers::ToU64(*value) : Nullopt;
-}
-
-namespace spp::analyse::scopes {
-  namespace {
-    /// [CHECKED]
-    /// "DoesTypeIdNameAnyGnParams" for a comp value: a comp
-    /// parameter of its own ("ParamsNamedBy"), or a parameter of a
-    /// type it names a constant through ("Box[T]::n" names "T"),
-    /// as a type's "ParamsNamedBy" counts both.
-    auto DoesCompIdNameAnyGnParams(
-      const CompId id) -> bool {
-      // Its own parameters, then those of the types it names
-      // constants through, as a type's "ParamsNamedBy"
-      // collects both.
-      return not ParamsNamedBy(id).empty() or genex::any_of(MembersNamedBy(id), [](auto const &member) {
-        return DoesTypeIdNameAnyGnParams(TypeIdOfWord(member.first));
-      });
-    }
-  }
 }
 
 /// [CHECKED]

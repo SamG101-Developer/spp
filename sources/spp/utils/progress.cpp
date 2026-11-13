@@ -6,24 +6,26 @@ import spp.utils.types;
 import colex;
 import sys;
 
-SPP_MOD_BEGIN
-namespace {
+namespace spp::utils {
   // Frame pacing and easing. The bar chases the real step
   // count exponentially, so a burst of steps reads as one
   // glide rather than a jump, and a slow stage still moves
   // between steps instead of sitting still.
-  constexpr auto kFrameGap = std::chrono::milliseconds(12);
-  constexpr auto kStartDelay = std::chrono::milliseconds(90);
-  constexpr auto kEaseTau = 0.11;
-  constexpr auto kBarWidth = 50;
-  constexpr auto kLineWidth = 90;
+  static constexpr auto kFrameGap = std::chrono::milliseconds(12);
+
+  static constexpr auto kStartDelay = std::chrono::milliseconds(90);
+  static constexpr auto kEaseTau = 0.11;
+  static constexpr auto kBarWidth = 50;
+  static constexpr auto kLineWidth = 90;
 
   // A stage that reports no per-module steps (monomorphisation)
   // gets a sliding segment instead of a bar frozen at 0%.
-  constexpr auto kMarqueeWidth = 12;
-  constexpr auto kMarqueePeriod = 1.7;
+  static constexpr auto kMarqueeWidth = 12;
+
+  static constexpr auto kMarqueePeriod = 1.7;
 }
 
+SPP_MOD_BEGIN
 spp::utils::ProgressBar::ProgressBar(
   Str label,
   const std::uint32_t total_steps,

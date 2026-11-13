@@ -25,5 +25,10 @@ namespace spp::codegen {
     /// as that type in another shape (a variant member built as a packed
     /// struct); null to read the global's own.
     llvm::Type *ValueType = nullptr;
+
+    /// The variable a debugger is told of, for a binding that can be moved (its
+    /// type is not "Copy"): described by "#dbg_value"s of "Alloca", which a
+    /// move ends and an assignment resumes. Null for any other binding.
+    llvm::DILocalVariable *DiVariable = nullptr;
   };
 }

@@ -4,7 +4,10 @@ module;
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/Analysis/ValueTracking.h>
+#include <llvm/DebugInfo/DIContext.h>
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/DIBuilder.h>
+#include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/DiagnosticInfo.h>
 #include <llvm/IR/DiagnosticPrinter.h>
 #include <llvm/IR/IRBuilder.h>
@@ -21,10 +24,12 @@ module;
 #include <llvm/Object/ELFObjectFile.h>
 #include <llvm/Object/ObjectFile.h>
 #include <llvm/Support/FileSystem.h>
+#include <llvm/Support/SHA256.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/TargetParser/Host.h>
+#include <llvm/DebugInfo/DWARF/DWARFContext.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include <llvm/Transforms/Utils/ModuleUtils.h>
 
@@ -71,6 +76,7 @@ export namespace llvm {
   using ::llvm::APInt;
   using ::llvm::APFloat;
   using ::llvm::APFloatBase;
+  using ::llvm::Argument;
   using ::llvm::maxnum;
   using ::llvm::minnum;
   using ::llvm::ArrayRef;
@@ -96,9 +102,31 @@ export namespace llvm {
   using ::llvm::ConstantRange;
   using ::llvm::ConstantTokenNone;
   using ::llvm::ConstantStruct;
+  using ::llvm::DEBUG_METADATA_VERSION;
+  using ::llvm::DataLayout;
+  using ::llvm::DebugLoc;
+  using ::llvm::DIBuilder;
+  using ::llvm::DIInliningInfo;
+  using ::llvm::DILineInfo;
+  using ::llvm::DILineInfoSpecifier;
+  using ::llvm::DICompileUnit;
+  using ::llvm::DICompositeType;
+  using ::llvm::DIExpression;
+  using ::llvm::DIFile;
+  using ::llvm::DILexicalBlock;
+  using ::llvm::DILocalScope;
+  using ::llvm::DILocalVariable;
+  using ::llvm::DILocation;
+  using ::llvm::DINode;
+  using ::llvm::DIScope;
+  using ::llvm::DISubprogram;
+  using ::llvm::DISubroutineType;
+  using ::llvm::DIType;
   using ::llvm::DiagnosticHandler;
   using ::llvm::DiagnosticInfo;
   using ::llvm::DiagnosticPrinterRawOStream;
+  using ::llvm::DWARFContext;
+  using ::llvm::LoadedObjectInfo;
   using ::llvm::Function;
   using ::llvm::FunctionType;
   using ::llvm::GlobalValue;
@@ -120,6 +148,7 @@ export namespace llvm {
   using ::llvm::PointerType;
   using ::llvm::PHINode;
   using ::llvm::RuntimeLibraryInfoWrapper;
+  using ::llvm::SHA256;
   using ::llvm::SmallVector;
   using ::llvm::StringLiteral;
   using ::llvm::StringRef;
@@ -157,6 +186,7 @@ export namespace llvm {
   }
 
   namespace sys::fs {
+    using ::llvm::sys::fs::getMainExecutable;
     using ::llvm::sys::fs::OpenFlags;
     using ::llvm::sys::fs::OF_None;
   }
@@ -177,6 +207,7 @@ export namespace llvm {
     using ::llvm::object::ELFFile;
     using ::llvm::object::ELFObjectFileBase;
     using ::llvm::object::ObjectFile;
+    using ::llvm::object::SectionRef;
     using ::llvm::object::SymbolRef;
     using ::llvm::object::make_error_code;
   }
@@ -197,6 +228,16 @@ export namespace llvm {
     using ::llvm::ELF::SHN_UNDEF;
     using ::llvm::ELF::SHT_DYNSYM;
     using ::llvm::ELF::SHT_NOTE;
+  }
+
+  namespace dwarf {
+    using ::llvm::dwarf::DW_ATE_boolean;
+    using ::llvm::dwarf::DW_ATE_float;
+    using ::llvm::dwarf::DW_ATE_signed;
+    using ::llvm::dwarf::DW_ATE_unsigned;
+    using ::llvm::dwarf::DW_LANG_Rust;
+    using ::llvm::dwarf::DW_OP_deref;
+    using ::llvm::dwarf::DW_TAG_inlined_subroutine;
   }
 
   namespace PICLevel {

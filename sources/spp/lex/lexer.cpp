@@ -25,7 +25,6 @@ auto spp::lex::Lexer::Lex() -> Vec<RawToken> {
   auto in_char = false;
   auto in_string = false;
   auto in_single_line_comment = false;
-  auto in_multi_line_comment = false;
   tokens.reserve(_Code.length() / 2);
 
   // Save keywords into a cached map to increase performance.
@@ -69,27 +68,6 @@ auto spp::lex::Lexer::Lex() -> Vec<RawToken> {
     // terminating quotation mark).
     if (in_string and c != '"') {
       tokens.emplace_back(RawTokenType::LX_CHARACTER, Str(1, c));
-      ++i;
-      continue;
-    }
-
-    // Enter a multi-line comment on '##' (not currently in a multi-line
-    // comment).
-    if (not in_multi_line_comment and c == '#' and _Code[i + 1] == '#') {
-      in_multi_line_comment = true;
-      i += 2;
-      continue;
-    }
-
-    // Exit a multi-line comment on '##' (currently in a multi-line comment).
-    if (in_multi_line_comment and c == '#' and _Code[i + 1] == '#') {
-      in_multi_line_comment = false;
-      i += 2;
-      continue;
-    }
-
-    // Skip any characters in a multi-line comment.
-    if (in_multi_line_comment) {
       ++i;
       continue;
     }
@@ -219,13 +197,13 @@ auto spp::lex::Lexer::Lex() -> Vec<RawToken> {
       }
       case '\'': {
         tokens.emplace_back(RawTokenType::TK_APOSTROPHE, "'");
-        in_char = !in_char;
+        in_char = not in_char;
         ++i;
         continue;
       }
       case '"': {
         tokens.emplace_back(RawTokenType::TK_QUOTATION_MARK, "\"");
-        in_string = !in_string;
+        in_string = not in_string;
         ++i;
         continue;
       }

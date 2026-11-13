@@ -13,7 +13,7 @@ The old `ffi/sppc/lib/sppc.so` layout is gone (verified 2026-09-11). So a change
 `nm -D --defined-only` counts before and after a rebuild.
 
 sppc also owns the crash handler (`headers/sppc/backtrace.h`, installed by `sppc_init`), which needs the compiler's
-`ApplyUnwindTables` to see past the first s++ frame; future work is in `.triages/docs_open/debug-info-and-backtraces.md`. Since
+`ApplyUnwindTables` to see past the first s++ frame; future work is in `../../docs_wip/debug-info-and-backtraces.md`. Since
 2026-09-22 it buffers the report and writes it once (per-fragment writes interleaved with other threads' println), and
 no longer uses `SA_RESETHAND`: a second thread faulting mid-report now parks in the handler instead of killing the
 process before the report is flushed.

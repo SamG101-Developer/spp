@@ -54,25 +54,47 @@ use_alias(spp::asts, TypePostfixExpressionAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::type_resolution {
-  namespace {
-    /// "ReadType", null where the type does not resolve.
-    auto ReadTypeOrNull(
-      TypeAst const &written, ExprSubst const &sub) -> Shared<TypeAst> {
-      const auto id = SubstituteTypeId(sub.Written->TypeIdOf(written), sub.Bindings);
-      const auto out = id != nullptr ? sub.Reading->TypeAstOf(id) : nullptr;
-      return out != nullptr ? out->WithSourceSpanOf(written) : nullptr;
-    }
+  /// "ReadType", null where the type does not resolve.
+  static auto ReadTypeOrNull(
+    TypeAst const &written, ExprSubst const &sub) -> Shared<TypeAst>;
 
-    /// A type parameter's default, written where "param" is, read in
-    /// "read_in" with "bindings" applied. Null when there is no
-    /// default, or it does not resolve.
-    auto ReadTypeDefault(
-      GenericParameterAst const &param, GenericSubst bindings,
-      Scope const &written_in, Scope const &read_in) -> Shared<TypeAst> {
-      if (param.TypeDefault == nullptr) { Ice(param, "optional type parameter has no default"); }
-      return ReadTypeOrNull(*param.TypeDefault, ExprSubst::Across(written_in, std::move(bindings), read_in));
-    }
-  }
+  /// A type parameter's default, written where "param" is, read in
+  /// "read_in" with "bindings" applied. Null when there is no
+  /// default, or it does not resolve.
+  static auto ReadTypeDefault(
+    GenericParameterAst const &param, GenericSubst bindings,
+    Scope const &written_in, Scope const &read_in) -> Shared<TypeAst>;
+
+  /// A comp value read by its identity alone; null when it has an opaque part, or none.
+  static auto ReadCompId(
+    ExpressionAst const &written, ExprSubst const &sub)
+    -> spp::Shared<ExpressionAst>;
+}
+
+auto spp::analyse::utils::type_resolution::ReadTypeOrNull(
+  TypeAst const &written, ExprSubst const &sub) -> Shared<TypeAst> {
+  const auto id = SubstituteTypeId(sub.Written->TypeIdOf(written), sub.Bindings);
+  const auto out = id != nullptr ? sub.Reading->TypeAstOf(id) : nullptr;
+  return out != nullptr ? out->WithSourceSpanOf(written) : nullptr;
+}
+
+auto spp::analyse::utils::type_resolution::ReadTypeDefault(
+  GenericParameterAst const &param, GenericSubst bindings,
+  Scope const &written_in, Scope const &read_in) -> Shared<TypeAst> {
+  if (param.TypeDefault == nullptr) { Ice(param, "optional type parameter has no default"); }
+  return ReadTypeOrNull(*param.TypeDefault, ExprSubst::Across(written_in, std::move(bindings), read_in));
+}
+
+auto spp::analyse::utils::type_resolution::ReadCompId(
+  ExpressionAst const &written, ExprSubst const &sub)
+  -> spp::Shared<ExpressionAst> {
+  namespace scopes = spp::analyse::scopes;
+  const auto id = sub.Written->CompIdOf(written);
+  auto const *const node = id;
+  const auto opaque = [](CompKey const &part) { return part.Kind == CompKey::Part::Opaque; };
+  if (node == nullptr or node->Any(opaque)) { return nullptr; }
+  const auto rewritten = SubstituteCompId(id, sub.Bindings);
+  return rewritten != nullptr ? sub.Reading->CompAstOf(rewritten) : nullptr;
 }
 
 /// [CHECKED]
@@ -145,21 +167,6 @@ auto spp::analyse::utils::type_resolution::ReadCompDefault(
   Scope const &written_in, Scope const &read_in) -> Shared<ExpressionAst> {
   if (param.WrittenCompDefault == nullptr) { Ice(param, "optional comp parameter has no written default"); }
   return ReadComp(*param.WrittenCompDefault, ExprSubst::Across(written_in, std::move(bindings), read_in));
-}
-
-namespace {
-  /// A comp value read by its identity alone; null when it has an opaque part, or none.
-  auto ReadCompId(
-    ExpressionAst const &written, ExprSubst const &sub)
-    -> spp::Shared<ExpressionAst> {
-    namespace scopes = spp::analyse::scopes;
-    const auto id = sub.Written->CompIdOf(written);
-    auto const *const node = id;
-    const auto opaque = [](CompKey const &part) { return part.Kind == CompKey::Part::Opaque; };
-    if (node == nullptr or node->Any(opaque)) { return nullptr; }
-    const auto rewritten = SubstituteCompId(id, sub.Bindings);
-    return rewritten != nullptr ? sub.Reading->CompAstOf(rewritten) : nullptr;
-  }
 }
 
 auto spp::analyse::utils::type_resolution::ReadComp(

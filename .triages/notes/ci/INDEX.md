@@ -7,6 +7,7 @@
 - [harden-runner not composable](harden-runner-not-composable.md) — its pre: step must stay in the job
 - [harden-runner refused an allowed endpoint](harden-runner-refused-allowed-endpoint.md) — instant "Couldn't connect" to github.com in Detect Code Changes; all jobs skipped, run shows cancelled; re-run
 - [Caller grants every nested job](reusable-workflow-caller-grants-every-job.md) — a reusable-workflow call needs every called job's permissions, skipped or not; post-merge invalid otherwise
+- [Package installs retry](package-installs-retry.md) — apt/llvm.sh/brew installs go through lib/retry.sh; whole-run-only re-runs make a blip costly
 - [macOS LLVM has no RTTI](macos-llvm-has-no-rtti.md) — release tarball is -fno-rtti (ValueMap needs CallbackVH typeinfo); macOS now on brew llvm, floor 26.0; its zstd/z3 dylibs rewritten out in Dependencies.cmake
 - [macOS libc++ is static](macos-libcxxabi-link.md) — link libc++.a + libc++abi.a, not dylibs; -load_hidden vs system weak-symbol coalescing (2026-10-25)
 - [MSVC strong_ordering + import std](msvc-strong-ordering-import-std.md) — LNK2019 ::less etc.; response file
@@ -18,14 +19,18 @@
 - [MSVC exported inline vars](msvc-exported-inline-vars.md) — mutable export inline vars undefined at link, even constant-initialised (stats::Counts); extern + .cpp
 - [No "/" substring path checks](no-slash-substring-path-checks.md) — Windows paths use `\`; broke prelude-on-std (E14) and test path checks; compare Path components
 - [Job graph layout](job-graph-layout.md) — graph flattens called workflows, columns by needs depth; lanes call _build+_test, one row each; all lanes run the same defaults; ci-success needs lanes
+- [Codegen cell debuggers](codegen-cell-debuggers.md) — test job installs lldb-23, DWARF tools, pinned gdb; SPP_CI_REQUIRE_TOOLS fails a missing one
 - [Valgrind runs the whole STL](valgrind-runs-whole-stl.md) — valgrind-conformance.sh: every !test under valgrind, ~6 min locally; read the re-run section; first leaks found
 - [Runner concurrency and cell times](runner-concurrency-and-cell-times.md) — 20 jobs until ~2026-11-13 then 40; a PR asks ~78; gtest shard minutes per lane; cheap cuts if it queues
+- [Release labels in two places](release-labels-in-two-places.md) — SPP_RELEASE_LABEL (CMake, what self-update fetches) and post_merge.yaml's collect steps must agree
+- [Third-party notices](third-party-notices.md) — THIRD-PARTY-NOTICES.txt ships in each release zip; update when spp links a new dependency or a platform starts shipping one
 - [Released changelogs are frozen](released-changelogs-are-frozen.md) — changelog/<v>.md with v ≤ base VERSION cannot change; add to the head VERSION's entry; check-version.sh enforces
 - [CodeQL is the -g build](codeql-is-the-debug-build.md) — only Debug/-g build in CI; Release matrix misses debug-info ICEs; repro with local Debug GCC
 - [qemu getsockopt timeouts empty](qemu-getsockopt-timeout-empty.md) — inverted NULL check: SO_RCV/SNDTIMEO read back length 0; 4 std net tests fail under qemu
 - [Scorecard reads pruned check runs](scorecard-reads-pruned-check-runs.md) — CI-Tests 0/6 comes from nightly prune-runs (3 days) deleting check runs, not from missing CI
 - [Python CodeQL alerts frozen](python-codeql-alerts-frozen.md) — old py/* alerts date from the removed default setup; codeql-python ignores tests, so dismiss gtest-parallel ones
 - [Benchmark records branch](benchmark-records-branch.md) — orphan `benchmarks` branch, records/<sha>/<kind>.json; only Publish Benchmarks writes; Rust pinned by component tarball
+- [sys module has no std](sys-module-has-no-std.md) — no braced-list loops or std types in sys.ixx; builds on Linux, fails every Windows lane
 - [windows.h before SDK headers](windows-h-before-sdk-headers.md) — psapi.h etc. need windows.h first; sorted includes break MSVC sys.ixx with WINAPI/BOOL errors
 - [LLVM Windows pins](llvm-win-mac-pins-refreshed.md) — fixed tags refresh-pins.sh moves to the newest final <llvm-lib major>.x.y; Linux floats on apt, macOS on brew llvm
 - [MSVC: interface names not inherited](msvc-interface-names-not-inherited.md) — .cpp misses its interface use() decls; templates lose them when instantiated elsewhere; use_alias / qualify
@@ -33,3 +38,4 @@
 - [clang-cl: std::apply mangling crash](clang-cl-std-apply-mangling-crash.md) — segfault mangling std::apply in comp_key.ixx and diagnostic.cpp; unfixed; reproducer + BMIs in the buildlog artifact
 - [clang-cl: -Wall is -Weverything](clang-cl-wall-is-weverything.md) — ~46k C++98-compat warnings; Warnings.cmake gives clang-cl /W4
 - [Defender already off on x64](windows-defender-already-off-x64.md) — windows-2025 x64 runs with real-time scan off (ARM on); exclusions can't speed the x64 shards
+- [clang-tidy CI job](clang-tidy-ci-job.md) — advisory in _analysis.yaml on the Linux Clang tree; PRs --since base, nightly full; shared scan script

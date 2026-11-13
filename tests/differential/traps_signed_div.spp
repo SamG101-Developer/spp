@@ -1,0 +1,23 @@
+# The signed division that overflows: the smallest S32 by a divisor counting up to -1. The quotients print, then the
+# signed division check fails, at dev and at rel, where a bare "sdiv" would be undefined.
+
+fun show(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun divide(a: S32, b: S32) -> S32 {
+  ret a / b
+}
+
+fun main() -> Void {
+  let mut d = -4_s32
+  let mut i = 0_u32
+  loop i < 10_u32 {
+    show("quotient", Str::from(divide(-2147483648_s32, d)))
+    d += 1_s32
+    i += 1_u32
+  }
+}

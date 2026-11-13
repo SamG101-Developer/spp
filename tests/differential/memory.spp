@@ -1,0 +1,107 @@
+# Borrows and aliasing: writes through a "&mut" while a copy of the old value is live, two borrows into one value's
+# attributes, a value swapped, replaced and written back in a loop, a vector element written through and read back,
+# and a borrow's target changed between reads. Wrong alias information at rel reads a stale value where dev does not.
+
+cls Cell {
+  !public a: U64
+  !public b: U64
+}
+
+sup Cell ext std::copy::Copy { }
+
+fun show(what: &StrView, got: U64) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  let text = Str::from(got)
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun bump(c: &mut Cell, by: U64) -> Void {
+  c.a += by
+  c.b = c.a * 2_u64
+}
+
+fun copy_then_write() -> U64 {
+  let mut c = Cell(a=1_u64, b=2_u64)
+  let old = c.a
+  bump(&mut c, 10_u64)
+  let new = c.a
+  bump(&mut c, old)
+  ret old * 1000000_u64 + new * 1000_u64 + c.b
+}
+
+fun write_a(a: &mut U64, x: U64) -> Void {
+  a@ = x
+}
+
+fun read_through(a: &U64, b: &U64) -> U64 {
+  ret a@ * 100_u64 + b@
+}
+
+fun two_attributes() -> U64 {
+  let mut c = Cell(a=3_u64, b=4_u64)
+  write_a(&mut c.a, 7_u64)
+  write_a(&mut c.b, 9_u64)
+  ret read_through(&c.a, &c.b)
+}
+
+fun swapped() -> U64 {
+  let mut x = Cell(a=1_u64, b=2_u64)
+  let mut y = Cell(a=30_u64, b=40_u64)
+  let mut i = 0_u64
+  loop i < 5_u64 {
+    std::mem::ops::swap(&mut x, &mut y)
+    x.a += i
+    i += 1_u64
+  }
+  let r = x.a * 1000000_u64 + x.b * 10000_u64 + y.a * 100_u64 + y.b
+  ret r
+}
+
+fun replaced() -> U64 {
+  let mut x = Cell(a=5_u64, b=6_u64)
+  let mut sum = 0_u64
+  let mut i = 0_u64
+  loop i < 4_u64 {
+    let old = std::mem::ops::replace(&mut x, Cell(a=x.b + i, b=x.a * 2_u64))
+    sum = sum * 100_u64 + old.a + old.b
+    i += 1_u64
+  }
+  ret sum
+}
+
+fun vector_elements() -> U64 {
+  let mut v = Vec[U64]::new_filled(8_uz, 1_u64)
+  let mut i = 1_uz
+  loop i < 8_uz {
+    v[mut i]@ = v[i - 1_uz]@ * 3_u64 + U64::from(i)
+    i += 1_uz
+  }
+  let first = v[0_uz]@
+  v[mut 0_uz]@ = v[7_uz]@
+  let r = first * 100000_u64 + v[0_uz]@ + v[3_uz]@
+  std::mem::ops::drop(v)
+  ret r
+}
+
+fun changed_target() -> U64 {
+  let mut x = 10_u64
+  let mut total = 0_u64
+  let mut i = 0_u64
+  loop i < 3_u64 {
+    total = total * 100_u64 + read_through(&x, &total) / 100_u64
+    write_a(&mut x, x + 7_u64)
+    i += 1_u64
+  }
+  ret total * 100_u64 + x
+}
+
+fun main() -> Void {
+  show("copy then write", copy_then_write())
+  show("two attributes", two_attributes())
+  show("swapped", swapped())
+  show("replaced", replaced())
+  show("vector elements", vector_elements())
+  show("changed target", changed_target())
+}

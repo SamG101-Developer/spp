@@ -30,6 +30,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_debug;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_target;
@@ -48,33 +49,41 @@ use_alias(spp::asts::meta, IsBindingsScope);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
-namespace {
+namespace spp::asts {
   /// The runtime's allocator. A coroutine frame is allocated
   /// and released by the coroutine itself rather then through
   /// the S++ allocator types.
   /// Todo: Move to stack only coroutine frame allocation?
-  auto CoroFrameAllocFn(
+  static auto CoroFrameAllocFn(
     spp::codegen::LlvmCtx const *ctx)
-    -> llvm::Function* {
-    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-    const auto size_ty = spp::codegen::TargetSizeType(*ctx->Context);
-    const auto fn_ty = llvm::FunctionType::get(ptr_ty, {size_ty}, false);
-    return llvm::cast<llvm::Function>(
-      ctx->Module->getOrInsertFunction("sppc_malloc", fn_ty).getCallee());
-  }
+    -> llvm::Function*;
 
   /// The runtime's release. Provides the other half of the above
   /// allocation function.
   /// Todo: Remove once the stack allocation is in place.
-  auto CoroFrameFreeFn(
+  static auto CoroFrameFreeFn(
     spp::codegen::LlvmCtx const *ctx)
-    -> llvm::Function* {
-    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-    const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
-    const auto fn_ty = llvm::FunctionType::get(void_ty, {ptr_ty}, false);
-    return llvm::cast<llvm::Function>(
-      ctx->Module->getOrInsertFunction("sppc_free", fn_ty).getCallee());
-  }
+    -> llvm::Function*;
+}
+
+auto spp::asts::CoroFrameAllocFn(
+  spp::codegen::LlvmCtx const *ctx)
+  -> llvm::Function* {
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto size_ty = spp::codegen::TargetSizeType(*ctx->Context);
+  const auto fn_ty = llvm::FunctionType::get(ptr_ty, {size_ty}, false);
+  return llvm::cast<llvm::Function>(
+    ctx->Module->getOrInsertFunction("sppc_malloc", fn_ty).getCallee());
+}
+
+auto spp::asts::CoroFrameFreeFn(
+  spp::codegen::LlvmCtx const *ctx)
+  -> llvm::Function* {
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
+  const auto fn_ty = llvm::FunctionType::get(void_ty, {ptr_ty}, false);
+  return llvm::cast<llvm::Function>(
+    ctx->Module->getOrInsertFunction("sppc_free", fn_ty).getCallee());
 }
 
 SPP_MOD_BEGIN
@@ -259,10 +268,14 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     Ice(*this, "a function body emitted from another module's walk");
   }
 
+  // Its debug info, as a subroutine's: a subprogram at the prototype, whose
+  // line everything emitted has until a statement gives its own.
   const auto uid = "." + Uid();
   const auto entry_bb = llvm::BasicBlock::Create(
     *ctx->Context, "entry", llvm_func_target);
   ctx->Builder.SetInsertPoint(entry_bb);
+  codegen::AttachSubprogram(*ctx, *llvm_func_target, PosStart());
+  codegen::SetDebugLocation(*ctx, PosStart());
 
   // Firstly, emit the llvm coroutine intrinsics for the
   // coroutine id, size and begin. These form the "boot"

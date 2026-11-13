@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Assemble the release from the tested lanes. `add <label> <exe-suffix>` verifies one lane's binaries and copies its
-# spp into dist/; `seal` writes dist/SHA256SUMS and the `checksums` output.
+# Assemble the release from the tested lanes. `add <label> <exe-suffix>` verifies one lane's binaries and packs its
+# spp into dist/spp-<label>.zip, beside LICENSE.md and THIRD-PARTY-NOTICES.txt; `seal` writes dist/SHA256SUMS and
+# the `checksums` output. The zips carry no version, so releases/latest/download/spp-<label>.zip stays one URL.
 set -euo pipefail
 source .github/scripts/lib/version.sh
 
@@ -15,13 +16,13 @@ case "${1:-}" in
 
     BIN_DIR="bins/${label}" BIN_EXE="$exe" bash .github/scripts/lib/verify-binaries.sh
     mkdir -p dist
-    cp "bins/${label}/spp${exe}" "dist/spp-${VERSION}-${label}${exe}"
-    echo "collected spp-${VERSION}-${label}${exe}"
+    python3 .github/scripts/release/pack.py "dist/spp-${label}.zip" \
+      "bins/${label}/spp${exe}" LICENSE.md THIRD-PARTY-NOTICES.txt
     ;;
 
   seal)
     [ -e dist/SHA256SUMS ] && { echo "::error::dist/SHA256SUMS already exists"; exit 1; }
-    (cd dist && sha256sum -- spp-* > SHA256SUMS)
+    (cd dist && sha256sum -- spp-*.zip > SHA256SUMS)
     cat dist/SHA256SUMS
 
     # A random delimiter, so the content cannot end the output early.

@@ -5,11 +5,9 @@ S++ Language Specification
    :maxdepth: 2
 
    getting-started/index
-   fundamentals/index
+   language-fundamentals/index
    type-system/index
    memory-model-and-safety/index
-   expressions-statements-functions/index
-   concurrency-parallelism/index
-   advanced-features/index
-   standard-library/index
-   compiler-reference/index
+   expressions-statements-functions
+   concurrency-parallelism
+   advanced-features

@@ -43,6 +43,39 @@ use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
+namespace spp::asts {
+  /**
+   * The names a destructure binds, as the code after it sees them. "ExtractNames" gives an aliased binding by the
+   * attribute it reads ("val" for "val as val1"), which is what matching the attributes needs, but two such bindings
+   * of the one attribute ("Some(val as a), Some(val as b)") bind different names.
+   * @param var The destructure (or single identifier) to walk.
+   * @param out The bound names, appended to in binding order.
+   */
+  static auto CollectBoundNames(LocalVariableAst const &var, spp::Vec<IdentifierAst const*> &out) -> void;
+}
+
+auto spp::asts::CollectBoundNames(LocalVariableAst const &var, spp::Vec<IdentifierAst const*> &out) -> void {
+  if (auto const *single = var.To<LocalVariableSingleIdentifierAst>(); single != nullptr) {
+    out.emplace_back(single->Alias != nullptr ? single->Alias->Name.get() : single->Name.get());
+  }
+  else if (auto const *tup = var.To<LocalVariableDestructureTupleAst>(); tup != nullptr) {
+    for (auto const &elem : tup->Elems) { CollectBoundNames(*elem, out); }
+  }
+  else if (auto const *arr = var.To<LocalVariableDestructureArrayAst>(); arr != nullptr) {
+    for (auto const &elem : arr->Elems) { CollectBoundNames(*elem, out); }
+  }
+  else if (auto const *obj = var.To<LocalVariableDestructureObjectAst>(); obj != nullptr) {
+    for (auto const &elem : obj->Elems) { CollectBoundNames(*elem, out); }
+  }
+  else if (auto const *attr = var.To<LocalVariableDestructureAttributeBindingAst>(); attr != nullptr) {
+    CollectBoundNames(*attr->Val, out);
+  }
+  else if (auto const *rest = var.To<LocalVariableDestructureSkipMultipleArgumentsAst>();
+    rest != nullptr and rest->Binding != nullptr) {
+    CollectBoundNames(*rest->Binding, out);
+  }
+}
+
 SPP_MOD_BEGIN
 spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
   decltype(TokLet) &&tok_let,
@@ -92,37 +125,6 @@ auto spp::asts::LetStatementInitializedAst::ToString() const -> Str {
   SPP_STRING_APPEND(TokAssign).append(" ");
   SPP_STRING_APPEND(Val);
   SPP_STRING_END;
-}
-
-namespace {
-  /**
-   * The names a destructure binds, as the code after it sees them. "ExtractNames" gives an aliased binding by the
-   * attribute it reads ("val" for "val as val1"), which is what matching the attributes needs, but two such bindings
-   * of the one attribute ("Some(val as a), Some(val as b)") bind different names.
-   * @param var The destructure (or single identifier) to walk.
-   * @param out The bound names, appended to in binding order.
-   */
-  auto CollectBoundNames(LocalVariableAst const &var, spp::Vec<IdentifierAst const*> &out) -> void {
-    if (auto const *single = var.To<LocalVariableSingleIdentifierAst>(); single != nullptr) {
-      out.emplace_back(single->Alias != nullptr ? single->Alias->Name.get() : single->Name.get());
-    }
-    else if (auto const *tup = var.To<LocalVariableDestructureTupleAst>(); tup != nullptr) {
-      for (auto const &elem : tup->Elems) { CollectBoundNames(*elem, out); }
-    }
-    else if (auto const *arr = var.To<LocalVariableDestructureArrayAst>(); arr != nullptr) {
-      for (auto const &elem : arr->Elems) { CollectBoundNames(*elem, out); }
-    }
-    else if (auto const *obj = var.To<LocalVariableDestructureObjectAst>(); obj != nullptr) {
-      for (auto const &elem : obj->Elems) { CollectBoundNames(*elem, out); }
-    }
-    else if (auto const *attr = var.To<LocalVariableDestructureAttributeBindingAst>(); attr != nullptr) {
-      CollectBoundNames(*attr->Val, out);
-    }
-    else if (auto const *rest = var.To<LocalVariableDestructureSkipMultipleArgumentsAst>();
-      rest != nullptr and rest->Binding != nullptr) {
-      CollectBoundNames(*rest->Binding, out);
-    }
-  }
 }
 
 auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(

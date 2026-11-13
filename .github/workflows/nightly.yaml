@@ -47,6 +47,7 @@ jobs:
     with:
       codeql-cpp: true
       codeql-python: true
+      clang-tidy: true
       full-scan: true
 
   # The compiler under ASan, UBSan and LSan, over the suites

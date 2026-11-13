@@ -40,6 +40,13 @@ use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
 use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
 use_alias(spp::asts, PostfixExpressionOperatorStaticMemberAccessAst);
 
+namespace spp::analyse::utils::regions {
+  /// A place written out as its root's name and its steps
+  /// ("a.b.c").
+  static auto PlaceText(
+    Place const &place) -> Str;
+}
+
 SPP_MOD_BEGIN
 spp::analyse::utils::regions::PlaceAt::PlaceAt() = default;
 
@@ -59,22 +66,16 @@ auto spp::analyse::utils::regions::PlaceAt::operator=(PlaceAt &&) noexcept -> Pl
 spp::analyse::utils::regions::PlaceAt::~PlaceAt() = default;
 SPP_MOD_END
 
-namespace spp::analyse::utils::regions {
-  namespace {
-    /// A place written out as its root's name and its steps
-    /// ("a.b.c").
-    auto PlaceText(
-      Place const &place) -> Str {
-      // The output string starts as the name on the root variable
-      // symbol. For each part, un-intern the step part and append
-      // to the output string.
-      auto out = place.Root != nullptr ? place.Root->Name->Val : Str();
-      for (auto const &step : place.Steps) {
-        out += "." + Str(spp::utils::InternedText(step.Name)) + (step.Opaque ? "()" : "");
-      }
-      return out;
-    }
+auto spp::analyse::utils::regions::PlaceText(
+  Place const &place) -> Str {
+  // The output string starts as the name on the root variable
+  // symbol. For each part, un-intern the step part and append
+  // to the output string.
+  auto out = place.Root != nullptr ? place.Root->Name->Val : Str();
+  for (auto const &step : place.Steps) {
+    out += "." + Str(spp::utils::InternedText(step.Name)) + (step.Opaque ? "()" : "");
   }
+  return out;
 }
 
 auto spp::analyse::utils::regions::PlaceOf(

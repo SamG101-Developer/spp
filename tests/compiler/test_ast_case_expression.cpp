@@ -1102,3 +1102,57 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x = 1_u64
     }
 )");
+
+// A "case" giving a value inside a larger expression takes its own type, not the type the whole expression is assigned
+// to (open-bugs #61).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_case_expression_as_a_comparison_operand, R"(
+    fun f(c: Bool) -> Void {
+        let a: Bool = (case c { 1_u8 } else { 2_u8 }) == 1_u8
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_case_expression_as_a_returned_comparison_operand, R"(
+    fun f(c: Bool) -> Bool {
+        ret (case c { 1_u8 } else { 2_u8 }) == 1_u8
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_case_expression_as_a_method_receiver, R"(
+    fun f(c: Bool) -> U32 {
+        ret (case c { 1_u8 } else { 2_u8 }).leading_zeros()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_case_expression_as_an_object_initializer_argument, R"(
+    cls Point { !public x: U8 }
+
+    fun f(c: Bool) -> Point {
+        ret Point(x=case c { 1_u8 } else { 2_u8 })
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_case_expression_as_a_function_argument, R"(
+    fun g(x: U8) -> Bool { ret true }
+
+    fun f(c: Bool) -> Bool {
+        ret g(case c { 1_u8 } else { 2_u8 })
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_case_expression_widened_by_a_variant_target, R"(
+    fun f(c: Bool) -> Opt[S32] {
+        ret case c { Some(val=1_s32) } else { None }
+    }
+)");

@@ -1,7 +1,7 @@
 ---
 name: spp-test-writing-idioms
 description: "Syntax that costs a rebuild each time it is guessed wrong when writing s++ tests or benchmarks"
-updated: 2026-11-03
+updated: 2026-11-13
 ---
 
 Collected while writing std unit tests — each of these was found by a failed build, so check here first.
@@ -44,5 +44,22 @@ Found writing the run-time benchmarks (`benchmarks/runtime`, 2026-11-02), for a 
   function value (`FunRef[(U64,), U64]`) passed to a `!no_inline` function (`use std::llvm::no_inline`).
 - `v[mut i]@ = x` writes an element; `v[i]@` reads one. `F64::from(u)`, `S64::from(f)` (truncating) and
   `USize::from(u64)` convert.
+
+Found writing the differential programs (`tests/differential`, 2026-11-13):
+
+- **`caps` is a keyword** (closure captures): not a variable name.
+- **`not c` is a syntax error (seen in a tuple literal), and float literals have no exponent**: write
+  `case c { false } else { true }`, and spell `1.0e-310` out in full.
+- **A `&` parameter passed on is used up too**, like a `&mut` one: recursing twice with `v` is "uninitialized memory
+  used". Reborrow at each call: `f(&v, ..)`.
+- **`let r = &x` is a syntax error**: borrows are made at a call's arguments only.
+- **A shift distance is always `U32`**, for signed and unsigned operands alike.
+- **A class of `Copy` fields is still linear** until `sup C ext std::copy::Copy { }`.
+- **`v[i]` of a `Vec[Str]` is already a borrow**: pass `words[k]` to a `&StrView` parameter; `&words[k]@` is E70.
+
+**C++ unit tests that lex:** call `lexer.Lex()` before `lexer.PreludeTokenIndex()`, in separate statements, never
+both as arguments of one call (`ForFile(lexer.Lex(), path, lexer.PreludeTokenIndex())`): C++ does not fix the order
+arguments are evaluated in, and GCC reads the index first, before lexing has set it, so the prelude reads as the
+author's code (2026-11-11, `test_msc_source_positions.cpp`, `test_msc_error_files.cpp`).
 
 Related: [[spp-linear-types]], [[build-workflow]], [[add-tests-even-if-failing]].

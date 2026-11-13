@@ -97,445 +97,520 @@ namespace spp::lsp::resolution_index {
       Vec<OverridableList> Overridables;
       Set<Str> SeenExtensions;
     };
+  }
 
-    /// Singleton instance to the static state for the current
-    /// compilation / indexing.
-    auto Current() -> State& {
-      static auto state = State();
-      return state;
+  /// Singleton instance to the static state for the current
+  /// compilation / indexing.
+  static auto Current() -> State&;
+
+  /// How a function can be called, one entry per overload: its parameters and what it gives back.
+  ///
+  /// A method is a mock constant, and the overloads are the "sup $M ext FunXxx { fun m(..) }" blocks superimposed
+  /// over that mock - the same blocks a call is resolved against.
+  static auto SignaturesOf(
+    VariableSymbol const &sym, Scope const &scope) -> Vec<Str>;
+
+  /// The stringification of the symbol's representation; is
+  /// this a "function" or an "attribute" etc, for the IDEA
+  /// plugin to specify. A visibility as the editor names it.
+  static auto VisibilityName(
+    const asts::utils::Visibility visibility) -> Str;
+
+  static auto KindOf(
+    VariableSymbol const &sym) -> Str;
+
+  /// Convert the namespace symbol into the stringified namespace
+  /// path joined with "::".
+  static auto NamespacePathOf(
+    NamespaceSymbol const &sym)
+    -> Str;
+
+  /// The formatter of the file "ast" was parsed from, or for one
+  /// no file holds, the scope's.
+  static auto FormatterOf(
+    Ast const *ast, Scope const &scope) -> ErrorFormatter*;
+
+  /// The whole of what an ast covers, across however many lines:
+  /// a region, rather than the place a quote would underline.
+  /// Uses a start and end position rather than the ast.
+  static auto RegionOf(
+    Ast const *const ast, Scope const &scope) -> SourceSpan;
+
+  /// Same as the region span, but using the ast rather than the
+  /// positions.
+  static auto SpanOf(
+    Ast const *const ast, Scope const &scope) -> SourceSpan;
+
+  /// Where a type was declared. A "use" import is walked through to what it imported, because nobody wants to land
+  /// on the import; a "type" statement is not, because the alias is the thing that was named.
+  static auto DefinitionOfType(
+    TypeSymbol const &sym) -> SourceSpan;
+
+  /// Whether a type name is writable by the user or not. This
+  /// filters out compiler-generated function mock $Types, and
+  /// has a flag to determine whether to allow generics or not.
+  static auto IsWritableTypeName(
+    TypeSymbol const &sym,
+    const bool generics)
+    -> bool;
+
+  /// Whether a variable name is writable by the user or not.
+  /// This filters out compiler-generated variable names like
+  /// $xyz that are used in preprocessing / ast manipulation.
+  static auto IsWritableVarName(
+    VariableSymbol const &sym)
+    -> bool;
+
+  /// The uniform key creation function the the "seen" tables.
+  /// The joining character is a character that no variable or
+  /// type name will ever contain. The first part is the "kind",
+  /// followed by the uniquely identifying information.
+  template <typename... Parts>
+  static auto KeyOf(Parts const &... parts) -> Str;
+
+  /// The wrapper to generate a key from span information. Pull
+  /// the attributes off of the span, and pass them into the
+  /// general key creation method.
+  static auto KeyOfSpan(Str const &what, SourceSpan const &span) -> Str;
+
+  /// A method written in a "sup" block: a prototype, or the
+  /// "sup $m ext FunXxx" block a method is lowered into.
+  static auto SupMemberAsMethod(
+    Ast const *member) -> FunctionPrototypeAst const*;
+
+  /// A method's header as it would be written to override it:
+  /// "fun name[T](&self, x: S32) -> Ret", without annotations or
+  /// a body.
+  static auto PrototypeOf(
+    FunctionPrototypeAst const &proto) -> Str;
+
+  /// Whether the analysis is at the stage where filling out
+  /// completion lists is actually correct. Sup scope handling,
+  /// visibility, etc, must have all been processed.
+  static auto WantsMembersYet(CompilerMetaData const &meta) -> bool;
+
+  /// Everything one type holds, its super types included - the
+  /// same set a member access is resolved against, which is
+  /// what makes the list an editor offers the list that would
+  /// actually work.
+  static auto MembersOfTypeScope(
+    Scope const &type_scope, ScopeManager const &sm,
+    CompilerMetaData const &meta) -> Vec<Member>;
+
+  /// Everything one namespace holds - the same set a member
+  /// access is resolved against, which is what makes the
+  /// list an editor offers the list that would actually work.
+  static auto MembersOfNamespaceScope(
+    Scope const &ns_scope, ScopeManager const &sm,
+    CompilerMetaData const &meta) -> Vec<Member>;
+
+  /// Keep what a name resolved to, dropping it when it is not
+  /// in a file being indexed. Every other recorder ends here.
+  static auto Record(ResolvedName &&entry) -> void;
+
+  /// Keep what a call resolved to, so that the names between its
+  /// brackets can be offered.
+  static auto RecordSignature(
+    Ast const &arguments, ScopeManager const &sm, CompilerMetaData const &,
+    Str name, Vec<Member> params) -> void;
+
+  /// Get a list of the members of the type, push it into the
+  /// state's members. Scope check for to prevent duplication.
+  static auto RecordTypeMembers(
+    Str owner, Scope const &type_scope, ScopeManager const &sm,
+    CompilerMetaData const &meta) -> void;
+
+  /// Get a list of the members of the namespaces, push it into
+  /// the state's members. Scope check for to prevent duplication.
+  static auto RecordNamespaceMembers(
+    Str owner, Scope const &ns_scope, ScopeManager const &sm,
+    CompilerMetaData const &meta) -> void;
+
+  /// Keep the use of a namespace - the "std", "mem" and "ops" of
+  /// "std::mem::ops::mem_cmp". A namespace is a folder or a file
+  /// rather than a declaration, so navigate to the representing
+  /// file.
+  static auto RecordNamespace(
+    Ast const &use, ScopeManager const &sm, CompilerMetaData const &meta,
+    NamespaceSymbol const *const sym_ptr) -> void;
+}
+
+auto spp::lsp::resolution_index::Current() -> State& {
+  static auto state = State();
+  return state;
+}
+
+auto spp::lsp::resolution_index::SignaturesOf(
+  VariableSymbol const &sym, Scope const &scope) -> Vec<Str> {
+  auto signatures = Vec<Str>();
+  if (sym.Type == nullptr) { return signatures; }
+
+  // Get the mock function type for the function symbol. This
+  // will take the function "func" and get "$func". This holds
+  // the overloads via the sup scopes.
+  const auto mock = scope.FindTypeSymbol(sym.Type.get());
+  if (mock == nullptr or mock->LinkedScope == nullptr) { return signatures; }
+
+  for (const auto overload : mock->LinkedScope->GetDirectSupScopes()) {
+    // Get the "sup-ext" asts, which are the superimpositions
+    // of the "FunXXX" family of types. Extract the function
+    // prototype from the "sup-ext".
+    const auto ext = AstAs<SupPrototypeExtensionAst>(overload->AstNode);
+    if (ext == nullptr) { continue; }
+    const auto body = AstBody(ext);
+    const auto proto = not body.empty() ? body[0]->To<FunctionPrototypeAst>() : nullptr;
+    if (proto == nullptr or proto->FnParamGroup == nullptr or proto->ReturnType == nullptr) { continue; }
+
+    signatures.emplace_back(proto->FnParamGroup->ToString() + " -> " + proto->ReturnType->ToString());
+  }
+  return signatures;
+}
+
+auto spp::lsp::resolution_index::VisibilityName(
+  const asts::utils::Visibility visibility) -> Str {
+  switch (visibility) {
+    case asts::utils::Visibility::kPublic: return "public";
+    case asts::utils::Visibility::kPackage: return "package";
+    case asts::utils::Visibility::kProtected: return "protected";
+    default: return "private";
+  }
+}
+
+auto spp::lsp::resolution_index::KindOf(
+  VariableSymbol const &sym) -> Str {
+  switch (sym.Kind) {
+    case VariableKind::FnMock: return "function";
+    case VariableKind::Attribute: return "attribute";
+    case VariableKind::Constant: return "constant";
+    case VariableKind::GnCompParam:
+    case VariableKind::GnCompArg: return "generic";
+    default: return "variable";
+  }
+}
+
+auto spp::lsp::resolution_index::NamespacePathOf(
+  NamespaceSymbol const &sym)
+  -> Str {
+  // The current namespace part and all parent scopes up to the
+  // root, but the global scope (the one with no parent), whose
+  // namespace is no part of a path.
+  auto parts = Vec<Str>();
+  for (auto const *scope : sym.LinkedScope->GetAncestors()) {
+    if (scope->Parent == nullptr) { continue; }
+    parts.emplace_back(scope->LinkedNamespaceSymbol->Name->ToString());
+  }
+
+  // Join all the parts into a "::"-joined string, outermost first.
+  auto path = Str();
+  for (auto i = parts.size(); i > 0; --i) {
+    path += (path.empty() ? "" : "::") + parts[i - 1];
+  }
+  return path;
+}
+
+auto spp::lsp::resolution_index::FormatterOf(
+  Ast const *ast, Scope const &scope) -> ErrorFormatter* {
+  const auto owner = ErrorFormatter::Owning(ast);
+  return owner != nullptr ? owner : scope.GetErrorFormatter();
+}
+
+auto spp::lsp::resolution_index::RegionOf(
+  Ast const *const ast, Scope const &scope) -> SourceSpan {
+  // Create a span over the ast, using the error formatter of
+  // the file it was parsed from (else the scope's).
+  const auto formatter = FormatterOf(ast, scope);
+  if (ast == nullptr or formatter == nullptr or ast->PosStart() == 0) { return {}; }
+  return formatter->SpanAcross(ast->PosStart(), ast->PosEnd());
+}
+
+auto spp::lsp::resolution_index::SpanOf(
+  Ast const *const ast, Scope const &scope) -> SourceSpan {
+  // Create a span over the ast, using the error formatter of
+  // the file it was parsed from (else the scope's).
+  const auto formatter = FormatterOf(ast, scope);
+  if (ast == nullptr or formatter == nullptr) { return {}; }
+  return formatter->SpanOfAst(ast);
+}
+
+auto spp::lsp::resolution_index::DefinitionOfType(
+  TypeSymbol const &sym) -> SourceSpan {
+  const auto target = sym.UseTarget();
+
+  // The definition requires a different ast and scope depending
+  // on whether an alias is being used or not.
+  if (target->Alias != nullptr
+    and not target->Alias->IsFromUseStmt
+    and target->Alias->Stmt != nullptr
+    and target->Alias->WrittenIn != nullptr) {
+    return SpanOf(target->Alias->Stmt->NewType.get(), *target->Alias->WrittenIn);
+  }
+  if (sym.Type != nullptr and sym.Type->GetAstScope() != nullptr) {
+    return SpanOf(sym.Type->Name.get(), *sym.Type->GetAstScope());
+  }
+  if (sym.ScopeDefinedIn != nullptr) {
+    return SpanOf(sym.Name.get(), *sym.ScopeDefinedIn);
+  }
+  return {};
+}
+
+auto spp::lsp::resolution_index::IsWritableTypeName(
+  TypeSymbol const &sym,
+  const bool generics)
+  -> bool {
+  // Check the flags on the symbol, the generic state vs
+  // whether generics are allowed, and the symbol kind.
+  if (sym.Name == nullptr or sym.InstanceOf != nullptr or sym.IsMock() or sym.IsSelf()) { return false; }
+  if (sym.IsGn()) { return generics; }
+  return sym.Kind == TypeKind::Cls or sym.Kind == TypeKind::Alias;
+}
+
+auto spp::lsp::resolution_index::IsWritableVarName(
+  VariableSymbol const &sym)
+  -> bool {
+  // Every "$" variable is declared "Temporary".
+  return sym.Name != nullptr and sym.Kind != VariableKind::Temporary;
+}
+
+template <typename... Parts>
+auto spp::lsp::resolution_index::KeyOf(Parts const &... parts) -> Str {
+  auto key = Str();
+  ((key += std::format("{}", parts), key += '|'), ...);
+  return key;
+}
+
+auto spp::lsp::resolution_index::KeyOfSpan(Str const &what, SourceSpan const &span) -> Str {
+  return KeyOf(what, span.File, span.StartLine, span.StartCol, span.EndLine, span.EndCol);
+}
+
+auto spp::lsp::resolution_index::SupMemberAsMethod(
+  Ast const *member) -> FunctionPrototypeAst const* {
+  if (const auto fn = member->To<FunctionPrototypeAst>()) { return fn; }
+  if (const auto ext = member->To<SupPrototypeExtensionAst>(); ext != nullptr and ext->Impl != nullptr) {
+    const auto final_member = ext->Impl->FinalMember();
+    return final_member != nullptr ? final_member->To<FunctionPrototypeAst>() : nullptr;
+  }
+  return nullptr;
+}
+
+auto spp::lsp::resolution_index::PrototypeOf(
+  FunctionPrototypeAst const &proto) -> Str {
+  auto out = Str();
+  if (proto.TokCmp != nullptr) { out += proto.TokCmp->ToString() + " "; }
+  out += proto.TokFun->ToString() + " " + proto.Name->ToString();
+  if (proto.GnParamGroup != nullptr) { out += proto.GnParamGroup->ToString(); }
+  if (proto.FnParamGroup != nullptr) { out += proto.FnParamGroup->ToString(); }
+  if (proto.ReturnType != nullptr) { out += " -> " + proto.ReturnType->ToString(); }
+  return out;
+}
+
+auto spp::lsp::resolution_index::WantsMembersYet(CompilerMetaData const &meta) -> bool {
+  return meta.CurrentStage >= CompilerStage::kAnalyseSemantics;
+}
+
+auto spp::lsp::resolution_index::MembersOfTypeScope(
+  Scope const &type_scope, ScopeManager const &sm,
+  CompilerMetaData const &meta) -> Vec<Member> {
+  auto members = Vec<Member>();
+  auto seen = Set<Str>();
+
+  // Iterate through all the variable symbols on the type,
+  // which are reachable like "Type::constant" and also
+  // "Type::method()".
+  for (const auto sym : type_scope.GetAllVarSymbols(true, true)) {
+    if (sym == nullptr or not IsWritableVarName(*sym)) { continue; }
+    if (not analyse::utils::visibility_utils::IsTypeMemberVisible(*sym, type_scope, sm, meta)) { continue; }
+
+    auto name = sym->Name->ToString();
+    auto key = KeyOf("var", name, sym->Type != nullptr ? sym->Type->ToString() : Str());
+    if (not seen.insert(std::move(key)).second) { continue; }
+
+    members.emplace_back(Member{
+      .Name = std::move(name),
+      .Kind = KindOf(*sym),
+      .Type = sym->Type != nullptr ? sym->Type->ToString() : Str(),
+      .Definition = sym->ScopeDefinedIn != nullptr ? SpanOf(sym->Name.get(), *sym->ScopeDefinedIn) : SourceSpan(),
+      .Signatures = SignaturesOf(*sym, type_scope),
+      .Visibility = VisibilityName(sym->GetVisibility())
+    });
+  }
+
+  // Iterate through all the type symbols on the type, which
+  // are reachable like "Type::Inner", defined on the sup
+  // blocks.
+  for (auto const *sym : type_scope.GetAllTypeSymbols(true, true)) {
+    if (sym == nullptr or not IsWritableTypeName(*sym, false)) { continue; }
+    if (not analyse::utils::visibility_utils::IsTypeTypeVisible(*sym, type_scope, sm, meta)) { continue; }
+
+    auto name = sym->Name->ToString();
+    auto key = KeyOf("type", name);
+    if (not seen.insert(std::move(key)).second) { continue; }
+
+    members.emplace_back(Member{
+      .Name = std::move(name),
+      .Kind = "type",
+      .Type = Str(),
+      .Definition = DefinitionOfType(*sym),
+      .Visibility = VisibilityName(sym->GetVisibility())
+    });
+  }
+  return members;
+}
+
+auto spp::lsp::resolution_index::MembersOfNamespaceScope(
+  Scope const &ns_scope, ScopeManager const &sm,
+  CompilerMetaData const &meta) -> Vec<Member> {
+  auto members = Vec<Member>();
+  auto seen = Set<Str>();
+
+  // Iterate through all the variable symbols on the namespace,
+  // which are reachable like "namespace::constant" and also
+  // "namespace::inner::constant".
+  for (const auto sym : ns_scope.GetAllVarSymbols(true, false)) {
+    if (sym == nullptr or not IsWritableVarName(*sym)) { continue; }
+    const auto definition_scope = sym->ScopeDefinedIn != nullptr ? sym->ScopeDefinedIn : &ns_scope;
+    if (not analyse::utils::visibility_utils::IsModuleMemberVisible(*sym, *definition_scope, sm, meta)) {
+      continue;
     }
 
-    /// How a function can be called, one entry per overload: its parameters and what it gives back.
-    ///
-    /// A method is a mock constant, and the overloads are the "sup $M ext FunXxx { fun m(..) }" blocks superimposed
-    /// over that mock - the same blocks a call is resolved against.
-    auto SignaturesOf(
-      VariableSymbol const &sym, Scope const &scope) -> Vec<Str> {
-      auto signatures = Vec<Str>();
-      if (sym.Type == nullptr) { return signatures; }
+    auto name = sym->Name->ToString();
+    auto key = KeyOf("var", name, sym->Type != nullptr ? sym->Type->ToString() : Str());
+    if (not seen.insert(std::move(key)).second) { continue; }
 
-      // Get the mock function type for the function symbol. This
-      // will take the function "func" and get "$func". This holds
-      // the overloads via the sup scopes.
-      const auto mock = scope.FindTypeSymbol(sym.Type.get());
-      if (mock == nullptr or mock->LinkedScope == nullptr) { return signatures; }
+    members.emplace_back(Member{
+      .Name = std::move(name),
+      .Kind = KindOf(*sym),
+      .Type = sym->Type != nullptr ? sym->Type->ToString() : Str(),
+      .Definition = sym->ScopeDefinedIn != nullptr ? SpanOf(sym->Name.get(), *sym->ScopeDefinedIn) : SourceSpan(),
+      .Signatures = SignaturesOf(*sym, ns_scope),
+      .Visibility = VisibilityName(sym->GetVisibility())
+    });
+  }
 
-      for (const auto overload : mock->LinkedScope->GetDirectSupScopes()) {
-        // Get the "sup-ext" asts, which are the superimpositions
-        // of the "FunXXX" family of types. Extract the function
-        // prototype from the "sup-ext".
-        const auto ext = AstAs<SupPrototypeExtensionAst>(overload->AstNode);
-        if (ext == nullptr) { continue; }
-        const auto body = AstBody(ext);
-        const auto proto = not body.empty() ? body[0]->To<FunctionPrototypeAst>() : nullptr;
-        if (proto == nullptr or proto->FnParamGroup == nullptr or proto->ReturnType == nullptr) { continue; }
+  // Iterate through all the type symbols on the namespace,
+  // which are reachable like "namespace::Type".
+  for (auto const *sym : ns_scope.GetAllTypeSymbols(true, false)) {
+    if (sym == nullptr or not IsWritableTypeName(*sym, false)) { continue; }
+    const auto definition_scope = sym->ScopeDefinedIn != nullptr ? sym->ScopeDefinedIn : &ns_scope;
+    if (not analyse::utils::visibility_utils::IsModuleTypeVisible(*sym, *definition_scope, sm, meta)) { continue; }
 
-        signatures.emplace_back(proto->FnParamGroup->ToString() + " -> " + proto->ReturnType->ToString());
-      }
-      return signatures;
-    }
+    auto name = sym->Name->ToString();
+    auto key = KeyOf("type", name);
+    if (not seen.insert(std::move(key)).second) { continue; }
 
-    /// The stringification of the symbol's representation; is
-    /// this a "function" or an "attribute" etc, for the IDEA
-    /// plugin to specify. A visibility as the editor names it.
-    auto VisibilityName(
-      const asts::utils::Visibility visibility) -> Str {
-      switch (visibility) {
-        case asts::utils::Visibility::kPublic: return "public";
-        case asts::utils::Visibility::kPackage: return "package";
-        case asts::utils::Visibility::kProtected: return "protected";
-        default: return "private";
-      }
-    }
+    members.emplace_back(Member{
+      .Name = std::move(name),
+      .Kind = "type",
+      .Type = Str(),
+      .Definition = DefinitionOfType(*sym),
+      .Visibility = VisibilityName(sym->GetVisibility())
+    });
+  }
 
-    auto KindOf(
-      VariableSymbol const &sym) -> Str {
-      switch (sym.Kind) {
-        case VariableKind::FnMock: return "function";
-        case VariableKind::Attribute: return "attribute";
-        case VariableKind::Constant: return "constant";
-        case VariableKind::GnCompParam:
-        case VariableKind::GnCompArg: return "generic";
-        default: return "variable";
-      }
-    }
+  // Iterate through all the namespace symbols on the namespace,
+  // which are reachable like "namespace::inner_ns".
+  for (const auto sym : ns_scope.GetAllNsSymbols(true)) {
+    if (sym == nullptr or sym->Name == nullptr) { continue; }
+    members.emplace_back(Member{
+      .Name = sym->Name->ToString(),
+      .Kind = "namespace",
+      .Type = Str(),
+      .Definition = SourceSpan()
+    });
+  }
+  return members;
+}
 
-    /// Convert the namespace symbol into the stringified namespace
-    /// path joined with "::".
-    auto NamespacePathOf(
-      NamespaceSymbol const &sym)
-      -> Str {
-      // The current namespace part and all parent scopes up to the
-      // root, but the global scope (the one with no parent), whose
-      // namespace is no part of a path.
-      auto parts = Vec<Str>();
-      for (auto const *scope : sym.LinkedScope->GetAncestors()) {
-        if (scope->Parent == nullptr) { continue; }
-        parts.emplace_back(scope->LinkedNamespaceSymbol->Name->ToString());
-      }
+auto spp::lsp::resolution_index::Record(ResolvedName &&entry) -> void {
+  // A name with no place in the source is one the compiler
+  // made up (internally generated), and a name written in
+  // another file is not what was asked for; neither kept.
+  if (entry.Use.Generated or not Wants(entry.Use.File)) { return; }
+  auto key = KeyOfSpan("use", entry.Use) + KeyOf(entry.Kind, entry.Name);
+  if (not Current().Seen.insert(std::move(key)).second) { return; }
+  Current().Entries.emplace_back(std::move(entry));
+}
 
-      // Join all the parts into a "::"-joined string, outermost first.
-      auto path = Str();
-      for (auto i = parts.size(); i > 0; --i) {
-        path += (path.empty() ? "" : "::") + parts[i - 1];
-      }
-      return path;
-    }
+auto spp::lsp::resolution_index::RecordSignature(
+  Ast const &arguments, ScopeManager const &sm, CompilerMetaData const &,
+  Str name, Vec<Member> params) -> void {
+  // If we are not bothered about this scope, then return early;
+  // no work needs to be done here.
+  auto const &use_scope = *sm.CurrentScope;
+  if (not WantsScope(use_scope)) { return; }
+  auto span = RegionOf(&arguments, use_scope);
+  if (span.Generated) { return; }
 
-    /// The formatter of the file "ast" was parsed from, or for one
-    /// no file holds, the scope's.
-    auto FormatterOf(
-      Ast const *ast, Scope const &scope) -> ErrorFormatter* {
-      const auto owner = ErrorFormatter::Owning(ast);
-      return owner != nullptr ? owner : scope.GetErrorFormatter();
-    }
+  // One record per call, however many times the node is analysed.
+  auto key = KeyOfSpan("call", span);
+  if (not Current().SeenCalls.insert(std::move(key)).second) { return; }
+  auto signature = Signature{
+    .Arguments = std::move(span), .Name = std::move(name), .Params = std::move(params)
+  };
+  Current().Signatures.emplace_back(std::move(signature));
+}
 
-    /// The whole of what an ast covers, across however many lines:
-    /// a region, rather than the place a quote would underline.
-    /// Uses a start and end position rather than the ast.
-    auto RegionOf(
-      Ast const *const ast, Scope const &scope) -> SourceSpan {
-      // Create a span over the ast, using the error formatter of
-      // the file it was parsed from (else the scope's).
-      const auto formatter = FormatterOf(ast, scope);
-      if (ast == nullptr or formatter == nullptr or ast->PosStart() == 0) { return {}; }
-      return formatter->SpanAcross(ast->PosStart(), ast->PosEnd());
-    }
+auto spp::lsp::resolution_index::RecordTypeMembers(
+  Str owner, Scope const &type_scope, ScopeManager const &sm,
+  CompilerMetaData const &meta) -> void {
+  // Get the members of a type and create a member list containing
+  // them, assigned against the owner type (pre-serialized).
+  if (owner.empty() or not WantsMembersYet(meta) or not (type_scope.SupsAttached or type_scope.SupsDeferred)) { return; }
+  if (not Current().SeenOwners.insert(KeyOf("type", owner)).second) { return; }
+  auto members = MembersOfTypeScope(type_scope, sm, meta);
+  Current().Members.emplace_back(MemberList{
+    .Owner = std::move(owner), .Of = "type", .Members = std::move(members)
+  });
+}
 
-    /// Same as the region span, but using the ast rather than the
-    /// positions.
-    auto SpanOf(
-      Ast const *const ast, Scope const &scope) -> SourceSpan {
-      // Create a span over the ast, using the error formatter of
-      // the file it was parsed from (else the scope's).
-      const auto formatter = FormatterOf(ast, scope);
-      if (ast == nullptr or formatter == nullptr) { return {}; }
-      return formatter->SpanOfAst(ast);
-    }
+auto spp::lsp::resolution_index::RecordNamespaceMembers(
+  Str owner, Scope const &ns_scope, ScopeManager const &sm,
+  CompilerMetaData const &meta) -> void {
+  // Get the members of a namespace and create a member list
+  // containing them, assigned against the owner namespace
+  // (pre-serialized).
+  if (owner.empty() or not WantsMembersYet(meta)) { return; }
+  if (not Current().SeenOwners.insert(KeyOf("ns", owner)).second) { return; }
+  auto members = MembersOfNamespaceScope(ns_scope, sm, meta);
+  Current().Members.emplace_back(MemberList{
+    .Owner = std::move(owner), .Of = "namespace", .Members = std::move(members)
+  });
+}
 
-    /// Where a type was declared. A "use" import is walked through to what it imported, because nobody wants to land
-    /// on the import; a "type" statement is not, because the alias is the thing that was named.
-    auto DefinitionOfType(
-      TypeSymbol const &sym) -> SourceSpan {
-      const auto target = sym.UseTarget();
+auto spp::lsp::resolution_index::RecordNamespace(
+  Ast const &use, ScopeManager const &sm, CompilerMetaData const &meta,
+  NamespaceSymbol const *const sym_ptr) -> void {
+  // If we are not bothered about this scope, then return early;
+  // no work needs to be done here.
+  auto const &use_scope = *sm.CurrentScope;
+  if (sym_ptr == nullptr or not WantsScope(use_scope)) { return; }
+  auto const &sym = *sym_ptr;
 
-      // The definition requires a different ast and scope depending
-      // on whether an alias is being used or not.
-      if (target->Alias != nullptr
-        and not target->Alias->IsFromUseStmt
-        and target->Alias->Stmt != nullptr
-        and target->Alias->WrittenIn != nullptr) {
-        return SpanOf(target->Alias->Stmt->NewType.get(), *target->Alias->WrittenIn);
-      }
-      if (sym.Type != nullptr and sym.Type->GetAstScope() != nullptr) {
-        return SpanOf(sym.Type->Name.get(), *sym.Type->GetAstScope());
-      }
-      if (sym.ScopeDefinedIn != nullptr) {
-        return SpanOf(sym.Name.get(), *sym.ScopeDefinedIn);
-      }
-      return {};
-    }
-
-    /// Whether a type name is writable by the user or not. This
-    /// filters out compiler-generated function mock $Types, and
-    /// has a flag to determine whether to allow generics or not.
-    auto IsWritableTypeName(
-      TypeSymbol const &sym,
-      const bool generics)
-      -> bool {
-      // Check the flags on the symbol, the generic state vs
-      // whether generics are allowed, and the symbol kind.
-      if (sym.Name == nullptr or sym.InstanceOf != nullptr or sym.IsMock() or sym.IsSelf()) { return false; }
-      if (sym.IsGn()) { return generics; }
-      return sym.Kind == TypeKind::Cls or sym.Kind == TypeKind::Alias;
-    }
-
-    /// Whether a variable name is writable by the user or not.
-    /// This filters out compiler-generated variable names like
-    /// $xyz that are used in preprocessing / ast manipulation.
-    auto IsWritableVarName(
-      VariableSymbol const &sym)
-      -> bool {
-      // Every "$" variable is declared "Temporary".
-      return sym.Name != nullptr and sym.Kind != VariableKind::Temporary;
-    }
-
-    /// The uniform key creation function the the "seen" tables.
-    /// The joining character is a character that no variable or
-    /// type name will ever contain. The first part is the "kind",
-    /// followed by the uniquely identifying information.
-    template <typename... Parts>
-    auto KeyOf(Parts const &... parts) -> Str {
-      auto key = Str();
-      ((key += std::format("{}", parts), key += '|'), ...);
-      return key;
-    }
-
-    /// The wrapper to generate a key from span information. Pull
-    /// the attributes off of the span, and pass them into the
-    /// general key creation method.
-    auto KeyOfSpan(Str const &what, SourceSpan const &span) -> Str {
-      return KeyOf(what, span.File, span.StartLine, span.StartCol, span.EndLine, span.EndCol);
-    }
-
-    /// A method written in a "sup" block: a prototype, or the
-    /// "sup $m ext FunXxx" block a method is lowered into.
-    auto SupMemberAsMethod(
-      Ast const *member) -> FunctionPrototypeAst const* {
-      if (const auto fn = member->To<FunctionPrototypeAst>()) { return fn; }
-      if (const auto ext = member->To<SupPrototypeExtensionAst>(); ext != nullptr and ext->Impl != nullptr) {
-        const auto final_member = ext->Impl->FinalMember();
-        return final_member != nullptr ? final_member->To<FunctionPrototypeAst>() : nullptr;
-      }
-      return nullptr;
-    }
-
-    /// A method's header as it would be written to override it:
-    /// "fun name[T](&self, x: S32) -> Ret", without annotations or
-    /// a body.
-    auto PrototypeOf(
-      FunctionPrototypeAst const &proto) -> Str {
-      auto out = Str();
-      if (proto.TokCmp != nullptr) { out += proto.TokCmp->ToString() + " "; }
-      out += proto.TokFun->ToString() + " " + proto.Name->ToString();
-      if (proto.GnParamGroup != nullptr) { out += proto.GnParamGroup->ToString(); }
-      if (proto.FnParamGroup != nullptr) { out += proto.FnParamGroup->ToString(); }
-      if (proto.ReturnType != nullptr) { out += " -> " + proto.ReturnType->ToString(); }
-      return out;
-    }
-
-    /// Whether the analysis is at the stage where filling out
-    /// completion lists is actually correct. Sup scope handling,
-    /// visibility, etc, must have all been processed.
-    auto WantsMembersYet(CompilerMetaData const &meta) -> bool {
-      return meta.CurrentStage >= CompilerStage::kAnalyseSemantics;
-    }
-
-    /// Everything one type holds, its super types included - the
-    /// same set a member access is resolved against, which is
-    /// what makes the list an editor offers the list that would
-    /// actually work.
-    auto MembersOfTypeScope(
-      Scope const &type_scope, ScopeManager const &sm,
-      CompilerMetaData const &meta) -> Vec<Member> {
-      auto members = Vec<Member>();
-      auto seen = Set<Str>();
-
-      // Iterate through all the variable symbols on the type,
-      // which are reachable like "Type::constant" and also
-      // "Type::method()".
-      for (const auto sym : type_scope.GetAllVarSymbols(true, true)) {
-        if (sym == nullptr or not IsWritableVarName(*sym)) { continue; }
-        if (not analyse::utils::visibility_utils::IsTypeMemberVisible(*sym, type_scope, sm, meta)) { continue; }
-
-        auto name = sym->Name->ToString();
-        auto key = KeyOf("var", name, sym->Type != nullptr ? sym->Type->ToString() : Str());
-        if (not seen.insert(std::move(key)).second) { continue; }
-
-        members.emplace_back(Member{
-          .Name = std::move(name),
-          .Kind = KindOf(*sym),
-          .Type = sym->Type != nullptr ? sym->Type->ToString() : Str(),
-          .Definition = sym->ScopeDefinedIn != nullptr ? SpanOf(sym->Name.get(), *sym->ScopeDefinedIn) : SourceSpan(),
-          .Signatures = SignaturesOf(*sym, type_scope),
-          .Visibility = VisibilityName(sym->GetVisibility())
-        });
-      }
-
-      // Iterate through all the type symbols on the type, which
-      // are reachable like "Type::Inner", defined on the sup
-      // blocks.
-      for (auto const *sym : type_scope.GetAllTypeSymbols(true, true)) {
-        if (sym == nullptr or not IsWritableTypeName(*sym, false)) { continue; }
-        if (not analyse::utils::visibility_utils::IsTypeTypeVisible(*sym, type_scope, sm, meta)) { continue; }
-
-        auto name = sym->Name->ToString();
-        auto key = KeyOf("type", name);
-        if (not seen.insert(std::move(key)).second) { continue; }
-
-        members.emplace_back(Member{
-          .Name = std::move(name),
-          .Kind = "type",
-          .Type = Str(),
-          .Definition = DefinitionOfType(*sym),
-          .Visibility = VisibilityName(sym->GetVisibility())
-        });
-      }
-      return members;
-    }
-
-    /// Everything one namespace holds - the same set a member
-    /// access is resolved against, which is what makes the
-    /// list an editor offers the list that would actually work.
-    auto MembersOfNamespaceScope(
-      Scope const &ns_scope, ScopeManager const &sm,
-      CompilerMetaData const &meta) -> Vec<Member> {
-      auto members = Vec<Member>();
-      auto seen = Set<Str>();
-
-      // Iterate through all the variable symbols on the namespace,
-      // which are reachable like "namespace::constant" and also
-      // "namespace::inner::constant".
-      for (const auto sym : ns_scope.GetAllVarSymbols(true, false)) {
-        if (sym == nullptr or not IsWritableVarName(*sym)) { continue; }
-        const auto definition_scope = sym->ScopeDefinedIn != nullptr ? sym->ScopeDefinedIn : &ns_scope;
-        if (not analyse::utils::visibility_utils::IsModuleMemberVisible(*sym, *definition_scope, sm, meta)) {
-          continue;
-        }
-
-        auto name = sym->Name->ToString();
-        auto key = KeyOf("var", name, sym->Type != nullptr ? sym->Type->ToString() : Str());
-        if (not seen.insert(std::move(key)).second) { continue; }
-
-        members.emplace_back(Member{
-          .Name = std::move(name),
-          .Kind = KindOf(*sym),
-          .Type = sym->Type != nullptr ? sym->Type->ToString() : Str(),
-          .Definition = sym->ScopeDefinedIn != nullptr ? SpanOf(sym->Name.get(), *sym->ScopeDefinedIn) : SourceSpan(),
-          .Signatures = SignaturesOf(*sym, ns_scope),
-          .Visibility = VisibilityName(sym->GetVisibility())
-        });
-      }
-
-      // Iterate through all the type symbols on the namespace,
-      // which are reachable like "namespace::Type".
-      for (auto const *sym : ns_scope.GetAllTypeSymbols(true, false)) {
-        if (sym == nullptr or not IsWritableTypeName(*sym, false)) { continue; }
-        const auto definition_scope = sym->ScopeDefinedIn != nullptr ? sym->ScopeDefinedIn : &ns_scope;
-        if (not analyse::utils::visibility_utils::IsModuleTypeVisible(*sym, *definition_scope, sm, meta)) { continue; }
-
-        auto name = sym->Name->ToString();
-        auto key = KeyOf("type", name);
-        if (not seen.insert(std::move(key)).second) { continue; }
-
-        members.emplace_back(Member{
-          .Name = std::move(name),
-          .Kind = "type",
-          .Type = Str(),
-          .Definition = DefinitionOfType(*sym),
-          .Visibility = VisibilityName(sym->GetVisibility())
-        });
-      }
-
-      // Iterate through all the namespace symbols on the namespace,
-      // which are reachable like "namespace::inner_ns".
-      for (const auto sym : ns_scope.GetAllNsSymbols(true)) {
-        if (sym == nullptr or sym->Name == nullptr) { continue; }
-        members.emplace_back(Member{
-          .Name = sym->Name->ToString(),
-          .Kind = "namespace",
-          .Type = Str(),
-          .Definition = SourceSpan()
-        });
-      }
-      return members;
-    }
-
-    /// Keep what a name resolved to, dropping it when it is not
-    /// in a file being indexed. Every other recorder ends here.
-    auto Record(ResolvedName &&entry) -> void {
-      // A name with no place in the source is one the compiler
-      // made up (internally generated), and a name written in
-      // another file is not what was asked for; neither kept.
-      if (entry.Use.Generated or not Wants(entry.Use.File)) { return; }
-      auto key = KeyOfSpan("use", entry.Use) + KeyOf(entry.Kind, entry.Name);
-      if (not Current().Seen.insert(std::move(key)).second) { return; }
-      Current().Entries.emplace_back(std::move(entry));
-    }
-
-    /// Keep what a call resolved to, so that the names between its
-    /// brackets can be offered.
-    auto RecordSignature(
-      Ast const &arguments, ScopeManager const &sm, CompilerMetaData const &,
-      Str name, Vec<Member> params) -> void {
-      // If we are not bothered about this scope, then return early;
-      // no work needs to be done here.
-      auto const &use_scope = *sm.CurrentScope;
-      if (not WantsScope(use_scope)) { return; }
-      auto span = RegionOf(&arguments, use_scope);
-      if (span.Generated) { return; }
-
-      // One record per call, however many times the node is analysed.
-      auto key = KeyOfSpan("call", span);
-      if (not Current().SeenCalls.insert(std::move(key)).second) { return; }
-      auto signature = Signature{
-        .Arguments = std::move(span), .Name = std::move(name), .Params = std::move(params)
+  // The definition is the span of the name within the scope
+  // that the symbol was defined in.
+  auto definition = SourceSpan();
+  if (sym.LinkedScope != nullptr) {
+    if (const auto mod_proto = AstAs<ModulePrototypeAst>(sym.LinkedScope->AstNode); mod_proto != nullptr) {
+      definition = SourceSpan{
+        .File = spp::utils::files::DisplayString(mod_proto->FilePath), .Generated = false
       };
-      Current().Signatures.emplace_back(std::move(signature));
-    }
-
-    /// Get a list of the members of the type, push it into the
-    /// state's members. Scope check for to prevent duplication.
-    auto RecordTypeMembers(
-      Str owner, Scope const &type_scope, ScopeManager const &sm,
-      CompilerMetaData const &meta) -> void {
-      // Get the members of a type and create a member list containing
-      // them, assigned against the owner type (pre-serialized).
-      if (owner.empty() or not WantsMembersYet(meta) or not (type_scope.SupsAttached or type_scope.SupsDeferred)) { return; }
-      if (not Current().SeenOwners.insert(KeyOf("type", owner)).second) { return; }
-      auto members = MembersOfTypeScope(type_scope, sm, meta);
-      Current().Members.emplace_back(MemberList{
-        .Owner = std::move(owner), .Of = "type", .Members = std::move(members)
-      });
-    }
-
-    /// Get a list of the members of the namespaces, push it into
-    /// the state's members. Scope check for to prevent duplication.
-    auto RecordNamespaceMembers(
-      Str owner, Scope const &ns_scope, ScopeManager const &sm,
-      CompilerMetaData const &meta) -> void {
-      // Get the members of a namespace and create a member list
-      // containing them, assigned against the owner namespace
-      // (pre-serialized).
-      if (owner.empty() or not WantsMembersYet(meta)) { return; }
-      if (not Current().SeenOwners.insert(KeyOf("ns", owner)).second) { return; }
-      auto members = MembersOfNamespaceScope(ns_scope, sm, meta);
-      Current().Members.emplace_back(MemberList{
-        .Owner = std::move(owner), .Of = "namespace", .Members = std::move(members)
-      });
-    }
-
-    /// Keep the use of a namespace - the "std", "mem" and "ops" of
-    /// "std::mem::ops::mem_cmp". A namespace is a folder or a file
-    /// rather than a declaration, so navigate to the representing
-    /// file.
-    auto RecordNamespace(
-      Ast const &use, ScopeManager const &sm, CompilerMetaData const &meta,
-      NamespaceSymbol const *const sym_ptr) -> void {
-      // If we are not bothered about this scope, then return early;
-      // no work needs to be done here.
-      auto const &use_scope = *sm.CurrentScope;
-      if (sym_ptr == nullptr or not WantsScope(use_scope)) { return; }
-      auto const &sym = *sym_ptr;
-
-      // The definition is the span of the name within the scope
-      // that the symbol was defined in.
-      auto definition = SourceSpan();
-      if (sym.LinkedScope != nullptr) {
-        if (const auto module = AstAs<ModulePrototypeAst>(sym.LinkedScope->AstNode); module != nullptr) {
-          definition = SourceSpan{
-            .File = spp::utils::files::DisplayString(module->FilePath), .Generated = false
-          };
-        }
-      }
-
-      // And what the namespace holds is what is offered after a
-      // "::" on it.
-      if (sym.LinkedScope != nullptr) {
-        RecordNamespaceMembers(NamespacePathOf(sym), *sym.LinkedScope, sm, meta);
-      }
-
-      // Call the master recorder function with the information
-      // about this variable symbol.
-      Record({
-        .Use = SpanOf(&use, use_scope),
-        .Kind = "namespace",
-        .Name = sym.Name != nullptr ? sym.Name->ToString() : Str(),
-        .Type = NamespacePathOf(sym),
-        .Definition = std::move(definition)
-      });
     }
   }
+
+  // And what the namespace holds is what is offered after a
+  // "::" on it.
+  if (sym.LinkedScope != nullptr) {
+    RecordNamespaceMembers(NamespacePathOf(sym), *sym.LinkedScope, sm, meta);
+  }
+
+  // Call the master recorder function with the information
+  // about this variable symbol.
+  Record({
+    .Use = SpanOf(&use, use_scope),
+    .Kind = "namespace",
+    .Name = sym.Name != nullptr ? sym.Name->ToString() : Str(),
+    .Type = NamespacePathOf(sym),
+    .Definition = std::move(definition)
+  });
 }
 
 auto spp::lsp::resolution_index::EnableFiles(

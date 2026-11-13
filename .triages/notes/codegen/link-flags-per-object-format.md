@@ -26,9 +26,15 @@ Cause: `protect` (`sspstrong`) and `split` (`safestack`) together. Either alone 
 pass takes over the canary of any ssp function and checks it itself (`SafeStack::checkStackGuard`,
 `llvm/lib/CodeGen/SafeStack.cpp`), always calling the `STACKPROTECTOR_CHECK_FAIL` libcall (`__stack_chk_fail`), which
 MSVC triples do not have. It never uses the target's `__security_check_cookie` route. Reproduce locally with
-`spp build -m dev --target x86_64-pc-windows-msvc`, or `llc` on any MSVC IR with both attributes. Now refused in
-`CheckTargetSupport` (`HasSafeStackCanary`); the Windows lanes pass `off: memory.stack.split`. Upstream-watch U15. See
-[[stack-protector-heuristics]].
+`spp build -m dev --target x86_64-pc-windows-msvc`, or `llc` on any MSVC IR with both attributes. Upstream-watch U15.
+See [[stack-protector-heuristics]].
+
+**Windows has no split stack at all (2026-11-11).** sppc is a DLL there, and a DLL cannot export a thread-local, so
+`__safestack_unsafe_stack_ptr` is an undefined symbol at `lld-link`, though LLVM's libcall table lists it for MSVC.
+`DoesTargetSupportSafeStack` returns false for any Windows triple, and `CheckTargetSupport` leaves the default `split`
+out (with `pac_ret`, which rests on it off AArch64 ELF); an explicit `split = true` is refused. The Windows CI lanes
+pass no `off:`, so `stl-conformance.sh` builds a default `spp init` project, the path the release first broke on.
+Upstream-watch U27.
 
 **Why:** the ELF-only flags were added unconditionally, which broke the macOS lane's STL conformance link.
 

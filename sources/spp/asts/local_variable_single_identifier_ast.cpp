@@ -22,6 +22,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_coerce;
+import spp.codegen.llvm_debug;
 import spp.codegen.llvm_type;
 import spp.utils.ice;
 import spp.utils.uid;
@@ -214,6 +215,18 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   if (alloca == nullptr and not is_void) {
     alloca = codegen::LlvmEntryAlloca(llvm_type, "local.alloca" + Name->Val + "." + uid, ctx);
     var_sym->LlvmInfo->Alloca = alloca;
+
+    // Described for a debugger, as a parameter where the value is an argument.
+    // A binding a coroutine keeps in its frame is not one this makes, and so is
+    // not described.
+    auto type_ref = var_sym->TypeRefIn(*sm->CurrentScope);
+    if (borrows and not type_ref.IsBorrowed()) {
+      type_ref = type_ref.WithConvention(*Conv == ConventionTag::MUT ? ConventionTag::MUT : ConventionTag::REF);
+    }
+    const auto argument = llvm::dyn_cast_or_null<llvm::Argument>(meta->LetStatementPrecomputedValue);
+    codegen::DeclareVariable(
+      *ctx, *var_sym->LlvmInfo, (Alias != nullptr ? Alias->Name : Name)->Val, type_ref, Name->PosStart(),
+      argument != nullptr ? argument->getArgNo() + 1 : 0);
   }
 
   // Generate the initializer expression. A function/closure
@@ -256,6 +269,13 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     // Skip storing Void (created via generic implementation
     // analysis).
     if (not is_void and not diverged) { ctx->Builder.CreateStore(llvm_val, alloca); }
+  }
+
+  // A binding that can be moved is shown from here, once it holds its value
+  // ("let x: T" only once it is given one).
+  if (not meta->LetStatementFromUninitialized
+    or meta->LetStatementPrecomputedValue != nullptr) {
+    codegen::ResumeVariable(*ctx, *var_sym->LlvmInfo);
   }
 
   // Declare the binding, now its value is in place.
@@ -306,7 +326,9 @@ auto spp::asts::LocalVariableSingleIdentifierAst::_Declare(
   ScopeManager *sm) const -> VariableSymbol* {
   // Put this binding back under its name, from here on in the scope.
   auto *const sym = _Binding(sm);
-  if (sym != nullptr) { sm->CurrentScope->AddVarSymbol(sym->SharedFromThis<VariableSymbol>()); }
+  if (sym != nullptr) {
+    sm->CurrentScope->AddVarSymbol(sym->SharedFromThis<VariableSymbol>());
+  }
   return sym;
 }
 
@@ -318,13 +340,15 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Narrow(
   scope.AddVarSymbol(flow);
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
+auto spp::asts::LocalVariableSingleIdentifierAst::ExtractNames() const
+  -> Vec<Shared<IdentifierAst>> {
   // Return the single name as a vector that can get appended to
   // from nesting.
   return {Name};
 }
 
-auto spp::asts::LocalVariableSingleIdentifierAst::ExtractName() const -> Shared<IdentifierAst> {
+auto spp::asts::LocalVariableSingleIdentifierAst::ExtractName() const
+  -> Shared<IdentifierAst> {
   // Return the single name (identifier) for matching capability.
   return Name;
 }

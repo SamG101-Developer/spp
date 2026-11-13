@@ -23,6 +23,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_debug;
 import spp.lex.tokens;
 import spp.utils.ice;
 import genex;
@@ -181,10 +182,14 @@ auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
     Ice(*this, "a function body emitted from another module's walk");
   }
 
-  // Add the entry block to the function.
+  // Add the entry block to the function. Its debug info is a subprogram at the
+  // prototype, whose line everything the body emits has until a statement
+  // gives its own.
   const auto entry_bb = llvm::BasicBlock::Create(
     *ctx->Context, "entry", llvm_func_target);
   ctx->Builder.SetInsertPoint(entry_bb);
+  codegen::AttachSubprogram(*ctx, *llvm_func_target, PosStart());
+  codegen::SetDebugLocation(*ctx, PosStart());
 
   // Generate the parameters as variables.
   FnParamGroup->Stage11_CodeGen(sm, meta, ctx);

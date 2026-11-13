@@ -10,110 +10,129 @@ import std;
 import numex.big_dec;
 import numex.big_int;
 
-namespace {
+namespace spp::utils::numbers {
   /// The range of a signed integer "bits" wide.
-  auto SignedBounds(
-    const std::size_t bits) -> spp::Pair<numex::BigInt, numex::BigInt> {
-    // The signed bounds use the negative and positive for
-    // "2 ** (n - 1)" where "n" is the number of bits.
-    return spp::MakePair(
-      -(numex::BigInt(1) << (bits - 1)), (numex::BigInt(1) << (bits - 1)) - 1);
-  }
+  static auto SignedBounds(
+    const std::size_t bits) -> spp::Pair<numex::BigInt, numex::BigInt>;
 
   /// The range of an unsigned integer "bits" wide.
-  auto UnsignedBounds(
-    const std::size_t bits) -> spp::Pair<numex::BigInt, numex::BigInt> {
-    // The unsigned bounds use the positive for "2 ** n"
-    // where "n" is the number of bits (no negative).
-    return spp::MakePair(
-      numex::BigInt(0), (numex::BigInt(1) << bits) - 1);
-  }
+  static auto UnsignedBounds(
+    const std::size_t bits) -> spp::Pair<numex::BigInt, numex::BigInt>;
 
   /// The finite "value" to "digits" significant digits, as a
   /// decimal a literal can hold. "toString" writes a large value
   /// with an exponent, so the point is moved by it instead.
-  auto Plain(
+  static auto Plain(
     llvm::APFloat const &value, const unsigned digits)
-    -> spp::Str {
-    using spp::Str;
-    auto buffer = llvm::SmallVector<char, 64>();
-    value.toString(buffer, digits, std::numeric_limits<unsigned>::max());
-    const auto text = Str(buffer.data(), buffer.size());
-    const auto e = text.find_first_of("eE");
-    if (e == Str::npos) { return text; }
-
-    const auto is_negative = text.starts_with('-');
-    const auto mantissa = text.substr(is_negative ? 1 : 0, e - (is_negative ? 1 : 0));
-    const auto point = mantissa.find('.');
-    const auto int_digits = point == Str::npos ? mantissa : mantissa.substr(0, point);
-    const auto all = int_digits + (point == Str::npos ? Str() : mantissa.substr(point + 1));
-    const auto at = static_cast<std::int64_t>(int_digits.size()) + std::stoll(text.substr(e + 1));
-    const auto sign = Str(is_negative ? "-" : "");
-    const auto size = static_cast<std::int64_t>(all.size());
-    if (at <= 0) { return sign + "0." + Str(static_cast<std::size_t>(-at), '0') + all; }
-    if (at >= size) { return sign + all + Str(static_cast<std::size_t>(at - size), '0'); }
-    return sign + all.substr(0, static_cast<std::size_t>(at)) + "." + all.substr(static_cast<std::size_t>(at));
-  }
+    -> spp::Str;
 
   /// The non-zero decimal "plain", as "Plain" writes one, rounded
   /// half up to its first "digits" significant digits.
-  auto RoundDecimal(
+  static auto RoundDecimal(
     spp::Str const &plain, const unsigned digits)
-    -> spp::Str {
-    using spp::Str;
-    const auto is_negative = plain.starts_with('-');
-    auto text = plain.substr(is_negative ? 1 : 0);
-    const auto point = text.find('.');
-    const auto is_digit = [&](const std::size_t i) { return i != point and i < text.size(); };
-
-    // Past the last digit kept; nothing is cut if the text ends first.
-    auto cut = text.find_first_not_of("0.");
-    for (auto kept = 0u; cut < text.size(); ++cut) {
-      if (not is_digit(cut)) { continue; }
-      if (kept++ == digits) { break; }
-    }
-    if (cut >= text.size()) { return plain; }
-
-    // Dropped integer digits still hold their place; dropped fraction
-    // digits, the point among them, simply go.
-    const auto round_up = text[cut] >= '5';
-    if (point == Str::npos or cut < point) {
-      const auto end = point == Str::npos ? text.size() : point;
-      text = text.substr(0, cut) + Str(end - cut, '0');
-    }
-    else {
-      text.resize(cut);
-    }
-
-    // Carry from the last digit kept, which may lengthen the number.
-    if (round_up) {
-      auto carry = true;
-      for (auto i = cut; carry and i-- > 0;) {
-        if (not is_digit(i)) { continue; }
-        carry = text[i] == '9';
-        text[i] = carry ? '0' : static_cast<char>(text[i] + 1);
-      }
-      if (carry) { text.insert(0, 1, '1'); }
-    }
-
-    // A fraction ends at its last non-zero digit, as "toString" writes one.
-    if (text.find('.') != Str::npos) {
-      text.erase(text.find_last_not_of('0') + 1);
-      if (text.ends_with('.')) { text.pop_back(); }
-    }
-    return (is_negative ? "-" : "") + text;
-  }
+    -> spp::Str;
 
   /// The range of the float "type": its largest finite
   /// magnitude, either sign. Written exactly: it is an integer
   /// of at most 4933 digits (an "f128").
-  auto FloatRange(
+  static auto FloatRange(
     spp::Str const &type)
-    -> spp::Pair<numex::BigDec, numex::BigDec> {
-    const auto largest = llvm::APFloat::getLargest(spp::utils::numbers::FloatSemantics(type));
-    const auto exact = numex::BigDec(Plain(largest, 5000));
-    return spp::MakePair(-exact, exact);
+    -> spp::Pair<numex::BigDec, numex::BigDec>;
+}
+
+auto spp::utils::numbers::SignedBounds(
+  const std::size_t bits) -> spp::Pair<numex::BigInt, numex::BigInt> {
+  // The signed bounds use the negative and positive for
+  // "2 ** (n - 1)" where "n" is the number of bits.
+  return spp::MakePair(
+    -(numex::BigInt(1) << (bits - 1)), (numex::BigInt(1) << (bits - 1)) - 1);
+}
+
+auto spp::utils::numbers::UnsignedBounds(
+  const std::size_t bits) -> spp::Pair<numex::BigInt, numex::BigInt> {
+  // The unsigned bounds use the positive for "2 ** n"
+  // where "n" is the number of bits (no negative).
+  return spp::MakePair(
+    numex::BigInt(0), (numex::BigInt(1) << bits) - 1);
+}
+
+auto spp::utils::numbers::Plain(
+  llvm::APFloat const &value, const unsigned digits)
+  -> spp::Str {
+  using spp::Str;
+  auto buffer = llvm::SmallVector<char, 64>();
+  value.toString(buffer, digits, std::numeric_limits<unsigned>::max());
+  const auto text = Str(buffer.data(), buffer.size());
+  const auto e = text.find_first_of("eE");
+  if (e == Str::npos) { return text; }
+
+  const auto is_negative = text.starts_with('-');
+  const auto mantissa = text.substr(is_negative ? 1 : 0, e - (is_negative ? 1 : 0));
+  const auto point = mantissa.find('.');
+  const auto int_digits = point == Str::npos ? mantissa : mantissa.substr(0, point);
+  const auto all = int_digits + (point == Str::npos ? Str() : mantissa.substr(point + 1));
+  const auto at = static_cast<std::int64_t>(int_digits.size()) + std::stoll(text.substr(e + 1));
+  const auto sign = Str(is_negative ? "-" : "");
+  const auto size = static_cast<std::int64_t>(all.size());
+  if (at <= 0) { return sign + "0." + Str(static_cast<std::size_t>(-at), '0') + all; }
+  if (at >= size) { return sign + all + Str(static_cast<std::size_t>(at - size), '0'); }
+  return sign + all.substr(0, static_cast<std::size_t>(at)) + "." + all.substr(static_cast<std::size_t>(at));
+}
+
+auto spp::utils::numbers::RoundDecimal(
+  spp::Str const &plain, const unsigned digits)
+  -> spp::Str {
+  using spp::Str;
+  const auto is_negative = plain.starts_with('-');
+  auto text = plain.substr(is_negative ? 1 : 0);
+  const auto point = text.find('.');
+  const auto is_digit = [&](const std::size_t i) { return i != point and i < text.size(); };
+
+  // Past the last digit kept; nothing is cut if the text ends first.
+  auto cut = text.find_first_not_of("0.");
+  for (auto kept = 0u; cut < text.size(); ++cut) {
+    if (not is_digit(cut)) { continue; }
+    if (kept++ == digits) { break; }
   }
+  if (cut >= text.size()) { return plain; }
+
+  // Dropped integer digits still hold their place; dropped fraction
+  // digits, the point among them, simply go.
+  const auto round_up = text[cut] >= '5';
+  if (point == Str::npos or cut < point) {
+    const auto end = point == Str::npos ? text.size() : point;
+    text = text.substr(0, cut) + Str(end - cut, '0');
+  }
+  else {
+    text.resize(cut);
+  }
+
+  // Carry from the last digit kept, which may lengthen the number.
+  if (round_up) {
+    auto carry = true;
+    for (auto i = cut; carry and i > 0;) {
+      --i;
+      if (not is_digit(i)) { continue; }
+      carry = text[i] == '9';
+      text[i] = carry ? '0' : static_cast<char>(text[i] + 1);
+    }
+    if (carry) { text.insert(0, 1, '1'); }
+  }
+
+  // A fraction ends at its last non-zero digit, as "toString" writes one.
+  if (text.find('.') != Str::npos) {
+    text.erase(text.find_last_not_of('0') + 1);
+    if (text.ends_with('.')) { text.pop_back(); }
+  }
+  return (is_negative ? "-" : "") + text;
+}
+
+auto spp::utils::numbers::FloatRange(
+  spp::Str const &type)
+  -> spp::Pair<numex::BigDec, numex::BigDec> {
+  const auto largest = llvm::APFloat::getLargest(spp::utils::numbers::FloatSemantics(type));
+  const auto exact = numex::BigDec(Plain(largest, 5000));
+  return spp::MakePair(-exact, exact);
 }
 
 /// [CHECKED]

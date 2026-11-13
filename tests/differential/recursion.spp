@@ -1,0 +1,67 @@
+# Recursion: tail calls with an accumulator, mutual recursion, a branching recursion, Ackermann's function, and a
+# recursion over a vector's halves. At rel these become loops or are inlined into each other; at dev every call is a
+# frame, so the depths stay well within the default stack.
+
+fun show(what: &StrView, got: U64) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  let text = Str::from(got)
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun sum_to(n: U64, acc: U64) -> U64 {
+  case n == 0_u64 { ret acc }
+  ret sum_to(n - 1_u64, acc.add_wrapping(n * n))
+}
+
+fun is_even(n: U64) -> Bool {
+  case n == 0_u64 { ret true }
+  ret is_odd(n - 1_u64)
+}
+
+fun is_odd(n: U64) -> Bool {
+  case n == 0_u64 { ret false }
+  ret is_even(n - 1_u64)
+}
+
+fun fib(n: U64) -> U64 {
+  case n < 2_u64 { ret n }
+  ret fib(n - 1_u64) + fib(n - 2_u64)
+}
+
+fun ackermann(m: U64, n: U64) -> U64 {
+  case m == 0_u64 { ret n + 1_u64 }
+  case n == 0_u64 { ret ackermann(m - 1_u64, 1_u64) }
+  ret ackermann(m - 1_u64, ackermann(m, n - 1_u64))
+}
+
+fun gcd(a: U64, b: U64) -> U64 {
+  case b == 0_u64 { ret a }
+  ret gcd(b, a % b)
+}
+
+fun range_sum(v: &Vec[U64], lo: USize, hi: USize) -> U64 {
+  case hi - lo == 1_uz { ret v[lo]@ }
+  let mid = lo + (hi - lo) / 2_uz
+  ret range_sum(&v, lo, mid).mul_wrapping(3_u64).add_wrapping(range_sum(&v, mid, hi))
+}
+
+fun main() -> Void {
+  show("sum_to 20000", sum_to(20000_u64, 0_u64))
+  show("is_even 20000", case is_even(20000_u64) { 1_u64 } else { 0_u64 })
+  show("is_odd 12345", case is_odd(12345_u64) { 1_u64 } else { 0_u64 })
+  show("fib 25", fib(25_u64))
+  show("ackermann 2 3", ackermann(2_u64, 3_u64))
+  show("ackermann 3 5", ackermann(3_u64, 5_u64))
+  show("gcd", gcd(1836311903_u64, 1134903170_u64))
+
+  let mut v = Vec[U64]::new()
+  let mut i = 0_u64
+  loop i < 1000_u64 {
+    v.append(i * 7_u64 + 3_u64)
+    i += 1_u64
+  }
+  show("range_sum", range_sum(&v, 0_uz, v.len()))
+  std::mem::ops::drop(v)
+}

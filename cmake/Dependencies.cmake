@@ -65,5 +65,5 @@ endif ()
 llvm_map_components_to_libnames(
   LLVM_LIBS
   core support codegen scalaropts transformutils analysis
-  coroutines ipo passes linker target
+  coroutines ipo passes linker target debuginfodwarf
   ${_spp_llvm_targets})

@@ -1,0 +1,19 @@
+# Floats converted to an integer, growing past S32's range: the conversions print, then the float-to-integer check
+# fails, at dev and at rel, where a bare "fptosi" of it would be poison.
+
+fun show(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun main() -> Void {
+  let mut x = 1.5_f64
+  let mut i = 0_u32
+  loop i < 40_u32 {
+    show("converted", Str::from(S32::from(x)))
+    x = x * 4.0_f64
+    i += 1_u32
+  }
+}

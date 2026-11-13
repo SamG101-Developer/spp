@@ -62,6 +62,11 @@ use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
 use_alias(spp::asts, TypeAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 
+namespace spp::analyse::utils::comp_generics {
+  /// The constants "CompTimeResolutionGuard" holds, innermost last.
+  static thread_local spp::Vec<VariableSymbol const*> resolving_constants;
+}
+
 auto spp::analyse::utils::comp_generics::FindCompMemberId(
   const TypeId owner, const StrView name, Scope const *const declared_in) -> CompId {
   // Convert the type-interned owner into a comp key, and intern
@@ -189,11 +194,6 @@ auto spp::analyse::utils::comp_generics::IsCompOperator(
   return type_predicates::AnyCompPart(value, nullptr, nullptr, [](ExpressionAst const &part) {
     return part.To<BinaryExpressionAst>() != nullptr or part.To<ParenthesisedExpressionAst>() != nullptr;
   });
-}
-
-namespace {
-  /// The constants "CompTimeResolutionGuard" holds, innermost last.
-  thread_local spp::Vec<VariableSymbol const*> resolving_constants;
 }
 
 SPP_MOD_BEGIN

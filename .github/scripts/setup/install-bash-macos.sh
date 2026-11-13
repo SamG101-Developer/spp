@@ -5,9 +5,10 @@
 # directory so no other Homebrew tool moves ahead of the
 # system's. Runs under 3.2 itself, so keep it to that.
 set -euo pipefail
+source .github/scripts/lib/retry.sh
 
 export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1
-brew list --formula bash > /dev/null 2>&1 || brew install bash
+brew list --formula bash > /dev/null 2>&1 || retry brew install bash
 
 bin_dir="${RUNNER_TEMP}/bash-bin"
 mkdir -p "$bin_dir"

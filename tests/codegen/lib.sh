@@ -69,23 +69,27 @@ EOF
 
 # The ffi package "pkg": a host library built from "source" (C, or C++ for a
 # ".cpp"), hardened the way the runtime is, and the stub read from stdin.
+# "-z separate-code" is GNU ld's default on x86-64 but not on AArch64, and
+# spp refuses a library whose code shares a page with its ELF header
+# (segments_ffi), so it is asked for outright.
 add_ffi() {
     local dir="$1" pkg="$2" source="$3"
     local cc=cc
     [[ "${source}" == *.cpp ]] && cc=c++
     mkdir -p "${dir}/ffi/${pkg}/${HOST_FFI}"
-    "${cc}" -shared -fPIC -O2 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -Wl,-z,relro,-z,now \
+    "${cc}" -shared -fPIC -O2 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -Wl,-z,relro,-z,now,-z,separate-code \
         -o "${dir}/ffi/${pkg}/${HOST_FFI}/lib${pkg}.so" "${source}"
     cat > "${dir}/ffi/${pkg}/stub.spp"
 }
 
-# Build "dir" at "mode", leaving the executable in EXE and the program's own
-# object in OBJ. On a failure, reports it against "name" and returns 1; the
-# caller counts it.
+# Build "dir" at "mode", with any further arguments passed to "spp build",
+# leaving the executable in EXE and the program's own object in OBJ. On a
+# failure, reports it against "name" and returns 1; the caller counts it.
 build_project() {
     local name="$1" dir="$2" mode="$3"
+    shift 3
     EXE="" OBJ=""
-    if ! (cd "${dir}" && "${SPP}" build -m "${mode}" > "${dir}/build.log" 2>&1); then
+    if ! (cd "${dir}" && "${SPP}" build -m "${mode}" "$@" > "${dir}/build.log" 2>&1); then
         echo "FAIL  ${name}: build failed, see below"
         tr '\r' '\n' < "${dir}/build.log" | grep -v '^\s*$' | tail -20
         return 1
@@ -138,6 +142,34 @@ fail() {
     echo "FAIL  ${message}"
     [[ -n "${log}" ]] && sed 's/^/        /' "${log}" | head -12
     failures=$((failures + 1))
+}
+
+# Whether "tool" (a name on PATH, or a path) can be run, for the part of a
+# check "what" names. Without it that part is skipped, except where CI sets
+# SPP_CI_REQUIRE_TOOLS: there the image is meant to have it, and a check that
+# skipped would pass having checked nothing, so the case fails instead.
+have_tool() {
+    local tool="$1" what="$2"
+    command -v "${tool}" > /dev/null && return 0
+    if [[ -n "${SPP_CI_REQUIRE_TOOLS:-}" ]]; then
+        fail "${what}: ${tool} is not installed, and SPP_CI_REQUIRE_TOOLS is set"
+    else
+        echo "skip  ${what}: no ${tool}"
+    fi
+    return 1
+}
+
+# For a check that needs "tool" throughout: skipped whole without it, or
+# failed under SPP_CI_REQUIRE_TOOLS (see "have_tool").
+need_tool() {
+    local tool="$1"
+    command -v "${tool}" > /dev/null && return 0
+    if [[ -n "${SPP_CI_REQUIRE_TOOLS:-}" ]]; then
+        echo "FAIL  ${tool} is not installed, and SPP_CI_REQUIRE_TOOLS is set"
+        exit 1
+    fi
+    echo "skipped: no ${tool}"
+    exit 0
 }
 
 # For a check that reads one architecture's disassembly.

@@ -28,7 +28,7 @@ and associated documentation files (the “Software”), to use the Compiler und
    SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE USE OF THE COMPILER OR
    COMPILER-GENERATED OUTPUT.
 
-5. **Commercial License Contact**: To obtain a commercial license, contact samuelgardner101@fmail.com.
+5. **Commercial License Contact**: To obtain a commercial license, contact samuelgardner101@gmail.com.
 
 6. **Definitions**: For the purposes of this license:
     - “Personal or Educational Projects” include any non-commercial project developed for learning, experimentation, or

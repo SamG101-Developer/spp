@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_entry;
+import llvm;
 
 namespace spp::codegen {
   /// Tell LLVM what the names of the allocation functions in the sppc library.
@@ -10,14 +11,15 @@ namespace spp::codegen {
   /// each declaration, LLVM can apply attributes for their kind, their one
   /// family, which argument is the size, alignment or pointer, and that a new
   /// allocation aliases nothing.
-  SPP_EXP_FUN auto ApplyRuntimeAllocatorAttrs(void *llvm_module) -> void;
+  SPP_EXP_FUN auto ApplyRuntimeAllocatorAttrs(llvm::Module &llvm_mod) -> void;
 
   /// Add a C "main" to the combined "llvm::Module", that calls the S++ entry
   /// point named "spp_main_name", so the program has an entry point of the
   /// shape that the linker and libc start-up expect. The S++ entry point cannot
   /// be it directly: its name is mangled, and S++ "main" doesn't take the argv/
-  /// argc pair.
+  /// argc pair. They go to sppc instead ("sppc_set_args"), first, where
+  /// "std::process::args" reads them.
   SPP_EXP_FUN auto EmitCEntryPoint(
-    void *llvm_module, char const *spp_main_name, bool split_stacks,
+    llvm::Module &llvm_mod, char const *spp_main_name, bool split_stacks,
     bool deny_wx, bool seal) -> void;
 }

@@ -27,27 +27,29 @@ import spp.utils.ptr;
 import genex;
 
 namespace spp::asts {
-  namespace {
-    /// The names given more than once among a group's keyword
-    /// arguments of one kind. Flag for if we are looking at type
-    /// or comp args.
-    auto DuplicateNames(
-      Vec<GenericArgumentAst*> const &keyword_args,
-      const bool comp) {
-      // Track all the generic arguments' names into a single
-      // vector.
-      auto names = Vec<TypeAst*>();
-      for (const auto x : keyword_args) {
-        if (x->IsCompArg() == comp) { names.emplace_back(x->KeywordName().get()); }
-      }
+  /// The names given more than once among a group's keyword
+  /// arguments of one kind. Flag for if we are looking at type
+  /// or comp args.
+  static auto DuplicateNames(
+    Vec<GenericArgumentAst*> const &keyword_args,
+    const bool comp);
+}
 
-      // Grab the first set of duplicate into a new vector
-      // that we can report as errors.
-      return names
-        | genex::views::duplicates({}, genex::meta::deref)
-        | genex::to<Vec>();
-    }
+auto spp::asts::DuplicateNames(
+  Vec<GenericArgumentAst*> const &keyword_args,
+  const bool comp) {
+  // Track all the generic arguments' names into a single
+  // vector.
+  auto names = Vec<TypeAst*>();
+  for (const auto x : keyword_args) {
+    if (x->IsCompArg() == comp) { names.emplace_back(x->KeywordName().get()); }
   }
+
+  // Grab the first set of duplicate into a new vector
+  // that we can report as errors.
+  return names
+    | genex::views::duplicates({}, genex::meta::deref)
+    | genex::to<Vec>();
 }
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL

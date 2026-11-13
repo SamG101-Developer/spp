@@ -8,6 +8,7 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::codegen, struct DeferredReached);
 use(spp::codegen, struct LlvmCtx);
 use(spp::codegen, struct LlvmGenerator);
@@ -31,6 +32,22 @@ SPP_EXP_CLS struct spp::codegen::LlvmCtx {
   /// The LLVM builder currently in use. Used to build all LLVM items, into the
   /// "Module" field.
   llvm::IRBuilder<> Builder;
+
+  /// The module's debug info, when "[binary.debug] info" asks for any; its
+  /// builder, the one compile unit the module is, a file per source path a
+  /// location names, and the project root those paths are recorded relative
+  /// to. With full debug info ("DiVariables"), variables are described too,
+  /// with a type made once per S++ type, and the lexical blocks of the blocks
+  /// being generated, innermost last, each beside its function (a closure's
+  /// body is generated inside its parent's) and the location current where it
+  /// opened, restored as it closes. All empty without.
+  Unique<llvm::DIBuilder> DiBuilder;
+  llvm::DICompileUnit *DiUnit = nullptr;
+  Map<Str, llvm::DIFile*> DiFiles;
+  Path DiRoot;
+  bool DiVariables = false;
+  Map<TypeSymbol const*, llvm::DIType*> DiTypes;
+  Vec<Tup<llvm::Function const*, llvm::DILexicalBlock*, llvm::DebugLoc>> DiBlocks;
 
   /// Whether we are generating into compile-time context or not - some literals
   /// have better generation.

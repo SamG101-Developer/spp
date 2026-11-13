@@ -48,24 +48,24 @@ use_alias(spp::asts::meta, AllowPackWholeGuard);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);
 
-SPP_MOD_BEGIN
-namespace {
-  /// Check if the binary operation is a logical "and" or
-  /// a logical "or", as these two have special behaviour;
-  /// they use intrinsics, not function mappings, allowing
-  /// for short-circuiting.
-  auto IsLogicalToken(
-    TokenAst const *tok)
-    -> bool {
-    // Simple token type check. The token can be absent: rewriting a comparison chain moves the operator out of the
-    // node it replaces ("CombineComparisonChain"), and a clone of that node is built with no token at all.
-    using spp::lex::SppTokenType;
-    return tok != nullptr
-      and (tok->TokenType == SppTokenType::KW_AND
-        or tok->TokenType == SppTokenType::KW_OR);
-  }
+namespace spp::asts {
+  /// Check if the binary operation is a logical "and" or a logical "or", as
+  /// these two have special behaviour; they use intrinsics, not function
+  /// mappings, allowing for short-circuiting.
+  static auto IsLogicalToken(TokenAst const *tok) -> bool;
 }
 
+auto spp::asts::IsLogicalToken(TokenAst const *tok) -> bool {
+  // Simple token type check. The token can be absent: rewriting a comparison
+  // chain moves the operator out of the node it replaces, and a clone of that
+  // node is built with no token at all.
+  using spp::lex::SppTokenType;
+  return tok != nullptr
+    and (tok->TokenType == SppTokenType::KW_AND
+      or tok->TokenType == SppTokenType::KW_OR);
+}
+
+SPP_MOD_BEGIN
 spp::asts::BinaryExpressionAst::BinaryExpressionAst(
   decltype(Lhs) &&lhs,
   decltype(TokOp) &&tok_op,

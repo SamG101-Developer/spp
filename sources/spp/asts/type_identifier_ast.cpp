@@ -31,6 +31,7 @@ import spp.asts.identifier_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.type_unary_expression_ast;
 import spp.asts.type_unary_expression_operator_ast;
@@ -56,22 +57,24 @@ use_alias(spp::asts::meta, CompilerStage);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
-SPP_MOD_BEGIN
-namespace {
+namespace spp::asts {
   /// Whether a borrow may be written somewhere in "type": a convention
   /// on it or inside its generic arguments. A type spelled any other
   /// way (a variant, a namespaced name) answers yes, so it is looked at
   /// properly; this only spares the common case its sup lookup.
-  auto MayHoldWrittenBorrow(TypeAst const &type) -> bool {
-    if (type.GetConvention() != nullptr) { return true; }
-    auto const *const id = type.To<TypeIdentifierAst>();
-    if (id == nullptr) { return true; }
-    return genex::any_of(id->GnArgGroup->GetTypeArgs(), [](auto const *arg) {
-      return MayHoldWrittenBorrow(*arg->TypeVal);
-    });
-  }
+  static auto MayHoldWrittenBorrow(TypeAst const &type) -> bool;
 }
 
+auto spp::asts::MayHoldWrittenBorrow(TypeAst const &type) -> bool {
+  if (type.GetConvention() != nullptr) { return true; }
+  auto const *const id = type.To<TypeIdentifierAst>();
+  if (id == nullptr) { return true; }
+  return genex::any_of(id->GnArgGroup->GetTypeArgs(), [](auto const *arg) {
+    return MayHoldWrittenBorrow(*arg->TypeVal);
+  });
+}
+
+SPP_MOD_BEGIN
 auto spp::asts::TypeIdentifierAst::FromIdentifier(
   IdentifierAst const &identifier) -> Shared<TypeIdentifierAst> {
   return MakeShared<TypeIdentifierAst>(identifier.PosStart(), Str(identifier.Val), nullptr);

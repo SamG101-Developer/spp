@@ -9,6 +9,7 @@ Todo
 [Aa]uditable
 [Bb]acktraces?
 [Bb]ooleans?
+[Bb]reakpoints?
 [Bb]uiltins?
 [Cc]allees?
 [Cc]odegen
@@ -23,6 +24,7 @@ Todo
 [Dd]estructured
 [Dd]estructuring
 [Ee]lementwise
+[Ff]ormatters?
 [Gg]lobals?
 [Ii]nlined?
 [Ii]nitialisers?
@@ -32,6 +34,7 @@ Todo
 [Ll]ockfiles?
 [Ll]ockdown
 [Mm]ergeable
+[Mm]isnumered
 [Mm]isordering
 [Mm]itigations?
 [Mm]onomorphis(e|es|ed|ing|ation)
@@ -67,6 +70,12 @@ Todo
 [Vv]ectorise
 
 # S++ identifiers and abbreviations that appear in running prose.
+gdb
+lldb
+dev
+std
+IDE
+json
 APIs?
 ASTs?
 STL
@@ -134,3 +143,6 @@ libdl
 recv
 repo
 Cfg
+CLion
+IntelliJ
+PyCharm

@@ -35,7 +35,7 @@ select = [
 ]
 
 [tool.ty.src]
-exclude = ["tests/gtest-parallel"]
+exclude = ["tests/gtest-parallel", "**/vcs/**"]
 
 [tool.ty.environment]
 extra-paths = [".github/scripts/lib"]
@@ -51,7 +51,13 @@ optin = "optin"   # Option in clang-tidy
 seh = "seh"
 
 [tool.typos.files]
-extend-exclude = ["Doxyfile", ".vale/**", "*.svg", "tests/gtest-parallel/**"]
+extend-exclude = [
+  "Doxyfile",
+  ".vale/**",
+  "*.svg",
+  "tests/gtest-parallel/**",
+  "THIRD-PARTY-NOTICES.txt",
+]
 
 [tool.codespell]
 ignore-words-list = "CreateOr,CreateMemCpy,olt,compex,ReadIn,PositionOf,isELF,ArchType,statics,ScriptIn,optin,seh"

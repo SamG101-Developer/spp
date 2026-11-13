@@ -59,50 +59,58 @@ use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
 namespace spp::asts {
-  namespace {
-    /// The package a scope belongs to: its module's owner, or "" for
-    /// the project's modules.
-    auto PackageOfScope(Scope const *const scope) -> Opt<Str> {
-      const auto mod_scope = scope != nullptr ? scope->GetParentModule() : nullptr;
-      const auto mod_ast = mod_scope != nullptr ? AstAs<ModulePrototypeAst>(mod_scope->AstNode) : nullptr;
-      if (mod_ast == nullptr) { return Nullopt; }
-      return mod_ast->Owner.value_or(Str());
-    }
+  /// The package a scope belongs to: its module's owner, or "" for
+  /// the project's modules.
+  static auto PackageOfScope(Scope const *const scope) -> Opt<Str>;
 
-    /// The first block in "scopes" extending a type matching
-    /// "name" with a super class matching "super_class". The
-    /// super class is compared first: it rejects the large
-    /// majority of candidates for a fraction of the cost of a
-    /// name comparison, which is the type-symbol lookup this
-    /// compiler spends most of its time on.
-    auto FindMatchingExtension(
-      Vec<Scope*> const &scopes,
-      TypeAst const &super_class,
-      TypeAst const &name,
-      Scope const &check_scope,
-      const bool check_constraints)
-      -> Pair<Scope*, SupPrototypeExtensionAst const*> {
-      IMPORT_UTILS;
-      // By identity, read where each is written; nothing is made while the blocks are searched. Either pattern may
-      // take the other.
-      const auto super_id = check_scope.TypeIdOf(super_class);
-      const auto name_id = check_scope.TypeIdOf(name);
-      if (super_id == nullptr or name_id == nullptr) { return {nullptr, nullptr}; }
-      for (auto *const sc : scopes) {
-        const auto ext = AstAs<SupPrototypeExtensionAst>(sc->AstNode);
-        if (ext == nullptr or sc->TypeIdOf(*ext->SuperCls) != super_id) { continue; }
-        const auto ext_id = sc->TypeIdOf(*ext->Name);
-        if (ext_id == nullptr) { continue; }
-        auto fwd = analyse::scopes::GenericSubst();
-        auto rev = analyse::scopes::GenericSubst();
-        if (analyse::scopes::UnifyTypeIds(ext_id, name_id, *sc, check_scope, fwd, false, check_constraints)
-          or analyse::scopes::UnifyTypeIds(name_id, ext_id, check_scope, *sc, rev, false, check_constraints)) {
-          return {sc, ext};
-        }
-      }
-      return {nullptr, nullptr};
+  /// The first block in "scopes" extending a type matching
+  /// "name" with a super class matching "super_class". The
+  /// super class is compared first: it rejects the large
+  /// majority of candidates for a fraction of the cost of a
+  /// name comparison, which is the type-symbol lookup this
+  /// compiler spends most of its time on.
+  static auto FindMatchingExtension(
+    Vec<Scope*> const &scopes,
+    TypeAst const &super_class,
+    TypeAst const &name,
+    Scope const &check_scope,
+    const bool check_constraints)
+    -> Pair<Scope*, SupPrototypeExtensionAst const*>;
+}
+
+auto spp::asts::PackageOfScope(Scope const *const scope) -> Opt<Str> {
+  const auto mod_scope = scope != nullptr ? scope->GetParentModule() : nullptr;
+  const auto mod_ast = mod_scope != nullptr ? AstAs<ModulePrototypeAst>(mod_scope->AstNode) : nullptr;
+  if (mod_ast == nullptr) { return Nullopt; }
+  return mod_ast->Owner.value_or(Str());
+}
+
+auto spp::asts::FindMatchingExtension(
+  Vec<Scope*> const &scopes,
+  TypeAst const &super_class,
+  TypeAst const &name,
+  Scope const &check_scope,
+  const bool check_constraints)
+  -> Pair<Scope*, SupPrototypeExtensionAst const*> {
+  IMPORT_UTILS;
+  // By identity, read where each is written; nothing is made while the blocks are searched. Either pattern may
+  // take the other.
+  const auto super_id = check_scope.TypeIdOf(super_class);
+  const auto name_id = check_scope.TypeIdOf(name);
+  if (super_id == nullptr or name_id == nullptr) { return {nullptr, nullptr}; }
+  for (auto *const sc : scopes) {
+    const auto ext = AstAs<SupPrototypeExtensionAst>(sc->AstNode);
+    if (ext == nullptr or sc->TypeIdOf(*ext->SuperCls) != super_id) { continue; }
+    const auto ext_id = sc->TypeIdOf(*ext->Name);
+    if (ext_id == nullptr) { continue; }
+    auto fwd = analyse::scopes::GenericSubst();
+    auto rev = analyse::scopes::GenericSubst();
+    if (analyse::scopes::UnifyTypeIds(ext_id, name_id, *sc, check_scope, fwd, false, check_constraints)
+      or analyse::scopes::UnifyTypeIds(name_id, ext_id, check_scope, *sc, rev, false, check_constraints)) {
+      return {sc, ext};
     }
   }
+  return {nullptr, nullptr};
 }
 
 SPP_MOD_BEGIN

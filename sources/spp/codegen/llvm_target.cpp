@@ -8,162 +8,180 @@ import llvm;
 import std;
 
 namespace spp::codegen {
-  namespace {
-    /// [CHECKED]
-    /// Whether the target has been read, and so fixed: selecting another after
-    /// that would leave everything already built for the first.
-    auto IsTargetFixed() -> bool& {
-      // Static bool returned as a mutable reference for writing into.
-      static auto fixed = false;
-      return fixed;
-    }
+  /// Canonical triples worth suggesting when a "--target" is
+  /// not recognised: the host lanes and the cross matrix in
+  /// "_cross_codegen.yaml" test these. Not a whitelist.
+  static constexpr char const *kSuggestedTriples[] = {
+    "x86_64-unknown-linux-gnu",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+    "i686-unknown-linux-gnu",
+    "s390x-unknown-linux-gnu",
+    "riscv64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
+    "x86_64-unknown-linux-gnux32",
+    "aarch64_be-unknown-linux-gnu",
+    "armv7-unknown-linux-gnueabihf",
+    "arm-unknown-linux-gnueabi",
+    "powerpc64le-unknown-linux-gnu",
+    "powerpc64-unknown-linux-gnu",
+    "powerpc-unknown-linux-gnu",
+    "mips-unknown-linux-gnu",
+    "mipsel-unknown-linux-gnu",
+    "mips64el-unknown-linux-gnuabi64",
+    "sparc64-unknown-linux-gnu",
+    "loongarch64-unknown-linux-gnu",
+    "m68k-unknown-linux-gnu",
+    "x86_64-pc-windows-gnu",
+    "wasm32-unknown-wasip1",
+    "x86_64-unknown-freebsd",
+    "x86_64-apple-darwin",
+  };
 
-    /// [CHECKED]
-    /// The triple this build emits for, written into by "SelectTarget". If it
-    /// is empty, then it's the host, as "TargetTriple" specifies. Only written
-    /// once, before codegen begins.
-    auto SelectedTriple() -> Str& {
-      // Static string returned as a mutable reference for writing into.
-      static auto triple = Str();
-      return triple;
-    }
+  /// Whether the target has been read, and so fixed: selecting another after
+  /// that would leave everything already built for the first.
+  static auto IsTargetFixed() -> bool&;
 
-    /// The CPU chosen by "SelectCpu": "generic", "native" or an LLVM
-    /// CPU name.
-    auto SelectedCpu() -> Str& {
-      static auto cpu = Str("generic");
-      return cpu;
-    }
+  /// The triple this build emits for, written into by "SelectTarget". If it
+  /// is empty, then it's the host, as "TargetTriple" specifies. Only written
+  /// once, before codegen begins.
+  static auto SelectedTriple() -> Str&;
 
-    /// Whether the target machine has been built, after which the CPU
-    /// can no longer change.
-    auto IsMachineBuilt() -> bool& {
-      static auto built = false;
-      return built;
-    }
+  /// The CPU chosen by "SelectCpu": "generic", "native" or an LLVM
+  /// CPU name.
+  static auto SelectedCpu() -> Str&;
 
-    /// The triple the host llvm was configured for, normalised
-    /// once. Read from llvm so that an arm64 or windows build
-    /// asks its own backend for a layout and code generator
-    /// instead of x86's.
-    auto HostTriple() -> llvm::Triple const& {
-      // Pull the triple from the llvm-known default, and run it
-      // through normalization. Static because it's always going
-      // to be the same.
-      static const auto triple = llvm::Triple(
-        llvm::Triple::normalize(llvm::sys::getDefaultTargetTriple()));
-      return triple;
-    }
+  /// Whether the target machine has been built, after which the CPU
+  /// can no longer change.
+  static auto IsMachineBuilt() -> bool&;
 
-    /// [CHECKED]
-    /// Register the backends that this build was linked against. The registry
-    /// is what a triple is looked up in, so nothing can be said about a
-    /// requested target until this has run.
-    auto InitializeAllBackends() -> void {
-      SPP_ATTR_MAYBE_UNUSED static const auto once = [] {
-      #if defined(SPP_ALL_TARGETS)
-        // All targets, including the host. This is used for the CI pipeline
-        // cross-compilation checks, and for normal cross-compilation.
-        llvm::InitializeAllTargetInfos();
-        llvm::InitializeAllTargets();
-        llvm::InitializeAllTargetMCs();
-        llvm::InitializeAllAsmPrinters();
-      #else
-        // Native targets only (normal compilation, default to the host). Linux
-        // for Linux, Windows for Windows etc.
-        llvm::InitializeNativeTarget();
-        llvm::InitializeNativeTargetAsmPrinter();
-      #endif
-        return true;
-      }();
-    }
+  /// The triple the host llvm was configured for, normalised
+  /// once. Read from llvm so that an arm64 or windows build
+  /// asks its own backend for a layout and code generator
+  /// instead of x86's.
+  static auto HostTriple() -> llvm::Triple const&;
 
-    /// Canonical triples worth suggesting when a "--target" is
-    /// not recognised: the host lanes and the cross matrix in
-    /// "_cross_codegen.yaml" test these. Not a whitelist.
-    constexpr char const *kSuggestedTriples[] = {
-      "x86_64-unknown-linux-gnu",
-      "aarch64-apple-darwin",
-      "x86_64-pc-windows-msvc",
-      "i686-unknown-linux-gnu",
-      "s390x-unknown-linux-gnu",
-      "riscv64-unknown-linux-gnu",
-      "aarch64-unknown-linux-gnu",
-      "x86_64-unknown-linux-musl",
-      "x86_64-unknown-linux-gnux32",
-      "aarch64_be-unknown-linux-gnu",
-      "armv7-unknown-linux-gnueabihf",
-      "arm-unknown-linux-gnueabi",
-      "powerpc64le-unknown-linux-gnu",
-      "powerpc64-unknown-linux-gnu",
-      "powerpc-unknown-linux-gnu",
-      "mips-unknown-linux-gnu",
-      "mipsel-unknown-linux-gnu",
-      "mips64el-unknown-linux-gnuabi64",
-      "sparc64-unknown-linux-gnu",
-      "loongarch64-unknown-linux-gnu",
-      "m68k-unknown-linux-gnu",
-      "x86_64-pc-windows-gnu",
-      "wasm32-unknown-wasip1",
-      "x86_64-unknown-freebsd",
-      "x86_64-apple-darwin",
-    };
+  /// Register the backends that this build was linked against. The registry
+  /// is what a triple is looked up in, so nothing can be said about a
+  /// requested target until this has run.
+  static auto InitializeAllBackends() -> void;
 
-    /// [CHECKED]
-    /// Print the suggestions that this build can actually emit for. Nothing
-    /// that shows in "--targets" fails the lookup check.
-    auto PrintSupportedTriples() -> unsigned {
-      // Make sure that the backends are all initialized before trying any llvm
-      // operations.
-      InitializeAllBackends();
-      auto printed = 0u;
-      for (const auto candidate : kSuggestedTriples) {
-        auto error = Str();
+  /// Print the suggestions that this build can actually emit for. Nothing
+  /// that shows in "--targets" fails the lookup check.
+  static auto PrintSupportedTriples() -> unsigned;
 
-        // Normalize the candidate and create a triple for it. Look it up as a
-        // target and check if it exists or not. Skip if it doesn't exist.
-        const auto normalized = llvm::Triple::normalize(candidate);
-        const auto triple = llvm::Triple(normalized);
-        const auto target = llvm::TargetRegistry::lookupTarget(triple, error);
-        if (target == nullptr) { continue; }
+  /// Create the folder for the triple: "<arch>-<os>[-<env>]",
+  /// built from the parsed enums.
+  static auto FolderOf(
+    llvm::Triple const &triple) -> Str;
 
-        // Otherwise it can be selected, (but wasn't), so add it to the error
-        // stream for reporting.
-        llvm::errs() << "  " << candidate << "\n";
-        printed += 1;
-      }
+  /// Convert a folder name into a llvm triple (optional because
+  /// it could fail).
+  static auto TripleOfFolder(
+    Str const &folder) -> Opt<llvm::Triple>;
+}
 
-      // Return the number of candidate triples that are supported for this
-      // system / installation.
-      return printed;
-    }
+/// [CHECKED]
+auto spp::codegen::IsTargetFixed() -> bool& {
+  // Static bool returned as a mutable reference for writing into.
+  static auto fixed = false;
+  return fixed;
+}
 
-    /// Create the folder for the triple: "<arch>-<os>[-<env>]",
-    /// built from the parsed enums.
-    auto FolderOf(
-      llvm::Triple const &triple) -> Str {
-      auto folder = llvm::Triple::getArchTypeName(triple.getArch()).str();
-      folder += "-";
-      folder += triple.isMacOSX()
-        ? "macos"
-        : llvm::Triple::getOSTypeName(triple.getOS()).str();
-      if (triple.getEnvironment() != llvm::Triple::UnknownEnvironment) {
-        folder += "-";
-        folder += llvm::Triple::getEnvironmentTypeName(triple.getEnvironment()).str();
-      }
-      return folder;
-    }
+/// [CHECKED]
+auto spp::codegen::SelectedTriple() -> Str& {
+  // Static string returned as a mutable reference for writing into.
+  static auto triple = Str();
+  return triple;
+}
 
-    /// Convert a folder name into a llvm triple (optional because
-    /// it could fail).
-    auto TripleOfFolder(
-      Str const &folder) -> Opt<llvm::Triple> {
-      auto parts = llvm::SmallVector<llvm::StringRef, 4>();
-      llvm::StringRef(folder).split(parts, '-');
-      if (parts.size() != 2 and parts.size() != 3) { return Nullopt; }
-      return llvm::Triple(llvm::Triple::normalize(folder));
-    }
+auto spp::codegen::SelectedCpu() -> Str& {
+  static auto cpu = Str("generic");
+  return cpu;
+}
+
+auto spp::codegen::IsMachineBuilt() -> bool& {
+  static auto built = false;
+  return built;
+}
+
+auto spp::codegen::HostTriple() -> llvm::Triple const& {
+  // Pull the triple from the llvm-known default, and run it
+  // through normalization. Static because it's always going
+  // to be the same.
+  static const auto triple = llvm::Triple(
+    llvm::Triple::normalize(llvm::sys::getDefaultTargetTriple()));
+  return triple;
+}
+
+/// [CHECKED]
+auto spp::codegen::InitializeAllBackends() -> void {
+  SPP_ATTR_MAYBE_UNUSED static const auto once = [] {
+  #if defined(SPP_ALL_TARGETS)
+    // All targets, including the host. This is used for the CI pipeline
+    // cross-compilation checks, and for normal cross-compilation.
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmPrinters();
+  #else
+    // Native targets only (normal compilation, default to the host). Linux
+    // for Linux, Windows for Windows etc.
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+  #endif
+    return true;
+  }();
+}
+
+/// [CHECKED]
+auto spp::codegen::PrintSupportedTriples() -> unsigned {
+  // Make sure that the backends are all initialized before trying any llvm
+  // operations.
+  InitializeAllBackends();
+  auto printed = 0u;
+  for (const auto candidate : kSuggestedTriples) {
+    auto error = Str();
+
+    // Normalize the candidate and create a triple for it. Look it up as a
+    // target and check if it exists or not. Skip if it doesn't exist.
+    const auto normalized = llvm::Triple::normalize(candidate);
+    const auto triple = llvm::Triple(normalized);
+    const auto target = llvm::TargetRegistry::lookupTarget(triple, error);
+    if (target == nullptr) { continue; }
+
+    // Otherwise it can be selected, (but wasn't), so add it to the error
+    // stream for reporting.
+    llvm::errs() << "  " << candidate << "\n";
+    printed += 1;
   }
+
+  // Return the number of candidate triples that are supported for this
+  // system / installation.
+  return printed;
+}
+
+auto spp::codegen::FolderOf(
+  llvm::Triple const &triple) -> Str {
+  auto folder = llvm::Triple::getArchTypeName(triple.getArch()).str();
+  folder += "-";
+  folder += triple.isMacOSX()
+    ? "macos"
+    : llvm::Triple::getOSTypeName(triple.getOS()).str();
+  if (triple.getEnvironment() != llvm::Triple::UnknownEnvironment) {
+    folder += "-";
+    folder += llvm::Triple::getEnvironmentTypeName(triple.getEnvironment()).str();
+  }
+  return folder;
+}
+
+auto spp::codegen::TripleOfFolder(
+  Str const &folder) -> Opt<llvm::Triple> {
+  auto parts = llvm::SmallVector<llvm::StringRef, 4>();
+  llvm::StringRef(folder).split(parts, '-');
+  if (parts.size() != 2 and parts.size() != 3) { return Nullopt; }
+  return llvm::Triple(llvm::Triple::normalize(folder));
 }
 
 auto spp::codegen::SelectedTargetMachine() -> llvm::TargetMachine* {
@@ -442,7 +460,7 @@ auto spp::codegen::ExecutableSuffix(
 
 /// [CHECKED]
 auto spp::codegen::ApplyTargetToModule(
-  void *llvm_module) -> void {
+  llvm::Module &llvm_mod) -> void {
   // Both off the same machine, rather than off the selected triple
   // directly: a backend is allowed to answer with a triple other
   // than the one it was looked up by, and taking both from the
@@ -451,7 +469,6 @@ auto spp::codegen::ApplyTargetToModule(
   const auto *machine = SelectedTargetMachine();
   if (machine == nullptr) { return; }
 
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   llvm_mod.setTargetTriple(machine->getTargetTriple());
   llvm_mod.setDataLayout(machine->createDataLayout());
   if (not TargetIsPositionIndependent()) { return; }
@@ -535,12 +552,12 @@ auto spp::codegen::SelectCpu(
 }
 
 auto spp::codegen::ApplyTargetToFunctions(
-  void *llvm_module) -> void {
+  llvm::Module &llvm_mod) -> void {
   const auto machine = SelectedTargetMachine();
   if (machine == nullptr) { return; }
   const auto cpu = machine->getTargetCPU();
   const auto features = machine->getTargetFeatureString();
-  for (auto &fn : *static_cast<llvm::Module*>(llvm_module)) {
+  for (auto &fn : llvm_mod) {
     if (fn.isDeclaration()) { continue; }
     if (not fn.hasFnAttribute("target-cpu")) { fn.addFnAttr("target-cpu", cpu); }
     const auto own = fn.getFnAttribute("target-features").getValueAsString();
@@ -551,8 +568,7 @@ auto spp::codegen::ApplyTargetToFunctions(
 }
 
 auto spp::codegen::EmitObjectFile(
-  void *llvm_module, char const *path, const unsigned opt_level) -> bool {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  llvm::Module &llvm_mod, char const *path, const unsigned opt_level) -> bool {
   auto *machine = SelectedTargetMachine();
   if (machine == nullptr) { return false; }
 

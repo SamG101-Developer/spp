@@ -24,7 +24,7 @@ if (SPP_COVERAGE)
   add_link_options(-fprofile-instr-generate)
 endif ()
 
-if (SPP_STATIC_RUNTIME AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+if (SPP_STATIC_RUNTIME AND LINUX)
   add_link_options(-static-libstdc++ -static-libgcc -Wl,--as-needed)
   # GCC links the sanitizer runtimes dynamically (Clang statically),
   # and ignores the flag of any runtime it isn't linking.

@@ -67,12 +67,15 @@ auto spp::asts::CaseExpressionBranchAst::PosEnd() const -> std::size_t {
 
 auto spp::asts::CaseExpressionBranchAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast, carrying over the
-  // desugaring marker.
+  // comparisons stage 7 built: a clone taken after it (a
+  // "case" as a method's receiver, passed on as "self") is
+  // generated without being analysed again.
   auto cloned = MakeUnique<CaseExpressionBranchAst>(
     AstClone(Op),
     AstCloneVec(Patterns),
     AstClone(Guard),
     AstClone(Body));
+  cloned->_MappedPatFns = AstCloneVec(_MappedPatFns);
   return cloned;
 }
 

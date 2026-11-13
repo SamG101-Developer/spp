@@ -30,237 +30,263 @@ use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 
 namespace spp::codegen {
-  namespace {
-    /**
-     * Rebuild a value as the same class at a different instantiation, attribute by attribute, widening each one whose
-     * type changed. This is what a value written as a single alternative of a variant-typed generic argument needs:
-     * "Pass(val=Some(..))" lowers as a "Pass[Some[T]]" where a "Pass[Opt[T]]" is wanted, and the two differ in the tag
-     * and payload of that one attribute rather than in how their bytes are arranged.
-     * @param llvm_val The value being converted, lowered as its own type.
-     * @param target_type The instantiation being converted to.
-     * @param source_type The type of @p llvm_val .
-     * @param sm The scope manager, standing in the scope both types are resolved against.
-     * @param name The name to give the generated value in the ir.
-     * @param ctx The LLVM context containing all codegen info.
-     * @return The rebuilt value, or @c nullptr when the two do not line up attribute for attribute.
-     */
-    auto CoerceStructurally(
-      llvm::Value *llvm_val,
-      analyse::scopes::TypeRef const &target,
-      analyse::scopes::TypeRef const &source,
-      analyse::scopes::ScopeManager const &sm,
-      Str const &name,
-      LlvmCtx *ctx)
-      -> llvm::Value* {
-      //
-      using analyse::scopes::TypeRef;
-      using analyse::utils::type_compare::TypeEq;
-      using analyse::utils::type_members::GetAllAttrs;
-      auto const &scope = *sm.CurrentScope;
+  /**
+   * Rebuild a value as the same class at a different instantiation, attribute by attribute, widening each one whose
+   * type changed. This is what a value written as a single alternative of a variant-typed generic argument needs:
+   * "Pass(val=Some(..))" lowers as a "Pass[Some[T]]" where a "Pass[Opt[T]]" is wanted, and the two differ in the tag
+   * and payload of that one attribute rather than in how their bytes are arranged.
+   * @param llvm_val The value being converted, lowered as its own type.
+   * @param target_type The instantiation being converted to.
+   * @param source_type The type of @p llvm_val .
+   * @param sm The scope manager, standing in the scope both types are resolved against.
+   * @param name The name to give the generated value in the ir.
+   * @param ctx The LLVM context containing all codegen info.
+   * @return The rebuilt value, or @c nullptr when the two do not line up attribute for attribute.
+   */
+  static auto CoerceStructurally(
+    llvm::Value *llvm_val,
+    analyse::scopes::TypeRef const &target,
+    analyse::scopes::TypeRef const &source,
+    analyse::scopes::ScopeManager const &sm,
+    Str const &name,
+    LlvmCtx *ctx)
+    -> llvm::Value*;
 
-      // The two are the same class at different instantiations, so they have the same attributes in the same
-      // declaration order and differ only where a generic argument does. Each attribute is carried over one at a time,
-      // widening the ones whose type changed; a plain bitwise copy would leave an alternative's bytes where a
-      // variant's tag and payload belong. Nothing is assumed about the physical order - each side maps its own
-      // declaration index through its own field index map.
+  /// A constant laid out byte for byte as "type", from constants
+  /// at byte offsets in it: a packed struct of them, with zero
+  /// bytes between and after. A constant aggregate is built so
+  /// when one of its parts is not of its slot's own type: a
+  /// variant's payload holding a member, which LLVM cannot read
+  /// as the payload's integers once the member holds a pointer.
+  static auto PackedConstant(
+    llvm::Type *type, Vec<Pair<std::uint64_t, llvm::Constant*>> const &parts, LlvmCtx *ctx) -> llvm::Constant*;
 
-      // Get the source and target type symbols. These are
-      // used to get the llvm type information from.
-      const auto target_sym = target.Symbol;
-      const auto source_sym = source.Symbol;
-      if (target_sym == nullptr or source_sym == nullptr) {
-        Ice("structural coercion between types with no type symbol");
-      }
+  /// The byte offset of field "index" of the struct "type".
+  static auto FieldOffset(llvm::Type *type, const unsigned index, LlvmCtx *ctx) -> std::uint64_t;
 
-      // Extract the llvm type information needed for the
-      // field mapping / rebuilding.
-      const auto target_llvm_type = llvm::dyn_cast_or_null<llvm::StructType>(target_sym->LlvmInfo->LlvmType);
-      const auto source_llvm_type = llvm::dyn_cast_or_null<llvm::StructType>(source_sym->LlvmInfo->LlvmType);
-      if (target_llvm_type == nullptr or source_llvm_type == nullptr) { return nullptr; }
+  /// A value naming a function that is going into a function
+  /// type is replaced by the pair for the overload analysis
+  /// chose there.
+  static auto CoerceToFnValue(
+    llvm::Value *llvm_val, TypeRef const &target,
+    TypeRef const &source, ScopeManager const &sm,
+    LlvmCtx const *ctx) -> llvm::Value*;
 
-      // Get the attributes from the source and target
-      // types.
-      const auto target_attrs = GetAllAttrs(*target_sym);
-      const auto source_attrs = GetAllAttrs(*source_sym);
-      if (target_attrs.empty() or target_attrs.size() != source_attrs.size()) { return nullptr; }
+  /// A member placed into a variant ("S32" into "S32 or Str"),
+  /// or a variant into a wider one ("S32 or Str" into "S32 or Str
+  /// or Bool", a guaranteed subset).
+  static auto CoerceToVariant(
+    llvm::Value *llvm_val,
+    analyse::scopes::TypeRef const &target,
+    analyse::scopes::TypeRef const &source,
+    analyse::scopes::ScopeManager const &sm,
+    Str const &name,
+    LlvmCtx *ctx)
+    -> llvm::Value*;
+}
 
-      // A class whose lowered struct carries more than
-      // its own attributes (the fat-pointer fields a
-      // "Gen"/"Fun" superimposition prepends) shifts every
-      // declared index by an amount this does not track,
-      // so leave it alone.
-      if (target_llvm_type->getNumElements() != target_attrs.size()
-        or source_llvm_type->getNumElements() != source_attrs.size()) { return nullptr; }
+auto spp::codegen::CoerceStructurally(
+  llvm::Value *llvm_val,
+  analyse::scopes::TypeRef const &target,
+  analyse::scopes::TypeRef const &source,
+  analyse::scopes::ScopeManager const &sm,
+  Str const &name,
+  LlvmCtx *ctx)
+  -> llvm::Value* {
+  //
+  using analyse::scopes::TypeRef;
+  using analyse::utils::type_compare::TypeEq;
+  using analyse::utils::type_members::GetAllAttrs;
+  auto const &scope = *sm.CurrentScope;
 
-      const auto llvm_index = [](LlvmTypeSymbolInfo const &info, const std::size_t spp_index) {
-        const auto it = info.FieldIndexMap.find(spp_index);
-        return static_cast<unsigned>(it != info.FieldIndexMap.end() ? it->second : spp_index);
-      };
+  // The two are the same class at different instantiations, so they have the same attributes in the same
+  // declaration order and differ only where a generic argument does. Each attribute is carried over one at a time,
+  // widening the ones whose type changed; a plain bitwise copy would leave an alternative's bytes where a
+  // variant's tag and payload belong. Nothing is assumed about the physical order - each side maps its own
+  // declaration index through its own field index map.
 
-      const auto source_slot = LlvmEntryAlloca(source_llvm_type, name + ".widen.from", ctx);
-      ctx->Builder.CreateStore(llvm_val, source_slot);
-      const auto target_slot = LlvmEntryAlloca(target_llvm_type, name + ".widen.to", ctx);
-      ctx->Builder.CreateStore(llvm::Constant::getNullValue(target_llvm_type), target_slot);
-
-      for (auto i = 0uz; i < target_attrs.size(); ++i) {
-        const auto target_index = llvm_index(*target_sym->LlvmInfo, i);
-        const auto source_index = llvm_index(*source_sym->LlvmInfo, i);
-        const auto field_uid = name + ".widen." + std::to_string(i);
-
-        // The attribute's own type, resolved from the scope the
-        // two are being compared in.
-        const auto target_attr_type = spp::get<1>(target_attrs[i]);
-        const auto source_attr_type = spp::get<1>(source_attrs[i]);
-
-        auto *field_val = static_cast<llvm::Value*>(ctx->Builder.CreateLoad(
-          source_llvm_type->getElementType(source_index),
-          ctx->Builder.CreateStructGEP(source_llvm_type, source_slot, source_index, field_uid + ".from.ptr"),
-          field_uid + ".from"));
-
-        if (not TypeEq(target_attr_type, source_attr_type, scope, scope)) {
-          field_val = CoerceToSlot(field_val, target_attr_type, source_attr_type, sm, field_uid, ctx);
-        }
-
-        if (field_val == nullptr or field_val->getType() != target_llvm_type->getElementType(target_index)) {
-          return nullptr;
-        }
-        ctx->Builder.CreateStore(
-          field_val, ctx->Builder.CreateStructGEP(target_llvm_type, target_slot, target_index, field_uid + ".to.ptr"));
-      }
-
-      return ctx->Builder.CreateLoad(target_llvm_type, target_slot, name + ".widen");
-    }
-
-    /// A constant laid out byte for byte as "type", from constants
-    /// at byte offsets in it: a packed struct of them, with zero
-    /// bytes between and after. A constant aggregate is built so
-    /// when one of its parts is not of its slot's own type: a
-    /// variant's payload holding a member, which LLVM cannot read
-    /// as the payload's integers once the member holds a pointer.
-    auto PackedConstant(
-      llvm::Type *type, Vec<Pair<std::uint64_t, llvm::Constant*>> const &parts, LlvmCtx *ctx) -> llvm::Constant* {
-      auto const &dl = ctx->Module->getDataLayout();
-      auto fields = Vec<llvm::Constant*>();
-      auto at = std::uint64_t{0};
-      const auto pad = [&](const std::uint64_t to) {
-        if (to <= at) { return; }
-        fields.emplace_back(llvm::Constant::getNullValue(llvm::ArrayType::get(ctx->Builder.getInt8Ty(), to - at)));
-      };
-      for (auto const &[offset, part] : parts) {
-        pad(offset);
-        fields.emplace_back(part);
-        at = offset + dl.getTypeAllocSize(part->getType()).getFixedValue();
-      }
-      pad(dl.getTypeAllocSize(type).getFixedValue());
-      return llvm::ConstantStruct::getAnon(*ctx->Context, fields, true);
-    }
-
-    /// The byte offset of field "index" of the struct "type".
-    auto FieldOffset(llvm::Type *type, const unsigned index, LlvmCtx *ctx) -> std::uint64_t {
-      const auto i32 = ctx->Builder.getInt32Ty();
-      llvm::Value *const indices[] = {llvm::ConstantInt::get(i32, 0), llvm::ConstantInt::get(i32, index)};
-      return static_cast<std::uint64_t>(ctx->Module->getDataLayout().getIndexedOffsetInType(type, indices));
-    }
-
-    /// A value naming a function that is going into a function
-    /// type is replaced by the pair for the overload analysis
-    /// chose there.
-    auto CoerceToFnValue(
-      llvm::Value *llvm_val, TypeRef const &target,
-      TypeRef const &source, ScopeManager const &sm,
-      LlvmCtx const *ctx) -> llvm::Value* {
-      // A named function carries nothing at runtime, so whatever was
-      // loaded for it is dropped and the chosen overload built. One
-      // with no overload to build is an error here: passing on the
-      // loaded mock would call a null function.
-      namespace fv = analyse::utils::fn_values;
-      if (llvm_val == nullptr or not fv::NamesFnInto(source, target, *sm.CurrentScope)) { return llvm_val; }
-      const auto fn = fv::FindFnValue(source, target, sm);
-      const auto into = " into " + target.Symbol->FqName()->ToString();
-      if (fn == nullptr) { Ice("no overload of a function value was found for its function type" + into); }
-      if (fn->GetLlvmFn() == nullptr or fn->GetLlvmFn()->Target == nullptr) {
-        Ice("the overload of a function value has no llvm function: " + fn->PrintSignature("") + into);
-      }
-      const auto fn_sup = analyse::utils::marker_sups::FindFnSup(*target.Symbol->FqName(), *sm.CurrentScope);
-      return BuildFnValue(*fn->GetLlvmFn()->Target, fn_sup, ctx);
-    }
-
-    /// A member placed into a variant ("S32" into "S32 or Str"),
-    /// or a variant into a wider one ("S32 or Str" into "S32 or Str
-    /// or Bool", a guaranteed subset).
-    auto CoerceToVariant(
-      llvm::Value *llvm_val,
-      analyse::scopes::TypeRef const &target,
-      analyse::scopes::TypeRef const &source,
-      analyse::scopes::ScopeManager const &sm,
-      Str const &name,
-      LlvmCtx *ctx)
-      -> llvm::Value* {
-      //
-      using analyse::scopes::TypeRef;
-      using analyse::utils::type_compare::TypeEq;
-      using analyse::utils::type_members::VariantMemberRefs;
-      using analyse::utils::type_predicates::IsTypeVariant;
-      auto const &scope = *sm.CurrentScope;
-
-      if (llvm_val == nullptr or target.Symbol == nullptr or source.Symbol == nullptr) { return llvm_val; }
-
-      // Only a variant target ever needs a coercion, and a value
-      // already of the target type is one.
-      if (not IsTypeVariant(target, scope)) { return llvm_val; }
-      if (TypeEq(target, source, scope, scope)) { return llvm_val; }
-
-      // Asked for rather than read, as a type is only lowered when
-      // something first needs it.
-      const auto target_llvm_type = GetLlvmTypeOf(target.WithoutConvention(), ctx);
-      SPP_ASSERT(target_llvm_type != nullptr);
-
-      // A member value (source) is wrapped: tagged and copied into
-      // the payload.
-      if (not IsTypeVariant(source, scope)) {
-        const auto tag = GetVariantIndexOfMember(target, source, scope);
-        if (not tag.has_value()) { return llvm_val; }
-
-        // A constant ("cmp x: Opt[S32] = Some(val=1)") cannot be
-        // tagged and copied through a stack slot, so it is built in
-        // place: the tag, then the member where the payload starts.
-        if (const auto member_const = llvm::dyn_cast<llvm::Constant>(llvm_val);
-          ctx->InConstantContext and member_const != nullptr) {
-          auto parts = Vec<Pair<std::uint64_t, llvm::Constant*>>{
-            {0, llvm::ConstantInt::get(GetVariantTagType(ctx), *tag)}};
-          if (not IsValuelessType(member_const->getType())) {
-            parts.emplace_back(FieldOffset(target_llvm_type, 1, ctx), member_const);
-          }
-          return PackedConstant(target_llvm_type, parts, ctx);
-        }
-
-        // The alternative is matched with the variant rule turned off, but only at the top level - the comparison of
-        // the generic arguments below it turns it back on, so a "Pass[Opt[T]]" answers to a "Pass[Some[T]]". That is
-        // wanted, it is how a value written as one alternative is accepted at all, but it means the source is not
-        // necessarily laid out as the alternative it matched: copying it into the payload as-is leaves the narrower
-        // thing's bytes where the alternative's belong, and the variant reads back as neither. The lowered types say
-        // whether that happened.
-        auto *member_val = llvm_val;
-        const auto members = VariantMemberRefs(target, scope);
-        if (const auto member_sym = *tag < members.size() ? members[*tag].Symbol : nullptr;
-          member_sym != nullptr and member_sym->LlvmInfo->LlvmType != llvm_val->getType()) {
-          if (const auto rebuilt = CoerceStructurally(
-            llvm_val, members[*tag], source, sm, name, ctx); rebuilt != nullptr) {
-            member_val = rebuilt;
-          }
-        }
-        return BuildVariant(member_val, target_llvm_type, *tag, name, ctx);
-      }
-
-      // Otherwise, one variant widened into another ("Str or Bool"
-      // into "Str or Bool or S32"), through memory as the payload is
-      // copied; left as it is if it is not one.
-      const auto source_slot = LlvmEntryAlloca(llvm_val->getType(), name + ".from.slot", ctx);
-      ctx->Builder.CreateStore(llvm_val, source_slot);
-      const auto widened = WidenVariant(source_slot, source, target, scope, name, ctx);
-      return widened != nullptr ? ctx->Builder.CreateLoad(target_llvm_type, widened, name) : llvm_val;
-    }
+  // Get the source and target type symbols. These are
+  // used to get the llvm type information from.
+  const auto target_sym = target.Symbol;
+  const auto source_sym = source.Symbol;
+  if (target_sym == nullptr or source_sym == nullptr) {
+    Ice("structural coercion between types with no type symbol");
   }
+
+  // Extract the llvm type information needed for the
+  // field mapping / rebuilding.
+  const auto target_llvm_type = llvm::dyn_cast_or_null<llvm::StructType>(target_sym->LlvmInfo->LlvmType);
+  const auto source_llvm_type = llvm::dyn_cast_or_null<llvm::StructType>(source_sym->LlvmInfo->LlvmType);
+  if (target_llvm_type == nullptr or source_llvm_type == nullptr) { return nullptr; }
+
+  // Get the attributes from the source and target
+  // types.
+  const auto target_attrs = GetAllAttrs(*target_sym);
+  const auto source_attrs = GetAllAttrs(*source_sym);
+  if (target_attrs.empty() or target_attrs.size() != source_attrs.size()) { return nullptr; }
+
+  // A class whose lowered struct carries more than
+  // its own attributes (the fat-pointer fields a
+  // "Gen"/"Fun" superimposition prepends) shifts every
+  // declared index by an amount this does not track,
+  // so leave it alone.
+  if (target_llvm_type->getNumElements() != target_attrs.size()
+    or source_llvm_type->getNumElements() != source_attrs.size()) { return nullptr; }
+
+  const auto llvm_index = [](LlvmTypeSymbolInfo const &info, const std::size_t spp_index) {
+    const auto it = info.FieldIndexMap.find(spp_index);
+    return static_cast<unsigned>(it != info.FieldIndexMap.end() ? it->second : spp_index);
+  };
+
+  const auto source_slot = LlvmEntryAlloca(source_llvm_type, name + ".widen.from", ctx);
+  ctx->Builder.CreateStore(llvm_val, source_slot);
+  const auto target_slot = LlvmEntryAlloca(target_llvm_type, name + ".widen.to", ctx);
+  ctx->Builder.CreateStore(llvm::Constant::getNullValue(target_llvm_type), target_slot);
+
+  for (auto i = 0uz; i < target_attrs.size(); ++i) {
+    const auto target_index = llvm_index(*target_sym->LlvmInfo, i);
+    const auto source_index = llvm_index(*source_sym->LlvmInfo, i);
+    const auto field_uid = name + ".widen." + std::to_string(i);
+
+    // The attribute's own type, resolved from the scope the
+    // two are being compared in.
+    const auto target_attr_type = spp::get<1>(target_attrs[i]);
+    const auto source_attr_type = spp::get<1>(source_attrs[i]);
+
+    auto *field_val = static_cast<llvm::Value*>(ctx->Builder.CreateLoad(
+      source_llvm_type->getElementType(source_index),
+      ctx->Builder.CreateStructGEP(source_llvm_type, source_slot, source_index, field_uid + ".from.ptr"),
+      field_uid + ".from"));
+
+    if (not TypeEq(target_attr_type, source_attr_type, scope, scope)) {
+      field_val = CoerceToSlot(field_val, target_attr_type, source_attr_type, sm, field_uid, ctx);
+    }
+
+    if (field_val == nullptr or field_val->getType() != target_llvm_type->getElementType(target_index)) {
+      return nullptr;
+    }
+    ctx->Builder.CreateStore(
+      field_val, ctx->Builder.CreateStructGEP(target_llvm_type, target_slot, target_index, field_uid + ".to.ptr"));
+  }
+
+  return ctx->Builder.CreateLoad(target_llvm_type, target_slot, name + ".widen");
+}
+
+auto spp::codegen::PackedConstant(
+  llvm::Type *type, Vec<Pair<std::uint64_t, llvm::Constant*>> const &parts, LlvmCtx *ctx) -> llvm::Constant* {
+  auto const &dl = ctx->Module->getDataLayout();
+  auto fields = Vec<llvm::Constant*>();
+  auto at = std::uint64_t{0};
+  const auto pad = [&](const std::uint64_t to) {
+    if (to <= at) { return; }
+    fields.emplace_back(llvm::Constant::getNullValue(llvm::ArrayType::get(ctx->Builder.getInt8Ty(), to - at)));
+  };
+  for (auto const &[offset, part] : parts) {
+    pad(offset);
+    fields.emplace_back(part);
+    at = offset + dl.getTypeAllocSize(part->getType()).getFixedValue();
+  }
+  pad(dl.getTypeAllocSize(type).getFixedValue());
+  return llvm::ConstantStruct::getAnon(*ctx->Context, fields, true);
+}
+
+auto spp::codegen::FieldOffset(llvm::Type *type, const unsigned index, LlvmCtx *ctx) -> std::uint64_t {
+  const auto i32 = ctx->Builder.getInt32Ty();
+  llvm::Value *const indices[] = {llvm::ConstantInt::get(i32, 0), llvm::ConstantInt::get(i32, index)};
+  return static_cast<std::uint64_t>(ctx->Module->getDataLayout().getIndexedOffsetInType(type, indices));
+}
+
+auto spp::codegen::CoerceToFnValue(
+  llvm::Value *llvm_val, TypeRef const &target,
+  TypeRef const &source, ScopeManager const &sm,
+  LlvmCtx const *ctx) -> llvm::Value* {
+  // A named function carries nothing at runtime, so whatever was
+  // loaded for it is dropped and the chosen overload built. One
+  // with no overload to build is an error here: passing on the
+  // loaded mock would call a null function.
+  namespace fv = analyse::utils::fn_values;
+  if (llvm_val == nullptr or not fv::NamesFnInto(source, target, *sm.CurrentScope)) { return llvm_val; }
+  const auto fn = fv::FindFnValue(source, target, sm);
+  const auto into = " into " + target.Symbol->FqName()->ToString();
+  if (fn == nullptr) { Ice("no overload of a function value was found for its function type" + into); }
+  if (fn->GetLlvmFn() == nullptr or fn->GetLlvmFn()->Target == nullptr) {
+    Ice("the overload of a function value has no llvm function: " + fn->PrintSignature("") + into);
+  }
+  const auto fn_sup = analyse::utils::marker_sups::FindFnSup(*target.Symbol->FqName(), *sm.CurrentScope);
+  return BuildFnValue(*fn->GetLlvmFn()->Target, fn_sup, ctx);
+}
+
+auto spp::codegen::CoerceToVariant(
+  llvm::Value *llvm_val,
+  analyse::scopes::TypeRef const &target,
+  analyse::scopes::TypeRef const &source,
+  analyse::scopes::ScopeManager const &sm,
+  Str const &name,
+  LlvmCtx *ctx)
+  -> llvm::Value* {
+  //
+  using analyse::scopes::TypeRef;
+  using analyse::utils::type_compare::TypeEq;
+  using analyse::utils::type_members::VariantMemberRefs;
+  using analyse::utils::type_predicates::IsTypeVariant;
+  auto const &scope = *sm.CurrentScope;
+
+  if (llvm_val == nullptr or target.Symbol == nullptr or source.Symbol == nullptr) { return llvm_val; }
+
+  // Only a variant target ever needs a coercion, and a value
+  // already of the target type is one.
+  if (not IsTypeVariant(target, scope)) { return llvm_val; }
+  if (TypeEq(target, source, scope, scope)) { return llvm_val; }
+
+  // Asked for rather than read, as a type is only lowered when
+  // something first needs it.
+  const auto target_llvm_type = GetLlvmTypeOf(target.WithoutConvention(), ctx);
+  SPP_ASSERT(target_llvm_type != nullptr);
+
+  // A member value (source) is wrapped: tagged and copied into
+  // the payload.
+  if (not IsTypeVariant(source, scope)) {
+    const auto tag = GetVariantIndexOfMember(target, source, scope);
+    if (not tag.has_value()) { return llvm_val; }
+
+    // A constant ("cmp x: Opt[S32] = Some(val=1)") cannot be
+    // tagged and copied through a stack slot, so it is built in
+    // place: the tag, then the member where the payload starts.
+    if (const auto member_const = llvm::dyn_cast<llvm::Constant>(llvm_val);
+      ctx->InConstantContext and member_const != nullptr) {
+      auto parts = Vec<Pair<std::uint64_t, llvm::Constant*>>{
+        {0, llvm::ConstantInt::get(GetVariantTagType(ctx), *tag)}};
+      if (not IsValuelessType(member_const->getType())) {
+        parts.emplace_back(FieldOffset(target_llvm_type, 1, ctx), member_const);
+      }
+      return PackedConstant(target_llvm_type, parts, ctx);
+    }
+
+    // The alternative is matched with the variant rule turned off, but only at the top level - the comparison of
+    // the generic arguments below it turns it back on, so a "Pass[Opt[T]]" answers to a "Pass[Some[T]]". That is
+    // wanted, it is how a value written as one alternative is accepted at all, but it means the source is not
+    // necessarily laid out as the alternative it matched: copying it into the payload as-is leaves the narrower
+    // thing's bytes where the alternative's belong, and the variant reads back as neither. The lowered types say
+    // whether that happened.
+    auto *member_val = llvm_val;
+    const auto members = VariantMemberRefs(target, scope);
+    if (const auto member_sym = *tag < members.size() ? members[*tag].Symbol : nullptr;
+      member_sym != nullptr and member_sym->LlvmInfo->LlvmType != llvm_val->getType()) {
+      if (const auto rebuilt = CoerceStructurally(
+        llvm_val, members[*tag], source, sm, name, ctx); rebuilt != nullptr) {
+        member_val = rebuilt;
+      }
+    }
+    return BuildVariant(member_val, target_llvm_type, *tag, name, ctx);
+  }
+
+  // Otherwise, one variant widened into another ("Str or Bool"
+  // into "Str or Bool or S32"), through memory as the payload is
+  // copied; left as it is if it is not one.
+  const auto source_slot = LlvmEntryAlloca(llvm_val->getType(), name + ".from.slot", ctx);
+  ctx->Builder.CreateStore(llvm_val, source_slot);
+  const auto widened = WidenVariant(source_slot, source, target, scope, name, ctx);
+  return widened != nullptr ? ctx->Builder.CreateLoad(target_llvm_type, widened, name) : llvm_val;
 }
 
 auto spp::codegen::BuildAggregate(

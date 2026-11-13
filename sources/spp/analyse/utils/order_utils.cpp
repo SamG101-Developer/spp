@@ -13,47 +13,49 @@ use_alias(spp::asts, Ast);
 use_alias(spp::asts::mixins, OrderableAst);
 
 namespace spp::analyse::utils::order_utils {
-  namespace {
-    const Vec kArgOrderArr{
-      asts::utils::OrderableTag::kPositionalArg,
-      asts::utils::OrderableTag::kKeywordArg,
-    };
+  static const Vec kArgOrderArr{
+    asts::utils::OrderableTag::kPositionalArg,
+    asts::utils::OrderableTag::kKeywordArg,
+  };
+  static const Vec kParamOrderArr{
+    asts::utils::OrderableTag::kSelfParam,
+    asts::utils::OrderableTag::kRequiredParam,
+    asts::utils::OrderableTag::kOptionalParam,
+    asts::utils::OrderableTag::kVariadicParam,
+  };
 
-    const Vec kParamOrderArr{
-      asts::utils::OrderableTag::kSelfParam,
-      asts::utils::OrderableTag::kRequiredParam,
-      asts::utils::OrderableTag::kOptionalParam,
-      asts::utils::OrderableTag::kVariadicParam,
-    };
+  static auto DoOrder(
+    Vec<OrderableAst*> &&args,
+    Vec<asts::utils::OrderableTag> const &order)
+    -> Vec<Pair<Str, Ast*>>;
+}
 
-    auto DoOrder(
-      Vec<OrderableAst*> &&args,
-      Vec<asts::utils::OrderableTag> const &order)
-      -> Vec<Pair<Str, Ast*>> {
-      // Tag each argument with its "order tag".
-      auto tagged_args = args
-        | genex::views::transform([](auto *x) { return MakePair(x->GetOrderTag(), x); })
-        | genex::to<Vec>();
+auto spp::analyse::utils::order_utils::DoOrder(
+  Vec<OrderableAst*> &&args,
+  Vec<asts::utils::OrderableTag> const &order)
+  -> Vec<Pair<Str, Ast*>> {
+  // Tag each argument with its "order tag".
+  auto tagged_args = args
+    | genex::views::transform([](auto *x) { return MakePair(x->GetOrderTag(), x); })
+    | genex::to<Vec>();
 
-      // Sort the arguments based on the correct order.
-      auto args_sorted = genex::sorted(tagged_args, [&](auto &&arg_a, auto &&arg_b) {
-        auto a = genex::position(order, [&](auto x) { return x == arg_a.first; });
-        auto b = genex::position(order, [&](auto x) { return x == arg_b.first; });
-        return a < b;
-      });
+  // Sort the arguments based on the correct order.
+  auto args_sorted = genex::sorted(tagged_args, [&](auto &&arg_a, auto &&arg_b) {
+    auto a = genex::position(order, [&](auto x) { return x == arg_a.first; });
+    auto b = genex::position(order, [&](auto x) { return x == arg_b.first; });
+    return a < b;
+  });
 
-      // Return arguments that are out of order.
-      auto out_of_order = genex::views::zip(tagged_args, args_sorted)
-        | genex::to<Vec>()
-        | genex::views::filter([](auto &&x) { return spp::get<0>(x) != spp::get<1>(x); })
-        | genex::views::transform([](auto &&x) { return spp::get<1>(x); })
-        | genex::views::transform([](auto &&x) {
-          return MakePair(Str(magic_enum::enum_name(x.first)), dynamic_cast<Ast*>(x.second));
-        })
-        | genex::to<Vec>();
-      return out_of_order;
-    }
-  }
+  // Return arguments that are out of order.
+  auto out_of_order = genex::views::zip(tagged_args, args_sorted)
+    | genex::to<Vec>()
+    | genex::views::filter([](auto &&x) { return spp::get<0>(x) != spp::get<1>(x); })
+    | genex::views::transform([](auto &&x) { return spp::get<1>(x); })
+    | genex::views::transform([](auto &&x) {
+      return MakePair(Str(magic_enum::enum_name(x.first)), dynamic_cast<Ast*>(x.second));
+    })
+    | genex::to<Vec>();
+  return out_of_order;
 }
 
 auto spp::analyse::utils::order_utils::DoOrderArgs(

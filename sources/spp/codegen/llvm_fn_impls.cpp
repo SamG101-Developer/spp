@@ -72,76 +72,40 @@ use_alias(spp::codegen::fn_impls, UnOp);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
-// =========================================================================================================
-// Layer 1: function + entry-block creation.
-// =========================================================================================================
+namespace spp::codegen::fn_impls {
+  namespace {
+    /// [CHECKED]
+    /// The runtime checks the compiler emits. The numbers are
+    /// the runtime's own (SPPC_CHECK_* enum), which names each
+    /// check in its report.
+    enum class RuntimeCheck : std::uint32_t {
+      Index = 1,
+      Conversion = 2,
+      GeneratorSend = 3,
+      SliceOrder = 4,
+      SliceEnd = 5,
+      FloatToInt = 6,
+      FfiUnwind = 7,
+      SignedAdd = 0x10,
+      UnsignedAdd = 0x11,
+      SignedSub = 0x12,
+      UnsignedSub = 0x13,
+      SignedMul = 0x14,
+      UnsignedMul = 0x15,
+      DivideByZero = 0x16,
+      RemainderByZero = 0x17,
+      SignedDiv = 0x18,
+    };
+  }
 
-namespace {
-  /// [CHECKED]
-  /// The runtime checks the compiler emits. The numbers are
-  /// the runtime's own (SPPC_CHECK_* enum), which names each
-  /// check in its report.
-  enum class RuntimeCheck : std::uint32_t {
-    Index = 1,
-    Conversion = 2,
-    GeneratorSend = 3,
-    SliceOrder = 4,
-    SliceEnd = 5,
-    FloatToInt = 6,
-    FfiUnwind = 7,
-    SignedAdd = 0x10,
-    UnsignedAdd = 0x11,
-    SignedSub = 0x12,
-    UnsignedSub = 0x13,
-    SignedMul = 0x14,
-    UnsignedMul = 0x15,
-    DivideByZero = 0x16,
-    RemainderByZero = 0x17,
-    SignedDiv = 0x18,
-  };
-
-  /// [CHECKED]
   /// Fail a runtime check, terminating the current block. Every
   /// failed check ends the process through 1 unified runtime
   /// call "sppc_check_failed", which reports the check by name
   /// with the values given and prints a backtrace with "_exit"
   /// (no allocation, no signal handler, etc).
-  auto EmitCheckFailed(
+  static auto EmitCheckFailed(
     LlvmCtx *const ctx, const RuntimeCheck check,
-    llvm::Value *a = nullptr, llvm::Value *b = nullptr) -> void {
-    // Get the module and create some predefined types that will
-    // be reused through this function.
-    const auto mod = ctx->Builder.GetInsertBlock()->getParent()->getParent();
-    const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
-    const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
-    const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
-
-    // Get the call target embedded in the std library via the
-    // sppc ffi bindings.
-    auto callee = mod->getOrInsertFunction(
-      "sppc_check_failed",
-      llvm::FunctionType::get(void_ty, {i32_ty, i64_ty, i64_ty}, false));
-
-    // Assuming the function has been found, set a few llvm attrs
-    // on it, for optimization.
-    if (const auto fn = llvm::dyn_cast<llvm::Function>(callee.getCallee())) {
-      fn->setDoesNotReturn();
-      fn->setDoesNotThrow();
-      fn->addFnAttr(llvm::Attribute::Cold);
-    }
-
-    // Create a call to the check-failed function, passing in the
-    // "a" and "b" attributes if they are present, otherwise using
-    // zero as fallback defaults.
-    const auto zero = llvm::ConstantInt::get(i64_ty, 0);
-    ctx->Builder.CreateCall(
-      callee, {
-        llvm::ConstantInt::get(i32_ty, std::to_underlying(check)),
-        a != nullptr ? ctx->Builder.CreateZExtOrTrunc(a, i64_ty) : zero,
-        b != nullptr ? ctx->Builder.CreateZExtOrTrunc(b, i64_ty) : zero
-      });
-    ctx->Builder.CreateUnreachable();
-  }
+    llvm::Value *a = nullptr, llvm::Value *b = nullptr) -> void;
 
   /// Fail the check unless "value", truncated toward zero, is
   /// in the integer type's range: anything else (too large,
@@ -152,240 +116,40 @@ namespace {
   /// format unless past its largest, where they round to an
   /// infinity and the lower compare is made strict to keep
   /// that infinity out.
-  auto EmitFloatToIntCheck(
-    LlvmCtx *const ctx, llvm::Value *value, llvm::Type const *int_ty, const bool is_signed) -> void {
-    const auto uid = "." + spp::utils::Uid();
-    const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
-    const auto float_ty = value->getType();
-    const auto &sem = float_ty->getFltSemantics();
-    const auto width = int_ty->getIntegerBitWidth();
-    const auto power = [&](const bool negative, const unsigned exp) {
-      auto result = llvm::APFloat(sem);
-      result.convertFromAPInt(
-        llvm::APInt::getOneBitSet(width + 1, exp), false, llvm::APFloat::rmNearestTiesToEven);
-      if (negative) { result.changeSign(); }
-      return result;
-    };
-    const auto lo = is_signed ? power(true, width - 1) : llvm::APFloat::getZero(sem);
-    const auto hi = power(false, is_signed ? width - 1 : width);
+  static auto EmitFloatToIntCheck(
+    LlvmCtx *const ctx, llvm::Value *value, llvm::Type const *int_ty, const bool is_signed) -> void;
 
-    // Ordered compares, so NaN fails both.
-    const auto truncated = ctx->Builder.CreateUnaryIntrinsic(
-      llvm::Intrinsic::trunc, value, nullptr, "conv.float.trunc" + uid);
-    const auto lo_val = llvm::ConstantFP::get(float_ty, lo);
-    const auto lo_ok = lo.isInfinity()
-      ? ctx->Builder.CreateFCmpOGT(truncated, lo_val, "conv.float.lo_ok" + uid)
-      : ctx->Builder.CreateFCmpOGE(truncated, lo_val, "conv.float.lo_ok" + uid);
-    const auto hi_ok = ctx->Builder.CreateFCmpOLT(
-      truncated, llvm::ConstantFP::get(float_ty, hi), "conv.float.hi_ok" + uid);
-
-    const auto fn = ctx->Builder.GetInsertBlock()->getParent();
-    const auto ok_bb = llvm::BasicBlock::Create(*ctx->Context, "conv.float.ok" + uid, fn);
-    const auto bad_bb = llvm::BasicBlock::Create(*ctx->Context, "conv.float.bad" + uid, fn);
-    ctx->Builder.CreateCondBr(ctx->Builder.CreateAnd(lo_ok, hi_ok, "conv.float.in_range" + uid), ok_bb, bad_bb);
-
-    // Reported by the type it was converting to, as the crash
-    // path cannot format a float.
-    ctx->Builder.SetInsertPoint(bad_bb);
-    EmitCheckFailed(
-      ctx, RuntimeCheck::FloatToInt,
-      llvm::ConstantInt::get(i64_ty, static_cast<std::uint64_t>(width)),
-      llvm::ConstantInt::get(i64_ty, is_signed ? 1 : 0));
-    ctx->Builder.SetInsertPoint(ok_bb);
-  }
-
-  /// [CHECKED]
   /// Emit a shift whose result is defined for any distance
   /// (including one at or past the operand's width). A bare
   /// shl/lhsr poisons if the distance reaches the operand's
   /// bit width. Clamp the distance before the shift as well
   /// as afterwards.
-  auto EmitDefinedShift(
+  static auto EmitDefinedShift(
     LlvmCtx *ctx, const BinOp op,
-    llvm::Value *a, llvm::Value *b) -> llvm::Value* {
-    // Create some predefined types that will be reused through
-    // this function. Define the width and max for the shifts.
-    const auto uid = "." + spp::utils::Uid();
-    const auto ty = a->getType();
-    const auto width = llvm::ConstantInt::get(ty, ty->getIntegerBitWidth());
-    const auto max = llvm::ConstantInt::get(ty, ty->getIntegerBitWidth() - 1);
-
-    // Do a width check and select the safe value if it trips;
-    // this is the "before" check.
-    const auto too_wide = ctx->Builder.CreateICmpUGE(b, width, "shift.wide" + uid);
-    const auto safe = ctx->Builder.CreateSelect(too_wide, max, b, "shift.safe" + uid);
-    const auto raw = op == BinOp::Shl ? ctx->Builder.CreateShl(a, safe, "shift.raw" + uid)
-      : op == BinOp::LShr ? ctx->Builder.CreateLShr(a, safe, "shift.raw" + uid)
-      : ctx->Builder.CreateAShr(a, safe, "shift.raw" + uid);
-
-    // An arithmetic shift by the clamped distance is already
-    // the answer past the width: every bit is the sign bit.
-    if (op == BinOp::AShr) { return raw; }
-
-    // Do a width check afterwards too on the result. This is
-    // the completion of the "<<" and ">>" safety.
-    return ctx->Builder.CreateSelect(
-      too_wide, llvm::ConstantInt::get(ty, 0), raw, "shift.result" + uid);
-  }
+    llvm::Value *a, llvm::Value *b) -> llvm::Value*;
 
   /// A saturating shift left that is defined at every distance.
   /// "llvm.sshl.sat" and "llvm.ushl.sat" poison at or past the
   /// width, as a bare shift does; there every set bit is shifted
   /// out, so the result is the bound on the value's side (0 stays
   /// 0). The intrinsic is given a distance in range regardless.
-  auto EmitSaturatingShift(
-    LlvmCtx *ctx, const bool is_signed, llvm::Value *a, llvm::Value *b) -> llvm::Value* {
-    const auto uid = "." + spp::utils::Uid();
-    const auto ty = llvm::cast<llvm::IntegerType>(a->getType());
-    const auto zero = llvm::ConstantInt::get(ty, 0);
-    const auto too_wide = ctx->Builder.CreateICmpUGE(
-      b, llvm::ConstantInt::get(ty, ty->getBitWidth()), "shift.wide" + uid);
-    const auto safe = ctx->Builder.CreateSelect(too_wide, zero, b, "shift.safe" + uid);
-    const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(
-      ctx->Module.get(), is_signed ? llvm::Intrinsic::sshl_sat : llvm::Intrinsic::ushl_sat, {ty});
-    const auto raw = ctx->Builder.CreateCall(intrinsic_fn, {a, safe}, "shift.raw" + uid);
+  static auto EmitSaturatingShift(
+    LlvmCtx *ctx, const bool is_signed, llvm::Value *a, llvm::Value *b) -> llvm::Value*;
 
-    // Past the width: the type's bound on the value's side.
-    const auto max = is_signed
-      ? llvm::APInt::getSignedMaxValue(ty->getBitWidth())
-      : llvm::APInt::getMaxValue(ty->getBitWidth());
-    auto bound = llvm::cast<llvm::Value>(llvm::ConstantInt::get(ty, max));
-    if (is_signed) {
-      const auto min = llvm::ConstantInt::get(ty, llvm::APInt::getSignedMinValue(ty->getBitWidth()));
-      bound = ctx->Builder.CreateSelect(
-        ctx->Builder.CreateICmpSLT(a, zero, "shift.negative" + uid), min, bound, "shift.bound" + uid);
-    }
-    bound = ctx->Builder.CreateSelect(
-      ctx->Builder.CreateICmpEQ(a, zero, "shift.zero" + uid), zero, bound, "shift.bound" + uid);
-    return ctx->Builder.CreateSelect(too_wide, bound, raw, "shift.result" + uid);
-  }
-
-  /// [CHECKED]
   /// The lowest level part of an arithmetic operation, with
   /// additional information for if it overflowed or not. This
   /// flows up to all math calling functions.
-  auto EmitOverflowPair(
+  static auto EmitOverflowPair(
     LlvmCtx *ctx, const BinOp op,
     llvm::Value *a, llvm::Value *b)
-    -> spp::Pair<llvm::Value*, llvm::Value*> {
-    const auto uid = "." + spp::utils::Uid();
+    -> spp::Pair<llvm::Value*, llvm::Value*>;
 
-    // Get the intrinsic based off the selected operation from
-    // the calling function.
-    auto intrinsic = llvm::Intrinsic::sadd_with_overflow;
-    switch (op) {
-      case BinOp::SAddChecked: intrinsic = llvm::Intrinsic::sadd_with_overflow;
-        break;
-      case BinOp::UAddChecked: intrinsic = llvm::Intrinsic::uadd_with_overflow;
-        break;
-      case BinOp::SSubChecked: intrinsic = llvm::Intrinsic::ssub_with_overflow;
-        break;
-      case BinOp::USubChecked: intrinsic = llvm::Intrinsic::usub_with_overflow;
-        break;
-      case BinOp::SMulChecked: intrinsic = llvm::Intrinsic::smul_with_overflow;
-        break;
-      case BinOp::UMulChecked: intrinsic = llvm::Intrinsic::umul_with_overflow;
-        break;
-      default: spp::Ice(std::format("not a checked arithmetic BinOp: {}", static_cast<int>(op)));
-    }
-
-    // Create a call ingo the intrinsic with the detected
-    // types. Because of the S++ type system, the left and
-    // right operands will be the same type.
-    const auto pair = ctx->Builder.CreateCall(
-      llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, {a->getType()}),
-      {a, b}, "arith.checked" + uid);
-
-    // Return a pair of function calls to get the value
-    // and if there is an overflow or not.
-    return {
-      ctx->Builder.CreateExtractValue(pair, 0, "arith.value" + uid),
-      ctx->Builder.CreateExtractValue(pair, 1, "arith.overflowed" + uid)
-    };
-  }
-
-  /// [CHECKED]
   /// All math operations in S++ are checked, in debug and
   /// release mode; no wrapping or no undefined behaviour. This
   /// is to enforce maximum safety.
-  auto EmitCheckedArith(
+  static auto EmitCheckedArith(
     LlvmCtx *ctx, const BinOp op,
-    llvm::Value *a, llvm::Value *b) -> llvm::Value* {
-    const auto uid = "." + spp::utils::Uid();
-
-    // One check per operation, so the report names the check
-    // that failed rather than just "arithmetic". Distinct
-    // checks cost one extra landing block per operation kind
-    // per function, which is why they are per operation and
-    // not per operation *site*.
-    auto check = RuntimeCheck{};
-    switch (op) {
-      case BinOp::SAddChecked:
-        check = RuntimeCheck::SignedAdd;
-        break;
-      case BinOp::UAddChecked:
-        check = RuntimeCheck::UnsignedAdd;
-        break;
-      case BinOp::SSubChecked:
-        check = RuntimeCheck::SignedSub;
-        break;
-      case BinOp::USubChecked:
-        check = RuntimeCheck::UnsignedSub;
-        break;
-      case BinOp::SMulChecked:
-        check = RuntimeCheck::SignedMul;
-        break;
-      case BinOp::UMulChecked:
-        check = RuntimeCheck::UnsignedMul;
-        break;
-      default:
-        spp::Ice(std::format("not a checked arithmetic BinOp: {}", static_cast<int>(op)));
-    }
-
-    // Call the low level overflow-safe arithmetic implementation
-    // function, and destructure the results. The "overflowed"
-    // flag will be used to branch.
-    const auto fn = ctx->Builder.GetInsertBlock()->getParent();
-    const auto overflowed = EmitOverflowPair(ctx, op, a, b).second;
-
-    // The result, as the plain operation flagged as not wrapping
-    // ("nuw" or "nsw"), rather than the intrinsic's value: on the
-    // path that uses it there was no overflow, so the flag holds,
-    // and it is what LLVM's analyses read. The intrinsic's value is
-    // opaque to them, so "(lo + 16) - lo" did not fold to 16, a
-    // loop bound built with checked arithmetic had no trip count,
-    // and checks it already proves (that subtraction cannot
-    // underflow) stayed. The flagged op is poison if it wraps, but
-    // it is only used past the check. Only the intrinsic's bit is
-    // used, which the backend fuses back with the op ("add", "jo").
-    const auto flagged = [&]() -> llvm::Value* {
-      const auto name = "arith.result" + uid;
-      switch (op) {
-        case BinOp::SAddChecked: return ctx->Builder.CreateAdd(a, b, name, false, true);
-        case BinOp::UAddChecked: return ctx->Builder.CreateAdd(a, b, name, true, false);
-        case BinOp::SSubChecked: return ctx->Builder.CreateSub(a, b, name, false, true);
-        case BinOp::USubChecked: return ctx->Builder.CreateSub(a, b, name, true, false);
-        case BinOp::SMulChecked: return ctx->Builder.CreateMul(a, b, name, false, true);
-        default: return ctx->Builder.CreateMul(a, b, name, true, false);
-      }
-    }();
-
-    // Define the pass and fail states of an arithmetic operation,
-    // and branch based on the "overflowed" flag.
-    const auto ok_bb = llvm::BasicBlock::Create(
-      *ctx->Context, "arith.ok" + uid, fn);
-    const auto fail_bb = llvm::BasicBlock::Create(
-      *ctx->Context, "arith.fail" + uid, fn);
-    ctx->Builder.CreateCondBr(overflowed, fail_bb, ok_bb);
-
-    // No branch weights: the call is "cold noreturn" and the block
-    // ends in "unreachable", which is already everything block
-    // placement needs to sink it.
-    ctx->Builder.SetInsertPoint(fail_bb);
-    EmitCheckFailed(ctx, check);
-    ctx->Builder.SetInsertPoint(ok_bb);
-    return flagged;
-  }
+    llvm::Value *a, llvm::Value *b) -> llvm::Value*;
 
   /// A division or remainder, checked as "+" is: it aborts only
   /// when the true result does not exist or does not fit. A zero
@@ -393,70 +157,19 @@ namespace {
   /// quotient is one past the maximum. Its remainder is 0, which
   /// fits, so "srem" is given a divisor of 1 there (any "x % -1"
   /// is 0) rather than failing; a bare "srem" is UB for it.
-  auto EmitCheckedDivRem(
+  static auto EmitCheckedDivRem(
     LlvmCtx *ctx, const BinOp op,
-    llvm::Value *a, llvm::Value *b) -> llvm::Value* {
-    const auto uid = "." + spp::utils::Uid();
-    const auto ty = a->getType();
-    const auto fn = ctx->Builder.GetInsertBlock()->getParent();
-    const auto neg_one = llvm::ConstantInt::getSigned(ty, -1);
-
-    // Branch to a failed check when "failed" is set, and carry
-    // on in a fresh block otherwise.
-    const auto fail_if = [&](llvm::Value *failed, const RuntimeCheck check) {
-      const auto ok_bb = llvm::BasicBlock::Create(*ctx->Context, "divrem.ok" + uid, fn);
-      const auto fail_bb = llvm::BasicBlock::Create(*ctx->Context, "divrem.fail" + uid, fn);
-      ctx->Builder.CreateCondBr(failed, fail_bb, ok_bb);
-      ctx->Builder.SetInsertPoint(fail_bb);
-      EmitCheckFailed(ctx, check);
-      ctx->Builder.SetInsertPoint(ok_bb);
-    };
-
-    const auto is_div = op == BinOp::SDiv or op == BinOp::UDiv;
-    fail_if(
-      ctx->Builder.CreateICmpEQ(b, llvm::ConstantInt::get(ty, 0), "divrem.by_zero" + uid),
-      is_div ? RuntimeCheck::DivideByZero : RuntimeCheck::RemainderByZero);
-
-    switch (op) {
-      case BinOp::UDiv: return ctx->Builder.CreateUDiv(a, b, "divrem.result" + uid);
-      case BinOp::URem: return ctx->Builder.CreateURem(a, b, "divrem.result" + uid);
-      case BinOp::SDiv: {
-        const auto min = llvm::ConstantInt::get(ty, llvm::APInt::getSignedMinValue(ty->getIntegerBitWidth()));
-        const auto overflows = ctx->Builder.CreateAnd(
-          ctx->Builder.CreateICmpEQ(a, min, "divrem.is_min" + uid),
-          ctx->Builder.CreateICmpEQ(b, neg_one, "divrem.by_neg_one" + uid),
-          "divrem.overflows" + uid);
-        fail_if(overflows, RuntimeCheck::SignedDiv);
-        return ctx->Builder.CreateSDiv(a, b, "divrem.result" + uid);
-      }
-      case BinOp::SRem: {
-        const auto by_neg_one = ctx->Builder.CreateICmpEQ(b, neg_one, "divrem.by_neg_one" + uid);
-        const auto divisor = ctx->Builder.CreateSelect(
-          by_neg_one, llvm::ConstantInt::get(ty, 1), b, "divrem.divisor" + uid);
-        return ctx->Builder.CreateSRem(a, divisor, "divrem.result" + uid);
-      }
-      default:
-        spp::Ice(std::format("not a division BinOp: {}", static_cast<int>(op)));
-    }
-  }
+    llvm::Value *a, llvm::Value *b) -> llvm::Value*;
 
   /// The format an "F8" is stored in, FP8 E4M3, as llvm's
   /// arbitrary float conversions name it.
-  auto F8Format(LlvmCtx *ctx) -> llvm::Value* {
-    return llvm::MetadataAsValue::get(*ctx->Context, llvm::MDString::get(*ctx->Context, "Float8E4M3FN"));
-  }
+  static auto F8Format(LlvmCtx *ctx) -> llvm::Value*;
 
   /// An "F8" (its bits, an "i8") as the float "dest_ty". llvm
   /// decodes one to an "f32" on every target, and every "F8" is
   /// exact in every wider format, so the rest is an exact cast.
-  auto EmitF8Decode(
-    LlvmCtx *ctx, llvm::Value *bits, llvm::Type *dest_ty) -> llvm::Value* {
-    const auto f32_ty = ctx->Builder.getFloatTy();
-    const auto decode = llvm::Intrinsic::getOrInsertDeclaration(
-      ctx->Module.get(), llvm::Intrinsic::convert_from_arbitrary_fp, {f32_ty, bits->getType()});
-    const auto value = ctx->Builder.CreateCall(decode, {bits, F8Format(ctx)});
-    return ctx->Builder.CreateFPCast(value, dest_ty);
-  }
+  static auto EmitF8Decode(
+    LlvmCtx *ctx, llvm::Value *bits, llvm::Type *dest_ty) -> llvm::Value*;
 
   /// The float "value" as an "F8": rounded to nearest, ties to
   /// even, saturating (E4M3 has no infinity: past 448 is 448).
@@ -465,34 +178,458 @@ namespace {
   /// zero, the lowest bit set if inexact): rounding to nearest
   /// there would round twice, and a value just short of an E4M3
   /// tie could land on it.
-  auto EmitF8Encode(
-    LlvmCtx *ctx, llvm::Value *value) -> llvm::Value* {
-    auto &builder = ctx->Builder;
-    const auto f32_ty = builder.getFloatTy();
-    const auto src_ty = value->getType();
-    auto narrowed = value;
-    if (src_ty->getPrimitiveSizeInBits() < 32) {
-      narrowed = builder.CreateFPExt(value, f32_ty);
+  static auto EmitF8Encode(
+    LlvmCtx *ctx, llvm::Value *value) -> llvm::Value*;
+
+  /**
+   * Whether a conversion is defined for a source and destination pair.
+   *
+   * @n
+   * Each of these operations is only meaningful over part of the space of type pairs - a truncation has to narrow, an
+   * extension has to widen, a bit cast has to keep the size - and llvm rejects an instruction built outside it.
+   *
+   * @param op The conversion being built.
+   * @param src The type being converted from.
+   * @param dst The type being converted to.
+   * @return Whether @p op is defined from @p src to @p dst .
+   */
+  static auto ConvOpIsDefined(
+    const ConvOp op,
+    llvm::Type const *src,
+    llvm::Type const *dst)
+    -> bool;
+
+  /// The byte address "at" bytes into what parameter "param" (a
+  /// "&NonNull[T]" or "&mut NonNull[T]") points to: the borrow, the
+  /// pointer it borrows, then the offset.
+  static auto MemOpsAddress(
+    spp::analyse::scopes::ScopeManager *sm,
+    spp::asts::FunctionParameterAst const &param,
+    llvm::Value *at,
+    spp::codegen::LlvmCtx *ctx,
+    const spp::StrView name)
+    -> llvm::Value*;
+
+  /// The value of the by-value parameter "param", of LLVM type "ty".
+  static auto MemOpsValue(
+    spp::analyse::scopes::ScopeManager *sm,
+    spp::asts::FunctionParameterAst const &param,
+    llvm::Type *ty,
+    spp::codegen::LlvmCtx *ctx,
+    const spp::StrView name)
+    -> llvm::Value*;
+}
+
+/// [CHECKED]
+auto spp::codegen::fn_impls::EmitCheckFailed(
+  LlvmCtx *const ctx, const RuntimeCheck check,
+  llvm::Value *a, llvm::Value *b) -> void {
+  // Get the module and create some predefined types that will
+  // be reused through this function.
+  const auto mod = ctx->Builder.GetInsertBlock()->getParent()->getParent();
+  const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
+  const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
+  const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
+
+  // Get the call target embedded in the std library via the
+  // sppc ffi bindings.
+  auto callee = mod->getOrInsertFunction(
+    "sppc_check_failed",
+    llvm::FunctionType::get(void_ty, {i32_ty, i64_ty, i64_ty}, false));
+
+  // Assuming the function has been found, set a few llvm attrs
+  // on it, for optimization.
+  if (const auto fn = llvm::dyn_cast<llvm::Function>(callee.getCallee())) {
+    fn->setDoesNotReturn();
+    fn->setDoesNotThrow();
+    fn->addFnAttr(llvm::Attribute::Cold);
+
+    // With debug info, each failed check keeps its own call, and so its own
+    // line in a crash report; merged, the call would have the line of none
+    // of them. Without it there is no line to keep, and merging saves code.
+    if (ctx->DiBuilder != nullptr) {
+      fn->addFnAttr(llvm::Attribute::NoMerge);
     }
-    else if (src_ty->getPrimitiveSizeInBits() > 32) {
-      const auto nearest = builder.CreateFPTrunc(value, f32_ty);
-      const auto back = builder.CreateFPExt(nearest, src_ty);
-      const auto away = builder.CreateFCmpOGT(
-        builder.CreateUnaryIntrinsic(llvm::Intrinsic::fabs, back),
-        builder.CreateUnaryIntrinsic(llvm::Intrinsic::fabs, value));
-      const auto bits = builder.CreateBitCast(nearest, builder.getInt32Ty());
-      const auto toward_zero = builder.CreateSelect(away, builder.CreateSub(bits, builder.getInt32(1)), bits);
-      const auto odd = builder.CreateSelect(
-        builder.CreateFCmpUNE(back, value), builder.CreateOr(toward_zero, builder.getInt32(1)), toward_zero);
-      narrowed = builder.CreateBitCast(odd, f32_ty);
+  }
+
+  // Create a call to the check-failed function, passing in the
+  // "a" and "b" attributes if they are present, otherwise using
+  // zero as fallback defaults.
+  const auto zero = llvm::ConstantInt::get(i64_ty, 0);
+  ctx->Builder.CreateCall(
+    callee, {
+      llvm::ConstantInt::get(i32_ty, std::to_underlying(check)),
+      a != nullptr ? ctx->Builder.CreateZExtOrTrunc(a, i64_ty) : zero,
+      b != nullptr ? ctx->Builder.CreateZExtOrTrunc(b, i64_ty) : zero
+    });
+  ctx->Builder.CreateUnreachable();
+}
+
+auto spp::codegen::fn_impls::EmitFloatToIntCheck(
+  LlvmCtx *const ctx, llvm::Value *value, llvm::Type const *int_ty, const bool is_signed) -> void {
+  const auto uid = "." + spp::utils::Uid();
+  const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
+  const auto float_ty = value->getType();
+  const auto &sem = float_ty->getFltSemantics();
+  const auto width = int_ty->getIntegerBitWidth();
+  const auto power = [&](const bool negative, const unsigned exp) {
+    auto result = llvm::APFloat(sem);
+    result.convertFromAPInt(
+      llvm::APInt::getOneBitSet(width + 1, exp), false, llvm::APFloat::rmNearestTiesToEven);
+    if (negative) { result.changeSign(); }
+    return result;
+  };
+  const auto lo = is_signed ? power(true, width - 1) : llvm::APFloat::getZero(sem);
+  const auto hi = power(false, is_signed ? width - 1 : width);
+
+  // Ordered compares, so NaN fails both.
+  const auto truncated = ctx->Builder.CreateUnaryIntrinsic(
+    llvm::Intrinsic::trunc, value, nullptr, "conv.float.trunc" + uid);
+  const auto lo_val = llvm::ConstantFP::get(float_ty, lo);
+  const auto lo_ok = lo.isInfinity()
+    ? ctx->Builder.CreateFCmpOGT(truncated, lo_val, "conv.float.lo_ok" + uid)
+    : ctx->Builder.CreateFCmpOGE(truncated, lo_val, "conv.float.lo_ok" + uid);
+  const auto hi_ok = ctx->Builder.CreateFCmpOLT(
+    truncated, llvm::ConstantFP::get(float_ty, hi), "conv.float.hi_ok" + uid);
+
+  const auto fn = ctx->Builder.GetInsertBlock()->getParent();
+  const auto ok_bb = llvm::BasicBlock::Create(*ctx->Context, "conv.float.ok" + uid, fn);
+  const auto bad_bb = llvm::BasicBlock::Create(*ctx->Context, "conv.float.bad" + uid, fn);
+  ctx->Builder.CreateCondBr(ctx->Builder.CreateAnd(lo_ok, hi_ok, "conv.float.in_range" + uid), ok_bb, bad_bb);
+
+  // Reported by the type it was converting to, as the crash
+  // path cannot format a float.
+  ctx->Builder.SetInsertPoint(bad_bb);
+  EmitCheckFailed(
+    ctx, RuntimeCheck::FloatToInt,
+    llvm::ConstantInt::get(i64_ty, static_cast<std::uint64_t>(width)),
+    llvm::ConstantInt::get(i64_ty, is_signed ? 1 : 0));
+  ctx->Builder.SetInsertPoint(ok_bb);
+}
+
+/// [CHECKED]
+auto spp::codegen::fn_impls::EmitDefinedShift(
+  LlvmCtx *ctx, const BinOp op,
+  llvm::Value *a, llvm::Value *b) -> llvm::Value* {
+  // Create some predefined types that will be reused through
+  // this function. Define the width and max for the shifts.
+  const auto uid = "." + spp::utils::Uid();
+  const auto ty = a->getType();
+  const auto width = llvm::ConstantInt::get(ty, ty->getIntegerBitWidth());
+  const auto max = llvm::ConstantInt::get(ty, ty->getIntegerBitWidth() - 1);
+
+  // Do a width check and select the safe value if it trips;
+  // this is the "before" check.
+  const auto too_wide = ctx->Builder.CreateICmpUGE(b, width, "shift.wide" + uid);
+  const auto safe = ctx->Builder.CreateSelect(too_wide, max, b, "shift.safe" + uid);
+  const auto raw = op == BinOp::Shl ? ctx->Builder.CreateShl(a, safe, "shift.raw" + uid)
+    : op == BinOp::LShr ? ctx->Builder.CreateLShr(a, safe, "shift.raw" + uid)
+    : ctx->Builder.CreateAShr(a, safe, "shift.raw" + uid);
+
+  // An arithmetic shift by the clamped distance is already
+  // the answer past the width: every bit is the sign bit.
+  if (op == BinOp::AShr) { return raw; }
+
+  // Do a width check afterwards too on the result. This is
+  // the completion of the "<<" and ">>" safety.
+  return ctx->Builder.CreateSelect(
+    too_wide, llvm::ConstantInt::get(ty, 0), raw, "shift.result" + uid);
+}
+
+auto spp::codegen::fn_impls::EmitSaturatingShift(
+  LlvmCtx *ctx, const bool is_signed, llvm::Value *a, llvm::Value *b) -> llvm::Value* {
+  const auto uid = "." + spp::utils::Uid();
+  const auto ty = llvm::cast<llvm::IntegerType>(a->getType());
+  const auto zero = llvm::ConstantInt::get(ty, 0);
+  const auto too_wide = ctx->Builder.CreateICmpUGE(
+    b, llvm::ConstantInt::get(ty, ty->getBitWidth()), "shift.wide" + uid);
+  const auto safe = ctx->Builder.CreateSelect(too_wide, zero, b, "shift.safe" + uid);
+  const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(
+    ctx->Module.get(), is_signed ? llvm::Intrinsic::sshl_sat : llvm::Intrinsic::ushl_sat, {ty});
+  const auto raw = ctx->Builder.CreateCall(intrinsic_fn, {a, safe}, "shift.raw" + uid);
+
+  // Past the width: the type's bound on the value's side.
+  const auto max = is_signed
+    ? llvm::APInt::getSignedMaxValue(ty->getBitWidth())
+    : llvm::APInt::getMaxValue(ty->getBitWidth());
+  auto bound = llvm::cast<llvm::Value>(llvm::ConstantInt::get(ty, max));
+  if (is_signed) {
+    const auto min = llvm::ConstantInt::get(ty, llvm::APInt::getSignedMinValue(ty->getBitWidth()));
+    bound = ctx->Builder.CreateSelect(
+      ctx->Builder.CreateICmpSLT(a, zero, "shift.negative" + uid), min, bound, "shift.bound" + uid);
+  }
+  bound = ctx->Builder.CreateSelect(
+    ctx->Builder.CreateICmpEQ(a, zero, "shift.zero" + uid), zero, bound, "shift.bound" + uid);
+  return ctx->Builder.CreateSelect(too_wide, bound, raw, "shift.result" + uid);
+}
+
+/// [CHECKED]
+auto spp::codegen::fn_impls::EmitOverflowPair(
+  LlvmCtx *ctx, const BinOp op,
+  llvm::Value *a, llvm::Value *b)
+  -> spp::Pair<llvm::Value*, llvm::Value*> {
+  const auto uid = "." + spp::utils::Uid();
+
+  // Get the intrinsic based off the selected operation from
+  // the calling function.
+  auto intrinsic = llvm::Intrinsic::sadd_with_overflow;
+  switch (op) {
+    case BinOp::SAddChecked: intrinsic = llvm::Intrinsic::sadd_with_overflow;
+      break;
+    case BinOp::UAddChecked: intrinsic = llvm::Intrinsic::uadd_with_overflow;
+      break;
+    case BinOp::SSubChecked: intrinsic = llvm::Intrinsic::ssub_with_overflow;
+      break;
+    case BinOp::USubChecked: intrinsic = llvm::Intrinsic::usub_with_overflow;
+      break;
+    case BinOp::SMulChecked: intrinsic = llvm::Intrinsic::smul_with_overflow;
+      break;
+    case BinOp::UMulChecked: intrinsic = llvm::Intrinsic::umul_with_overflow;
+      break;
+    default: spp::Ice(std::format("not a checked arithmetic BinOp: {}", static_cast<int>(op)));
+  }
+
+  // Create a call ingo the intrinsic with the detected
+  // types. Because of the S++ type system, the left and
+  // right operands will be the same type.
+  const auto pair = ctx->Builder.CreateCall(
+    llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, {a->getType()}),
+    {a, b}, "arith.checked" + uid);
+
+  // Return a pair of function calls to get the value
+  // and if there is an overflow or not.
+  return {
+    ctx->Builder.CreateExtractValue(pair, 0, "arith.value" + uid),
+    ctx->Builder.CreateExtractValue(pair, 1, "arith.overflowed" + uid)
+  };
+}
+
+/// [CHECKED]
+auto spp::codegen::fn_impls::EmitCheckedArith(
+  LlvmCtx *ctx, const BinOp op,
+  llvm::Value *a, llvm::Value *b) -> llvm::Value* {
+  const auto uid = "." + spp::utils::Uid();
+
+  // One check per operation, so the report names the check
+  // that failed rather than just "arithmetic". Distinct
+  // checks cost one extra landing block per operation kind
+  // per function, which is why they are per operation and
+  // not per operation *site*.
+  auto check = RuntimeCheck{};
+  switch (op) {
+    case BinOp::SAddChecked:
+      check = RuntimeCheck::SignedAdd;
+      break;
+    case BinOp::UAddChecked:
+      check = RuntimeCheck::UnsignedAdd;
+      break;
+    case BinOp::SSubChecked:
+      check = RuntimeCheck::SignedSub;
+      break;
+    case BinOp::USubChecked:
+      check = RuntimeCheck::UnsignedSub;
+      break;
+    case BinOp::SMulChecked:
+      check = RuntimeCheck::SignedMul;
+      break;
+    case BinOp::UMulChecked:
+      check = RuntimeCheck::UnsignedMul;
+      break;
+    default:
+      spp::Ice(std::format("not a checked arithmetic BinOp: {}", static_cast<int>(op)));
+  }
+
+  // Call the low level overflow-safe arithmetic implementation
+  // function, and destructure the results. The "overflowed"
+  // flag will be used to branch.
+  const auto fn = ctx->Builder.GetInsertBlock()->getParent();
+  const auto overflowed = EmitOverflowPair(ctx, op, a, b).second;
+
+  // The result, as the plain operation flagged as not wrapping
+  // ("nuw" or "nsw"), rather than the intrinsic's value: on the
+  // path that uses it there was no overflow, so the flag holds,
+  // and it is what LLVM's analyses read. The intrinsic's value is
+  // opaque to them, so "(lo + 16) - lo" did not fold to 16, a
+  // loop bound built with checked arithmetic had no trip count,
+  // and checks it already proves (that subtraction cannot
+  // underflow) stayed. The flagged op is poison if it wraps, but
+  // it is only used past the check. Only the intrinsic's bit is
+  // used, which the backend fuses back with the op ("add", "jo").
+  const auto flagged = [&]() -> llvm::Value* {
+    const auto name = "arith.result" + uid;
+    switch (op) {
+      case BinOp::SAddChecked: return ctx->Builder.CreateAdd(a, b, name, false, true);
+      case BinOp::UAddChecked: return ctx->Builder.CreateAdd(a, b, name, true, false);
+      case BinOp::SSubChecked: return ctx->Builder.CreateSub(a, b, name, false, true);
+      case BinOp::USubChecked: return ctx->Builder.CreateSub(a, b, name, true, false);
+      case BinOp::SMulChecked: return ctx->Builder.CreateMul(a, b, name, false, true);
+      default: return ctx->Builder.CreateMul(a, b, name, true, false);
     }
-    const auto encode = llvm::Intrinsic::getOrInsertDeclaration(
-      ctx->Module.get(), llvm::Intrinsic::convert_to_arbitrary_fp, {builder.getInt8Ty(), f32_ty});
-    const auto to_nearest = llvm::MDString::get(*ctx->Context, "round.tonearest");
-    const auto rounding = llvm::MetadataAsValue::get(*ctx->Context, to_nearest);
-    return builder.CreateCall(encode, {narrowed, F8Format(ctx), rounding, builder.getTrue()});
+  }();
+
+  // Define the pass and fail states of an arithmetic operation,
+  // and branch based on the "overflowed" flag.
+  const auto ok_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "arith.ok" + uid, fn);
+  const auto fail_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "arith.fail" + uid, fn);
+  ctx->Builder.CreateCondBr(overflowed, fail_bb, ok_bb);
+
+  // No branch weights: the call is "cold noreturn" and the block
+  // ends in "unreachable", which is already everything block
+  // placement needs to sink it.
+  ctx->Builder.SetInsertPoint(fail_bb);
+  EmitCheckFailed(ctx, check);
+  ctx->Builder.SetInsertPoint(ok_bb);
+  return flagged;
+}
+
+auto spp::codegen::fn_impls::EmitCheckedDivRem(
+  LlvmCtx *ctx, const BinOp op,
+  llvm::Value *a, llvm::Value *b) -> llvm::Value* {
+  const auto uid = "." + spp::utils::Uid();
+  const auto ty = a->getType();
+  const auto fn = ctx->Builder.GetInsertBlock()->getParent();
+  const auto neg_one = llvm::ConstantInt::getSigned(ty, -1);
+
+  // Branch to a failed check when "failed" is set, and carry
+  // on in a fresh block otherwise.
+  const auto fail_if = [&](llvm::Value *failed, const RuntimeCheck check) {
+    const auto ok_bb = llvm::BasicBlock::Create(*ctx->Context, "divrem.ok" + uid, fn);
+    const auto fail_bb = llvm::BasicBlock::Create(*ctx->Context, "divrem.fail" + uid, fn);
+    ctx->Builder.CreateCondBr(failed, fail_bb, ok_bb);
+    ctx->Builder.SetInsertPoint(fail_bb);
+    EmitCheckFailed(ctx, check);
+    ctx->Builder.SetInsertPoint(ok_bb);
+  };
+
+  const auto is_div = op == BinOp::SDiv or op == BinOp::UDiv;
+  fail_if(
+    ctx->Builder.CreateICmpEQ(b, llvm::ConstantInt::get(ty, 0), "divrem.by_zero" + uid),
+    is_div ? RuntimeCheck::DivideByZero : RuntimeCheck::RemainderByZero);
+
+  switch (op) {
+    case BinOp::UDiv: return ctx->Builder.CreateUDiv(a, b, "divrem.result" + uid);
+    case BinOp::URem: return ctx->Builder.CreateURem(a, b, "divrem.result" + uid);
+    case BinOp::SDiv: {
+      const auto min = llvm::ConstantInt::get(ty, llvm::APInt::getSignedMinValue(ty->getIntegerBitWidth()));
+      const auto overflows = ctx->Builder.CreateAnd(
+        ctx->Builder.CreateICmpEQ(a, min, "divrem.is_min" + uid),
+        ctx->Builder.CreateICmpEQ(b, neg_one, "divrem.by_neg_one" + uid),
+        "divrem.overflows" + uid);
+      fail_if(overflows, RuntimeCheck::SignedDiv);
+      return ctx->Builder.CreateSDiv(a, b, "divrem.result" + uid);
+    }
+    case BinOp::SRem: {
+      const auto by_neg_one = ctx->Builder.CreateICmpEQ(b, neg_one, "divrem.by_neg_one" + uid);
+      const auto divisor = ctx->Builder.CreateSelect(
+        by_neg_one, llvm::ConstantInt::get(ty, 1), b, "divrem.divisor" + uid);
+      return ctx->Builder.CreateSRem(a, divisor, "divrem.result" + uid);
+    }
+    default:
+      spp::Ice(std::format("not a division BinOp: {}", static_cast<int>(op)));
   }
 }
+
+auto spp::codegen::fn_impls::F8Format(LlvmCtx *ctx) -> llvm::Value* {
+  return llvm::MetadataAsValue::get(*ctx->Context, llvm::MDString::get(*ctx->Context, "Float8E4M3FN"));
+}
+
+auto spp::codegen::fn_impls::EmitF8Decode(
+  LlvmCtx *ctx, llvm::Value *bits, llvm::Type *dest_ty) -> llvm::Value* {
+  const auto f32_ty = ctx->Builder.getFloatTy();
+  const auto decode = llvm::Intrinsic::getOrInsertDeclaration(
+    ctx->Module.get(), llvm::Intrinsic::convert_from_arbitrary_fp, {f32_ty, bits->getType()});
+  const auto value = ctx->Builder.CreateCall(decode, {bits, F8Format(ctx)});
+  return ctx->Builder.CreateFPCast(value, dest_ty);
+}
+
+auto spp::codegen::fn_impls::EmitF8Encode(
+  LlvmCtx *ctx, llvm::Value *value) -> llvm::Value* {
+  auto &builder = ctx->Builder;
+  const auto f32_ty = builder.getFloatTy();
+  const auto src_ty = value->getType();
+  auto narrowed = value;
+  if (src_ty->getPrimitiveSizeInBits() < 32) {
+    narrowed = builder.CreateFPExt(value, f32_ty);
+  }
+  else if (src_ty->getPrimitiveSizeInBits() > 32) {
+    const auto nearest = builder.CreateFPTrunc(value, f32_ty);
+    const auto back = builder.CreateFPExt(nearest, src_ty);
+    const auto away = builder.CreateFCmpOGT(
+      builder.CreateUnaryIntrinsic(llvm::Intrinsic::fabs, back),
+      builder.CreateUnaryIntrinsic(llvm::Intrinsic::fabs, value));
+    const auto bits = builder.CreateBitCast(nearest, builder.getInt32Ty());
+    const auto toward_zero = builder.CreateSelect(away, builder.CreateSub(bits, builder.getInt32(1)), bits);
+    const auto odd = builder.CreateSelect(
+      builder.CreateFCmpUNE(back, value), builder.CreateOr(toward_zero, builder.getInt32(1)), toward_zero);
+    narrowed = builder.CreateBitCast(odd, f32_ty);
+  }
+  const auto encode = llvm::Intrinsic::getOrInsertDeclaration(
+    ctx->Module.get(), llvm::Intrinsic::convert_to_arbitrary_fp, {builder.getInt8Ty(), f32_ty});
+  const auto to_nearest = llvm::MDString::get(*ctx->Context, "round.tonearest");
+  const auto rounding = llvm::MetadataAsValue::get(*ctx->Context, to_nearest);
+  return builder.CreateCall(encode, {narrowed, F8Format(ctx), rounding, builder.getTrue()});
+}
+
+auto spp::codegen::fn_impls::ConvOpIsDefined(
+  const ConvOp op,
+  llvm::Type const *src,
+  llvm::Type const *dst)
+  -> bool {
+  using ConvOp = ConvOp;
+  const auto ints = src->isIntegerTy() and dst->isIntegerTy();
+
+  // A float's width; an "F8" is its bits, an "i8", which only a
+  // float conversion can be given, so it is one here.
+  const auto float_bits = [](llvm::Type const *ty) -> unsigned {
+    if (ty->isFloatingPointTy()) { return static_cast<unsigned>(ty->getPrimitiveSizeInBits()); }
+    return ty->isIntegerTy(8) ? 8u : 0u;
+  };
+  switch (op) {
+    case ConvOp::Trunc: return ints and src->getIntegerBitWidth() > dst->getIntegerBitWidth();
+    case ConvOp::SExt:
+    case ConvOp::ZExt: return ints and src->getIntegerBitWidth() < dst->getIntegerBitWidth();
+    case ConvOp::FPTrunc: return float_bits(dst) != 0 and float_bits(src) > float_bits(dst);
+    case ConvOp::FPExt: return float_bits(src) != 0 and float_bits(src) < float_bits(dst);
+    case ConvOp::SIToFP:
+    case ConvOp::UIToFP: return src->isIntegerTy() and dst->isFloatingPointTy();
+    case ConvOp::FPToSI:
+    case ConvOp::FPToUI: return src->isFloatingPointTy() and dst->isIntegerTy();
+    case ConvOp::BitCast: return src->isPtrOrPtrVectorTy() == dst->isPtrOrPtrVectorTy()
+        and (src->isPtrOrPtrVectorTy() or src->getPrimitiveSizeInBits() == dst->getPrimitiveSizeInBits());
+    default: spp::Ice(std::format("unhandled ConvOp: {}", static_cast<int>(op)));
+  }
+}
+
+auto spp::codegen::fn_impls::MemOpsAddress(
+  spp::analyse::scopes::ScopeManager *sm,
+  spp::asts::FunctionParameterAst const &param,
+  llvm::Value *at,
+  spp::codegen::LlvmCtx *ctx,
+  const spp::StrView name)
+  -> llvm::Value* {
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto sym = sm->CurrentScope->FindVarSymbol(param.ExtractName().get());
+  const auto borrow = ctx->Builder.CreateLoad(ptr_ty, sym->LlvmInfo->Alloca, spp::Str(name) + ".borrow");
+  const auto base = ctx->Builder.CreateLoad(ptr_ty, borrow, spp::Str(name) + ".base");
+  return ctx->Builder.CreateGEP(llvm::Type::getInt8Ty(*ctx->Context), base, at, spp::Str(name));
+}
+
+auto spp::codegen::fn_impls::MemOpsValue(
+  spp::analyse::scopes::ScopeManager *sm,
+  spp::asts::FunctionParameterAst const &param,
+  llvm::Type *ty,
+  spp::codegen::LlvmCtx *ctx,
+  const spp::StrView name)
+  -> llvm::Value* {
+  const auto sym = sm->CurrentScope->FindVarSymbol(param.ExtractName().get());
+  return ctx->Builder.CreateLoad(ty, sym->LlvmInfo->Alloca, name);
+}
+
+// =========================================================================================================
+// Layer 1: function + entry-block creation.
+// =========================================================================================================
 
 auto spp::codegen::fn_impls::SimpleCreateFn(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ret_ty, Vec<llvm::Type*> const &param_tys)
@@ -728,50 +865,6 @@ auto spp::codegen::fn_impls::SimpleIntrinsicUnopAssign(
   const auto result = ApplyUnOp(ctx, op, loaded_val);
   ctx->Builder.CreateStore(result, lhs);
   ctx->Builder.CreateRetVoid();
-}
-
-namespace {
-  /**
-   * Whether a conversion is defined for a source and destination pair.
-   *
-   * @n
-   * Each of these operations is only meaningful over part of the space of type pairs - a truncation has to narrow, an
-   * extension has to widen, a bit cast has to keep the size - and llvm rejects an instruction built outside it.
-   *
-   * @param op The conversion being built.
-   * @param src The type being converted from.
-   * @param dst The type being converted to.
-   * @return Whether @p op is defined from @p src to @p dst .
-   */
-  auto ConvOpIsDefined(
-    const ConvOp op,
-    llvm::Type const *src,
-    llvm::Type const *dst)
-    -> bool {
-    using ConvOp = ConvOp;
-    const auto ints = src->isIntegerTy() and dst->isIntegerTy();
-
-    // A float's width; an "F8" is its bits, an "i8", which only a
-    // float conversion can be given, so it is one here.
-    const auto float_bits = [](llvm::Type const *ty) -> unsigned {
-      if (ty->isFloatingPointTy()) { return static_cast<unsigned>(ty->getPrimitiveSizeInBits()); }
-      return ty->isIntegerTy(8) ? 8u : 0u;
-    };
-    switch (op) {
-      case ConvOp::Trunc: return ints and src->getIntegerBitWidth() > dst->getIntegerBitWidth();
-      case ConvOp::SExt:
-      case ConvOp::ZExt: return ints and src->getIntegerBitWidth() < dst->getIntegerBitWidth();
-      case ConvOp::FPTrunc: return float_bits(dst) != 0 and float_bits(src) > float_bits(dst);
-      case ConvOp::FPExt: return float_bits(src) != 0 and float_bits(src) < float_bits(dst);
-      case ConvOp::SIToFP:
-      case ConvOp::UIToFP: return src->isIntegerTy() and dst->isFloatingPointTy();
-      case ConvOp::FPToSI:
-      case ConvOp::FPToUI: return src->isFloatingPointTy() and dst->isIntegerTy();
-      case ConvOp::BitCast: return src->isPtrOrPtrVectorTy() == dst->isPtrOrPtrVectorTy()
-          and (src->isPtrOrPtrVectorTy() or src->getPrimitiveSizeInBits() == dst->getPrimitiveSizeInBits());
-      default: spp::Ice(std::format("unhandled ConvOp: {}", static_cast<int>(op)));
-    }
-  }
 }
 
 auto spp::codegen::fn_impls::SimpleIntrinsicConv(
@@ -2442,37 +2535,6 @@ auto spp::codegen::fn_impls::StdMemOpsSwap(
   ctx->Builder.CreateStore(b_val, a_ptr);
   ctx->Builder.CreateStore(a_val, b_ptr);
   ctx->Builder.CreateRetVoid();
-}
-
-namespace {
-  /// The byte address "at" bytes into what parameter "param" (a
-  /// "&NonNull[T]" or "&mut NonNull[T]") points to: the borrow, the
-  /// pointer it borrows, then the offset.
-  auto MemOpsAddress(
-    spp::analyse::scopes::ScopeManager *sm,
-    spp::asts::FunctionParameterAst const &param,
-    llvm::Value *at,
-    spp::codegen::LlvmCtx *ctx,
-    const spp::StrView name)
-    -> llvm::Value* {
-    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-    const auto sym = sm->CurrentScope->FindVarSymbol(param.ExtractName().get());
-    const auto borrow = ctx->Builder.CreateLoad(ptr_ty, sym->LlvmInfo->Alloca, spp::Str(name) + ".borrow");
-    const auto base = ctx->Builder.CreateLoad(ptr_ty, borrow, spp::Str(name) + ".base");
-    return ctx->Builder.CreateGEP(llvm::Type::getInt8Ty(*ctx->Context), base, at, spp::Str(name));
-  }
-
-  /// The value of the by-value parameter "param", of LLVM type "ty".
-  auto MemOpsValue(
-    spp::analyse::scopes::ScopeManager *sm,
-    spp::asts::FunctionParameterAst const &param,
-    llvm::Type *ty,
-    spp::codegen::LlvmCtx *ctx,
-    const spp::StrView name)
-    -> llvm::Value* {
-    const auto sym = sm->CurrentScope->FindVarSymbol(param.ExtractName().get());
-    return ctx->Builder.CreateLoad(ty, sym->LlvmInfo->Alloca, name);
-  }
 }
 
 auto spp::codegen::fn_impls::StdMemOpsMemCopy(
