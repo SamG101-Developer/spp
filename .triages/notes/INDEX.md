@@ -29,7 +29,6 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [sys:: names vs C macros](conventions/sys-names-vs-c-macros.md) — a macro-named sys:: export breaks where the C header is included (gtest); #undef there
 - [Shell through utils::shell](conventions/shell-through-utils-shell.md) — shell::Run and shell::Quote only; why cmd /c needs an outer pair of quotes
 - [and/or/not, not &&/||/!](conventions/alternative-operator-keywords.md) — keyword logical ops; Sonar S3659 ignored; clang-tidy readability-operators-representation enforces
-- [and/or/not, not &&/||/!](conventions/alternative-operator-keywords.md) — keyword logical ops; Sonar S3659 ignored; clang-tidy readability-operators-representation enforces
 - [Enums over strings](conventions/enums-over-strings.md) — fields and params hold the enum; convert once where a user writes it; "any" is Opt<Enum>
 - [Tickets: a folder each](conventions/tickets-one-folder-each.md) — .triages/tickets/<slug>/ with README.md + repro files; URL in the status line once filed
 
@@ -49,6 +48,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Stale module objects](build/cmake-stale-module-objects.md) — a changed .cpp may not rebuild; touch it
 - [Split macro headers](build/split-macro-headers.md) — macros.hpp edit = 11 min rebuild; use narrow headers
 - [Genex on one line](build/cmake-genex-no-line-breaks.md) — a wrapped generator expression splits into args; ninja "bad $-escape"; use a variable
+- [Windows local setup](build/windows-local-setup.md) — .tools/setup-windows.sh runs CI's MSVC-lane setup locally; LF clone, Native Tools prompt
 - [Enable debugging](build/enable-debugging-script.md) — .tools/enable-debugging.sh: perf + gdb -p permissions (sysctl, until WSL restarts); --off restores
 - [ASAN for LLVM crashes](build/asan-build-for-llvm-crashes.md) — gdb can't unwind LLVM; -DSPP_SANITIZER=address
 - [heaptrack needs mimalloc removed](build/heaptrack-needs-mimalloc-removed.md) — -DSPP_NO_MIMALLOC build + patchelf out libmimalloc

@@ -270,7 +270,7 @@ jobs:
       os: windows-2025
       compiler: msvc
       check-floor: true
-      shard-count: 2
+      shard-count: 4
 
   # Read-only: verifies each lane's tested spp against that lane's
   # digests and names it for the release. A lane that failed,

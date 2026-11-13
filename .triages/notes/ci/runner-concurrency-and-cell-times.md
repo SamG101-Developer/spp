@@ -27,6 +27,10 @@ compute-bound), so the input was removed again (2026-11-13) and every lane runs 
 only pays if each test gets more than 2x faster (the shard then finishes sooner); between 1x and 2x it shows contention
 but the shard is slower. Compare the median per test as well as the cell time.
 
+**Shard counts (2026-11-13):** the Windows lanes (MSVC, clang-cl, ARM MSVC; the release Windows lane) run 4 gtest
+shards, Linux and macOS 2. macOS stays at 2 because of its 5-slot cap: Rel/Dev at 2 shards plus the extras cell is
+exactly 5 cells. At 4 shards the 9 cells take two rounds of half-length shards, which ends no sooner.
+
 **Why:** sharding and modes are chosen against this budget; with 20 slots the cells queue behind each other.
 
 **How to apply:** if runs queue badly, the cheap cuts are Dev mode on Linux GCC and Windows MSVC only, and Rel-only

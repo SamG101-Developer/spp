@@ -206,7 +206,7 @@ jobs:
     with:
       os: windows-2025
       compiler: msvc
-      shard-count: 2
+      shard-count: 4
 
   # Todo: drop advisory once CMake 4.5 (import std for clang-cl) is pinned; see .triages/upstream-watch.md U14.
   # On the VS 2026 image, to try the newer MSVC STL before the MSVC lanes move.
@@ -220,7 +220,7 @@ jobs:
       os: windows-2025-vs2026
       compiler: clang-cl
       advisory: true
-      shard-count: 2
+      shard-count: 4
 
   # Todo: drop advisory once it builds and passes as the x64 lane does; see .triages/next-steps.md N15.
   windows-arm-msvc:
@@ -233,7 +233,7 @@ jobs:
       os: windows-11-arm
       compiler: msvc
       advisory: true
-      shard-count: 2
+      shard-count: 4
 
   # Todo: Add to ci-success once more stable.
   # After the Linux lanes, finished or not: its 20-odd short jobs
