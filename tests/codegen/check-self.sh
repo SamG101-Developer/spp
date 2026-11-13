@@ -43,7 +43,7 @@ case "${PLATFORM}-$(uname -m)" in
     linux-aarch64) LABEL=linux-arm64 ;;
     macos-arm64) LABEL=macos-arm64 ;;
     windows-x86_64) LABEL=windows-x64 ;;
-    *) echo "skipped: no release is built for ${PLATFORM}-$(uname -m)"; exit 0 ;;
+    *) LABEL=none ;;
 esac
 readonly PLATFORM EXE LABEL
 
@@ -174,106 +174,125 @@ gone_soon() {
     return 1
 }
 
+# Whether this spp has a release to update from: its build's platform may have none (Windows on ARM, whose Git Bash
+# runs as x64 and so cannot be told apart by uname). Then the update is refused, which is checked, and the update cases
+# are left out; the install and uninstall ones do not need a release.
 install_copy
 publish "${CURRENT}"
-update "${WORK}/same.log"
-if (( RC != 0 )) || ! grep -qF "is the latest release" "${WORK}/same.log"; then
-    fail "the latest release: exit ${RC}, not said to be the latest" "${WORK}/same.log"
-elif ! unchanged; then
-    fail "the latest release: the binary changed"
-else
-    ok "the latest release (${CURRENT}): said so, left as it is"
-fi
-
-publish 999.0.0
-update "${WORK}/newer.log"
-left="$(beside)"
-if (( RC != 0 )); then
-    fail "a newer release: exit ${RC}" "${WORK}/newer.log"
-elif ! replaced_by 999.0.0; then
-    fail "a newer release: the binary in place is not the release's, or does not run" "${WORK}/newer.log"
-elif [[ "${PLATFORM}" != windows && -n "${left}" ]]; then
-    fail "a newer release: left beside it: ${left//$'\n'/ }"
-elif [[ "${PLATFORM}" == windows && "${left}" != "spp.exe.old" && -n "${left}" ]]; then
-    fail "a newer release: left beside it: ${left//$'\n'/ }"
-elif [[ "${PLATFORM}" == windows && -e "${INSTALL}/spp.exe.old" ]]; then
-    fail "a newer release: spp.exe.old still there after the new spp ran"
-else
-    ok "a newer release (999.0.0): replaced, and the new one runs"
-fi
-
-install_copy
-publish 999.0.1 corrupt
-update "${WORK}/corrupt.log"
-if (( RC == 0 )) || ! grep -qF "does not match the release's SHA256SUMS" "${WORK}/corrupt.log"; then
-    fail "a corrupt download: exit ${RC}, not refused for its checksum" "${WORK}/corrupt.log"
-elif ! unchanged; then
-    fail "a corrupt download: the binary changed"
-else
-    ok "a corrupt download: refused, left as it is"
-fi
-
-if [[ "${PLATFORM}" == windows ]]; then
-    echo "skip  an unwritable install: chmod cannot deny writing on Windows"
-elif [[ "$(id -u)" == 0 ]]; then
-    echo "skip  an unwritable install: running as root, which writes anywhere"
-else
-    install_copy
-    publish 999.0.2
-    chmod a-w "${INSTALL}"
-    update "${WORK}/readonly.log"
-    chmod u+w "${INSTALL}"
-    if (( RC == 0 )) || ! grep -qF "cannot write to" "${WORK}/readonly.log"; then
-        fail "an unwritable install: exit ${RC}, not refused for its directory" "${WORK}/readonly.log"
-    elif ! unchanged; then
-        fail "an unwritable install: the binary changed"
+update "${WORK}/probe.log"
+HAS_RELEASE=true
+if grep -qF "no release of spp is built for this platform" "${WORK}/probe.log"; then
+    HAS_RELEASE=false
+    if (( RC == 0 )) || ! unchanged; then
+        fail "no release for this build's platform: exit ${RC}, or the binary changed" "${WORK}/probe.log"
     else
-        ok "an unwritable install: refused, left as it is"
+        ok "no release for this build's platform: update refused, left as it is"
     fi
+    echo "skip  the update cases: this build's platform has no release"
 fi
 
-install_copy
-publish 0.0.1
-update "${WORK}/older.log"
-if (( RC != 0 )) || ! grep -qF "is newer than the latest release" "${WORK}/older.log"; then
-    fail "an older latest release: exit ${RC}, not said to be newer" "${WORK}/older.log"
-elif ! unchanged; then
-    fail "an older latest release: the binary changed"
-else
-    ok "an older latest release (0.0.1): said this one is newer, left as it is"
-fi
-
-# "--version": the release named, not the latest.
-install_copy
-publish 999.1.0
-publish "${CURRENT}"
-update "${WORK}/named.log" --version 999.1.0
-if (( RC != 0 )); then
-    fail "--version 999.1.0: exit ${RC}" "${WORK}/named.log"
-elif ! replaced_by 999.1.0; then
-    fail "--version 999.1.0: the binary in place is not that release's" "${WORK}/named.log"
-else
-    ok "--version 999.1.0, with ${CURRENT} the latest: that release installed"
-fi
-
-# Each refused (or already current), the binary left as it is.
-for entry in "0.6.0|predates 0.7.0" "888.0.0|there is no release 888.0.0" "${CURRENT}|already the version asked for" \
-    "abc|is not a version"; do
-    asked="${entry%%|*}" said="${entry#*|}"
+if [[ "${HAS_RELEASE}" == true ]]; then
     install_copy
-    update "${WORK}/asked.log" --version "${asked}"
-    if ! grep -qF "${said}" "${WORK}/asked.log"; then
-        fail "--version ${asked}: does not say \"${said}\"" "${WORK}/asked.log"
+    publish "${CURRENT}"
+    update "${WORK}/same.log"
+    if (( RC != 0 )) || ! grep -qF "is the latest release" "${WORK}/same.log"; then
+        fail "the latest release: exit ${RC}, not said to be the latest" "${WORK}/same.log"
     elif ! unchanged; then
-        fail "--version ${asked}: the binary changed"
-    elif [[ "${asked}" == "${CURRENT}" ]] && (( RC != 0 )); then
-        fail "--version ${asked}: exit ${RC}" "${WORK}/asked.log"
-    elif [[ "${asked}" != "${CURRENT}" ]] && (( RC == 0 )); then
-        fail "--version ${asked}: exit 0, not refused" "${WORK}/asked.log"
+        fail "the latest release: the binary changed"
     else
-        ok "--version ${asked}: \"${said}\", left as it is"
+        ok "the latest release (${CURRENT}): said so, left as it is"
     fi
-done
+
+    publish 999.0.0
+    update "${WORK}/newer.log"
+    left="$(beside)"
+    if (( RC != 0 )); then
+        fail "a newer release: exit ${RC}" "${WORK}/newer.log"
+    elif ! replaced_by 999.0.0; then
+        fail "a newer release: the binary in place is not the release's, or does not run" "${WORK}/newer.log"
+    elif [[ "${PLATFORM}" != windows && -n "${left}" ]]; then
+        fail "a newer release: left beside it: ${left//$'\n'/ }"
+    elif [[ "${PLATFORM}" == windows && "${left}" != "spp.exe.old" && -n "${left}" ]]; then
+        fail "a newer release: left beside it: ${left//$'\n'/ }"
+    elif [[ "${PLATFORM}" == windows && -e "${INSTALL}/spp.exe.old" ]]; then
+        fail "a newer release: spp.exe.old still there after the new spp ran"
+    else
+        ok "a newer release (999.0.0): replaced, and the new one runs"
+    fi
+
+    install_copy
+    publish 999.0.1 corrupt
+    update "${WORK}/corrupt.log"
+    if (( RC == 0 )) || ! grep -qF "does not match the release's SHA256SUMS" "${WORK}/corrupt.log"; then
+        fail "a corrupt download: exit ${RC}, not refused for its checksum" "${WORK}/corrupt.log"
+    elif ! unchanged; then
+        fail "a corrupt download: the binary changed"
+    else
+        ok "a corrupt download: refused, left as it is"
+    fi
+
+    if [[ "${PLATFORM}" == windows ]]; then
+        echo "skip  an unwritable install: chmod cannot deny writing on Windows"
+    elif [[ "$(id -u)" == 0 ]]; then
+        echo "skip  an unwritable install: running as root, which writes anywhere"
+    else
+        install_copy
+        publish 999.0.2
+        chmod a-w "${INSTALL}"
+        update "${WORK}/readonly.log"
+        chmod u+w "${INSTALL}"
+        if (( RC == 0 )) || ! grep -qF "cannot write to" "${WORK}/readonly.log"; then
+            fail "an unwritable install: exit ${RC}, not refused for its directory" "${WORK}/readonly.log"
+        elif ! unchanged; then
+            fail "an unwritable install: the binary changed"
+        else
+            ok "an unwritable install: refused, left as it is"
+        fi
+    fi
+
+    install_copy
+    publish 0.0.1
+    update "${WORK}/older.log"
+    if (( RC != 0 )) || ! grep -qF "is newer than the latest release" "${WORK}/older.log"; then
+        fail "an older latest release: exit ${RC}, not said to be newer" "${WORK}/older.log"
+    elif ! unchanged; then
+        fail "an older latest release: the binary changed"
+    else
+        ok "an older latest release (0.0.1): said this one is newer, left as it is"
+    fi
+
+    # "--version": the release named, not the latest.
+    install_copy
+    publish 999.1.0
+    publish "${CURRENT}"
+    update "${WORK}/named.log" --version 999.1.0
+    if (( RC != 0 )); then
+        fail "--version 999.1.0: exit ${RC}" "${WORK}/named.log"
+    elif ! replaced_by 999.1.0; then
+        fail "--version 999.1.0: the binary in place is not that release's" "${WORK}/named.log"
+    else
+        ok "--version 999.1.0, with ${CURRENT} the latest: that release installed"
+    fi
+
+    # Each refused (or already current), the binary left as it is.
+    for entry in "0.6.0|predates 0.7.0" "888.0.0|there is no release 888.0.0" \
+        "${CURRENT}|already the version asked for" "abc|is not a version"; do
+        asked="${entry%%|*}" said="${entry#*|}"
+        install_copy
+        update "${WORK}/asked.log" --version "${asked}"
+        if ! grep -qF "${said}" "${WORK}/asked.log"; then
+            fail "--version ${asked}: does not say \"${said}\"" "${WORK}/asked.log"
+        elif ! unchanged; then
+            fail "--version ${asked}: the binary changed"
+        elif [[ "${asked}" == "${CURRENT}" ]] && (( RC != 0 )); then
+            fail "--version ${asked}: exit ${RC}" "${WORK}/asked.log"
+        elif [[ "${asked}" != "${CURRENT}" ]] && (( RC == 0 )); then
+            fail "--version ${asked}: exit 0, not refused" "${WORK}/asked.log"
+        else
+            ok "--version ${asked}: \"${said}\", left as it is"
+        fi
+    done
+fi
 
 # "spp self uninstall": removed only once confirmed.
 for entry in "none|" "no|n" "yes|y" "flag|"; do

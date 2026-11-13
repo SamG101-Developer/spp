@@ -664,9 +664,15 @@ auto spp::cli::HandleSelfUninstall(const bool yes) -> bool {
   std::filesystem::remove(aside, ec);
   std::filesystem::rename(*exe, aside, ec);
   if (not ec) {
+    // The detached cmd tries once a second, for up to a minute, until the file
+    // can go: this spp holds it until it exits, which can be seconds away (the
+    // user Path is edited after this). Only the path is quoted, so a space in
+    // it is safe; "^>" and "^&" are for the cmd running this line, so the one
+    // it starts receives them.
     const auto quoted = utils::shell::Quote(utils::files::NativeString(aside));
     ignore = utils::shell::Run(
-      "start \"\" /b cmd /c \"ping -n 3 127.0.0.1 > nul & del /f /q " + quoted + "\"");
+      "start \"\" /b cmd /c for /l %i in (1,1,60) do @(if exist " + quoted + " (del /f /q " + quoted
+      + " 2^>nul ^& ping -n 2 127.0.0.1 ^>nul))");
   }
 #else
   std::filesystem::remove(*exe, ec);

@@ -69,12 +69,15 @@ EOF
 
 # The ffi package "pkg": a host library built from "source" (C, or C++ for a
 # ".cpp"), hardened the way the runtime is, and the stub read from stdin.
+# "-z separate-code" is GNU ld's default on x86-64 but not on AArch64, and
+# spp refuses a library whose code shares a page with its ELF header
+# (segments_ffi), so it is asked for outright.
 add_ffi() {
     local dir="$1" pkg="$2" source="$3"
     local cc=cc
     [[ "${source}" == *.cpp ]] && cc=c++
     mkdir -p "${dir}/ffi/${pkg}/${HOST_FFI}"
-    "${cc}" -shared -fPIC -O2 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -Wl,-z,relro,-z,now \
+    "${cc}" -shared -fPIC -O2 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -Wl,-z,relro,-z,now,-z,separate-code \
         -o "${dir}/ffi/${pkg}/${HOST_FFI}/lib${pkg}.so" "${source}"
     cat > "${dir}/ffi/${pkg}/stub.spp"
 }
