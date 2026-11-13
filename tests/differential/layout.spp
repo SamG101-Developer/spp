@@ -75,8 +75,7 @@ fun weigh_maybe(o: Opt[Small or Mid or Big]) -> U64 {
 
 fun tuple_roundtrip(t: (U8, U64, Bool, U16, S8)) -> (U8, U64, Bool, U16, S8) {
   let (a, b, c, d, e) = t
-  let flipped = case c { false } else { true }
-  ret (a.add_wrapping(1_u8), b * 2_u64, flipped, d.sub_wrapping(1_u16), e)
+  ret (a.add_wrapping(1_u8), b * 2_u64, case c { false } else { true }, d.sub_wrapping(1_u16), e)
 }
 
 fun tuple_weigh(t: (U8, U64, Bool, U16, S8)) -> U64 {
@@ -90,8 +89,7 @@ fun mixed(k: U64) -> Mixed {
 }
 
 fun mixed_weigh(m: Mixed) -> U64 {
-  let flag = case m.flag { 1_u64 } else { 0_u64 }
-  ret flag + m.wide + U64::from(m.narrow) * 5_u64 + U64::from(m.half) + weigh(m.shape)
+  ret (case m.flag { 1_u64 } else { 0_u64 }) + m.wide + U64::from(m.narrow) * 5_u64 + U64::from(m.half) + weigh(m.shape)
 }
 
 fun main() -> Void {

@@ -53,10 +53,20 @@ auto spp::analyse::utils::type_join::TypeJoin::Solve() const
   if (valued.empty()) { valued = _Values; }
   if (valued.empty()) { return JoinedValue(); }
 
-  // The target, when there is one; otherwise the widest variant
-  // among the values; otherwise the first value with a type of
-  // its own ("!" has none for the others to agree with).
-  auto agreed = _Target;
+  // The target, when every value fits it; otherwise the widest
+  // variant among the values; otherwise the first value with a type
+  // of its own ("!" has none for the others to agree with). The
+  // target is what the enclosing expression is assigned to, which
+  // is this join's own value only when nothing stands between them:
+  // in "(case ..., 1)" or "(case ...) == 1" it is the tuple's or the
+  // comparison's. It is there to widen the values into a variant
+  // they are members of, and whatever it belongs to checks its own
+  // value against it, so a value that does not fit leaves the
+  // values to agree among themselves.
+  const auto fits_target = _Target.Type != nullptr and genex::all_of(valued, [&](auto const &v) {
+    return type_compare::Assignable(ref_of(_Target), ref_of(v), *_Target.TypeScope, *v.TypeScope);
+  });
+  auto agreed = fits_target ? _Target : JoinedValue();
   if (agreed.Type == nullptr) {
     auto widest = 0uz;
     for (auto const &v : valued) {

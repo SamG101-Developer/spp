@@ -50,8 +50,6 @@ Found writing the differential programs (`tests/differential`, 2026-11-13):
 - **`caps` is a keyword** (closure captures): not a variable name.
 - **`not c` is a syntax error (seen in a tuple literal), and float literals have no exponent**: write
   `case c { false } else { true }`, and spell `1.0e-310` out in full.
-- **A `case` expression as a tuple element that is not the last** is mis-typed: `(case c { false } else { true }, 1_u8)`
-  checks the branch values against the whole tuple's type (E1). Bind it to a `let` first. Not the parser: open-bugs #61.
 - **A `&` parameter passed on is used up too**, like a `&mut` one: recursing twice with `v` is "uninitialized memory
   used". Reborrow at each call: `f(&v, ..)`.
 - **`let r = &x` is a syntax error**: borrows are made at a call's arguments only.
