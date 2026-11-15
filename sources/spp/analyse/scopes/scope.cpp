@@ -2137,8 +2137,13 @@ auto spp::analyse::scopes::Scope::FindNsScope(
   // as "(a::b)::c", which is read as "c", "b", "a".
   auto parts = Vec<IdentifierAst const*>();
   auto lhs = postfix_ast;
+
+  // Any other postfix ("f()::c", "a.b::c") makes it a value, not a namespace
+  // path.
   while (const auto postfix_lhs = lhs->To<PostfixExpressionAst>()) {
-    parts.emplace_back(postfix_lhs->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>()->Name.get());
+    const auto ns_op = postfix_lhs->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>();
+    if (ns_op == nullptr) { return nullptr; }
+    parts.emplace_back(ns_op->Name.get());
     lhs = postfix_lhs->Lhs.get();
   }
 
