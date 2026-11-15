@@ -280,6 +280,9 @@ auto spp::cli::LoadProjectFeatures(const bool for_debugger) -> bool {
     .SafeStackCanary = codegen::DoesTargetSupportSafeStackCanary(),
     .PacRet = codegen::DoesTargetSupportPacRet(),
     .IsLinux = codegen::TargetIsLinux(),
+    .IsElf = codegen::TargetIsElf(),
+    .IsMachO = codegen::TargetIsMachO(),
+    .IsGlibc = codegen::TargetIsGlibc(),
     .Folder = codegen::TargetFolderName()
   };
 

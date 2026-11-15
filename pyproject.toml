@@ -60,6 +60,6 @@ extend-exclude = [
 ]
 
 [tool.codespell]
-ignore-words-list = "CreateOr,CreateMemCpy,olt,compex,ReadIn,PositionOf,isELF,ArchType,statics,ScriptIn,optin,seh"
+ignore-words-list = "CreateOr,CreateMemCpy,olt,compex,ReadIn,PositionOf,isELF,ArchType,statics,ScriptIn,optin,seh,IsElf"
 skip = "./.vale,./tests/gtest-parallel,*.svg"
 ignore-regex = ".*spellchecker:disable-line"
