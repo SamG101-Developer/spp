@@ -34,9 +34,15 @@ namespace spp::codegen {
   /// for the measures only a Linux kernel has.
   SPP_EXP_FUN auto TargetIsLinux() -> bool;
 
-  /// Whether the selected target's C library is musl, whose
-  /// libraries have no fortified (glibc "_chk") calls to check.
-  SPP_EXP_FUN auto TargetIsMusl() -> bool;
+  /// Whether the selected target's C library is glibc, the one
+  /// with fortified ("_chk") calls for a library to have used.
+  SPP_EXP_FUN auto TargetIsGlibc() -> bool;
+
+  /// Whether the selected target's binaries are ELF.
+  SPP_EXP_FUN auto TargetIsElf() -> bool;
+
+  /// Whether the selected target's binaries are Mach-O.
+  SPP_EXP_FUN auto TargetIsMachO() -> bool;
 
   /// Whether the selected target's code is position independent, and so its
   /// executables PIE. Every target but m68k, whose backend reaches calls and
