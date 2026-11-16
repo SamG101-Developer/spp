@@ -10,8 +10,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        relay(() -> Void { })
-        let n = relay(() -> S32 { ret 1 })
+        relay(|| -> Void { })
+        let n = relay(|| -> S32 { ret 1 })
     }
 )");
 

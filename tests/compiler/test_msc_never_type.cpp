@@ -123,7 +123,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_never_closure_ends_valued_function, R"(
     use std::abort::abort
     fun f() -> S32 {
-        let g = () abort()
+        let g = || abort()
         g()
     }
 )");

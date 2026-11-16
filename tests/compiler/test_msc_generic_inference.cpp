@@ -348,7 +348,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun g() -> Void {
-        let mut x = f(() 123)
+        let mut x = f(|| 123)
         x = 456
     }
 )");
@@ -508,7 +508,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Holder[U = Str] { }
 
     fun g(o: Opt[S32]) -> Void {
-        let m = o.map((x: S32) { x })
+        let m = o.map(|x: S32| { x })
         std::mem::ops::drop(m)
     }
 )");
@@ -610,7 +610,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_infer_closure_return_through_a_function_type_parameter, R"(
     fun h[U](f: FunMov[(S32,), U]) -> U { ret f(1) }
 
-    fun g() -> Void { let b = h((x: S32) x == 1) }
+    fun g() -> Void { let b = h(|x: S32| x == 1) }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -627,7 +627,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let a = MapBox(v=1)
-        let b = a.map((x: S32) x == 1)
+        let b = a.map(|x: S32| x == 1)
         std::mem::ops::drop(b)
     }
 )");
@@ -720,7 +720,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun test[T, F: FunRef[(&T,), Bool]](x: &T, p: F) -> Bool { ret p(x) }
     fun g() -> Void {
         let y = 5_s32
-        let b = test(&y, (a: &S32) true)
+        let b = test(&y, |a: &S32| true)
     }
 )");
 
@@ -730,7 +730,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun test[T, F: FunRef[(&mut T,), Bool]](x: &mut T, p: F) -> Bool { ret p(x) }
     fun g() -> Void {
         let mut y = 5_s32
-        let b = test(&mut y, (a: &S32) true)
+        let b = test(&mut y, |a: &S32| true)
     }
 )");
 
@@ -741,7 +741,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun test[T, F: FunRef[(&T,), Bool]](x: &T, p: F) -> Bool { ret p(x) }
     fun g() -> Void {
         let y = 5_s32
-        let b = test(&y, (a: &mut S32) true)
+        let b = test(&y, |a: &mut S32| true)
     }
 )");
 

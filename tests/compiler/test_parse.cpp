@@ -225,7 +225,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
   parse_generic_inline_constraints, R"(
-    fun my_function[T: Copy, U: Clone & Copy]() -> Void { }
+    fun my_function[T: Copy, U: Clone and Copy]() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1085,43 +1085,53 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
   parse_closure_no_params, R"(
     fun my_function() -> Void {
-        let my_closure = () { }
+        let my_closure = || { }
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SYNTACTIC(
-  parse_closure_body_not_on_the_parameters_line, R"(
+// "|...|" cannot be mistaken for a tuple, so a closure's body may start on the next line.
+SPP_TEST_SHOULD_PASS_SYNTACTIC(
+  parse_closure_body_on_the_next_line, R"(
     fun f() -> Void {
-        let c = (x: S32)
+        let c = |x: S32|
             x
+    }
+)");
+
+// A "|" that starts a line opens a closure: it never continues the line before as a bitwise or.
+SPP_TEST_SHOULD_PASS_SYNTACTIC(
+  parse_closure_starting_a_line_after_an_expression, R"(
+    fun f() -> Void {
+        let a = 1_s32
+        |x: S32| x + a
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
   parse_closure_with_params, R"(
     fun my_function() -> Void {
-        let my_closure = (a: S32, b: S32) { }
+        let my_closure = |a: S32, b: S32| { }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
   parse_closure_with_capture, R"(
     fun my_function() -> Void {
-        let my_closure = (caps a, &b, &mut c) { }
+        let my_closure = |caps a, &b, &mut c| { }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
   parse_closure_with_params_and_capture, R"(
     fun my_function() -> Void {
-        let my_closure = (a: S32, b: S32 caps c, &d, &mut e) { }
+        let my_closure = |a: S32, b: S32 caps c, &d, &mut e| { }
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
   parse_closure_with_param_variadic, R"(
     fun my_function() -> Void {
-        let my_closure = (a: S32, ..b: S32) { a }
+        let my_closure = |a: S32, ..b: S32| { a }
     }
 )");
 

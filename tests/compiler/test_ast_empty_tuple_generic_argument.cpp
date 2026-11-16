@@ -51,6 +51,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        g(() -> Void { })
+        g(|| -> Void { })
     }
 )");

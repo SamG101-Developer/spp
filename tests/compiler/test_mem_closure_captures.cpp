@@ -5,7 +5,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_copyable_capture_leaves_the_original_usable, R"(
     fun f() -> S32 {
         let a = 7
-        let g = (caps a) -> S32 { a }
+        let g = |caps a| -> S32 { a }
         ret g() + a
     }
 )");
@@ -15,8 +15,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_copyable_capture_used_by_two_closures, R"(
     fun f() -> S32 {
         let a = 7
-        let g = (caps a) -> S32 { a }
-        let h = (caps a) -> S32 { a }
+        let g = |caps a| -> S32 { a }
+        let h = |caps a| -> S32 { a }
         ret g() + h()
     }
 )");
@@ -26,7 +26,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_non_copyable_capture_is_moved, R"(
     fun f() -> Str {
         let s = Str::from("x")
-        let g = (caps s) -> Str { s }
+        let g = |caps s| -> Str { s }
         ret g()
     }
 )");
@@ -37,7 +37,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
         let s = Str::from("x")
-        let g = (caps s) -> Str { s }
+        let g = |caps s| -> Str { s }
         std::mem::ops::drop(s)
         std::mem::ops::drop(g)
     }
@@ -48,7 +48,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_borrowed_capture_leaves_the_original_usable, R"(
     fun f() -> S32 {
         let a = 7
-        let g = (caps &a) -> S32 { a }
+        let g = |caps &a| -> S32 { a }
         ret a
     }
 )");
@@ -58,7 +58,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_drop_a_closure_with_captures_and_no_parameters, R"(
     fun f() -> Void {
         let a = 7
-        let g = (caps a) -> Void { }
+        let g = |caps a| -> Void { }
         std::mem::ops::drop(g)
     }
 )");
@@ -72,7 +72,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let a = 7
-        consume((caps a) -> Void { })
+        consume(|caps a| -> Void { })
     }
 )");
 
@@ -124,7 +124,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
     fun f() -> Void {
         let s = Str::from("x")
         loop true {
-            run((caps s) std::mem::ops::drop(s))
+            run(|caps s| std::mem::ops::drop(s))
         }
     }
 )");
@@ -137,7 +137,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         loop true {
             let s = Str::from("x")
-            run((caps s) std::mem::ops::drop(s))
+            run(|caps s| std::mem::ops::drop(s))
             exit
         }
     }
@@ -153,7 +153,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(b: Bool) -> Void {
         loop b {
             let s = Str::from("x")
-            run((caps s) std::mem::ops::drop(s))
+            run(|caps s| std::mem::ops::drop(s))
         }
     }
 )");
@@ -164,7 +164,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   SppUninitializedMemoryUseError, R"(
     fun f(b: Bool) -> Void {
         let s = Str::from("x")
-        let c = (caps s) std::mem::ops::drop(s)
+        let c = |caps s| std::mem::ops::drop(s)
         loop b {
             c()
         }
@@ -179,7 +179,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   SppMemoryOverlapUsageError, R"(
     fun f() -> Void {
         let mut x = 1
-        let mut c = (caps &mut x) { }
+        let mut c = |caps &mut x| { }
         let y = x
         c()
     }
@@ -191,7 +191,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   SppMovingEscapingBorrowedMemoryError, R"(
     fun f() -> Void {
         let mut x = 1
-        let c = (caps &x) { }
+        let c = |caps &x| { }
         x = 5
         c()
     }
@@ -215,7 +215,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = Noisy(n=1)
         let b = Noisy(n=2)
-        let c = (y: S32 caps a, b) y
+        let c = |y: S32 caps a, b| y
         std::mem::ops::drop(c)
     }
 )");
@@ -241,7 +241,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> S32 {
         let a = Noisy(n=1)
-        let c = (caps a) -> S32 { take(a) }
+        let c = |caps a| -> S32 { take(a) }
         ret c()
     }
 )");

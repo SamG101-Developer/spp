@@ -187,7 +187,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   FunctionParameterOptionalAst,
   test_invalid_function_parameter_optional_closure_default,
   SppInvalidDefaultValueError, R"(
-    fun f(a: FunRef[(S32,), S32] = (x: S32) { ret x }) -> Void { }
+    fun f(a: FunRef[(S32,), S32] = |x: S32| { ret x }) -> Void { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(

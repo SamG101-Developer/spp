@@ -21,7 +21,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     cls C { }
     sup C ext A { }
-    fun g[T: A & B](t: T) -> Void { }
+    fun g[T: A and B](t: T) -> Void { }
 
     fun f() -> Void {
         let c = C()
@@ -53,7 +53,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup C ext A { }
     sup C ext B { }
 
-    fun g[T: A & B](t: T) -> Void {
+    fun g[T: A and B](t: T) -> Void {
         std::mem::ops::drop(t)
     }
 
@@ -84,7 +84,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     cls C { }
     sup C ext A { }
-    cls D[T: A & B] { }
+    cls D[T: A and B] { }
 
     fun f() -> Void {
         let c = C()
@@ -115,7 +115,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls C { }
     sup C ext A { }
     sup C ext B { }
-    cls D[T: A & B] { }
+    cls D[T: A and B] { }
 
     fun f() -> Void {
         let c = C()

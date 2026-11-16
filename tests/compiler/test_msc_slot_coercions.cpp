@@ -248,7 +248,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSlotCoercions,
     test_variant_member_into_closure_body, R"(
     fun f() -> Void {
-        let c = () -> Opt[S32] { Some(val=1) }
+        let c = || -> Opt[S32] { Some(val=1) }
         std::mem::ops::drop(c)
     }
 )");
@@ -259,7 +259,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(x: S32) -> S32 { ret x }
 
     fun f() -> Void {
-        let c = () -> FunRef[(S32,), S32] { g }
+        let c = || -> FunRef[(S32,), S32] { g }
         std::mem::ops::drop(c)
     }
 )");
@@ -507,7 +507,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> Void {
         let mut x = g
-        x = (y: S32) y
+        x = |y: S32| y
     }
 )");
 
@@ -515,8 +515,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSlotCoercions,
     test_closure_into_another_closures_variable, R"(
     fun f() -> Void {
-        let mut x = (y: S32) y
-        x = (y: S32) y + 1
+        let mut x = |y: S32| y
+        x = |y: S32| y + 1
         std::mem::ops::drop(x)
     }
 )");

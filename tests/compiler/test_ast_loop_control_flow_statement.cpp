@@ -156,7 +156,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppLoopTooManyControlFlowStatementsError, R"(
     fun f() -> Void {
         loop true {
-            let c = () { exit }
+            let c = || { exit }
             exit
         }
     }
@@ -166,7 +166,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LoopControlFlowStatementAst,
     test_valid_exit_in_closure_targeting_its_own_loop, R"(
     fun f() -> Void {
-        let c = () {
+        let c = || {
             loop true { exit }
         }
         c()

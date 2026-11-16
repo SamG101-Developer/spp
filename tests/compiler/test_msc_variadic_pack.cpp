@@ -803,7 +803,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   test_invalid_pack_captured,
   SppPackNotValueError, R"(
       fun packed(..xs: S32) -> Void {
-          let c = (caps xs) 1_s32
+          let c = |caps xs| 1_s32
           std::mem::ops::drop(c)
       }
   )");

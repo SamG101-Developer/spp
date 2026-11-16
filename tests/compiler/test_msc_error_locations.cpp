@@ -10,21 +10,21 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestErrorLocations,
     test_invalid_function_argument_name_declared_in_another_file,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f() -> Void { let x = std::process::get_env(nope="PATH") }
+    fun f() -> Void { let x = std::os::env::get_env(nope="PATH") }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestErrorLocations,
     test_invalid_function_argument_missing_declared_in_another_file,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f() -> Void { let x = std::process::get_env() }
+    fun f() -> Void { let x = std::os::env::get_env() }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestErrorLocations,
     test_invalid_too_many_function_arguments_declared_in_another_file,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun f() -> Void { let x = std::process::get_env("PATH", "HOME") }
+    fun f() -> Void { let x = std::os::env::get_env("PATH", "HOME") }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(

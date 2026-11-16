@@ -4,6 +4,7 @@ import spp.codegen.llvm_target;
 import spp.utils.env;
 import spp.utils.features;
 import spp.utils.files;
+import spp.utils.shell;
 
 // How a foreign target's linker is found: its GNU cross gcc, spelled from the target folder, else the newest versioned
 // one on PATH, unless [target.linkers] names one.
@@ -114,4 +115,61 @@ TEST(TestCrossLink, test_a_linker_that_is_not_a_string_is_refused) {
   ASSERT_EQ(errors.size(), 1U);
   EXPECT_NE(errors.front().find("[target.linkers]"), spp::Str::npos) << errors.front();
   spp::utils::features::Reset();
+}
+
+TEST(TestCrossLink, test_a_full_path_with_spaces_on_its_own_comes_back_quoted) {
+  const auto dir = ScratchDir();
+  std::filesystem::create_directories(dir.Root / "my tools");
+  const auto linker = dir.Root / "my tools" / "cross-gcc";
+  Touch(linker, true);
+
+  const auto command = spp::utils::files::FindCommand(spp::utils::files::NativeString(linker));
+  ASSERT_TRUE(command.has_value());
+  EXPECT_EQ(*command, spp::utils::shell::Quote(spp::utils::files::NativeString(linker)));
+}
+
+TEST(TestCrossLink, test_a_command_whose_program_is_there_comes_back_as_written) {
+  const auto dir = ScratchDir();
+  std::filesystem::create_directories(dir.Root / "my tools");
+  Touch(dir.Root / "cross-gcc", true);
+  Touch(dir.Root / "my tools" / "cross-ld", true);
+  const auto path = PathAs(spp::utils::files::NativeString(dir.Root));
+
+  // A name on PATH with arguments, and a quoted path with spaces with arguments.
+  EXPECT_EQ(spp::utils::files::FindCommand("cross-gcc -fuse-ld=lld"), "cross-gcc -fuse-ld=lld");
+  const auto quoted = "\"" + spp::utils::files::NativeString(dir.Root / "my tools" / "cross-ld") + "\" -static";
+  EXPECT_EQ(spp::utils::files::FindCommand(quoted), quoted);
+}
+
+TEST(TestCrossLink, test_a_command_whose_program_is_not_there_is_refused) {
+  const auto dir = ScratchDir();
+  const auto path = PathAs(spp::utils::files::NativeString(dir.Root));
+
+  EXPECT_FALSE(spp::utils::files::FindCommand("no-such-gcc --target=s390x-linux-gnu").has_value());
+  const auto missing = spp::utils::files::NativeString(dir.Root / "missing" / "gcc");
+  EXPECT_FALSE(spp::utils::files::FindCommand(missing).has_value());
+  EXPECT_FALSE(spp::utils::files::FindCommand("").has_value());
+}
+
+TEST(TestCrossLink, test_a_bare_name_is_looked_for_on_path_not_in_the_current_directory) {
+  const auto on_path = ScratchDir();
+  const auto here = ScratchDir();
+  Touch(here.Root / "local-gcc", true);
+  const auto path = PathAs(spp::utils::files::NativeString(on_path.Root));
+
+  const auto cwd = std::filesystem::current_path();
+  std::filesystem::current_path(here.Root);
+  const auto local = spp::utils::files::FindCommand("local-gcc");
+  std::filesystem::current_path(cwd);
+  EXPECT_FALSE(local.has_value());
+}
+
+TEST(TestCrossLink, test_a_non_executable_program_is_refused) {
+#if SPP_PLATFORM_WINDOWS
+  GTEST_SKIP() << "Windows has no executable bit: every regular file counts as runnable";
+#endif
+  const auto dir = ScratchDir();
+  const auto linker = dir.Root / "cross-gcc";
+  Touch(linker, false);
+  EXPECT_FALSE(spp::utils::files::FindCommand(spp::utils::files::NativeString(linker)).has_value());
 }

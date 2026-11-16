@@ -292,7 +292,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
         let elem: Str
-        let a = (caps elem) { }
+        let a = |caps elem| { }
     }
 )");
 
@@ -302,7 +302,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
         let mut elem: Str
-        let a = (caps &mut elem) { }
+        let a = |caps &mut elem| { }
     }
 )");
 
@@ -312,7 +312,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppUninitializedMemoryUseError, R"(
     fun f() -> Void {
         let elem: Str
-        let a = (caps &elem) { }
+        let a = |caps &elem| { }
     }
 )");
 

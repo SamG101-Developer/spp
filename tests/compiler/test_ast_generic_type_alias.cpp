@@ -13,7 +13,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        g(() -> Void { })
+        g(|| -> Void { })
     }
 )");
 
@@ -38,7 +38,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun h() -> Void {
-        let x = g((a: S32) -> S32 { ret a })
+        let x = g(|a: S32| -> S32 { ret a })
     }
 )");
 
@@ -112,6 +112,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let r: ZzR[S32, Bool] = ZzA[S32]()
-        r.and_then((x: S32) -> ZzR[S32, Bool] { ret ZzA[S32]() })
+        r.and_then(|x: S32| -> ZzR[S32, Bool] { ret ZzA[S32]() })
     }
 )");

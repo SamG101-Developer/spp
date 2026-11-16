@@ -372,7 +372,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
     sup [T: std::copy::Copy] Box[T] {
         !public fun m(&self) -> Self {
-            let c = (x: T) -> Self { ret Self(v=x) }
+            let c = |x: T| -> Self { ret Self(v=x) }
             ret c(self.v)
         }
     }
@@ -389,7 +389,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
     sup [T: std::copy::Copy] Box[T] {
         !public fun m(&self) -> Vec[Self] {
-            let c = () -> Vec[Self] { ret Vec[Self]::new() }
+            let c = || -> Vec[Self] { ret Vec[Self]::new() }
             ret c()
         }
     }
@@ -407,7 +407,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
     sup [T: std::copy::Copy] Box[T] {
         !public fun get(self) -> T {
-            let c = (x: Self) -> T { ret x.v }
+            let c = |x: Self| -> T { ret x.v }
             ret c(self)
         }
     }
@@ -643,7 +643,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
     sup [T: std::copy::Copy] Box[T] {
         !public fun m(&self) -> Void {
-            let c = () -> Self { ret 1 }
+            let c = || -> Self { ret 1 }
         }
     }
     fun f() -> Void {

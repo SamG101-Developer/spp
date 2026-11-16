@@ -8,6 +8,7 @@ import spp.compiler.module_tree;
 import spp.compiler.out_layout;
 import spp.lsp.resolution_index;
 import spp.utils.files;
+import spp.utils.shell;
 import spp.utils.types;
 import genex;
 import std;
@@ -693,4 +694,61 @@ TEST(Dependencies, test_indexing_a_project_inside_a_folder_named_vcs) {
   EXPECT_TRUE(wants("src/main.spp"));
   EXPECT_FALSE(wants("vcs/std/src/std/number.spp"));
   spp::lsp::resolution_index::Disable();
+}
+
+namespace {
+  /// A git repository standing in for a dependency's remote, next to the
+  /// project, so "spp vcs" clones and fetches it with no network.
+  struct LocalRemote {
+    spp::Path Folder;
+
+    explicit LocalRemote(ScratchProject const &project) : Folder(project.Base / "remote") {
+      std::filesystem::create_directories(Folder / "src");
+      std::ofstream(Folder / "spp.toml") << kProject;
+      Git("init --quiet --initial-branch=master");
+      Commit("first");
+    }
+
+    auto Git(spp::Str const &args) const -> void {
+      const auto folder = spp::utils::shell::Quote(spp::utils::files::NativeString(Folder));
+      ASSERT_EQ(spp::utils::shell::Run("git -C " + folder + " " + args), 0);
+    }
+
+    /// A commit whose one change is a file named after it.
+    auto Commit(spp::Str const &name) const -> void {
+      std::ofstream(Folder / name) << name;
+      Git("add --all");
+      Git("-c user.name=spp -c user.email=spp@example.com commit --quiet -m " + name);
+    }
+
+    auto Record(spp::Str const &branch) const -> spp::Str {
+      // A literal string, whose backslashes (a Windows path) are no escapes.
+      const auto url = spp::utils::files::NativeString(Folder);
+      return "[vcs]\na = { git = '" + url + "', branch = \"" + branch + "\" }\n";
+    }
+  };
+}
+
+TEST(Dependencies, test_vcs_switches_to_a_branch_pushed_after_the_clone) {
+  const auto project = ScratchProject();
+  const auto remote = LocalRemote(project);
+  project.Config(remote.Record("master"));
+  ASSERT_TRUE(spp::cli::HandleVcs());
+
+  remote.Git("checkout --quiet -b fix/new");
+  remote.Commit("second");
+  project.Config(remote.Record("fix/new"));
+  EXPECT_TRUE(spp::cli::HandleVcs());
+  EXPECT_TRUE(std::filesystem::exists(project.Root / "vcs" / "a" / "second"));
+}
+
+TEST(Dependencies, test_vcs_fast_forwards_an_existing_branch) {
+  const auto project = ScratchProject();
+  const auto remote = LocalRemote(project);
+  project.Config(remote.Record("master"));
+  ASSERT_TRUE(spp::cli::HandleVcs());
+
+  remote.Commit("second");
+  EXPECT_TRUE(spp::cli::HandleVcs());
+  EXPECT_TRUE(std::filesystem::exists(project.Root / "vcs" / "a" / "second"));
 }

@@ -78,7 +78,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup [T] Holder[T] {
         !public cmp fallback: U8 = 7_u8
 
-        fun new() -> Self { ret Holder[T]() }
+        !public fun new() -> Self { ret Holder[T]() }
 
         !public fun pick[cmp order: U8 = Self::fallback](&self) -> U8 {
             ret order

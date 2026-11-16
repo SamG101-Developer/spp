@@ -747,7 +747,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun same(x: S32) -> Bool { ret true }
 
     fun f() -> Void {
-        let same = (x: S32) -> S32 { ret x }
+        let same = |x: S32| -> S32 { ret x }
         let n: S32 = same(1)
     }
 )");

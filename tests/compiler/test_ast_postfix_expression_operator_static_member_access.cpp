@@ -9,6 +9,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     sup Point {
+        !public
         fun f() -> Void { }
     }
 
@@ -40,6 +41,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     sup Point {
+        !public
         fun m(&self) -> Void { }
     }
 
@@ -59,6 +61,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 
     sup Point {
+        !public
         fun m(&self) -> Void { }
     }
 
@@ -109,6 +112,29 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_invalid_static_operator_application_on_call_result,
+  SppMemberAccessRuntimeOperatorExpectedError, R"(
+    fun f() -> Void {
+        let x = Str::from("hello")::bytes()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_invalid_static_operator_application_on_attribute,
+  SppMemberAccessRuntimeOperatorExpectedError, R"(
+    cls Point {
+        !public x: S32
+        !public y: S32
+    }
+
+    fun f(p: Point) -> Void {
+        let x = p.x::y
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_private_static_member_on_type_diff_ctx,
   SppAccessViolationError, R"(
     cls MyType { }
@@ -131,6 +157,63 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun f() -> Void {
             let x = MyType::n
         }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_invalid_private_static_function_on_type_diff_ctx,
+  SppAccessViolationError, R"(
+    cls MyType { }
+    sup MyType {
+        !private
+        fun make() -> S32 { ret 1 }
+    }
+
+    fun f() -> Void {
+        let x = MyType::make()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_private_static_function_on_type_same_ctx, R"(
+    cls MyType { }
+    sup MyType {
+        !private
+        fun make() -> S32 { ret 1 }
+
+        !public
+        fun f() -> S32 { ret MyType::make() }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_invalid_protected_static_function_on_type_diff_ctx,
+  SppAccessViolationError, R"(
+    cls MyType { }
+    sup MyType {
+        !protected
+        fun make() -> S32 { ret 1 }
+    }
+
+    fun f() -> Void {
+        let x = MyType::make()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_package_static_function_in_its_package, R"(
+    cls MyType { }
+    sup MyType {
+        !package
+        fun make() -> S32 { ret 1 }
+    }
+
+    fun f() -> Void {
+        let x = MyType::make()
     }
 )");
 

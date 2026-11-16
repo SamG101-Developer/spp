@@ -249,7 +249,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppLinearValueNotConsumedError, R"(
     fun f() -> Void {
         let mut x = 1_s32
-        let mut c = (caps &mut x) { x@ = 2_s32 }
+        let mut c = |caps &mut x| { x@ = 2_s32 }
         c()
     }
 )");
@@ -259,7 +259,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_mut_capturing_closure_dropped_then_capture_used, R"(
     fun f() -> S32 {
         let mut x = 1_s32
-        let mut c = (caps &mut x) { x@ = 2_s32 }
+        let mut c = |caps &mut x| { x@ = 2_s32 }
         c()
         std::mem::ops::drop(c)
         ret x
@@ -302,7 +302,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> Void {
         let mut x = 1_s32
-        let mut c = (caps &mut x) { x@ = 2_s32 }
+        let mut c = |caps &mut x| { x@ = 2_s32 }
         let d = keep(c)
     }
 )");

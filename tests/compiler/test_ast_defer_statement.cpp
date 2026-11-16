@@ -145,7 +145,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> std::result::Res[Void, E] { ret std::result::Pass[Void]() }
 
     fun f() -> Void {
-        defer std::mem::ops::drop(() -> std::result::Res[Void, E] {
+        defer std::mem::ops::drop(|| -> std::result::Res[Void, E] {
             g()?
             std::result::Pass[Void]()
         })
