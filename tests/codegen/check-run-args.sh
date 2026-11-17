@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# End-to-end check that a program's arguments reach "std::process::args": "spp
+# End-to-end check that a program's arguments reach "std::os::env::args": "spp
 # run" passes what follows "--" on, the compiler's C entry point hands argv to
 # sppc ("sppc_set_args"), and std reads them back. A program that prints each
 # of its arguments, one per line, the program itself first. Asserts:
@@ -18,9 +18,11 @@ project="${WORK}/runargs"
 new_project "${project}"
 cat > "${project}/src/main.spp" <<'SPP'
 fun main() -> Void {
-  let args = std::process::args()
+  let args = std::os::env::args()
   loop arg in args.iter_ref() {
-    std::console::println(arg)
+    let text = arg.to_str_lossy()
+    std::console::println(&text)
+    std::mem::ops::drop(text)
   }
   std::mem::ops::drop(args)
 }

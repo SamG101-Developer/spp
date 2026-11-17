@@ -51,9 +51,9 @@ cor counter(n: U64) -> std::iterator::Iterator[U64] {
 
 fun main() -> Void {
   let k = 5_u64
-  let mut sum = twice((x: U64) -> U64 { ret x + 5_u64 }, 1_u64)
+  let mut sum = twice(|x: U64| -> U64 { ret x + 5_u64 }, 1_u64)
   sum = sum + twice(add_three, 1_u64)
-  sum = sum + call((caps k) -> U64 { ret k })
+  sum = sum + call(|caps k| -> U64 { ret k })
   loop i in counter(4_u64) {
     sum = sum + i
   }

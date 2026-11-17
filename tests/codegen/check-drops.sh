@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 
 # End-to-end check that dropping a value runs every destructor it owns. A closure dropped without being called drops
-# what it captured by value, newest first, through the destructor its environment's header points to; one that is
-# called leaves that to its body; a borrowed or copied capture is not dropped. A generator destroyed at a "gen" drops
-# what its frame still owns there, innermost scope and newest first, after the "defer"s that destroying it runs; what
-# it yielded, consumed, or has not declared yet is not dropped, one partly moved loses only what is left of it, and
-# one that finished drops nothing more. A type extending two bases that each declare an attribute of one name holds
-# and drops both, each filled from its own base's default. The unit
-# tests only build these, so a destructor that never runs is only seen by running it.
+# what it captured by value, newest first, through the destructor its environment's header points to; one that is called
+# leaves that to its body; a borrowed or copied capture is not dropped. A generator destroyed at a "gen" drops what its
+# frame still owns there, innermost scope and newest first, after the "defer"s that destroying it runs; what it yielded,
+# consumed, or has not declared yet is not dropped, one partly moved loses only what is left of it, and one that
+# finished drops nothing more. One dropped before it was ever resumed drops its by-value parameters, newest first: its
+# body has not run, so they are all it owns, an instantiation of a generic coroutine included. What either drops goes
+# through the value's own destructor, even one nothing written calls (a "Vec" drops its elements, not only its buffer).
+# An array moved out element by element ("iter_mov", "reverse_iter_mov") yields each in order, and dropped part-way
+# drops only the elements it has not yielded. A type extending two bases that each declare an attribute of one name
+# holds and drops both, each filled from its own base's default. The unit tests only build these, so a destructor that
+# never runs is only seen by running it.
 #
 #   [SPPC_LIB=path/to/libsppc.so] tests/codegen/check-drops.sh [path/to/spp]
 
@@ -49,6 +53,24 @@ fun consume(x: Noisy) -> U64 {
 cor param(x: Noisy) -> Gen[U64] {
     gen 1_u64
     std::mem::ops::drop(x)
+}
+
+cls Wrap[T] {
+    !public a: T
+}
+
+sup [T] Wrap[T] {
+    !public
+    cor take(self) -> Gen[U64] {
+        gen 1_u64
+        std::mem::ops::drop(self)
+    }
+}
+
+cor two_params(x: Noisy, y: Noisy) -> Gen[U64] {
+    gen 1_u64
+    std::mem::ops::drop(x)
+    std::mem::ops::drop(y)
 }
 
 cor locals() -> Gen[U64] {
@@ -135,30 +157,36 @@ sup Both ext BaseC { }
 fun main() -> Void {
     std::console::println("closure dropped uncalled")
     let a = Noisy(n=1_u64)
-    let c1 = (y: U64 caps a) y
+    let c1 = |y: U64 caps a| y
     std::mem::ops::drop(c1)
 
     std::console::println("two captures, dropped uncalled")
     let b1 = Noisy(n=2_u64)
     let b2 = Noisy(n=3_u64)
-    let c2 = (y: U64 caps b1, b2) y
+    let c2 = |y: U64 caps b1, b2| y
     std::mem::ops::drop(c2)
 
     std::console::println("closure called, its body consumes")
     let d = Noisy(n=4_u64)
-    let c3 = (caps d) -> U64 { consume(d) }
+    let c3 = |caps d| -> U64 { consume(d) }
     let r = c3()
 
     std::console::println("borrowed capture")
     let e = Noisy(n=5_u64)
-    let c4 = (caps &e) -> U64 { 7_u64 }
+    let c4 = |caps &e| -> U64 { 7_u64 }
     std::mem::ops::drop(c4)
     std::mem::ops::drop(e)
 
     std::console::println("copied capture")
     let k = 9_u64
-    let c5 = (y: U64 caps k) y + k
+    let c5 = |y: U64 caps k| y + k
     std::mem::ops::drop(c5)
+
+    std::console::println("captured vector, dropped uncalled")
+    let mut tv = Vec[Trio]::new()
+    tv.append(Trio(a=Noisy(n=6_u64), b=Noisy(n=7_u64), c=Noisy(n=8_u64)))
+    let c6 = |y: U64 caps tv| y
+    std::mem::ops::drop(c6)
 
     std::console::println("generator: parameter")
     let mut g1 = param(Noisy(n=1_u64))
@@ -221,6 +249,58 @@ fun main() -> Void {
     let r11 = g11.res()
     std::mem::ops::drop(g11)
 
+    std::console::println("generator: never resumed")
+    let g12 = param(Noisy(n=130_u64))
+    std::mem::ops::drop(g12)
+
+    std::console::println("generator: never resumed, two parameters")
+    let g13 = two_params(Noisy(n=140_u64), Noisy(n=141_u64))
+    std::mem::ops::drop(g13)
+
+    std::console::println("generator: never resumed, generic")
+    let g14 = generic(Noisy(n=150_u64))
+    std::mem::ops::drop(g14)
+
+    std::console::println("generator: never resumed, generic method")
+    let g15 = Wrap[Noisy](a=Noisy(n=160_u64)).take()
+    std::mem::ops::drop(g15)
+
+    std::console::println("generator: never resumed, the second of a concat")
+    let mut v1 = Vec[Noisy]::new()
+    v1.append(Noisy(n=170_u64))
+    v1.append(Noisy(n=171_u64))
+    let mut v2 = Vec[Noisy]::new()
+    v2.append(Noisy(n=172_u64))
+    let mut g16 = v1.iter_mov().concat(v2.iter_mov())
+    let r16 = g16.res()
+    std::mem::ops::drop(r16, g16)
+
+    std::console::println("array: moved out in full")
+    let a1 = [Noisy(n=180_u64), Noisy(n=181_u64)]
+    loop x in a1.iter_mov() { std::mem::ops::drop(x) }
+
+    std::console::println("array: moved out in reverse")
+    let a2 = [Noisy(n=190_u64), Noisy(n=191_u64)]
+    loop x in a2.reverse_iter_mov() { std::mem::ops::drop(x) }
+
+    std::console::println("array: left after one")
+    let a3 = [Noisy(n=200_u64), Noisy(n=201_u64), Noisy(n=202_u64)]
+    loop x in a3.iter_mov() {
+        std::mem::ops::drop(x)
+        exit
+    }
+
+    std::console::println("array: left after one, reversed")
+    let a4 = [Noisy(n=210_u64), Noisy(n=211_u64), Noisy(n=212_u64)]
+    loop x in a4.reverse_iter_mov() {
+        std::mem::ops::drop(x)
+        exit
+    }
+
+    std::console::println("array: never resumed")
+    let g17 = [Noisy(n=220_u64), Noisy(n=221_u64)].iter_mov()
+    std::mem::ops::drop(g17)
+
     std::console::println("two bases sharing an attribute name")
     let both = Both()
     std::mem::ops::drop(both)
@@ -239,6 +319,10 @@ dropped 4
 borrowed capture
 dropped 5
 copied capture
+captured vector, dropped uncalled
+dropped 8
+dropped 7
+dropped 6
 generator: parameter
 dropped 1
 generator: locals declared before
@@ -269,6 +353,36 @@ dropped 110
 dropped 113
 dropped 112
 dropped 111
+generator: never resumed
+dropped 130
+generator: never resumed, two parameters
+dropped 141
+dropped 140
+generator: never resumed, generic
+dropped 150
+generator: never resumed, generic method
+dropped 160
+generator: never resumed, the second of a concat
+dropped 170
+dropped 171
+dropped 172
+array: moved out in full
+dropped 180
+dropped 181
+array: moved out in reverse
+dropped 191
+dropped 190
+array: left after one
+dropped 200
+dropped 202
+dropped 201
+array: left after one, reversed
+dropped 212
+dropped 211
+dropped 210
+array: never resumed
+dropped 221
+dropped 220
 two bases sharing an attribute name
 dropped 121
 dropped 120
