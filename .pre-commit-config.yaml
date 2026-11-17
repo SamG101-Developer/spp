@@ -1,5 +1,6 @@
 minimum_pre_commit_version: "3.5.0"
 default_stages: [ pre-commit ]
+default_install_hook_types: [ pre-commit, pre-push, commit-msg ]
 default_language_version:
   python: python3.14
 exclude: '^\.vale/'
@@ -94,6 +95,13 @@ repos:
         language: python
         pass_filenames: false
         files: '^(\.github/workflows/_cross_codegen\.yaml|\.github/scripts/ci/check-suggested-triples\.py|sources/spp/codegen/llvm_target\.cpp)$'
+
+      - id: commit-msg
+        name: check commit subject format
+        entry: python3 .github/precommit/commit_msg.py
+        language: python
+        additional_dependencies: [ "pyyaml==6.0.3" ]
+        stages: [ commit-msg ]
 
       - id: env-vars
         name: check environment variables are registered
