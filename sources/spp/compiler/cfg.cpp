@@ -87,6 +87,12 @@ auto spp::compiler::cfg::AnnotationsOf(asts::Ast &item) -> Vec<Unique<asts::Anno
   if (const auto v = item.To<UseStatementVariableAst>()) {
     return &v->Annotations;
   }
+  if (const auto s = item.To<SupPrototypeFunctionsAst>()) {
+    return &s->Annotations;
+  }
+  if (const auto e = item.To<SupPrototypeExtensionAst>()) {
+    return &e->Annotations;
+  }
   return nullptr;
 }
 
@@ -213,6 +219,14 @@ auto spp::compiler::cfg::SpanOfDropped(asts::Ast &item) -> Pair<std::size_t, std
     const auto a = item.To<ClassAttributeAst>();
     a != nullptr and a->DefaultVal != nullptr) {
     end = std::max(end, a->DefaultVal->PosEnd());
+  }
+
+  // A sup block's position ends at its type; the block is dropped with it.
+  else if (const auto s = item.To<SupPrototypeFunctionsAst>(); s != nullptr and s->Impl != nullptr) {
+    end = std::max(end, s->Impl->PosEnd());
+  }
+  else if (const auto e = item.To<SupPrototypeExtensionAst>(); e != nullptr and e->Impl != nullptr) {
+    end = std::max(end, e->Impl->PosEnd());
   }
 
   return {start, end};
