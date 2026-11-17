@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.regions;
@@ -98,7 +99,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
 
     // A generic parameter bound to a callable is called through
     // its constraint, not its own type, and a capture of it has
-    // to keep that: "(caps f) { f() }" inside a "FunMov"-constrained
+    // to keep that: "|caps f| { f() }" inside a "FunMov"-constrained
     // generic consumes "f", whatever closure it is.
     const auto outer_sym = sm->CurrentScope->FindVarSymbol(cap->Val->To<IdentifierAst>());
     const auto indirect_type = outer_sym != nullptr ? outer_sym->IndirectFnType : nullptr;
@@ -147,8 +148,17 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
       // loan held by the closure, in the body the closure is
       // written in, so the captured value can't move whilst the
       // closure holds it, and the closure itself can't move either.
+      // The holder is whatever the closure's value is assigned into:
+      // the closure itself, or the result of a call it is passed
+      // to. A result whose type cannot hold a borrow ("Str",
+      // "Res[S32, E]") is not keeping the closure; only the call
+      // held it, while it ran ("call_loans").
       const auto outer_cap_sym = meta->CurrentLambdaOuterScope->FindVarSymbol(cap_val);
-      if (ass_sym != nullptr and outer_cap_sym != nullptr) {
+      const auto holder_type = ass_sym != nullptr
+        ? ass_sym->TypeRefIn(*meta->CurrentLambdaOuterScope).Symbol
+        : nullptr;
+      const auto holder_keeps = holder_type == nullptr or holder_type->CanHoldBorrows();
+      if (ass_sym != nullptr and outer_cap_sym != nullptr and holder_keeps) {
         const auto is_mut = *cap->Conv == ConventionTag::MUT;
         const auto borrowed = regions::PlaceAtOf(*cap->Val, *meta->CurrentLambdaOuterScope);
         memory_state::LoansOf(*meta->CurrentLambdaOuterScope).emplace_back(
@@ -161,10 +171,16 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
       // the type of the capture is copyable, in which case no
       // action needs to be taken.
       const auto cap_sym = meta->CurrentLambdaOuterScope->FindVarSymbol(cap->Val->To<IdentifierAst>());
-      const auto cap_type_sym = cap_sym->TypeRefIn(*meta->CurrentLambdaOuterScope).Symbol;
-      if (cap_type_sym == nullptr or not cap_type_sym->IsCopyable()) {
+      const auto cap_type = cap_sym->TypeRefIn(*meta->CurrentLambdaOuterScope);
+      if (cap_type.Symbol == nullptr or not cap_type.Symbol->IsCopyable()) {
         memory_state::StateOf(*meta->CurrentLambdaOuterScope, *cap_sym).MovedBy(*cap);
       }
+
+      // A closure dropped uncalled drops what it captured by value, which
+      // nothing written calls, so its destructor may never have been
+      // instantiated: without one a "Vec" would free its buffer without
+      // dropping its elements.
+      drop_utils::EnsureDropInstantiated(cap_type, *sm, meta);
     }
   }
 }

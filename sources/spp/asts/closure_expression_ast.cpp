@@ -470,7 +470,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
       // Terminate the closure function with a return of the body's
       // value (closures return their body implicitly). A borrow
       // returned as the value it points at - a copyable capture
-      // like "(caps &a) -> S32 { a }" - is read through first,
+      // like "|caps &a| -> S32 { a }" - is read through first,
       // the way a borrowed argument is for a by-value parameter.
       // A closure never returns a borrow (second class), so a
       // borrowed body is always one of these.
