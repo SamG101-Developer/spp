@@ -19,6 +19,7 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::AnnotationInfo {
   constexpr static auto kClassContext = 8;
   constexpr static auto kTypeStmtCtx = 16;
   constexpr static auto kCmpStmtCtx = 32;
+  constexpr static auto kSupCtx = 64;
 
   /// For functions that themselves are annotations, like "fun
   /// public" is, bind the !annotation annotation onto it. This
