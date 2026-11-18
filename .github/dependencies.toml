@@ -187,7 +187,7 @@ cmake-flags-windows = ["-DMI_OVERRIDE=OFF"]
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "abbc29963a3fa7652127a57a9e2a4494ec5b8a6e"
+commit = "d732d616badc771ab1e85876b3a9eb8191fdf4c0"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
@@ -216,7 +216,7 @@ cmake-flags = [
 [[library]]
 name = "CLI11"
 repo = "https://github.com/CLIUtils/CLI11.git"
-commit = "b04fc8016df50e295cf1db2c806be6134f46963b"
+commit = "301c80eff2debf088b8213d9c153c76e1e97a854"
 cmake-flags = ["-DCLI11_BUILD_TESTS=OFF", "-DCLI11_BUILD_EXAMPLES=OFF"]
 
 [[library]]
@@ -242,7 +242,7 @@ commit = "9ad6bafe4d9fe9e2d588a3e620299b81ce8814c2"
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "7b303cdf7f3fe816437398ea1db869ecad20ead6"
+commit = "521e68f6bbb55d4f3371690e74d3ed6b637c4070"
 
 [[library]]
 name = "NumEx"
