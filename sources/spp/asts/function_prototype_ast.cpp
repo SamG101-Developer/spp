@@ -68,6 +68,7 @@ import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
+import spp.utils.functions;
 import spp.utils.ice;
 import spp.utils.strings;
 import genex;
@@ -90,29 +91,6 @@ namespace spp::asts {
   static thread_local auto analysing_gn_substitution =
     static_cast<FunctionPrototypeAst::GenericSubstitution const*>(nullptr);
 
-  namespace {
-    /// Marks one instantiation's body as being analysed,
-    /// for as long as it lives, then restores the outer
-    /// one.
-    struct AnalysingGnSubstitutionGuard {
-      FunctionPrototypeAst::GenericSubstitution const *Outer;
-
-      explicit AnalysingGnSubstitutionGuard(
-        FunctionPrototypeAst::GenericSubstitution const &sub) :
-        Outer(analysing_gn_substitution) {
-        analysing_gn_substitution = &sub;
-      }
-
-      ~AnalysingGnSubstitutionGuard() { analysing_gn_substitution = Outer; }
-
-      AnalysingGnSubstitutionGuard(
-        AnalysingGnSubstitutionGuard const &) = delete;
-
-      auto operator=(
-        AnalysingGnSubstitutionGuard const &)
-        -> AnalysingGnSubstitutionGuard& = delete;
-    };
-  }
 }
 
 SPP_MOD_BEGIN
@@ -827,7 +805,7 @@ auto spp::asts::FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     sub.Proto->_InstallLoweredImpl(&tm);
 
     const auto _meta_guard = MetaGuard(meta, true);
-    const auto _analysing = AnalysingGnSubstitutionGuard(sub);
+    const auto _analysing = spp::utils::functions::ScopedAssign(analysing_gn_substitution, &sub);
     const auto _instantiated_from = analyse::errors::InstantiatedFromGuard(
       sub.OutermostRequest()->RequiredAt.get());
     meta->ClearAssignmentTarget();

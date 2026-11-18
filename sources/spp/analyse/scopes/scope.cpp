@@ -57,6 +57,7 @@ import spp.asts.utils.ast_utils;
 import spp.compiler.module_tree;
 import spp.lex.tokens;
 import spp.utils.error_formatter;
+import spp.utils.functions;
 import spp.utils.ice;
 import spp.utils.interner;
 import spp.utils.numbers;
@@ -103,7 +104,7 @@ namespace spp::analyse::scopes {
 
   /// The aliases being keyed through their targets: a target that names its own alias (directly or down a chain) is keyed
   /// as the alias inside itself rather than expanded without end.
-  static thread_local auto keying_aliases = Vec<spp::analyse::scopes::TypeSymbol const*>();
+  static thread_local auto keying_aliases = Set<spp::analyse::scopes::TypeSymbol const*>();
 
   namespace {
     /// A type key, and when the type is a variant, the keys of its members, so a variant member of a variant is
@@ -113,24 +114,6 @@ namespace spp::analyse::scopes {
       Vec<TypeKey> VariantMembers;
     };
 
-    /// "alias" marked as being keyed through its target ("keying_aliases") for as long as this lives, unless it already
-    /// is: only the outermost keying of an alias ("Active") may expand it.
-    class AliasKeying {
-    public:
-      explicit AliasKeying(TypeSymbol const &alias) : _Active(not genex::contains(keying_aliases, &alias)) {
-        if (_Active) { keying_aliases.push_back(&alias); }
-      }
-
-      ~AliasKeying() { if (_Active) { keying_aliases.pop_back(); } }
-
-      AliasKeying(AliasKeying const &) = delete;
-      auto operator=(AliasKeying const &) -> AliasKeying& = delete;
-
-      SPP_ATTR_NODISCARD auto Active() const -> bool { return _Active; }
-
-    private:
-      bool _Active;
-    };
 
     /// What keying a type by its stamp came to: keyed; the symbol its stamp names here, for the caller to key; no
     /// stamp, or one naming nothing made yet, so it is looked up by name; or an open instantiation of an alias, which
@@ -493,8 +476,9 @@ auto spp::analyse::scopes::AliasHeadOf(
 auto spp::analyse::scopes::KeyAliasTarget(
   TypeKeyParts &out, TypeSymbol const &alias, TypeAst const *unresolved) -> void {
   using spp::analyse::scopes::TypeKey;
-  const auto keying = AliasKeying(alias);
-  if (not keying.Active()) {
+  // Only the outermost keying of an alias expands it.
+  const auto keying = spp::utils::functions::ScopedInsert(keying_aliases, &alias);
+  if (not keying.Inserted()) {
     out.Key.PushSymbol(&alias);
     return;
   }
@@ -569,9 +553,9 @@ auto spp::analyse::scopes::KeyUnmade(
   auto const *const named = head != nullptr ? head->UseTarget() : nullptr;
   if (named != nullptr and named->Alias != nullptr and not named->Alias->IsFromUseStmt) {
     // A "type" alias: its target ("TypeSymbol::AliasTargetId"), its parameters bound to the arguments.
-    const auto keying = AliasKeying(*named);
+    const auto keying = spp::utils::functions::ScopedInsert(keying_aliases, named);
     auto const &alias = *named->Alias;
-    if (keying.Active() and alias.Params != nullptr and alias.WrittenIn != nullptr) {
+    if (keying.Inserted() and alias.Params != nullptr and alias.WrittenIn != nullptr) {
       const auto recorded = spp::analyse::utils::type_resolution::RecordedArgsFor(
         written_args, *alias.Params, scope, *alias.WrittenIn);
       const auto recorded_args = recorded | genex::views::ptr | genex::to<spp::Vec>();
@@ -764,10 +748,8 @@ auto spp::analyse::scopes::ConstantCompKey(ExpressionAst const &expr, VariableSy
   if (value == nullptr or constant.ScopeDefinedIn == nullptr or keying.contains(&constant)) {
     return RecordedOpaque(expr, scope);
   }
-  keying.insert(&constant);
-  auto key = RawCompKey(*value, *constant.ScopeDefinedIn);
-  keying.erase(&constant);
-  return key;
+  const auto entry = spp::utils::functions::ScopedInsert(keying, &constant);
+  return RawCompKey(*value, *constant.ScopeDefinedIn);
 }
 
 auto spp::analyse::scopes::IsBoolOperand(ExpressionAst const &expr, CompKey const &key, Scope const &scope) -> bool {

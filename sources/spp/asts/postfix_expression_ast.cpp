@@ -44,11 +44,7 @@ namespace spp::asts {
 SPP_MOD_BEGIN
 spp::asts::PackElementCloneGuard::PackElementCloneGuard(
   Map<Str, std::size_t> packs) :
-  _Outer(std::exchange(pack_elements, std::move(packs))) {
-}
-
-spp::asts::PackElementCloneGuard::~PackElementCloneGuard() {
-  pack_elements = std::move(_Outer);
+  _Packs(pack_elements, std::move(packs)) {
 }
 
 spp::asts::PostfixExpressionAst::PostfixExpressionAst(

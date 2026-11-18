@@ -36,6 +36,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_size;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
+import spp.utils.functions;
 import spp.utils.interner;
 import genex;
 import std;
@@ -63,8 +64,8 @@ use_alias(spp::asts, TypeAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::comp_generics {
-  /// The constants "CompTimeResolutionGuard" holds, innermost last.
-  static thread_local spp::Vec<VariableSymbol const*> resolving_constants;
+  /// The constants "CompTimeResolutionGuard" holds.
+  static thread_local spp::Set<VariableSymbol const*> resolving_constants;
 }
 
 auto spp::analyse::utils::comp_generics::FindCompMemberId(
@@ -77,12 +78,9 @@ auto spp::analyse::utils::comp_generics::FindCompMemberId(
   // Constants defined through each other ("cmp a = Self::b",
   // "cmp b = Self::a") stay members: a constant asked for
   // again while it is being read is its member identity.
-  thread_local auto reading = Vec<Pair<TypeId, Str>>();
-  if (genex::any_of(reading, [&](auto const &r) { return r.first == owner and r.second == name; })) { return member; }
-  reading.emplace_back(owner, Str(name));
-  struct Leave {
-    ~Leave() { reading.pop_back(); }
-  } const _leave_guard;
+  thread_local auto reading = Set<std::remove_const_t<decltype(member)>>();
+  const auto entry = spp::utils::functions::ScopedInsert(reading, member);
+  if (not entry.Inserted()) { return member; }
 
   // The owner: a class, or a made instance of a template.
   auto const &head = scopes::HeaderOf(owner);
@@ -198,17 +196,13 @@ auto spp::analyse::utils::comp_generics::IsCompOperator(
 
 SPP_MOD_BEGIN
 spp::analyse::utils::comp_generics::CompTimeResolutionGuard::CompTimeResolutionGuard(
-  VariableSymbol const *const sym) {
-  resolving_constants.emplace_back(sym);
-}
-
-spp::analyse::utils::comp_generics::CompTimeResolutionGuard::~CompTimeResolutionGuard() {
-  resolving_constants.pop_back();
+  VariableSymbol const *const sym) :
+  _Entry(resolving_constants, sym) {
 }
 
 auto spp::analyse::utils::comp_generics::CompTimeResolutionGuard::IsResolving(
   VariableSymbol const *const sym) -> bool {
-  return genex::contains(resolving_constants, sym);
+  return resolving_constants.contains(sym);
 }
 
 SPP_MOD_END

@@ -3,6 +3,7 @@ module;
 
 export module spp.analyse.utils.comp_generics;
 import spp.analyse.scopes.type_key;
+import spp.utils.functions;
 import spp.utils.types;
 import std;
 
@@ -80,8 +81,10 @@ SPP_EXP_CLS struct spp::analyse::utils::comp_generics::CompTimeResolutionGuard {
   CompTimeResolutionGuard(CompTimeResolutionGuard &&) = delete;
   auto operator=(CompTimeResolutionGuard const &) -> CompTimeResolutionGuard& = delete;
   auto operator=(CompTimeResolutionGuard &&) -> CompTimeResolutionGuard& = delete;
-  ~CompTimeResolutionGuard();
 
   /// Whether "sym" is being resolved, further up the stack.
   SPP_ATTR_NODISCARD static auto IsResolving(VariableSymbol const *sym) -> bool;
+
+private:
+  spp::utils::functions::ScopedInsert<Set<VariableSymbol const*>> _Entry;
 };

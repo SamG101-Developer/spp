@@ -5,6 +5,7 @@ export module spp.asts.postfix_expression_ast;
 import spp.asts.ast_kind;
 import spp.asts.expression_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.functions;
 import spp.utils.types;
 import llvm;
 import std;
@@ -79,12 +80,9 @@ private:
 /// as written, an out-of-bounds access (E11). Keyed by the pack's name, to its element count; nests by replacing.
 SPP_EXP_CLS struct spp::asts::PackElementCloneGuard {
   explicit PackElementCloneGuard(Map<Str, std::size_t> packs);
-  ~PackElementCloneGuard();
-  PackElementCloneGuard(PackElementCloneGuard const &) = delete;
-  auto operator=(PackElementCloneGuard const &) -> PackElementCloneGuard& = delete;
 
 private:
-  Map<Str, std::size_t> _Outer;
+  spp::utils::functions::ScopedAssign<Map<Str, std::size_t>> _Packs;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionAst)

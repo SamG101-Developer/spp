@@ -81,6 +81,7 @@ import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
+import spp.utils.functions;
 import spp.utils.ice;
 import spp.utils.uid;
 import genex;
@@ -868,11 +869,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::EvaluateCompTime(
   // stopped here, rather than left to overflow it.
   thread_local auto cmp_call_depth = 0uz;
   constexpr auto kMaxCompTimeCallDepth = 1000uz;
-  struct CompTimeCallDepthGuard {
-    decltype(cmp_call_depth) &Depth;
-    explicit CompTimeCallDepthGuard(decltype(cmp_call_depth) &depth) : Depth(depth) { ++Depth; }
-    ~CompTimeCallDepthGuard() { --Depth; }
-  } const depth_guard(cmp_call_depth);
+  const auto depth_guard = spp::utils::functions::ScopedAssign(cmp_call_depth, cmp_call_depth + 1);
   RaiseIf<SppInvalidCompTimeOperationError>(
     cmp_call_depth > kMaxCompTimeCallDepth,
     ERR_ARGS(outer_site != nullptr ? *outer_site : *owner));
@@ -896,11 +893,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::EvaluateCompTime(
           self_id, fn_scope->TypeIdOf(*tmpl_self), *sm->CurrentScope, *fn_scope, bindings, false, false);
       }
     }
-    std::swap(bindings, cmp_template_bindings);
-    struct BindingsGuard {
-      analyse::scopes::GenericSubst &Slot, &Saved;
-      ~BindingsGuard() { std::swap(Slot, Saved); }
-    } const bindings_guard{cmp_template_bindings, bindings};
+    const auto bindings_guard = spp::utils::functions::ScopedAssign(cmp_template_bindings, std::move(bindings));
     fn_proto->Impl->EvaluateCompTime(&tm, meta);
 
     // Each "&mut" argument's place takes the value the callee left
