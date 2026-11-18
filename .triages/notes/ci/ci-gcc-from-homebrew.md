@@ -38,6 +38,10 @@ driver) carries it. Homebrew keeps `libstdc++` and `libgcc_s` beside the GCC (wh
 points), not in the install dir, so a plain link failed CMake's first check ("cannot find -lgcc_s"): the config also
 has `-L` that dir, `-static-libgcc` and `-static-libstdc++` (the runner's `libstdc++.so.6` is older than GCC 16's),
 inside `--start-no-unused-arguments`/`--end-no-unused-arguments`, or every compile-only call warns and `-Werror` fails
-it. The script then builds and runs a C and a C++ program (an exception thrown and caught) so a broken link fails in
+it. Homebrew also keeps libstdc++'s headers at `<cellar>/include/c++/16`, not where clang looks beside a GCC
+("'stdexcept' file not found"): the config takes the C++ include dirs Homebrew's `g++ -E -v` reports, as `-cxx-isystem`,
+with `-nostdinc++` so no other GCC's headers mix in, and `-B<runtime dir>` so `-print-file-name` (CMake's `import std`
+asks for `libstdc++.modules.json`) finds the runtime's files, which `-L` does not. `SPP_CI_CLANG_CXX_FLAGS` carries the
+C++ ones into `configure.sh`'s C++ flags. The script then builds and runs a C and a C++ program (an exception thrown and caught) so a broken link fails in
 setup. Before, they installed `g++-16` from the PPA: the March trunk snapshot's libstdc++, and a
 Launchpad 503 outage that day failed Linux Clang and Clang-Tidy after `retry`'s three tries.

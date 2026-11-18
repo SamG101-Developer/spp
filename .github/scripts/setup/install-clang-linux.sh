@@ -37,14 +37,30 @@ if [ ! -f "${runtime_dir}/libstdc++.a" ]; then
   exit 1
 fi
 
+# Homebrew keeps libstdc++'s headers at <cellar>/include/c++/N too,
+# not where clang looks beside a GCC ("'stdexcept' file not found"):
+# its g++ names them, and clang is given exactly those, and nothing
+# of its own (-nostdinc++), so no other GCC's headers mix in.
+cxx_include_dirs="$("$gcc_cxx" -xc++ -E -v /dev/null 2>&1 \
+  | sed -n '/#include <...> search starts here:/,/End of search list\./p' | grep '/c++/' | sed 's/^ *//')"
+if [ -z "$cxx_include_dirs" ]; then
+  echo "::error::homebrew's g++ reports no libstdc++ include directory" >&2
+  exit 1
+fi
+cxx_flags="-nostdinc++"
+while IFS= read -r dir; do cxx_flags+=" -cxx-isystem ${dir}"; done <<< "$cxx_include_dirs"
+
 # Clang reads "<driver>.cfg" from its own (resolved) bin directory:
-# clang.cfg for clang-N, clang++.cfg for clang++-N. The link options
-# are fenced off as unused when only compiling, which -Werror would
-# otherwise fail.
+# clang.cfg for clang-N, clang++.cfg for clang++-N. Options that do
+# not apply to every call (C++ headers to a C compile, link options
+# to a compile) are fenced off as unused, which -Werror would
+# otherwise fail. -B lets -print-file-name find the runtime's files
+# (CMake's "import std" asks for libstdc++.modules.json), which -L
+# does not.
 llvm_bin="$(dirname "$(readlink -f "$(command -v "clang++-${CLANG_VERSION}")")")"
 for driver in clang clang++; do
-  printf -- '--gcc-install-dir=%s\n--start-no-unused-arguments -L%s -static-libgcc -static-libstdc++ --end-no-unused-arguments\n' \
-    "$gcc_dir" "$runtime_dir" | sudo tee "${llvm_bin}/${driver}.cfg" > /dev/null
+  printf -- '--gcc-install-dir=%s\n--start-no-unused-arguments %s -B%s -L%s -static-libgcc -static-libstdc++ --end-no-unused-arguments\n' \
+    "$gcc_dir" "$cxx_flags" "$runtime_dir" "$runtime_dir" | sudo tee "${llvm_bin}/${driver}.cfg" > /dev/null
 done
 
 # Check clang took it: otherwise it silently picks the image's own,
@@ -70,8 +86,17 @@ printf '#include <stdexcept>\nint main() { try { throw std::runtime_error("x"); 
 "${probe}/cxx"
 rm -rf "$probe"
 
+# CMake's "import std" builds libstdc++'s std module from the json
+# the compiler points at.
+modules_json="$("clang++-${CLANG_VERSION}" -print-file-name=libstdc++.modules.json)"
+if [ ! -f "$modules_json" ]; then
+  echo "::error::clang++ cannot find libstdc++.modules.json (got '${modules_json}'), which import std needs" >&2
+  exit 1
+fi
+
 {
   echo "CC=clang-${CLANG_VERSION}"
   echo "CXX=clang++-${CLANG_VERSION}"
   echo "SPP_CI_GCC_INSTALL_DIR=${gcc_dir}"
+  echo "SPP_CI_CLANG_CXX_FLAGS=--start-no-unused-arguments ${cxx_flags} --end-no-unused-arguments"
 } >> "$GITHUB_ENV"
