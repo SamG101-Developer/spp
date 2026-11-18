@@ -321,8 +321,16 @@ auto spp::codegen::TargetIsLinux() -> bool {
   return TargetTriple().isOSLinux();
 }
 
-auto spp::codegen::TargetIsMusl() -> bool {
-  return TargetTriple().isMusl();
+auto spp::codegen::TargetIsGlibc() -> bool {
+  return TargetTriple().isOSLinux() and TargetTriple().isGNUEnvironment();
+}
+
+auto spp::codegen::TargetIsElf() -> bool {
+  return TargetTriple().isOSBinFormatELF();
+}
+
+auto spp::codegen::TargetIsMachO() -> bool {
+  return TargetTriple().isOSBinFormatMachO();
 }
 
 auto spp::codegen::TargetIsPositionIndependent() -> bool {

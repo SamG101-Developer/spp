@@ -1,7 +1,7 @@
 ---
 name: spp-test-writing-idioms
 description: "Syntax that costs a rebuild each time it is guessed wrong when writing s++ tests or benchmarks"
-updated: 2026-11-13
+updated: 2026-11-16
 ---
 
 Collected while writing std unit tests — each of these was found by a failed build, so check here first.
@@ -32,9 +32,9 @@ Found writing the run-time benchmarks (`benchmarks/runtime`, 2026-11-02), for a 
 - **Print with the formatted `println`** (std `3af56ae`, 2026-11-03): `use std::console::println`, then
   `println("{}\n{}", a, b)`, as the Rust versions do. The old per-type `show`/`show_s` helpers are gone (a generic
   `show[T]` could not call `Str::from(x)`: no `From` impl is chosen for an unbound `T`).
-- **There is no argv and no integer parsing**; `std::process::get_env` returns an unparsed `Str`. For an input the
-  optimiser must not see, use `std::hints::black_box` (`use std::hints::black_box`), as Rust's `black_box`. It
-  replaced each benchmark's `hide()` (a volatile round-trip).
+- **There is no integer parsing of arguments**; `std::os::env::get_env` and `args` return unparsed `OsStr`s (`to_str()`
+  / `to_str_lossy()` for text). For an input the optimiser must not see, use `std::hints::black_box` (`use
+  std::hints::black_box`), as Rust's `black_box`. It replaced each benchmark's `hide()` (a volatile round-trip).
 - **Methods in a `sup` block are private by default**: mark each one called from outside `!public`. An override in
   `sup X ext Base` must not be: it takes the base method's visibility, and `!public` on it is "invalid target of
   annotation".

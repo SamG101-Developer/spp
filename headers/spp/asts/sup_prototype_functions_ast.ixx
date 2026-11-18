@@ -11,6 +11,7 @@ import llvm;
 import std;
 
 use_common(SupPrototypeFunctionsAst);
+use(spp::asts, struct AnnotationAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct SupImplementationAst);
 use(spp::asts, struct TokenAst);
@@ -25,6 +26,10 @@ use(spp::asts, struct TypeAst);
 ///   }
 SPP_EXP_CLS struct spp::asts::SupPrototypeFunctionsAst final : Ast, ModuleMemberAst {
   SPP_AST_KEY_FUNCTIONS(SupPrototypeFunctionsAst);
+
+  /// The annotations on the superimposition: "!cfg" compiles
+  /// the whole block only for the builds it names.
+  Vec<Unique<AnnotationAst>> Annotations;
 
   /// The "sup" keyword that starts the superimposition.
   Unique<TokenAst> TokSup;
@@ -43,6 +48,7 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeFunctionsAst final : Ast, ModuleMember
   Unique<SupImplementationAst> Impl;
 
   SupPrototypeFunctionsAst(
+    decltype(Annotations) &&annotations,
     decltype(TokSup) &&tok_sup,
     decltype(GnParamGroup) &&generic_param_group,
     decltype(Name) name,

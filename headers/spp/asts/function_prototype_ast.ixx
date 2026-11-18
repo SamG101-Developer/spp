@@ -321,10 +321,22 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   SPP_ATTR_NODISCARD virtual auto CloneSignature() const -> Unique<FunctionPrototypeAst> = 0;
 
 protected:
+  /// Called by "Stage8_CheckMemory" once the parameters are checked and before the body is, in the function's scope:
+  /// what holds at the function's start. Nothing for a subroutine; a coroutine records what its frame owns there.
+  virtual auto Stage8_AfterParams(
+    ScopeManager *sm, CompilerMetaData *meta) -> void;
+
+  /// The memory check of the parameters, "Stage8_AfterParams", the body, and the body's end (unless nothing written in
+  /// S++ is there to consume the parameters, or the body diverges), in the function's scope. Shared by the prototype
+  /// and each of its generic instantiations, so neither misses a step the other takes.
+  auto _CheckBodyMemory(
+    ScopeManager *sm, CompilerMetaData *meta) -> void;
+
   /// What "Clone" copies besides the children it constructs the copy from: the analysed annotation state, the
   /// original body, the context, scope and lowered function, and the variadic pack type. Re-parents the copy's
   /// annotations onto it.
-  auto _CloneStateInto(FunctionPrototypeAst &ast) const -> void;
+  auto _CloneStateInto(
+    FunctionPrototypeAst &ast) const -> void;
 
   /// Using a list because there are times that the collection
   /// is iterated whilst being appended to.
@@ -385,15 +397,11 @@ protected:
   /// inside the instantiation's own scope, where its generics are
   /// bound.
   static auto _EnsureDropsForBuiltin(
-    FunctionPrototypeAst const &sub_proto,
-    ScopeManager &tm,
-    CompilerMetaData *meta)
-    -> void;
+    FunctionPrototypeAst const &sub_proto, ScopeManager &tm,
+    CompilerMetaData *meta) -> void;
 
   SPP_ATTR_NODISCARD auto _IsPureGn(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
-    LlvmCtx const *ctx) const
+    ScopeManager *sm, CompilerMetaData *meta, LlvmCtx const *ctx) const
     -> Tup<bool, llvm::Type*, Vec<llvm::Type*>>;
 
   /// Emit the body of every instantiation registered against
@@ -402,5 +410,6 @@ protected:
   /// Both exits from "Stage11_CodeGen" run this, because a
   /// template emits nothing of its own but is exactly where
   /// the instantiations that do are registered.
-  auto _CodeGenGnSubstitutions(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> void;
+  auto _CodeGenGnSubstitutions(
+    ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> void;
 };

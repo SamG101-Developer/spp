@@ -41,7 +41,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppLinearValueNotConsumedError, R"(
     fun f() -> Void {
         let mut c = 2
-        let lambda = (x: S32 caps &mut c) { x }
+        let lambda = |x: S32 caps &mut c| { x }
     }
 )");
 

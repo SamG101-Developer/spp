@@ -17,7 +17,7 @@ import re
 import struct
 import sys
 from collections.abc import Callable
-from decimal import ROUND_CEILING, ROUND_DOWN, ROUND_FLOOR, ROUND_HALF_UP, Decimal, localcontext
+from decimal import ROUND_CEILING, ROUND_DOWN, ROUND_FLOOR, ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal, localcontext
 from fractions import Fraction
 from pathlib import Path
 
@@ -138,9 +138,11 @@ class Case:
         rt_val: str,
         expected: Value | None,
         tol: float | None = None,
+        trap: str | None = None,
     ) -> None:
+        # "trap": the report the run must stop with (exit 134), in a program of its own, instead of a value.
         self.prog, self.name, self.ty, self.cmp = prog, name, ty, cmp
-        self.rt_stmts, self.rt_val, self.expected, self.tol = rt_stmts, rt_val, expected, tol
+        self.rt_stmts, self.rt_val, self.expected, self.tol, self.trap = rt_stmts, rt_val, expected, tol, trap
 
 
 CASES: list[Case] = []
@@ -435,6 +437,7 @@ FLOAT_UN: dict[str, Callable[[Decimal], Decimal]] = {
     "float_ceil": lambda a: a.quantize(Decimal(1), rounding=ROUND_CEILING),
     "float_trunc": lambda a: a.quantize(Decimal(1), rounding=ROUND_DOWN),
     "float_round": lambda a: a.quantize(Decimal(1), rounding=ROUND_HALF_UP),
+    "float_round_even": lambda a: a.quantize(Decimal(1), rounding=ROUND_HALF_EVEN),
 }
 
 # The same operations on the values as written, in exact decimals: where the result is not the IEEE one, a constant
@@ -454,7 +457,7 @@ def neg_zero(x: Decimal) -> bool:
 
 FLOAT_CMP: dict[str, Callable[[Decimal, Decimal], bool]] = {
     "oeq": lambda a, b: a == b,
-    "one": lambda a, b: a != b,
+    "une": lambda a, b: a != b,
     "olt": lambda a, b: a < b,
     "ole": lambda a, b: a <= b,
     "ogt": lambda a, b: a > b,
@@ -518,6 +521,19 @@ def float_cases_of(t: str) -> None:
                 )
             )
             if op not in ("float_max", "float_min"):
+                # The IEEE form: the same result where the checked one does not stop (and the checks are off here).
+                covers(f"{op}_ieee")
+                CASES.append(
+                    Case(
+                        prog,
+                        name.replace(op, f"{op}_ieee", 1),
+                        t,
+                        f"std::intrinsics::{op}_ieee({la}, {lb})",
+                        [],
+                        f"std::intrinsics::{op}_ieee(hide({la}), hide({lb}))",
+                        e,
+                    )
+                )
                 HELPERS.setdefault(prog, {})[f"asg_{op}"] = assign_fun(op, t, [t, t])
                 CASES.append(
                     Case(
@@ -644,7 +660,7 @@ def f8_cases() -> None:
             # An infinity has no "F8": it saturates.
             one, zero = f_lit(t, Decimal(1)), f_lit(t, Decimal(0))
             for sign, bits in (("", 0x7E), ("-", 0xFE)):
-                inf = f"std::intrinsics::float_div(hide({sign}{one}), hide({zero}))"
+                inf = f"std::intrinsics::float_div_ieee(hide({sign}{one}), hide({zero}))"
                 CASES.append(
                     Case(
                         prog,
@@ -775,19 +791,22 @@ def runtime_int_cases() -> None:
                         min(max(shifted, lo), hi),
                     )
                 )
-            # A shift at or past the width is defined at run time: 0 (E91 at compile time).
-            CASES.extend(
-                Case(
-                    prog,
-                    f"{op} {t} ({a}, {w}) past the width",
-                    t,
-                    None,
-                    [],
-                    f"std::intrinsics::{op}(hide({la}), hide({w}_u32))",
-                    0,
+            # A shift by the width or more stops at run time (the shift-distance check; E91 at compile time). One case
+            # per type and shift, each a program of its own, as a stop ends the program.
+            if a == vals[0]:
+                CASES.extend(
+                    Case(
+                        prog,
+                        f"{op} {t} ({a}, {w}) past the width",
+                        t,
+                        None,
+                        [],
+                        f"std::intrinsics::{op}(hide({la}), hide({w}_u32))",
+                        None,
+                        trap=f"[sppc] check failed: shift distance {w} is not less than the width {w}",
+                    )
+                    for op in ("bit_shl", "bit_shr", "bit_ashr")
                 )
-                for op in ("bit_shl", "bit_shr")
-            )
             covers("bitreverse", "ctlz")
             u = a & ((1 << w) - 1)
             CASES.append(
@@ -803,18 +822,6 @@ def runtime_int_cases() -> None:
             )
             CASES.append(
                 Case(prog, f"ctlz {t} ({a})", "U32", None, [], f"std::intrinsics::ctlz(hide({la}))", w - u.bit_length())
-            )
-            # Past the width the arithmetic shift is all sign bits: 0 or -1 (E91 at compile time).
-            CASES.append(
-                Case(
-                    prog,
-                    f"bit_ashr {t} ({a}, {w}) past the width",
-                    t,
-                    None,
-                    [],
-                    f"std::intrinsics::bit_ashr(hide({la}), hide({w}_u32))",
-                    wrap(t, -(u >> (w - 1))),
-                )
             )
             covers("cttz", "ctpop", "bswap", "fshl", "fshr")
             CASES.append(
@@ -958,7 +965,57 @@ def runtime_float_cases() -> None:
                         tol,
                     )
                 )
-        covers("float_atan2", "float_powf", "float_powi")
+            # The IEEE form: the same value where the checked one does not stop.
+            covers(f"{op}_ieee")
+            x = f_round(t, 0.5)
+            CASES.append(
+                Case(
+                    prog,
+                    f"{op}_ieee {t} ({x!r})",
+                    t,
+                    None,
+                    [],
+                    f"std::intrinsics::{op}_ieee(hide({f_lit(t, x)}))",
+                    f_round(t, fn(x)),
+                    tol,
+                )
+            )
+        covers("float_atan2", "float_powf", "float_atan2_ieee", "float_powf_ieee")
+        for op, a, b, e in (
+            ("float_atan2_ieee", 1.0, 1.0, math.atan2(1.0, 1.0)),
+            ("float_powf_ieee", 2.0, 10.0, 1024.0),
+        ):
+            CASES.append(
+                Case(
+                    prog,
+                    f"{op} {t} ({a!r}, {b!r})",
+                    t,
+                    None,
+                    [],
+                    f"std::intrinsics::{op}(hide({f_lit(t, a)}), hide({f_lit(t, b)}))",
+                    f_round(t, e),
+                    tol,
+                )
+            )
+        # The checked maths functions stop on a NaN or infinite result: an infinity at a pole is a division by zero,
+        # any other an overflow. The report is matched up to the width, so that an sppc that does not name the
+        # function yet ("(F64 operation)") passes too. One program each, as a stop ends the program.
+        invalid = "[sppc] check failed: float invalid operation: the result is a NaN"
+        by_zero = "[sppc] check failed: float division by zero"
+        overflow = "[sppc] check failed: float overflow: the result is infinite"
+        for label, call, report in (
+            ("float_exp (1000.0)", f"std::intrinsics::float_exp(hide({f_lit(t, 1000.0)}))", overflow),
+            ("float_log (0.0)", f"std::intrinsics::float_log(hide({f_lit(t, 0.0)}))", by_zero),
+            ("float_log (-1.0)", f"std::intrinsics::float_log(hide({f_lit(t, -1.0)}))", invalid),
+            ("float_asin (2.0)", f"std::intrinsics::float_asin(hide({f_lit(t, 2.0)}))", invalid),
+            (
+                "float_powf (0.0, -1.0)",
+                f"std::intrinsics::float_powf(hide({f_lit(t, 0.0)}), hide({f_lit(t, -1.0)}))",
+                by_zero,
+            ),
+        ):
+            op, args = label.split(" ", 1)
+            CASES.append(Case(prog, f"{op} {t} {args}", t, None, [], call, None, trap=f"{report} ({t} "))
         for y, x in ((1.0, 1.0), (1.0, -1.0), (-0.5, 2.0)):
             CASES.append(
                 Case(
@@ -985,61 +1042,129 @@ def runtime_float_cases() -> None:
                     tol,
                 )
             )
-        for b, e in ((2.0, 10), (1.5, 3), (2.0, -2)):
-            CASES.append(
-                Case(
-                    prog,
-                    f"float_powi {t} ({b!r}, {e})",
-                    t,
-                    None,
-                    [],
-                    f"std::intrinsics::float_powi(hide({f_lit(t, b)}), hide({e}_s32))",
-                    f_round(t, b**e),
-                    tol,
-                )
-            )
-        # What a constant cannot hold: infinities and NaN, made at run time.
+        # What a constant cannot hold: infinities and NaN, made at run time, on purpose (the IEEE form).
         inf, nan = (
-            "std::intrinsics::float_div(hide({one}), hide({zero}))",
-            "std::intrinsics::float_div(hide({zero}), hide({zero}))",
+            "std::intrinsics::float_div_ieee(hide({one}), hide({zero}))",
+            "std::intrinsics::float_div_ieee(hide({zero}), hide({zero}))",
         )
         one, zero = f_lit(t, 1.0), f_lit(t, 0.0)
         mk = {"inf": inf.format(one=one, zero=zero), "nan": nan.format(zero=zero)}
-        CASES.append(Case(prog, f"float_div {t} (1.0, 0.0)", t, None, [], mk["inf"], math.inf))
+        CASES.append(Case(prog, f"float_div_ieee {t} (1.0, 0.0)", t, None, [], mk["inf"], math.inf))
         CASES.append(
             Case(
                 prog,
-                f"float_add {t} (inf, 1.0)",
+                f"float_add_ieee {t} (inf, 1.0)",
                 t,
                 None,
                 [],
-                f"std::intrinsics::float_add({mk['inf']}, hide({one}))",
+                f"std::intrinsics::float_add_ieee({mk['inf']}, hide({one}))",
                 math.inf,
             )
         )
+        # IEEE 754-2019 "maximum"/"minimum": a NaN propagates, and -0 is below +0. Read back by class ("fpclass": 1 quiet
+        # NaN, 5 -0, 6 +0), as a NaN equals nothing and the two zeros compare equal.
+        zeros = f"hide({f_lit(t, -0.0)}), hide({f_lit(t, 0.0)})"
+        for name, call, flag in (
+            ("float_max (nan, 1.0)", f"std::intrinsics::float_max({mk['nan']}, hide({one}))", 1),
+            ("float_min (1.0, nan)", f"std::intrinsics::float_min(hide({one}), {mk['nan']})", 1),
+            ("float_max (-0.0, 0.0)", f"std::intrinsics::float_max({zeros})", 6),
+            ("float_min (-0.0, 0.0)", f"std::intrinsics::float_min({zeros})", 5),
+        ):
+            op, args = name.split(" ", 1)
+            check = f"std::intrinsics::fpclass({call}, {flag}_s32)"
+            CASES.append(Case(prog, f"{op} {t} {args}", "Bool", None, [], check, True))
+        # "*_raised": whether the checked form would stop (a NaN or infinite result, whatever went in).
+        two = f_lit(t, 2.0)
+        for op in ("float_add", "float_sub", "float_mul", "float_div", "float_rem"):
+            covers(f"{op}_raised")
+            for label, args, e in (
+                ("1.0, 2.0", f"hide({one}), hide({two})", False),
+                ("inf, 1.0", f"{mk['inf']}, hide({one})", True),
+            ):
+                CASES.append(
+                    Case(
+                        prog,
+                        f"{op}_raised {t} ({label})",
+                        "Bool",
+                        None,
+                        [f"let (v, r) = std::intrinsics::{op}_raised({args})"],
+                        "r",
+                        e,
+                    )
+                )
         CASES.append(
             Case(
                 prog,
-                f"float_max {t} (nan, 1.0)",
+                f"float_div_raised {t} (1.0, 0.0)",
+                "Bool",
+                None,
+                [f"let (v, r) = std::intrinsics::float_div_raised(hide({one}), hide({zero}))"],
+                "r",
+                True,
+            )
+        )
+        covers("float_sqrt_raised", "float_sqrt_ieee")
+        for arg, e in ((f_lit(t, 4.0), False), (f_lit(t, -1.0), True)):
+            CASES.append(
+                Case(
+                    prog,
+                    f"float_sqrt_raised {t} ({arg})",
+                    "Bool",
+                    None,
+                    [f"let (v, r) = std::intrinsics::float_sqrt_raised(hide({arg}))"],
+                    "r",
+                    e,
+                )
+            )
+        CASES.append(
+            Case(
+                prog,
+                f"float_sqrt_ieee {t} (4.0)",
                 t,
                 None,
                 [],
-                f"std::intrinsics::float_max({mk['nan']}, hide({one}))",
-                1.0,
+                f"std::intrinsics::float_sqrt_ieee(hide({f_lit(t, 4.0)}))",
+                2.0,
             )
         )
         CASES.append(
             Case(
                 prog,
-                f"float_min {t} (1.0, nan)",
-                t,
+                f"float_sqrt_ieee {t} (-1.0)",
+                "Bool",
                 None,
                 [],
-                f"std::intrinsics::float_min(hide({one}), {mk['nan']})",
-                1.0,
+                f"std::intrinsics::fpclass(std::intrinsics::float_sqrt_ieee(hide({f_lit(t, -1.0)})), 1_s32)",
+                True,
             )
         )
-        for op, e in (("oeq", False), ("one", False), ("olt", False), ("oge", False)):
+        # "fptrunc_ieee": narrowing with no check, past the range to an infinity (class 9).
+        if t == "F64":
+            covers("fptrunc_ieee")
+            big = f_lit(t, 1e300)
+            CASES.append(
+                Case(
+                    prog,
+                    "fptrunc_ieee F64 -> F32 (1e300)",
+                    "Bool",
+                    None,
+                    [],
+                    f"std::intrinsics::fpclass(std::intrinsics::fptrunc_ieee[32_u32](hide({big})), 9_s32)",
+                    True,
+                )
+            )
+            CASES.append(
+                Case(
+                    prog,
+                    "fptrunc_ieee F64 -> F32 (1.5)",
+                    "F32",
+                    None,
+                    [],
+                    f"std::intrinsics::fptrunc_ieee[32_u32](hide({f_lit(t, 1.5)}))",
+                    1.5,
+                )
+            )
+        for op, e in (("oeq", False), ("une", True), ("olt", False), ("oge", False)):
             CASES.append(
                 Case(
                     prog,
@@ -1438,7 +1563,7 @@ def value_lit(ty: str, v: Value) -> str:
     if ty in FLOATS:
         if math.isinf(v):
             one, zero = f_lit(ty, -1.0 if v < 0 else 1.0), f_lit(ty, 0.0)
-            return f"std::intrinsics::float_div(hide({one}), hide({zero}))"
+            return f"std::intrinsics::float_div_ieee(hide({one}), hide({zero}))"
         return f_lit(ty, v)
     assert isinstance(v, int), f"{ty} expects an integer, not {v!r}"
     return int_lit(ty, v)
@@ -1468,16 +1593,23 @@ def emit(builtins: str, std_src: str, out: str) -> None:
     undeclared = sorted(set(names) - declared)
     for n in undeclared:
         print(f"note: {n} is registered, but std does not declare it")
-    # A case calls std's functions, which are named apart from their intrinsics ("fpext_f8" is "std.intrinsics.fpext").
+    # A case calls std's functions, which are named apart from their intrinsics ("fpext_f8" is "std.intrinsics.fpext"),
+    # each in the module it names: "std::intrinsics::one" is not "SizedFloatingPoint::one", also an intrinsic.
     callable_fns = {
-        m
-        for f in Path(std_src).rglob("*.spp")
-        for m in re.findall(r'!intrinsic\(name="[^"]+"\)\s*\n(?:\s*!.*\n)*\s*(?:cmp\s+)?fun\s+(\w+)', f.read_text())
+        (module, m)
+        for module in ("intrinsics", "hints")
+        for m in re.findall(
+            r'!intrinsic\(name="[^"]+"\)\s*\n(?:\s*!.*\n)*\s*(?:cmp\s+)?fun\s+(\w+)',
+            (Path(std_src) / "std" / f"{module}.spp").read_text(),
+        )
     }
     CASES[:] = [
         c
         for c in CASES
-        if all(x in callable_fns for x in re.findall(r"std::(?:intrinsics|hints)::(\w+)", f"{c.cmp} {c.rt_val}"))
+        if all(
+            x in callable_fns
+            for x in re.findall(r"std::(intrinsics|hints)::(\w+)", f"{c.cmp} {c.rt_val} {' '.join(c.rt_stmts)}")
+        )
     ]
     missing = sorted(
         n for n in set(names) if n not in COVERED and n in declared and not any(n.startswith(p) for p in EXCLUDED)
@@ -1488,11 +1620,17 @@ def emit(builtins: str, std_src: str, out: str) -> None:
             print(f"  {n}", file=sys.stderr)
         sys.exit(2)
 
-    # Known build failures each get a program of their own.
+    # Known build failures each get a program of their own, as does each case that must stop the run.
     progs: dict[str, list[Case]] = {}
+    traps: dict[str, str] = {}
     for c in CASES:
         entry = next((i for i, (p, how, _) in enumerate(KNOWN) if how == "build" and re.search(p, c.name)), None)
-        progs.setdefault(c.prog if entry is None else f"known{entry}-{c.prog}", []).append(c)
+        if c.trap is not None:
+            prog = f"trap{len(traps)}-{c.prog}"
+            traps[prog] = c.trap
+        else:
+            prog = c.prog if entry is None else f"known{entry}-{c.prog}"
+        progs.setdefault(prog, []).append(c)
 
     out_dir = Path(out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1529,6 +1667,7 @@ def emit(builtins: str, std_src: str, out: str) -> None:
         (out_dir / f"{prog}.spp").write_text(src)
         manifest[prog] = [c.name for c in cases]
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1))
+    (out_dir / "traps.json").write_text(json.dumps(traps, indent=1))
     print(
         f"{len(CASES)} cases in {len(progs)} programs; {len(COVERED)} intrinsics covered, "
         f"{len(set(names)) - len([n for n in set(names) if n in COVERED])} excluded"
@@ -1547,6 +1686,8 @@ SIDE: dict[str, str] = {
 def judge(out: str) -> int:
     out_dir = Path(out)
     manifest: dict[str, list[str]] = json.loads((out_dir / "manifest.json").read_text())
+    traps_file = out_dir / "traps.json"
+    traps: dict[str, str] = json.loads(traps_file.read_text()) if traps_file.exists() else {}
     failures: list[str] = []
     known_hits: set[str] = set()
     present: set[int] = set()
@@ -1568,6 +1709,13 @@ def judge(out: str) -> int:
                         if re.match(r"^E\d+:|.*\^|.*!$", ln)
                     ]
                     failures.append(f"{prog} [{mode}]: build failed\n        " + "\n        ".join(errors[:4]))
+                continue
+            if prog in traps:
+                if status != "134" or traps[prog] not in log:
+                    failures.append(
+                        f'{cases[0]} [{mode}]: did not stop with "{traps[prog]}" (exited {status})\n        '
+                        + "\n        ".join(log.splitlines()[-4:])
+                    )
                 continue
             reported = 0
             for line in log.splitlines():

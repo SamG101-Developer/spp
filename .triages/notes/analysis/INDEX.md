@@ -10,6 +10,7 @@
 - [Free functions walk in reverse](free-functions-walk-in-reverse.md) — mock sups prepended; Stage 7 folds analyse the callee ahead (AnalyseAhead)
 - [Stage 9 walk removed](stage-9-walk-removed.md) — constants fold in Stage 7 via AnalyseAhead; Stage9 methods are the evaluator
 - [Evaluators only read their AST](evaluators-only-read-their-ast.md) — EvaluateCompTime never writes back; a cmp fun body is shared by calls and codegen
+- [Folded template bodies read bindings](folded-template-body-reads-bindings.md) — cmp folds run the template; nested calls substitute Self/type args via the folded call's bindings
 - [Clone() carries cached analysis](ast-clone-carries-cached-analysis.md) — rewriting a clone's child does nothing
 - [Call args replaced after analysis](call-args-replaced-after-analysis.md) — args moved into the winner
 - [ExhaustScope leaves CurrentScope](exhaust-scope-current-scope.md) — now SkipSubtree; folded-expr scope pattern; comp arrays
@@ -27,3 +28,4 @@
 - [AST reflection refactor (reverted)](spp-ast-reflection-refactor.md) — latent ast bugs found; retry lessons
 - [JSON inline backticks](json-diagnostics-inline-backticks.md) — INLINE_* spans become `backticks` in JSON diagnostics, matched by exact colour codes
 - [Overridables recorded at stage 7](overridables-recorded-at-stage-7.md) — sup-ext 'still to override' record; MethodsOf caches, so not before stage 7; names as written
+- [Guards through ScopedInsert/Assign](thread-local-guards-scoped.md) — thread_local guard sets and saved values: utils::functions helpers only; a hand erase skipped by a throw leaks into the next compile

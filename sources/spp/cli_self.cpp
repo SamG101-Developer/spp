@@ -597,7 +597,7 @@ auto spp::cli::HandleSelfInstall(Opt<Str> const &dir, const bool force, const bo
       std::cerr << "Error: " << shown << " is a different spp; --force replaces it.\n";
       return false;
     }
-    if (const auto other = utils::files::FindProgram("spp"); other.has_value() and not SameFile(*other, target)
+    if (const auto other = utils::shell::FindProgram("spp"); other.has_value() and not SameFile(*other, target)
       and not SameFile(*other, *exe)) {
       std::cerr << "Error: another spp is on PATH, at " << utils::files::NativeString(*other) << ", which the one "
         << "installed at " << shown << " would replace as 'spp' in new terminals. Remove it, or --force.\n";
@@ -743,7 +743,7 @@ auto spp::cli::HandleSelfUpdate(Opt<Str> const &version) -> bool {
   // Linux unpacks the release with "unzip", which is not always installed: say
   // so before downloading anything.
 #if not SPP_PLATFORM_WINDOWS and not SPP_PLATFORM_MACOS
-  if (not utils::files::FindProgram("unzip").has_value()) {
+  if (not utils::shell::FindProgram("unzip").has_value()) {
     std::cerr
       << "Error: 'spp self update' needs unzip to unpack the release; install "
       << "it (for example 'sudo apt install unzip') and run it again.\n";

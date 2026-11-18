@@ -22,6 +22,7 @@ import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.literal_ast;
+import spp.asts.postfix_expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -51,6 +52,23 @@ use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);
+
+namespace spp::asts {
+  /// Whether an expression is a namespace path ("a::b"): an identifier reached
+  /// only by "::" accesses.
+  static auto IsNsPath(ExpressionAst const *expr) -> bool;
+}
+
+/// [CHECKED]
+auto spp::asts::IsNsPath(ExpressionAst const *expr) -> bool {
+  while (const auto postfix = expr->To<PostfixExpressionAst>()) {
+    if (postfix->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>() == nullptr) {
+      return false;
+    }
+    expr = postfix->Lhs.get();
+  }
+  return expr->To<IdentifierAst>() != nullptr;
+}
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticMemberAccessAst(
@@ -93,7 +111,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ToString() const
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  //
+  // Todo: Tidy this up a lot.
   IMPORT_UTILS;
   using member_lookup::MemberAccessForm;
 
@@ -122,6 +140,20 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
     // plugin.
     if (member->Kind == VariableKind::FnMock) {
       lsp::resolution_index::RecordVariable(*Name, *sm, *meta, member);
+
+      // Enforce visibility, as a "." access does: overloads share one visibility, but a name can be declared in more
+      // than one "sup" block, and the access is fine if any of them is visible. Without this a "!private" static
+      // ("Type::fn") was callable from anywhere.
+      const auto cls_scope = _LhsTypeSymbol->LinkedScope->NonGnScope;
+      const auto fn_scopes_and_syms = member_lookup::ScopesDeclaringVar(*_LhsTypeSymbol->LinkedScope, *Name)
+        | genex::views::filter([](auto const &x) { return x.Symbol->Kind == VariableKind::FnMock; })
+        | genex::to<Vec>();
+      const auto any_visible = genex::any_of(fn_scopes_and_syms, [&](auto const &x) {
+        return visibility_utils::IsTypeMemberVisible(*x.Symbol, *cls_scope, *sm, *meta);
+      });
+      if (not fn_scopes_and_syms.empty() and not any_visible) {
+        visibility_utils::CheckTypeMemberVisibility(*fn_scopes_and_syms.back().Symbol, *Name, *cls_scope, *sm, *meta);
+      }
       return;
     }
 
@@ -159,10 +191,11 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
     return;
   }
 
-  // Otherwise, we are handling a namespace left-hand-side, which must not name a variable.
+  // Otherwise, we are handling a namespace left-hand-side, which must not name a variable or be any other value
+  // ("f()::x", "a.b::x").
   RaiseIf<SppMemberAccessRuntimeOperatorExpectedError>(
-    sm->CurrentScope->FindVarSymbol(Lhs->To<IdentifierAst>()) != nullptr,
-    ERR_ARGS(*Lhs, *TokDblColon, "variable"));
+    not IsNsPath(Lhs) or sm->CurrentScope->FindVarSymbol(Lhs->To<IdentifierAst>()) != nullptr,
+    ERR_ARGS(*Lhs, *TokDblColon, IsNsPath(Lhs) ? "variable" : "expression"));
   const auto member = _Resolve(sm);
 
   // The name is a constant or a namespace of the namespace's own: "ns::x" reaches nothing the namespace's parents

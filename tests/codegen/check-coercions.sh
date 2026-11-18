@@ -217,10 +217,10 @@ fun main() -> Void {
         else { Some(val=12_u64) }
     })
 
-    let clv = () -> Opt[U64] { Some(val=13_u64) }
+    let clv = || -> Opt[U64] { Some(val=13_u64) }
     showo(clv())
     std::mem::ops::drop(clv)
-    let clf = () -> FunRef[(U64,), U64] { h }
+    let clf = || -> FunRef[(U64,), U64] { h }
     show(clf()(10_u64))
     std::mem::ops::drop(clf)
 
@@ -233,7 +233,7 @@ fun main() -> Void {
     showo(untyped_member_first_exits(true, n))
     showo(untyped_member_first_exits(false, n))
 
-    let rj = (b: Bool, m: Opt[U64]) {
+    let rj = |b: Bool, m: Opt[U64]| {
         case b of {
             == true { ret Some(val=36_u64) }
             else { ret m }
@@ -395,7 +395,7 @@ fun main() -> Void {
 
 fn_case "generic-fn-in-closure-body" '
 fun main() -> Void {
-    let c = () -> FunRef[(U64,), U64] { ident }
+    let c = || -> FunRef[(U64,), U64] { ident }
     show(c()(12_u64))
     std::mem::ops::drop(c)
 }'

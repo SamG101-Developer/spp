@@ -46,10 +46,12 @@ use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN
 spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
+  decltype(Annotations) &&annotations,
   decltype(TokSup) &&tok_sup,
   decltype(GnParamGroup) &&generic_param_group,
   decltype(Name) name,
   decltype(Impl) &&impl) :
+  Annotations(std::move(annotations)),
   TokSup(std::move(tok_sup)),
   GnParamGroup(std::move(generic_param_group)),
   Name(std::move(name)),
@@ -74,17 +76,21 @@ auto spp::asts::SupPrototypeFunctionsAst::PosEnd() const -> std::size_t {
 auto spp::asts::SupPrototypeFunctionsAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<SupPrototypeFunctionsAst>(
+    AstCloneVec(Annotations),
     AstClone(TokSup),
     AstClone(GnParamGroup),
     AstClone(Name),
     AstClone(Impl));
   ast->_Ctx = _Ctx;
   ast->_Scope = _Scope;
+  for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
   return ast;
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::ToString() const -> Str {
   SPP_STRING_START;
+  SPP_STRING_EXTEND(Annotations, "\n");
+  SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
   SPP_STRING_APPEND(TokSup).append(" ");
   SPP_STRING_APPEND(GnParamGroup).append(GnParamGroup->Params.empty() ? "" : " ");
   SPP_STRING_APPEND(Name).append(" ");
@@ -97,6 +103,7 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage1_PreProcess(
   // Pre-process the AST by calling the base class method
   // and then processing the implementation.
   Ast::Stage1_PreProcess(ctx);
+  for (auto const &a : Annotations) { a->Stage1_PreProcess(this); }
   Impl->Stage1_PreProcess(this);
 }
 
@@ -110,6 +117,7 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage2_GenTopLvlScopes(
     "sup-prototype-functions", {Name.get()}, PosStart());
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
   Ast::Stage2_GenTopLvlScopes(sm, meta);
+  for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
 
   // The generic parameters' symbols first: whether each is named in the type is read by identity.
   GnParamGroup->Stage2_GenTopLvlScopes(sm, meta);
@@ -134,6 +142,7 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage4_ResolveDeclarations(
   // Forward to the implementation.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  for (auto const &a : Annotations) { a->Stage4_ResolveDeclarations(sm, meta); }
   GnParamGroup->Stage4_ResolveDeclarations(sm, meta);
   Impl->Stage4_ResolveDeclarations(sm, meta);
   sm->MoveOutOfCurrentScope();
@@ -147,6 +156,7 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
   // Move into the superimposition scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
   // The type superimposed over: analysed, qualified, the block filed against it, and "Self" made precise.
   sup_blocks::LoadTarget(*this, Name, false, *sm, meta);
@@ -186,6 +196,7 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
   // Move to the next scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
 
   GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 

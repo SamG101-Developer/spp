@@ -1,7 +1,7 @@
 ---
 name: codegen-checks-suite
 description: "tests/codegen/run.sh runs the check-*.sh hardening checks (~3 min, ~60 builds); new checks go on lib.sh; not part of gtest"
-updated: 2026-11-12
+updated: 2026-11-17
 ---
 
 Since 2026-10-18 (codegen-test-plan.md P1-P4) the tests are split by suite: `tests/compiler/` is the gtest suite
@@ -41,3 +41,13 @@ and run the copied check with the spp path; `ROOT` resolves to the scratch tree 
 **How to apply:** a new hardening measure gets a `check-<measure>.sh` on `lib.sh`, with a negative control (the
 key off) - see `one-hardening-measure-at-a-time`. Run the one check while iterating, `run.sh` before handing over.
 Related: [[build-workflow]], [[spp-test-harness-stale-std]].
+
+**`STD_BRANCH`** (2026-11-17): every project the checks build uses SPP-STL's `master` unless `STD_BRANCH` names another
+(`STD_BRANCH=fix/bit-cast tests/codegen/check-float-checks.sh`): a cloned branch instead of the gtest fixture's master
+checkout, and that branch in each `spp.toml`. Needed when the compiler only builds with a std not merged yet (a syntax
+change). Not `SPP_`-prefixed: spp refuses an unregistered `SPP_` variable at startup ([[env-vars-registered]]).
+
+**Trap cases in `intrinsics.py`** (2026-11-17): a `Case(..., trap="<report>")` must stop the run (exit 134, the report
+in its log) instead of giving a value. Each is a program of its own (`trap<n>-<prog>`, listed in `traps.json` beside
+the manifest), as a stop ends the program; keep them few (one per type and operation). The shifts past the width use
+them since shifts are checked (shift-distance check 0x19).

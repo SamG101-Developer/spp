@@ -3,7 +3,7 @@ name: closure-return-types
 description: "Closures can declare a return type; without one their type is read off the body, which breaks variant returns"
 ---
 
-Added 2026-09-01. `(x: S32) -> Opt[S32] { ret Some(val=x + 1) }` - an optional `-> Type` on a closure, which
+Added 2026-09-01. `|x: S32| -> Opt[S32] { ret Some(val=x + 1) }` - an optional `-> Type` on a closure, which
 **requires the braced body**, because the type is what a `ret` is checked against and there has to be somewhere to
 write one. Parsed as two alternatives (`ParseClosureExpressionWithReturnType` / `..._without_...`).
 
@@ -14,7 +14,7 @@ or the body expression, decides - which is the old behaviour, untouched.
 
 ## Why it was needed
 
-A closure's return type used to be **only** inferable from its body, so `(x: S32) Some(val=x + 1)` is a
+A closure's return type used to be **only** inferable from its body, so `|x: S32| Some(val=x + 1)` is a
 `Fun[..., Some[S32]]`. Passing it where `Fun[..., Opt[S32]]` is wanted type-checks (a member satisfies the variant)
 but the representations differ, and nothing coerced: the IR had
 

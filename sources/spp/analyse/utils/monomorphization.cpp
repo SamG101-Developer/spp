@@ -1039,16 +1039,10 @@ auto spp::analyse::utils::monomorphization::EnforceFnInstantiationBounded(
 
 SPP_MOD_BEGIN
 spp::analyse::utils::monomorphization::InstantiationDepth::InstantiationDepth(
-  TypeAst const &at) {
-  ++instantiation_depth;
-  if (instantiation_depth > 128) {
-    --instantiation_depth;
-    Raise<errors::SppGenericInstantiationDepthError>(ERR_ARGS(at));
-  }
-}
-
-spp::analyse::utils::monomorphization::InstantiationDepth::~InstantiationDepth() {
-  --instantiation_depth;
+  TypeAst const &at) :
+  _Depth(instantiation_depth, instantiation_depth + 1) {
+  // "_Depth" is built, so a throw here restores the depth too.
+  RaiseIf<errors::SppGenericInstantiationDepthError>(instantiation_depth > 128, ERR_ARGS(at));
 }
 
 SPP_MOD_END

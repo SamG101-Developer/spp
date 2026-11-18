@@ -17,9 +17,9 @@ fun main() -> Void {
   let mut pass = 0_u64
   loop pass < passes {
     sum = v.iter_ref()
-      .map((x: &U64 caps &pass) x@ ^ pass@)
-      .filter((y: &U64) (y@ & 1_u64) == 1_u64)
-      .fold(sum, (acc: U64, y: U64) acc.add_wrapping(y))
+      .map(|x: &U64 caps &pass| x@ ^ pass@)
+      .filter(|y: &U64| (y@ & 1_u64) == 1_u64)
+      .fold(sum, |acc: U64, y: U64| acc.add_wrapping(y))
     pass += 1_u64
   }
   println("{}", sum)

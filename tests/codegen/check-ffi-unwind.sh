@@ -96,10 +96,10 @@ check() {
 
 for mode in dev rel; do
     check "${mode}" "thrown under a C++ handler" \
-        "thrower::guarded(std::cffi::CClosure[(), Void]::from(() -> Void { thrower::boom() }))" 134 \
+        "thrower::guarded(std::cffi::CClosure[(), Void]::from(|| -> Void { thrower::boom() }))" 134 \
         "[sppc] check failed: an exception unwound into s++ from 'boom'" "caught"
     check "${mode}" "callback that does not throw" \
-        "thrower::guarded(std::cffi::CClosure[(), Void]::from(() -> Void { thrower::calm() }))" 0 \
+        "thrower::guarded(std::cffi::CClosure[(), Void]::from(|| -> Void { thrower::calm() }))" 0 \
         "after" ""
     check "${mode}" "thrown with no handler" "thrower::boom()" 134 "terminate" "after"
 done

@@ -1,0 +1,4 @@
+description = "a[i] = a[i] * b[i] + 1 over two 4096-element Vec[F64], 25K times: a checked multiply and add per element, deferred to the loop's exit and vectorised; C and Rust do not check floats, so this is the checks' cost against IEEE's non-stop arithmetic"
+layer = "core"
+output = "exact"
+covers = ["codegen:llvm_pass_air"]

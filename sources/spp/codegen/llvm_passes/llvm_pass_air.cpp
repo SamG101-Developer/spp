@@ -25,47 +25,48 @@ import genex;
 
 namespace spp::codegen {
   namespace {
-    /// The checked intrinsic "check" is the overflow test of "r"
-    /// ("x op y") for, if any: a "*.with.overflow" of the same op and
-    /// operands, or a comparison true for exactly the "x" (and "y")
-    /// the op overflows for. InstCombine makes the comparisons, from an
-    /// intrinsic whose value went unused once "EmitCheckedArith"
-    /// returned the flagged op instead: LLVM's add-overflow shapes for
-    /// two variables ("m_UAddWithOverflow"), "x u< y" for an unsigned
-    /// subtract, and, for a constant operand, any test of "x" whose
-    /// truth set is the op's overflow set (a range: "x u> MAX - 1",
-    /// "x == MAX", ...), compared as ranges so no shape is missed. A
-    /// subtract of a constant may have become "x + -C".
+    /// The checked intrinsic "check" is the overflow test of "r" ("x op y")
+    /// for, if any: a "*.with.overflow" of the same op and operands, or a
+    /// comparison true for exactly the "x" (and "y") the op overflows for.
+    /// InstCombine makes the comparisons, from an intrinsic whose value went
+    /// unused once "EmitCheckedArith" returned the flagged op instead: LLVM's
+    /// add-overflow shapes for two variables ("m_UAddWithOverflow"), "x u< y"
+    /// for an unsigned subtract, and, for a constant operand, any test of "x"
+    /// whose truth set is the op's overflow set (a range: "x u> MAX - 1",
+    /// "x == MAX", ...), compared as ranges so no shape is missed. A subtract
+    /// of a constant may have become "x + -C".
     struct FusedCheck {
       llvm::Intrinsic::ID Id;
       llvm::Value *Rhs;
     };
 
-    /// One overflow check: the branch to its abort, and either the
-    /// checked add or subtract whose bit it branches on ("Op"), or a
-    /// comparison ("Bit") InstCombine made of one, the overflow test of a
-    /// flagged plain op ("OverflowCheckOf"): a multiply by a constant,
-    /// whose check is the multiplicand outside a range, which unlike the
-    /// intrinsic vectorises. "Results" are the flagged ops whose values
-    /// are wrong when it fails.
+    /// One overflow check: the branch to its abort, and either the checked add
+    /// or subtract whose bit it branches on ("Op"), or a comparison ("Bit")
+    /// InstCombine made of one, the overflow test of a flagged plain op
+    /// ("OverflowCheckOf"): a multiply by a constant, whose check is the
+    /// multiplicand outside a range, which unlike the intrinsic vectorises.
+    /// "Results" are the flagged ops whose values are wrong when it fails. A
+    /// float check ("FloatCheckOf") is a branch to a float abort on a flag
+    /// ("Bit") made from the results it tests, which are its "Results".
     struct Check {
       llvm::CondBrInst *Branch;
       llvm::WithOverflowInst *Op;
       llvm::Value *Bit;
-      Vec<llvm::BinaryOperator*> Results;
+      Vec<llvm::Instruction*> Results;
+      bool IsFloat;
     };
 
-    /// A loop's overflow checks, and the one edge out of it that is
-    /// not one: "Exiting" to "Exit".
+    /// A loop's overflow checks, and the one edge out of it that is not one:
+    /// "Exiting" to "Exit".
     struct LoopExits {
       Vec<Check> Checks;
       llvm::BasicBlock *Exiting;
       llvm::BasicBlock *Exit;
     };
 
-    /// One checked running sum: "Acc" in the loop's header, "Next"
-    /// ("Acc" plus "Addend", flagged) coming round, checked by "Op"
-    /// and its branch "Check" each time round.
+    /// One checked running sum: "Acc" in the loop's header, "Next" ("Acc" plus
+    /// "Addend", flagged) coming round, checked by "Op" and its branch "Check"
+    /// each time round.
     struct ExactSum {
       llvm::PHINode *Acc;
       llvm::BinaryOperator *Next;
@@ -74,8 +75,8 @@ namespace spp::codegen {
       llvm::CondBrInst *Check;
     };
 
-    /// A loop's checked running sums, its one real exit edge, and a
-    /// bound on how many times its back edge is taken.
+    /// A loop's checked running sums, its one real exit edge, and a bound on
+    /// how many times its back edge is taken.
     struct ExactLoop {
       llvm::Loop *Loop;
       Vec<ExactSum> Sums;
@@ -100,6 +101,27 @@ namespace spp::codegen {
   static constexpr auto kFirstOverflowKind = 0x10u;
 
   static constexpr auto kLastOverflowKind = 0x15u;
+
+  /// The runtime's numbers for the float checks: invalid, division by
+  /// zero, overflow and not finite ("FloatInvalid" and on in
+  /// "llvm_fn_impls.cpp"). Unlike an integer one, a float check defers
+  /// at any vector width: float compares vectorise on baseline x86-64
+  /// too.
+  static constexpr auto kFirstFloatKind = 0x20u;
+
+  static constexpr auto kLastFloatKind = 0x23u;
+
+  /// What a deferred float check reports ("FloatNotFinite"): a NaN or
+  /// an infinity, as the classifier that names which reads the result,
+  /// which is gone by the loop's exit.
+  static constexpr auto kFloatNotFiniteKind = 0x23u;
+
+  /// The fewest rounds a loop's float checks are deferred for: below
+  /// it the vectoriser leaves the loop scalar, where the flags cost
+  /// more than the predicted branches they replace.
+  static constexpr auto kFloatDeferMinTrips = 8u;
+
+
 
   /// The most iterations the split sums stay exact for: each part
   /// of an addend is at most 32 bits, so 2^32 of them fit 64 bits.
@@ -128,8 +150,48 @@ namespace spp::codegen {
   /// it is never taken for one.
   static auto FlaggedResultsOf(llvm::WithOverflowInst const *op) -> Vec<llvm::BinaryOperator*>;
 
+  /// Whether "abort" is where a failed check of one of the runtime's
+  /// kinds "first" to "last" goes.
+  static auto IsAbortOfKinds(llvm::BasicBlock const &abort, const unsigned first, const unsigned last) -> bool;
+
   /// Whether "abort" is where a failed overflow check goes.
   static auto IsOverflowAbort(llvm::BasicBlock const &abort) -> bool;
+
+  /// Whether "abort" is where a failed float check goes.
+  static auto IsFloatAbort(llvm::BasicBlock const &abort) -> bool;
+
+  /// One of the float aborts behind "bb", the cold block a float check
+  /// branches to ("EmitFloatCheck"): an abort, or a classifier that
+  /// only tests, through blocks that do nothing else, on its way to
+  /// float aborts. Null if "bb" is neither.
+  static auto FloatAbortBehind(llvm::BasicBlock const &bb) -> llvm::BasicBlock const*;
+
+  /// The float values the flag "cond" is made from, through the
+  /// comparisons, logic and "fabs" that make it (in "loop", if one is
+  /// given), and those flag instructions, into "flags".
+  static auto FloatResultsOf(llvm::Value *cond, llvm::Loop const *loop, Set<llvm::Value const*> &flags)
+    -> Vec<llvm::Instruction*>;
+
+  /// The float check "br" (to a float abort or classifier) makes: its
+  /// flag, and the float values it is made from (whose NaN or infinity
+  /// would be wrong).
+  static auto FloatCheckOf(llvm::CondBrInst *br, llvm::Loop const &loop) -> Check;
+
+  /// Whether a NaN or an infinity in "r" always reaches the result of
+  /// "user" (it never makes one finite): "+", "-", "*", the dividend of
+  /// "/" or "%" (an infinite divisor gives a finite quotient), or
+  /// "sqrt" (of an infinity, an infinity or a NaN).
+  static auto PassesNonFinite(llvm::Value const *r, llvm::User const *user) -> bool;
+
+  /// Whether "loop" can vectorise, as far as what keeps a float loop
+  /// scalar goes: not known to run fewer than "kFloatDeferMinTrips"
+  /// rounds, no float carried round in a phi (an ordered reduction:
+  /// floats keep source order), and no store to one address every
+  /// round (a recurrence through memory, such as "v[i] += f(j)" over
+  /// "j"). A float-checked loop that cannot keeps its branching checks,
+  /// nearly free there; deferred, each would be a flag ORed every
+  /// round ("nbody": 2.3x against 1.7x).
+  static auto CanVectoriseFloats(llvm::Loop const &loop, llvm::ScalarEvolution &se) -> bool;
 
   /// The overflow check "br" (to an overflow abort) makes, if it is
   /// one this pass can defer: the bit of a checked add or subtract, or
@@ -146,8 +208,8 @@ namespace spp::codegen {
   static auto FindLoopChecks(llvm::Loop const &loop) -> Opt<LoopExits>;
 
   /// Whether "loop" does nothing anyone else could see: no calls
-  /// but checked arithmetic and markers, and no volatile or atomic
-  /// memory access.
+  /// but checked arithmetic, markers and intrinsics that touch no
+  /// memory ("fabs", "sqrt"), and no volatile or atomic memory access.
   static auto HasNothingObservable(llvm::Loop const &loop) -> bool;
 
   /// Whether "ld" may read what one of "stores" wrote.
@@ -156,7 +218,8 @@ namespace spp::codegen {
   /// Whether a wrapped result of "checks" stays harmless until the
   /// loop's exit. Each result, everything computed from it, and
   /// every load that may read one back ("tainted") may feed only
-  /// more arithmetic, casts, selects (not their condition), other
+  /// more arithmetic (float comparisons and intrinsics that touch no
+  /// memory included), casts, selects (not their condition), other
   /// deferred checks (an op or a comparison: a tainted input means a
   /// check has already failed, whose flag aborts at the exit whatever
   /// this one says) and stored values: never a phi (so nothing is
@@ -174,7 +237,13 @@ namespace spp::codegen {
   /// would otherwise run forever instead of aborting), whose only
   /// other exits are the checks, that do nothing observable, and
   /// whose wrapped results stay harmless until the exit.
-  static auto FindDeferredChecks(llvm::Loop const &loop, llvm::ScalarEvolution &se, llvm::AAResults &aa) -> Opt<Vec<Check>>;
+  /// An integer check is deferred only when "integers" ("air_integers")
+  /// and either the vectors are "wide" or the loop has float checks too
+  /// (which make vectorising it worth deferring them all); a loop with
+  /// float checks only when it can vectorise ("CanVectoriseFloats").
+  static auto FindDeferredChecks(
+    llvm::Loop const &loop, llvm::ScalarEvolution &se, llvm::AAResults &aa, const bool wide, const bool integers)
+    -> Opt<Vec<Check>>;
 
   /// "op", a checked add or subtract, as plain arithmetic, with its
   /// overflow bit as a comparison: the vectoriser cannot widen
@@ -337,6 +406,68 @@ namespace spp::codegen {
       }
     };
 
+    /// Drop the float check of a "+", "-" or "*" whose result only goes
+    /// on into more checked float arithmetic that cannot lose a NaN or
+    /// an infinity ("PassesNonFinite"): that operation's check stops
+    /// it instead, so "a * b + c" is checked once, at the "+". A
+    /// non-finite value going into a checked operation stops it, so
+    /// none is ever observed; the check that stops it names the later
+    /// operation, as a rel build's AIR check names the observation
+    /// point. A division keeps its own check, so a division by zero is
+    /// still reported as one. Run after inlining, which puts the
+    /// operations (each an intrinsic's function) next to each other.
+    struct ElideChainedFloatChecksPass : llvm::PassInfoMixin<ElideChainedFloatChecksPass> {
+      static auto run(llvm::Function &fn, llvm::FunctionAnalysisManager &) -> llvm::PreservedAnalyses {
+        // Every float check, by the one result it tests, and the instructions making the flags.
+        auto checks = Map<llvm::Value const*, Vec<llvm::CondBrInst*>>();
+        auto flags = Set<llvm::Value const*>();
+        // Not a branch inside a classifier: LLVM rewrites its tests in terms of the operands ("sqrt(t)" a NaN
+        // as "t ult 0"), so one would look like a check of "t", and dropping it would change the kind reported.
+        for (auto &bb : fn) {
+          const auto br = llvm::dyn_cast<llvm::CondBrInst>(bb.getTerminator());
+          if (br == nullptr or FloatAbortBehind(*br->getSuccessor(0)) == nullptr) { continue; }
+          if (FloatAbortBehind(bb) != nullptr) { continue; }
+          const auto results = FloatResultsOf(br->getCondition(), nullptr, flags);
+          flags.insert(br);
+          if (results.size() == 1) { checks[results.front()].emplace_back(br); }
+        }
+
+        // A use only by checks: its flags (read by nothing else), or its classifier, which reads the result too.
+        const auto only_checks = [&](llvm::User const *u) {
+          const auto inst = llvm::cast<llvm::Instruction>(u);
+          if (FloatAbortBehind(*inst->getParent()) != nullptr) { return true; }
+          return flags.contains(u) and genex::all_of(u->users(), [&](llvm::User const *v) { return flags.contains(v); });
+        };
+        auto elided = Vec<llvm::CondBrInst*>();
+        for (auto const &[r, branches] : checks) {
+          const auto bo = llvm::dyn_cast<llvm::BinaryOperator>(r);
+          if (bo == nullptr or not genex::contains(
+            Vec{llvm::Instruction::FAdd, llvm::Instruction::FSub, llvm::Instruction::FMul}, bo->getOpcode())) {
+            continue;
+          }
+          // At least one later check, so every chain of dropped checks ends at one kept: an unused result keeps
+          // its check, as an unused integer overflow does.
+          auto later = 0uz;
+          const auto covered = genex::all_of(r->users(), [&](llvm::User const *u) {
+            if (only_checks(u)) { return true; }
+            ++later;
+            return PassesNonFinite(r, u) and checks.contains(u);
+          });
+          if (covered and later > 0) { elided.insert(elided.end(), branches.begin(), branches.end()); }
+        }
+
+        for (const auto br : elided) {
+          auto b = llvm::IRBuilder<>(br);
+          b.CreateBr(br->getSuccessor(1));
+          br->getSuccessor(0)->removePredecessor(br->getParent());
+          br->eraseFromParent();
+        }
+        if (elided.empty()) { return llvm::PreservedAnalyses::all(); }
+        llvm::EliminateUnreachableBlocks(fn);
+        return llvm::PreservedAnalyses::none();
+      }
+    };
+
     /// Defer the overflow checks of loops that can then vectorise. An
     /// s++ check failure aborts the process (nothing unwinds, nothing
     /// can catch it), so aborting at the loop's exit rather than at
@@ -346,13 +477,18 @@ namespace spp::codegen {
     /// before any is changed, so the analyses describe the function
     /// as it was.
     struct DeferOverflowChecksPass : llvm::PassInfoMixin<DeferOverflowChecksPass> {
-      static auto run(llvm::Function &fn, llvm::FunctionAnalysisManager &fam) -> llvm::PreservedAnalyses {
-        if (not IsWideEnough(fn, fam)) { return llvm::PreservedAnalyses::all(); }
+      /// Whether integer overflow checks are deferred ("air_integers"); float checks always are.
+      bool Integers;
+
+      auto run(llvm::Function &fn, llvm::FunctionAnalysisManager &fam) const -> llvm::PreservedAnalyses {
+        const auto wide = IsWideEnough(fn, fam);
         auto &se = fam.getResult<llvm::ScalarEvolutionAnalysis>(fn);
         auto &aa = fam.getResult<llvm::AAManager>(fn);
         auto found = Vec<Pair<llvm::Loop*, Vec<Check>>>();
         for (const auto loop : fam.getResult<llvm::LoopAnalysis>(fn).getLoopsInPreorder()) {
-          if (auto checks = FindDeferredChecks(*loop, se, aa)) { found.emplace_back(loop, std::move(*checks)); }
+          if (auto checks = FindDeferredChecks(*loop, se, aa, wide, Integers)) {
+            found.emplace_back(loop, std::move(*checks));
+          }
         }
         for (auto const &[loop, checks] : found) { DeferChecks(*loop, checks, fn); }
         return found.empty() ? llvm::PreservedAnalyses::all() : llvm::PreservedAnalyses::none();
@@ -470,18 +606,102 @@ auto spp::codegen::FlaggedResultsOf(llvm::WithOverflowInst const *op) -> Vec<llv
   return found;
 }
 
-auto spp::codegen::IsOverflowAbort(llvm::BasicBlock const &abort) -> bool {
+auto spp::codegen::IsAbortOfKinds(llvm::BasicBlock const &abort, const unsigned first, const unsigned last) -> bool {
   if (not IsAbortBlock(abort)) { return false; }
   auto const &call = llvm::cast<llvm::CallInst>(abort.front());
   const auto callee = call.getCalledFunction();
   if (callee == nullptr or callee->getName() != "sppc_check_failed" or call.arg_size() == 0) { return false; }
   const auto kind = llvm::dyn_cast<llvm::ConstantInt>(call.getArgOperand(0));
-  return kind != nullptr and kind->getZExtValue() >= kFirstOverflowKind and kind->getZExtValue() <= kLastOverflowKind;
+  return kind != nullptr and kind->getZExtValue() >= first and kind->getZExtValue() <= last;
+}
+
+auto spp::codegen::IsOverflowAbort(llvm::BasicBlock const &abort) -> bool {
+  return IsAbortOfKinds(abort, kFirstOverflowKind, kLastOverflowKind);
+}
+
+auto spp::codegen::IsFloatAbort(llvm::BasicBlock const &abort) -> bool {
+  return IsAbortOfKinds(abort, kFirstFloatKind, kLastFloatKind);
+}
+
+auto spp::codegen::FloatAbortBehind(llvm::BasicBlock const &bb) -> llvm::BasicBlock const* {
+  auto found = static_cast<llvm::BasicBlock const*>(nullptr);
+  auto other = false;
+  const auto path = IsAbortPath(bb, [&](llvm::BasicBlock const &b) {
+    if (IsFloatAbort(b)) { found = &b; }
+    else if (IsAbortBlock(b)) { other = true; }
+  });
+  return path and not other ? found : nullptr;
+}
+
+auto spp::codegen::FloatResultsOf(llvm::Value *cond, llvm::Loop const *loop, Set<llvm::Value const*> &flags)
+  -> Vec<llvm::Instruction*> {
+  auto results = Vec<llvm::Instruction*>();
+  auto seen = Set<llvm::Value const*>();
+  auto work = Vec<llvm::Value*>{cond};
+  while (not work.empty()) {
+    const auto v = work.back();
+    work.pop_back();
+    const auto inst = llvm::dyn_cast<llvm::Instruction>(v);
+    if (inst == nullptr or (loop != nullptr and not loop->contains(inst)) or not seen.insert(inst).second) { continue; }
+    const auto call = llvm::dyn_cast<llvm::IntrinsicInst>(inst);
+    const auto bo = llvm::dyn_cast<llvm::BinaryOperator>(inst);
+
+    // "r - r", the not-finite test's own subtract, is part of the flag.
+    const auto self_diff = bo != nullptr and bo->getOpcode() == llvm::Instruction::FSub
+      and bo->getOperand(0) == bo->getOperand(1);
+    if (llvm::isa<llvm::FCmpInst>(inst) or (call != nullptr and call->getIntrinsicID() == llvm::Intrinsic::fabs)
+      or (inst->getType()->isIntegerTy(1) and bo != nullptr) or self_diff) {
+      flags.insert(inst);
+      for (auto const &operand : inst->operands()) { work.emplace_back(operand.get()); }
+    }
+    else if (inst->getType()->isFloatingPointTy()) { results.emplace_back(inst); }
+  }
+  return results;
+}
+
+auto spp::codegen::FloatCheckOf(llvm::CondBrInst *br, llvm::Loop const &loop) -> Check {
+  auto flags = Set<llvm::Value const*>();
+  return Check{
+    .Branch = br, .Op = nullptr, .Bit = br->getCondition(), .Results = FloatResultsOf(br->getCondition(), &loop, flags),
+    .IsFloat = true};
+}
+
+auto spp::codegen::PassesNonFinite(llvm::Value const *r, llvm::User const *user) -> bool {
+  if (const auto call = llvm::dyn_cast<llvm::IntrinsicInst>(user)) { return call->getIntrinsicID() == llvm::Intrinsic::sqrt; }
+  const auto bo = llvm::dyn_cast<llvm::BinaryOperator>(user);
+  if (bo == nullptr) { return false; }
+  switch (bo->getOpcode()) {
+    case llvm::Instruction::FAdd:
+    case llvm::Instruction::FSub:
+    case llvm::Instruction::FMul: return true;
+    case llvm::Instruction::FDiv:
+    case llvm::Instruction::FRem: return bo->getOperand(0) == r and bo->getOperand(1) != r;
+    default: return false;
+  }
+}
+
+auto spp::codegen::CanVectoriseFloats(llvm::Loop const &loop, llvm::ScalarEvolution &se) -> bool {
+  if (const auto trips = se.getSmallConstantMaxTripCount(&loop); trips != 0 and trips < kFloatDeferMinTrips) {
+    return false;
+  }
+  for (auto const &phi : loop.getHeader()->phis()) {
+    if (phi.getType()->isFPOrFPVectorTy()) { return false; }
+  }
+  for (const auto bb : loop.blocks()) {
+    for (auto &inst : *bb) {
+      const auto st = llvm::dyn_cast<llvm::StoreInst>(&inst);
+      if (st != nullptr and se.isLoopInvariant(se.getSCEV(st->getPointerOperand()), &loop)) { return false; }
+    }
+  }
+  return true;
 }
 
 auto spp::codegen::CheckOf(llvm::CondBrInst *br, llvm::Loop const &loop) -> Opt<Check> {
+  if (FloatAbortBehind(*br->getSuccessor(0)) != nullptr) { return FloatCheckOf(br, loop); }
   if (const auto op = CheckedAddSubOf(br->getCondition()); op != nullptr) {
-    return Check{.Branch = br, .Op = op, .Bit = nullptr, .Results = FlaggedResultsOf(op)};
+    const auto results = FlaggedResultsOf(op);
+    return Check{
+      .Branch = br, .Op = op, .Bit = nullptr, .Results = {results.begin(), results.end()}, .IsFloat = false};
   }
   const auto cmp = llvm::dyn_cast<llvm::ICmpInst>(br->getCondition());
   if (cmp == nullptr or not loop.contains(cmp) or not IsOverflowAbort(*br->getSuccessor(0))) { return Nullopt; }
@@ -492,7 +712,7 @@ auto spp::codegen::CheckOf(llvm::CondBrInst *br, llvm::Loop const &loop) -> Opt<
       const auto op = r->getOpcode();
       if (op != llvm::Instruction::Add and op != llvm::Instruction::Sub and op != llvm::Instruction::Mul) { continue; }
       if (OverflowCheckOf(r, cmp).has_value()) {
-        return Check{.Branch = br, .Op = nullptr, .Bit = cmp, .Results = {r}};
+        return Check{.Branch = br, .Op = nullptr, .Bit = cmp, .Results = {r}, .IsFloat = false};
       }
     }
   }
@@ -505,11 +725,13 @@ auto spp::codegen::FindLoopChecks(llvm::Loop const &loop) -> Opt<LoopExits> {
   for (const auto bb : loop.blocks()) {
     for (const auto succ : llvm::successors(bb)) {
       if (loop.contains(succ)) { continue; }
+      // An abort, or a float check's classifier, whose aborts are what move to the exit.
       const auto br = llvm::dyn_cast<llvm::CondBrInst>(bb->getTerminator());
-      const auto check = br != nullptr and br->getSuccessor(0) == succ and IsAbortBlock(*succ)
+      const auto abort = IsAbortBlock(*succ) ? succ : FloatAbortBehind(*succ);
+      const auto check = br != nullptr and br->getSuccessor(0) == succ and abort != nullptr
         ? CheckOf(br, loop) : Nullopt;
       const auto movable = check.has_value() and genex::none_of(
-        llvm::cast<llvm::CallInst>(succ->front()).args(), [&](llvm::Use const &arg) {
+        llvm::cast<llvm::CallInst>(abort->front()).args(), [&](llvm::Use const &arg) {
           const auto inst = llvm::dyn_cast<llvm::Instruction>(arg.get());
           return inst != nullptr and loop.contains(inst);
         });
@@ -526,8 +748,11 @@ auto spp::codegen::HasNothingObservable(llvm::Loop const &loop) -> bool {
     for (auto const &inst : *bb) {
       if (const auto call = llvm::dyn_cast<llvm::CallBase>(&inst)) {
         const auto id = call->getIntrinsicID();
+        const auto pure_intrinsic = id != llvm::Intrinsic::not_intrinsic and call->doesNotAccessMemory();
         if (not llvm::isa<llvm::WithOverflowInst>(call) and id != llvm::Intrinsic::lifetime_start
-          and id != llvm::Intrinsic::lifetime_end and id != llvm::Intrinsic::assume) { return false; }
+          and id != llvm::Intrinsic::lifetime_end and id != llvm::Intrinsic::assume and not pure_intrinsic) {
+          return false;
+        }
       }
       else if (inst.isAtomic() or llvm::isa<llvm::FenceInst>(inst)) { return false; }
       else if (const auto ld = llvm::dyn_cast<llvm::LoadInst>(&inst); ld != nullptr and not ld->isSimple()) {
@@ -581,7 +806,10 @@ auto spp::codegen::IsTaintContained(llvm::Loop const &loop, Vec<Check> const &ch
           stores.emplace_back(st);
           continue;
         }
+        const auto intrinsic = llvm::dyn_cast<llvm::IntrinsicInst>(inst);
         const auto passes = (llvm::isa<llvm::BinaryOperator>(inst) and not inst->isIntDivRem())
+          or llvm::isa<llvm::UnaryOperator, llvm::FCmpInst>(inst)
+          or (intrinsic != nullptr and intrinsic->doesNotAccessMemory())
           or ops.contains(inst) or bits.contains(inst) or llvm::isa<llvm::CastInst, llvm::FreezeInst>(inst)
           or (llvm::isa<llvm::ExtractValueInst>(inst) and ops.contains(inst->getOperand(0)))
           or (llvm::isa<llvm::SelectInst>(inst) and llvm::cast<llvm::SelectInst>(inst)->getCondition() != v);
@@ -602,11 +830,18 @@ auto spp::codegen::IsTaintContained(llvm::Loop const &loop, Vec<Check> const &ch
   return true;
 }
 
-auto spp::codegen::FindDeferredChecks(llvm::Loop const &loop, llvm::ScalarEvolution &se, llvm::AAResults &aa) -> Opt<Vec<Check>> {
+auto spp::codegen::FindDeferredChecks(
+  llvm::Loop const &loop, llvm::ScalarEvolution &se, llvm::AAResults &aa, const bool wide, const bool integers)
+  -> Opt<Vec<Check>> {
   if (not loop.isInnermost() or loop.getLoopPreheader() == nullptr) { return Nullopt; }
   if (llvm::isa<llvm::SCEVCouldNotCompute>(se.getSymbolicMaxBackedgeTakenCount(&loop))) { return Nullopt; }
   auto exits = FindLoopChecks(loop);
-  if (not exits or not HasNothingObservable(loop) or not IsTaintContained(loop, exits->Checks, aa)) { return Nullopt; }
+  if (not exits) { return Nullopt; }
+  const auto has_float = genex::any_of(exits->Checks, [](auto const &c) { return c.IsFloat; });
+  const auto has_integer = genex::any_of(exits->Checks, [](auto const &c) { return not c.IsFloat; });
+  if (has_integer and (not integers or not (wide or has_float))) { return Nullopt; }
+  if (has_float and not CanVectoriseFloats(loop, se)) { return Nullopt; }
+  if (not HasNothingObservable(loop) or not IsTaintContained(loop, exits->Checks, aa)) { return Nullopt; }
   return exits->Checks;
 }
 
@@ -662,6 +897,20 @@ auto spp::codegen::DeferChecks(llvm::Loop const &loop, Vec<Check> const &checks,
   auto entry = llvm::IRBuilder<>(&fn.getEntryBlock(), fn.getEntryBlock().getFirstInsertionPt());
   auto pre = llvm::IRBuilder<>(loop.getLoopPreheader()->getTerminator());
   auto flags = Vec<Pair<llvm::BasicBlock*, llvm::AllocaInst*>>();
+
+  // A float check's classifier reads the result, gone by the exit: its flag aborts through a copy of one of its
+  // aborts reporting "not finite", for the same operation and width. Only copied from (at the exit), then removed.
+  auto not_finite = Map<llvm::BasicBlock*, llvm::BasicBlock*>();
+  const auto abort_of = [&](llvm::BasicBlock *fail) {
+    if (IsAbortBlock(*fail)) { return fail; }
+    if (const auto found = not_finite.find(fail); found != not_finite.end()) { return found->second; }
+    auto map = llvm::ValueToValueMapTy();
+    const auto abort = llvm::CloneBasicBlock(FloatAbortBehind(*fail), map, ".not_finite", &fn);
+    auto &call = llvm::cast<llvm::CallInst>(abort->front());
+    call.setArgOperand(0, llvm::ConstantInt::get(call.getArgOperand(0)->getType(), kFloatNotFiniteKind));
+    not_finite.emplace(fail, abort);
+    return abort;
+  };
   const auto flag_of = [&](llvm::BasicBlock *fail) {
     const auto found = genex::find_if(flags, [&](auto const &f) { return f.first == fail; });
     if (found != flags.end()) { return found->second; }
@@ -671,17 +920,22 @@ auto spp::codegen::DeferChecks(llvm::Loop const &loop, Vec<Check> const &checks,
     return flag;
   };
 
-  for (auto const &[br, op, bit, results] : checks) {
-    const auto flag = flag_of(br->getSuccessor(0));
+  for (auto const &[br, op, bit, results, is_float] : checks) {
+    const auto flag = flag_of(abort_of(br->getSuccessor(0)));
     auto overflowed = bit;
     if (op != nullptr) { overflowed = LowerCheckedOp(op); }
     else { for (const auto result : results) { result->dropPoisonGeneratingFlags(); } }
     auto b = llvm::IRBuilder<>(br);
     b.CreateStore(b.CreateOr(b.CreateLoad(b.getInt1Ty(), flag), overflowed, "air.any"), flag);
     b.CreateBr(br->getSuccessor(1));
+    br->getSuccessor(0)->removePredecessor(br->getParent());
     br->eraseFromParent();
   }
   TestFlagsAtExit(loop, flags, fn);
+
+  // The copied-from aborts, and the classifiers left with no way in: a classifier reads its result from inside the
+  // loop, which nothing outside it may once the loop is in closed form again.
+  llvm::EliminateUnreachableBlocks(fn);
 }
 
 auto spp::codegen::FindExactSums(llvm::Loop &loop, llvm::ScalarEvolution &se) -> Opt<ExactLoop> {
@@ -834,17 +1088,20 @@ auto spp::codegen::AddCheckedFusePasses(
 }
 
 auto spp::codegen::AddAirPasses(
-  llvm::FunctionPassManager &fpm) -> void {
+  llvm::FunctionPassManager &fpm, const bool integers) -> void {
   // Both passes need each loop's preheader and single latch, which
   // loops need not have by now, and the exact sums need closed form
   // (a value leaving the loop only through the exit's phis). The
   // deferral's flags are promoted at once, and the loops put back in
   // the closed form the vectoriser reads.
+  fpm.addPass(ElideChainedFloatChecksPass());
   fpm.addPass(llvm::LoopSimplifyPass());
   fpm.addPass(llvm::LCSSAPass());
-  fpm.addPass(ExactSumsPass());
-  fpm.addPass(llvm::LoopSimplifyPass());
-  fpm.addPass(DeferOverflowChecksPass());
+  if (integers) {
+    fpm.addPass(ExactSumsPass());
+    fpm.addPass(llvm::LoopSimplifyPass());
+  }
+  fpm.addPass(DeferOverflowChecksPass{.Integers = integers});
   fpm.addPass(llvm::PromotePass());
   fpm.addPass(llvm::LCSSAPass());
 }

@@ -1,0 +1,19 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let mut a = Vec[F64]::new_filled(black_box(4096_uz), black_box(0.5_f64))
+  let b = Vec[F64]::new_filled(black_box(4096_uz), black_box(0.5_f64))
+  let mut pass = 0_s64
+  loop pass < black_box(25000_s64) {
+    let mut i = 0_uz
+    loop i < a.len() {
+      a[mut i]@ = a[i]@ * b[i]@ + 1.0_f64
+      i += 1_uz
+    }
+    pass += 1_s64
+  }
+  println("{}", std::intrinsics::bit_cast[U64](a[0_uz]@) + std::intrinsics::bit_cast[U64](a[4095_uz]@))
+  drop(a)
+  drop(b)
+}

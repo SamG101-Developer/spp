@@ -5,6 +5,7 @@ export module spp.analyse.utils.monomorphization;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.packs;
 import spp.asts.meta.compiler_meta_data;
+import spp.utils.functions;
 import spp.utils.ptr;
 import spp.utils.types;
 import std;
@@ -34,9 +35,9 @@ namespace spp::analyse::utils::monomorphization {
   SPP_EXP_CLS class InstantiationDepth {
   public:
     explicit InstantiationDepth(TypeAst const &at);
-    ~InstantiationDepth();
-    InstantiationDepth(InstantiationDepth const &) = delete;
-    auto operator=(InstantiationDepth const &) -> InstantiationDepth& = delete;
+
+  private:
+    spp::utils::functions::ScopedAssign<std::size_t> _Depth;
   };
 
   /// Entry point for monomorphizing a type, which in turn uses a

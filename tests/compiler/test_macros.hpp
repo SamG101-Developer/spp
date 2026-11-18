@@ -87,6 +87,8 @@ namespace spp_test {
         << "An error block points at generated code:\n" << block;
       EXPECT_EQ(block.find("<end of file>"), std::string::npos)
         << "An error block points past the end of the file:\n" << block;
+      EXPECT_EQ(block.find("in the prelude"), std::string::npos)
+        << "An error block points into the prelude:\n" << block;
       if (not is_error) { continue; }
 
       const auto q1 = block.find('\'');

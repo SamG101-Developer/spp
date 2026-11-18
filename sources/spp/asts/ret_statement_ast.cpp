@@ -96,19 +96,26 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
     function_flavour->TokenType != lex::SppTokenType::KW_FUN and Expr != nullptr,
     ERR_ARGS(*function_flavour, *TokRet));
 
+  // What is returned into: the enclosing function's return type, with "Self"
+  // read where it is written. Closures have no declared return type (it is
+  // inferred from the "ret" expression), so there may be none. A bare "ret" is
+  // checked against it too, as a "Void": it was checked against "Void" itself,
+  // so "fun f() -> S32 { ret }" passed analysis.
+  auto ret_target = meta->EnclosingFnRetType;
+  if (ret_target != nullptr) {
+    ret_target = self_type::SubstituteSelf(
+      *ret_target, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope, sm, meta);
+  }
+
   // Analyse the expression if it exists, and determine the type of the expression.
   auto expr_type = VoidAt(PosStart());
-  _RetType = VoidAt(PosStart());
+  _RetType = ret_target != nullptr ? ret_target : VoidAt(PosStart());
+  Source._OriginalRetType = meta->EnclosingFnSourceRetType;
   if (Expr != nullptr) {
     const auto _meta_guard = MetaGuard(meta);
 
-    // For case conditions, we need an assignment target in case of variants. Closures have no declared return
-    // type (it is inferred from the "ret" expression), so there may be no assignment target type available.
-    meta->AssignmentTargetType = meta->EnclosingFnRetType;
-    if (meta->AssignmentTargetType != nullptr) {
-      meta->AssignmentTargetType = self_type::SubstituteSelf(
-        *meta->AssignmentTargetType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope, sm, meta);
-    }
+    // For case conditions, we need an assignment target in case of variants.
+    meta->AssignmentTargetType = ret_target;
     meta->AssignmentTarget = meta->AssignmentTargetType
       ? IdentifierAst::FromType(*meta->AssignmentTargetType)
       : nullptr;
@@ -121,9 +128,6 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
 
     Expr->Stage7_AnalyseSemantics(sm, meta);
     expr_type = Expr->InferType(sm, meta);
-
-    _RetType = meta->AssignmentTargetType;
-    Source._OriginalRetType = meta->EnclosingFnSourceRetType;
   }
 
   // Functions provide the return type; a closure with none written has its "ret"s agree on one ("ClosureRetJoin"),
@@ -146,7 +150,8 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
     const auto expr_for_err = Expr ? Expr->To<Ast>() : TokRet->To<Ast>();
     RaiseIf<SppTypeMismatchError>(
       not direct_match,
-      ERR_ARGS(*Source._OriginalRetType, *_RetType, *expr_for_err, *expr_type));
+      ERR_ARGS(Source._OriginalRetType != nullptr ? *Source._OriginalRetType : *_RetType, *_RetType, *expr_for_err,
+        *expr_type));
 
     // A function named as the value stands for the overload the
     // return type asks for.

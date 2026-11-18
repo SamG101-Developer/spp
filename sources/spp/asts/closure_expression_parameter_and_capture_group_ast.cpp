@@ -78,12 +78,12 @@ spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParame
 spp::asts::ClosureExpressionParameterAndCaptureGroupAst::~ClosureExpressionParameterAndCaptureGroupAst() = default;
 
 auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::PosStart() const -> std::size_t {
-  // Use the "[" token.
+  // Use the opening "|" token.
   return TokL->PosStart();
 }
 
 auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::PosEnd() const -> std::size_t {
-  // Use the "]" token.
+  // Use the closing "|" token.
   return TokR->PosEnd();
 }
 

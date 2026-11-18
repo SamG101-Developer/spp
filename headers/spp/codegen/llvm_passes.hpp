@@ -37,7 +37,7 @@ namespace spp::codegen {
   /// CPU (if available), and the optimisation level too.
   auto RunOptimizationPipeline(
     void *llvm_module, void *target_machine, unsigned opt_level,
-    void (*after_coro_split)(void *llvm_module), bool air_integers) -> void;
+    void (*after_coro_split)(void *llvm_module), bool air_integers, bool float_checks) -> void;
 
   /// Copy "src_module" into "dest_module" (both opaque "llvm::Module" pointers,
   /// sharing one context), so the optimiser can see across what were separate
@@ -73,10 +73,12 @@ namespace spp::codegen {
   /// Add the AIR passes to "fpm", a function pipeline run at the vectoriser's
   /// start, once inlining and the loop passes have left loops as simple as they
   /// will be: checked running sums computed exactly, and the overflow checks of
-  /// a loop that does nothing observable moved to its exit. Both act only where
-  /// vectors are 256 bits wide. Every overflow that matters still aborts, with
-  /// its check's kind, before anything sees it.
-  auto AddAirPasses(FunctionPassManager &fpm) -> void;
+  /// a loop that does nothing observable moved to its exit. The integer ones
+  /// ("integers": "air_integers") act only where vectors are 256 bits wide;
+  /// float checks ("float_checks") are deferred at any width, as float compares
+  /// vectorise on baseline x86-64. Every overflow that matters still aborts,
+  /// with its check's kind, before anything sees it.
+  auto AddAirPasses(FunctionPassManager &fpm, bool integers) -> void;
 
   /// Add the pass that puts each checked op back together for the backend to
   /// "mpm", run at the very end of the optimiser. A checked op's result is
@@ -101,6 +103,13 @@ namespace spp::codegen {
   /// A block that only aborts: one call to a function that does not return,
   /// then "unreachable". Every S++ runtime check fails into one.
   auto IsAbortBlock(llvm::BasicBlock const &bb) -> bool;
+
+  /// Whether every way on from "bb" aborts: an abort block, or blocks that do
+  /// nothing but test (no side effects) on the way to abort blocks, such as a
+  /// float check's classifier naming the kind. "each" is called for every block
+  /// of it, the aborts included (meaningful only when the answer is true).
+  auto IsAbortPath(
+    llvm::BasicBlock const &bb, llvm::function_ref<void(llvm::BasicBlock const &)> each) -> bool;
 
   /// Create a fast version, and original version of the loop. If we can
   /// determine how many times the loop will run (at runtime), then we can

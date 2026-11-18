@@ -64,7 +64,7 @@ auto spp::asts::GenericParameterTypeConstraintsAst::Clone() const -> Unique<Ast>
 auto spp::asts::GenericParameterTypeConstraintsAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokColon);
-  SPP_STRING_EXTEND(Constraints, " & ");
+  SPP_STRING_EXTEND(Constraints, " and ");
   SPP_STRING_END;
 }
 

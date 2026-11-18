@@ -1,7 +1,7 @@
 ---
 name: spp-codegen-cross-module-and-inherited
-description: "Codegen invariants - globals mirrored per module, bodies emitted into ctx->Module (own walk), an inherited by-value self needs a type bridge"
-updated: 2026-11-10
+description: "Codegen invariants - globals mirrored per module, bodies emitted into ctx->Module (own walk), an inherited method is compiled per receiver"
+updated: 2026-11-13
 ---
 
 Both found by the `std::net` test pass (2026-09-06) and both fixed; the invariants are worth keeping in mind.
@@ -17,27 +17,19 @@ Both found by the `std::net` test pass (2026-09-06) and both fixed; the invarian
   helpers, intrinsics and mirrored globals there. `GetEmissionModule` (the insert point's module) covered the time
   when it was not, and was removed 2026-11-10; subroutine and coroutine `Stage11_CodeGen` raise an Ice if a body's
   function is in another module.
-- **A method reached by superimposition is generated once, for the type that declared it** - unless its signature
-  names `Self`, in which case `SignatureNamesSelf` (in `overload_resolution.cpp`) pins `Self` to the receiver and the
-  monomorphiser mints a per-receiver copy, mangled `#[Self=<receiver>]#`. A **by-value `self` now counts as naming
-  `Self` too**: without that, a call on a superimposing type handed the derived struct to a signature naming the base
-  one, which is invalid ir ("Call parameter type does not match function signature"). It cost `std::net` everything -
-  `close(self)`/`drop(self)` are the only consuming operations on a socket, so under linear typing no socket could be
-  disposed of at all. A borrowed `self` needs nothing (an opaque pointer either way), and the inner
-  `not TypeEq(declared_self, receiver)` guard means nothing is minted where the receiver *is* the declaring type - so
-  the cost is one extra copy per (by-value-`self` method x superimposing type) and zero otherwise. In `net` that is
-  `close` and `drop` across three socket types: six functions out of ~2150.
-
-  **Correction (2026-09-25): "a borrowed `self` needs nothing" is wrong.** The pointer is opaque, but the body is
-  still compiled once against the declaring class, so (a) its field GEPs use the *base's* sorted layout while the
-  derived struct is sorted independently - a base accessor on a derived receiver reads the wrong offset - and (b) a
-  call inside it resolves against the base's overload set, so an inherited `!virtual_method` default never reaches the
-  derived override. Both are reachable only when the base declares **no** abstract method, because
-  `declared_on_abstract` in `PinSelfToReceiver` otherwise mints the per-receiver copy anyway. Confirmed in the emitted
-  ir, not by running. Red tests in `project/tst/regression/codegen.spp`
-  (`test_inherited_borrowed_self_method_reads_the_derived_layout`,
-  `test_inherited_default_method_reaches_the_override`), Todo at `SignatureNamesSelf`, background in
-  `.triages/docs_open/dyn-dispatch-design.md`.
+- **A method reached by superimposition is compiled per receiver.** `PinSelfToReceiver` (`overload_resolution.cpp`)
+  pins `Self` to the receiver for any function called on a type other than the one declaring it, whether it reads
+  `Self` through a `self` parameter, its signature or only its body, so the monomorphiser mints a per-receiver copy,
+  mangled `#[Self=<receiver>]#`; nothing is minted where the receiver *is* the declaring type. It replaced
+  `SignatureNamesSelf`/`declared_on_abstract` on 2026-10-09 (open-bugs #19). Before that a borrowed `self` pinned
+  nothing, so the body was compiled once against the declaring class: its field GEPs used the *base's* sorted layout
+  (`SortMembersForSppLayout` orders each class's fields independently) and its calls resolved against the base's
+  overload set, so an inherited `!virtual_method` default never reached the override. A by-value `self` that pinned
+  nothing was invalid ir outright ("Call parameter type does not match function signature"), which cost `std::net`
+  its `close(self)`/`drop(self)`. Pinned by `test_inherited_borrowed_self_method_reads_the_derived_layout` and
+  `test_inherited_default_method_reaches_the_override` in `project/tst/regression/codegen.spp`. This is option A in
+  `.triages/docs_open/dyn-dispatch-design.md`, and it is why a `dyn` vtable needs a slot for every method, not only
+  abstract and virtual ones.
 
   An earlier fix reinterpreted the argument through memory at the call site instead, guarded on equal
   `getTypeStoreSize`. It worked only because a base contributing all the attributes gives an identical layout, and it

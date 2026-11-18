@@ -95,7 +95,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   SppMemoryOverlapUsageError, ALIAS_ROUTES_PRELUDE R"(
     fun t() -> Void {
         let mut x = 1_s32
-        let c = (caps &mut x) { x@ = 2_s32 }
+        let c = |caps &mut x| { x@ = 2_s32 }
         write(&mut x)
         c()
     }
@@ -108,7 +108,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   SppMemoryOverlapUsageError, ALIAS_ROUTES_PRELUDE R"(
     fun t() -> Void {
         let mut x = 1_s32
-        take_c((caps &mut x) { x@ = 2_s32 }, &mut x)
+        take_c(|caps &mut x| { x@ = 2_s32 }, &mut x)
     }
 )");
 
@@ -119,7 +119,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   SppMemoryOverlapUsageError, ALIAS_ROUTES_PRELUDE R"(
     fun t() -> Void {
         let mut x = 1_s32
-        take_c2(&mut x, (caps &mut x) { x@ = 2_s32 })
+        take_c2(&mut x, |caps &mut x| { x@ = 2_s32 })
     }
     fun take_c2(y: &mut S32, c: FunMut[(), Void]) -> Void { std::mem::ops::drop(c) }
 )");

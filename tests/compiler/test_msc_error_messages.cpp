@@ -1,5 +1,7 @@
 #include "test_macros.hpp"
 
+import spp.parse.errors.parser_error;
+
 namespace {
   /// Compile "code", expect a type mismatch, and answer its
   /// message as plain text (empty, and a failure, if none).
@@ -97,6 +99,27 @@ TEST(TestErrorMessages, test_reimporting_a_prelude_name_points_at_the_authors_im
   EXPECT_NE(text.find("The prelude already imports"), std::string::npos) << text;
   EXPECT_EQ(text.find("<end of file>"), std::string::npos) << text;
   EXPECT_EQ(text.find("First "), std::string::npos) << text;
+}
+
+// A file that ends early (an unclosed "{") runs the parser on into the prelude appended behind it: the syntax error is
+// at the end of the file, not in the prelude (which would blame a compiler and std that do not match).
+
+TEST(TestErrorMessages, test_an_unclosed_brace_is_reported_at_the_end_of_the_file) {
+  auto text = spp::Str();
+  try {
+    build_temp_project(R"(
+    fun f() -> Void {
+        let x = 1
+)");
+  }
+  catch (spp::parse::errors::SppSyntaxError const &e) {
+    text = spp_test::StripAnsi(e.what());
+  }
+  ASSERT_FALSE(text.empty()) << "Expected a syntax error.";
+  EXPECT_NE(text.find("at the end of the file"), std::string::npos) << text;
+  EXPECT_NE(text.find("got the end of the file"), std::string::npos) << text;
+  EXPECT_EQ(text.find("in the prelude"), std::string::npos) << text;
+  EXPECT_EQ(text.find("use std::"), std::string::npos) << text;
 }
 
 // An error's context blocks come before its own block, and the note and help close it.

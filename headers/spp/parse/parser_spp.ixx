@@ -445,6 +445,8 @@ public:
   auto ParseTokenLeftCurlyBrace() -> Unique<TokenAst>;
   auto ParseTokenRightCurlyBrace() -> Unique<TokenAst>;
   auto ParseTokenLeftParenthesis() -> Unique<TokenAst>;
+
+  auto ParseTokenVerticalBar() -> Unique<TokenAst>;
   auto ParseTokenRightParenthesis() -> Unique<TokenAst>;
   auto ParseTokenLeftSquareBracket() -> Unique<TokenAst>;
   auto ParseTokenRightSquareBracket() -> Unique<TokenAst>;

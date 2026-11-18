@@ -56,6 +56,11 @@ namespace spp::compiler::dependencies {
     Path const &root,
     FuncRef<bool(Request const&)> visit) -> Opt<Vec<Dependency>>;
 
+  /// The first line of a checkout's ".git/HEAD", trailing space removed. None
+  /// when there is none: a ".git" that is a file (a worktree or submodule)
+  /// points elsewhere, so is not read.
+  static auto ReadHead(Path const &folder) -> Opt<Str>;
+
   /// The name the "spp.toml" at "root" gives its own project.
   static auto ProjectName(Path const &root) -> Str;
 
@@ -157,7 +162,7 @@ auto spp::compiler::dependencies::Walk(
   Path const &root,
   FuncRef<bool(Request const&)> visit) -> Opt<Vec<Dependency>> {
   // The "seen" map stores the name against the request. The "pending" list
-  // contains ___.
+  // holds the requests not yet visited, in the order they were first seen.
   auto seen = Map<Str, Request>();
   auto pending = Vec<Request>();
 
@@ -334,6 +339,17 @@ auto spp::compiler::dependencies::Validate(
         ok = false;
       }
     }
+    // A branch dependency on another branch (a "--skip-vcs" build after the
+    // branch changed) is refused the same way. One with no branch to read (a
+    // copied folder, a detached HEAD) is left alone: unlike a pin, a branch
+    // does not name the code it holds anyway.
+    else if (const auto on = FindCheckedOutBranch(record.Folder); on.has_value() and *on != record.Branch) {
+      std::cerr
+        << "Error: the dependency '" << record.Name << "', declared by " << request.By
+        << ", is on branch '" << record.Branch << "' but checked out on '" << *on << "'.\n"
+        << "  Run 'spp vcs' to check out its branch.\n";
+      ok = false;
+    }
     return true;
   });
   if (not visited.has_value()) { return false; }
@@ -347,16 +363,29 @@ auto spp::compiler::dependencies::Validate(
   return ok;
 }
 
-auto spp::compiler::dependencies::FindCheckedOutRev(
+auto spp::compiler::dependencies::ReadHead(
   Path const &folder) -> Opt<Str> {
-  // A detached HEAD holds the commit itself; on a branch it holds
-  // "ref: refs/heads/<branch>" instead. A ".git" that is a file (a worktree or
-  // submodule) points elsewhere, so is not read.
   const auto head = folder / ".git" / "HEAD";
   if (not std::filesystem::is_regular_file(head)) { return Nullopt; }
   auto text = Str();
   std::getline(std::ifstream(head), text);
   while (not text.empty() and std::isspace(static_cast<unsigned char>(text.back()))) { text.pop_back(); }
-  if (not IsFullRev(text)) { return Nullopt; }
-  return Lowered(std::move(text));
+  return text;
+}
+
+auto spp::compiler::dependencies::FindCheckedOutRev(
+  Path const &folder) -> Opt<Str> {
+  // A detached HEAD holds the commit itself; on a branch it holds
+  // "ref: refs/heads/<branch>" instead.
+  const auto head = ReadHead(folder);
+  if (not head.has_value() or not IsFullRev(*head)) { return Nullopt; }
+  return Lowered(*head);
+}
+
+auto spp::compiler::dependencies::FindCheckedOutBranch(
+  Path const &folder) -> Opt<Str> {
+  static constexpr auto kBranchRef = StrView("ref: refs/heads/");
+  const auto head = ReadHead(folder);
+  if (not head.has_value() or not head->starts_with(kBranchRef)) { return Nullopt; }
+  return head->substr(kBranchRef.size());
 }

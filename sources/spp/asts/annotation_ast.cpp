@@ -453,6 +453,13 @@ auto spp::asts::AnnotationAst::_CheckTarget(
   RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
     _Ctx->To<CmpStatementAst>() and not(allowed_ctx & AnnotationInfo::kCmpStmtCtx),
     ERR_ARGS(*_Ctx, *this, *target));
+
+  // Error for incompatible asts when sup blocks are not valid
+  // targets.
+  RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
+    (_Ctx->To<SupPrototypeFunctionsAst>() or _Ctx->To<SupPrototypeExtensionAst>())
+    and not(allowed_ctx & AnnotationInfo::kSupCtx),
+    ERR_ARGS(*_Ctx, *this, *target));
 }
 
 SPP_MOD_END

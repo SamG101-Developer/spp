@@ -16,6 +16,7 @@ use_alias(spp::asts::meta, CompilerMetaData);
 namespace spp::codegen::builtins {
   namespace ct = analyse::utils::comp_time_intrinsics;
   using fn_impls::AtomicRmwOp;
+  using fn_impls::FloatMathFn;
   using fn_impls::BinOp;
   using fn_impls::ConvOp;
   using fn_impls::UnOp;
@@ -48,7 +49,13 @@ namespace spp::codegen::builtins {
 
   static auto OverflowIntrinsic(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn;
 
+  /// "op" ("FAdd", ...) with whether it raised a float exception; "unary" for the square root.
+  static auto FloatRaised(const BinOp op, const bool unary) -> LlvmImplFn;
+
   static auto UnaryIntrinsic(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn;
+
+  /// A maths function, checked as float arithmetic is ("*_ieee" is the plain intrinsic).
+  static auto FloatMath(const FloatMathFn math) -> LlvmImplFn;
 
   static auto BitCount(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn;
 
@@ -56,7 +63,7 @@ namespace spp::codegen::builtins {
 
   static auto AtomicRmw(const AtomicRmwOp op) -> LlvmImplFn;
 
-  static auto CoroIter(const bool reverse, const bool borrow) -> LlvmImplFn;
+  static auto CoroIter(const bool reverse) -> LlvmImplFn;
 
   static auto CoroViewIter(const bool reverse, const bool borrow) -> LlvmImplFn;
 
@@ -138,6 +145,20 @@ auto spp::codegen::builtins::OverflowIntrinsic(
   };
 }
 
+auto spp::codegen::builtins::FloatRaised(
+  const BinOp op, const bool unary) -> LlvmImplFn {
+  return [op, unary](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleFloatRaised(sm, proto, meta, ctx, ty, op, unary);
+  };
+}
+
+auto spp::codegen::builtins::FloatMath(
+  const FloatMathFn math) -> LlvmImplFn {
+  return [math](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleCheckedFloatMath(sm, proto, meta, ctx, ty, math);
+  };
+}
+
 auto spp::codegen::builtins::UnaryIntrinsic(
   const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
   return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
@@ -167,9 +188,9 @@ auto spp::codegen::builtins::AtomicRmw(
 }
 
 auto spp::codegen::builtins::CoroIter(
-  const bool reverse, const bool borrow) -> LlvmImplFn {
-  return [reverse, borrow](auto sm, auto proto, auto meta, auto ctx, auto) {
-    fn_impls::SimpleCoroIter(sm, proto, meta, ctx, reverse, borrow);
+  const bool reverse) -> LlvmImplFn {
+  return [reverse](auto sm, auto proto, auto meta, auto ctx, auto) {
+    fn_impls::SimpleCoroIter(sm, proto, meta, ctx, reverse);
   };
 }
 
@@ -197,8 +218,8 @@ auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
   auto map = Map<Str, LoweredFnImpl>{};
 
   Register(map, "std.array.Arr.new", fn_impls::StdArrayNew);
-  Register(map, "std.array.Arr.iter_mov", CoroIter(false, false));
-  Register(map, "std.array.Arr.reverse_iter_mov", CoroIter(true, false));
+  Register(map, "std.array.Arr.iter_mov", CoroIter(false));
+  Register(map, "std.array.Arr.reverse_iter_mov", CoroIter(true));
   Register(map, "std.array.Arr.fwd_ref", Untyped(fn_impls::SimpleCoroArrayFwd));
   Register(map, "std.array.Arr.fwd_mut", Untyped(fn_impls::SimpleCoroArrayFwd));
 
@@ -347,7 +368,7 @@ auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
   Register(
     map, "std.intrinsics.ne", Binop(BinOp::ICmpNE), ct::MakeCompTimeFn(ct::StdIntrinsicsNe));
   Register(
-    map, "std.intrinsics.one", Binop(BinOp::FCmpONE), ct::MakeCompTimeFn(ct::StdIntrinsicsOne));
+    map, "std.intrinsics.une", Binop(BinOp::FCmpUNE), ct::MakeCompTimeFn(ct::StdIntrinsicsUne));
   Register(
     map, "std.intrinsics.slt", Binop(BinOp::ICmpSLT), ct::MakeCompTimeFn(ct::StdIntrinsicsLt));
   Register(
@@ -388,66 +409,88 @@ auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
     map, "std.intrinsics.scmp", fn_impls::StdIntrinsicsScmp, ct::MakeCompTimeFn(ct::StdIntrinsicsCmp));
   Register(
     map, "std.intrinsics.ucmp", fn_impls::StdIntrinsicsUcmp, ct::MakeCompTimeFn(ct::StdIntrinsicsCmp));
+  // Float arithmetic is checked as integer arithmetic is (when "[binary.codegen] float_checks" is on): "float_add" and
+  // the rest stop on IEEE's invalid, division-by-zero and overflow exceptions. "*_ieee" is IEEE's non-stop result,
+  // as "*_wrapping" is for integers, and "*_raised" the result and whether it raised, as "*_overflow" is.
   Register(
-    map, "std.intrinsics.float_add", Binop(BinOp::FAdd), ct::MakeCompTimeFn(ct::StdIntrinsicsFadd));
+    map, "std.intrinsics.float_add", Binop(BinOp::FAddChecked), ct::MakeCompTimeFn(ct::StdIntrinsicsFadd));
   Register(
-    map, "std.intrinsics.float_add_assign", BinopAssign(BinOp::FAdd), ct::MakeCompTimeFn(ct::StdIntrinsicsFaddAssign));
+    map, "std.intrinsics.float_add_assign", BinopAssign(BinOp::FAddChecked),
+    ct::MakeCompTimeFn(ct::StdIntrinsicsFaddAssign));
   Register(
-    map, "std.intrinsics.float_sub", Binop(BinOp::FSub), ct::MakeCompTimeFn(ct::StdIntrinsicsFsub));
+    map, "std.intrinsics.float_add_ieee", Binop(BinOp::FAdd), ct::MakeCompTimeFn(ct::StdIntrinsicsFadd));
+  Register(map, "std.intrinsics.float_add_raised", FloatRaised(BinOp::FAdd, false));
   Register(
-    map, "std.intrinsics.float_sub_assign", BinopAssign(BinOp::FSub), ct::MakeCompTimeFn(ct::StdIntrinsicsFsubAssign));
+    map, "std.intrinsics.float_sub", Binop(BinOp::FSubChecked), ct::MakeCompTimeFn(ct::StdIntrinsicsFsub));
   Register(
-    map, "std.intrinsics.float_mul", Binop(BinOp::FMul), ct::MakeCompTimeFn(ct::StdIntrinsicsFmul));
+    map, "std.intrinsics.float_sub_assign", BinopAssign(BinOp::FSubChecked),
+    ct::MakeCompTimeFn(ct::StdIntrinsicsFsubAssign));
   Register(
-    map, "std.intrinsics.float_mul_assign", BinopAssign(BinOp::FMul), ct::MakeCompTimeFn(ct::StdIntrinsicsFmulAssign));
+    map, "std.intrinsics.float_sub_ieee", Binop(BinOp::FSub), ct::MakeCompTimeFn(ct::StdIntrinsicsFsub));
+  Register(map, "std.intrinsics.float_sub_raised", FloatRaised(BinOp::FSub, false));
   Register(
-    map, "std.intrinsics.float_div", Binop(BinOp::FDiv), ct::MakeCompTimeFn(ct::StdIntrinsicsFdiv));
+    map, "std.intrinsics.float_mul", Binop(BinOp::FMulChecked), ct::MakeCompTimeFn(ct::StdIntrinsicsFmul));
   Register(
-    map, "std.intrinsics.float_div_assign", BinopAssign(BinOp::FDiv), ct::MakeCompTimeFn(ct::StdIntrinsicsFdivAssign));
+    map, "std.intrinsics.float_mul_assign", BinopAssign(BinOp::FMulChecked),
+    ct::MakeCompTimeFn(ct::StdIntrinsicsFmulAssign));
   Register(
-    map, "std.intrinsics.float_rem", Binop(BinOp::FRem), ct::MakeCompTimeFn(ct::StdIntrinsicsFrem));
+    map, "std.intrinsics.float_mul_ieee", Binop(BinOp::FMul), ct::MakeCompTimeFn(ct::StdIntrinsicsFmul));
+  Register(map, "std.intrinsics.float_mul_raised", FloatRaised(BinOp::FMul, false));
   Register(
-    map, "std.intrinsics.float_rem_assign", BinopAssign(BinOp::FRem), ct::MakeCompTimeFn(ct::StdIntrinsicsFremAssign));
+    map, "std.intrinsics.float_div", Binop(BinOp::FDivChecked), ct::MakeCompTimeFn(ct::StdIntrinsicsFdiv));
+  Register(
+    map, "std.intrinsics.float_div_assign", BinopAssign(BinOp::FDivChecked),
+    ct::MakeCompTimeFn(ct::StdIntrinsicsFdivAssign));
+  Register(
+    map, "std.intrinsics.float_div_ieee", Binop(BinOp::FDiv), ct::MakeCompTimeFn(ct::StdIntrinsicsFdiv));
+  Register(map, "std.intrinsics.float_div_raised", FloatRaised(BinOp::FDiv, false));
+  Register(
+    map, "std.intrinsics.float_rem", Binop(BinOp::FRemChecked), ct::MakeCompTimeFn(ct::StdIntrinsicsFrem));
+  Register(
+    map, "std.intrinsics.float_rem_assign", BinopAssign(BinOp::FRemChecked),
+    ct::MakeCompTimeFn(ct::StdIntrinsicsFremAssign));
+  Register(
+    map, "std.intrinsics.float_rem_ieee", Binop(BinOp::FRem), ct::MakeCompTimeFn(ct::StdIntrinsicsFrem));
+  Register(map, "std.intrinsics.float_rem_raised", FloatRaised(BinOp::FRem, false));
   Register(
     map, "std.intrinsics.float_neg", Unop(UnOp::FNeg), ct::MakeCompTimeFn(ct::StdIntrinsicsFneg));
-  Register(
-    map, "std.intrinsics.float_sqrt", UnaryIntrinsic(llvm::Intrinsic::sqrt));
-  Register(
-    map, "std.intrinsics.float_powi", fn_impls::StdIntrinsicsFpowi);
-  Register(
-    map, "std.intrinsics.float_powf", BinaryIntrinsic(llvm::Intrinsic::pow));
-  Register(
-    map, "std.intrinsics.float_sin", UnaryIntrinsic(llvm::Intrinsic::sin));
-  Register(
-    map, "std.intrinsics.float_cos", UnaryIntrinsic(llvm::Intrinsic::cos));
-  Register(
-    map, "std.intrinsics.float_tan", UnaryIntrinsic(llvm::Intrinsic::tan));
-  Register(
-    map, "std.intrinsics.float_asin", UnaryIntrinsic(llvm::Intrinsic::asin));
-  Register(
-    map, "std.intrinsics.float_acos", UnaryIntrinsic(llvm::Intrinsic::acos));
-  Register(
-    map, "std.intrinsics.float_atan", UnaryIntrinsic(llvm::Intrinsic::atan));
-  Register(
-    map, "std.intrinsics.float_atan2", BinaryIntrinsic(llvm::Intrinsic::atan2));
-  Register(
-    map, "std.intrinsics.float_sinh", UnaryIntrinsic(llvm::Intrinsic::sinh));
-  Register(
-    map, "std.intrinsics.float_cosh", UnaryIntrinsic(llvm::Intrinsic::cosh));
-  Register(
-    map, "std.intrinsics.float_tanh", UnaryIntrinsic(llvm::Intrinsic::tanh));
-  Register(
-    map, "std.intrinsics.float_exp", UnaryIntrinsic(llvm::Intrinsic::exp));
-  Register(
-    map, "std.intrinsics.float_exp2", UnaryIntrinsic(llvm::Intrinsic::exp2));
-  Register(
-    map, "std.intrinsics.float_exp10", UnaryIntrinsic(llvm::Intrinsic::exp10));
-  Register(
-    map, "std.intrinsics.float_log", UnaryIntrinsic(llvm::Intrinsic::log));
-  Register(
-    map, "std.intrinsics.float_log2", UnaryIntrinsic(llvm::Intrinsic::log2));
-  Register(
-    map, "std.intrinsics.float_log10", UnaryIntrinsic(llvm::Intrinsic::log10));
+  Register(map, "std.intrinsics.float_sqrt", Unop(UnOp::FSqrtChecked));
+  Register(map, "std.intrinsics.float_sqrt_ieee", Unop(UnOp::FSqrt));
+  Register(map, "std.intrinsics.float_sqrt_raised", FloatRaised(BinOp::FAdd, true));
+  Register(map, "std.intrinsics.float_powf", FloatMath(FloatMathFn::Pow));
+  Register(map, "std.intrinsics.float_powf_ieee", BinaryIntrinsic(llvm::Intrinsic::pow));
+  Register(map, "std.intrinsics.float_sin", FloatMath(FloatMathFn::Sin));
+  Register(map, "std.intrinsics.float_sin_ieee", UnaryIntrinsic(llvm::Intrinsic::sin));
+  Register(map, "std.intrinsics.float_cos", FloatMath(FloatMathFn::Cos));
+  Register(map, "std.intrinsics.float_cos_ieee", UnaryIntrinsic(llvm::Intrinsic::cos));
+  Register(map, "std.intrinsics.float_tan", FloatMath(FloatMathFn::Tan));
+  Register(map, "std.intrinsics.float_tan_ieee", UnaryIntrinsic(llvm::Intrinsic::tan));
+  Register(map, "std.intrinsics.float_asin", FloatMath(FloatMathFn::Asin));
+  Register(map, "std.intrinsics.float_asin_ieee", UnaryIntrinsic(llvm::Intrinsic::asin));
+  Register(map, "std.intrinsics.float_acos", FloatMath(FloatMathFn::Acos));
+  Register(map, "std.intrinsics.float_acos_ieee", UnaryIntrinsic(llvm::Intrinsic::acos));
+  Register(map, "std.intrinsics.float_atan", FloatMath(FloatMathFn::Atan));
+  Register(map, "std.intrinsics.float_atan_ieee", UnaryIntrinsic(llvm::Intrinsic::atan));
+  Register(map, "std.intrinsics.float_atan2", FloatMath(FloatMathFn::Atan2));
+  Register(map, "std.intrinsics.float_atan2_ieee", BinaryIntrinsic(llvm::Intrinsic::atan2));
+  Register(map, "std.intrinsics.float_sinh", FloatMath(FloatMathFn::Sinh));
+  Register(map, "std.intrinsics.float_sinh_ieee", UnaryIntrinsic(llvm::Intrinsic::sinh));
+  Register(map, "std.intrinsics.float_cosh", FloatMath(FloatMathFn::Cosh));
+  Register(map, "std.intrinsics.float_cosh_ieee", UnaryIntrinsic(llvm::Intrinsic::cosh));
+  Register(map, "std.intrinsics.float_tanh", FloatMath(FloatMathFn::Tanh));
+  Register(map, "std.intrinsics.float_tanh_ieee", UnaryIntrinsic(llvm::Intrinsic::tanh));
+  Register(map, "std.intrinsics.float_exp", FloatMath(FloatMathFn::Exp));
+  Register(map, "std.intrinsics.float_exp_ieee", UnaryIntrinsic(llvm::Intrinsic::exp));
+  Register(map, "std.intrinsics.float_exp2", FloatMath(FloatMathFn::Exp2));
+  Register(map, "std.intrinsics.float_exp2_ieee", UnaryIntrinsic(llvm::Intrinsic::exp2));
+  Register(map, "std.intrinsics.float_exp10", FloatMath(FloatMathFn::Exp10));
+  Register(map, "std.intrinsics.float_exp10_ieee", UnaryIntrinsic(llvm::Intrinsic::exp10));
+  Register(map, "std.intrinsics.float_log", FloatMath(FloatMathFn::Log));
+  Register(map, "std.intrinsics.float_log_ieee", UnaryIntrinsic(llvm::Intrinsic::log));
+  Register(map, "std.intrinsics.float_log2", FloatMath(FloatMathFn::Log2));
+  Register(map, "std.intrinsics.float_log2_ieee", UnaryIntrinsic(llvm::Intrinsic::log2));
+  Register(map, "std.intrinsics.float_log10", FloatMath(FloatMathFn::Log10));
+  Register(map, "std.intrinsics.float_log10_ieee", UnaryIntrinsic(llvm::Intrinsic::log10));
   Register(
     map, "std.intrinsics.float_abs", UnaryIntrinsic(llvm::Intrinsic::fabs), ct::MakeCompTimeFn(ct::StdIntrinsicsFabs));
   Register(
@@ -457,10 +500,10 @@ auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
     map, "std.intrinsics.float_min_val", fn_impls::StdIntrinsicsFminVal,
     ct::MakeCompTimeFn<true>(ct::StdIntrinsicsFminVal));
   Register(
-    map, "std.intrinsics.float_max", BinaryIntrinsic(llvm::Intrinsic::maxnum),
+    map, "std.intrinsics.float_max", BinaryIntrinsic(llvm::Intrinsic::maximum),
     ct::MakeCompTimeFn(ct::StdIntrinsicsFmax));
   Register(
-    map, "std.intrinsics.float_min", BinaryIntrinsic(llvm::Intrinsic::minnum),
+    map, "std.intrinsics.float_min", BinaryIntrinsic(llvm::Intrinsic::minimum),
     ct::MakeCompTimeFn(ct::StdIntrinsicsFmin));
   Register(
     map, "std.intrinsics.float_copysign", BinaryIntrinsic(llvm::Intrinsic::copysign));
@@ -476,6 +519,9 @@ auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
   Register(
     map, "std.intrinsics.float_round", UnaryIntrinsic(llvm::Intrinsic::round),
     ct::MakeCompTimeFn(ct::StdIntrinsicsFround));
+  Register(
+    map, "std.intrinsics.float_round_even", UnaryIntrinsic(llvm::Intrinsic::roundeven),
+    ct::MakeCompTimeFn(ct::StdIntrinsicsFroundEven));
   Register(
     map, "std.intrinsics.bitreverse", UnaryIntrinsic(llvm::Intrinsic::bitreverse));
   Register(map, "std.intrinsics.bswap", fn_impls::StdIntrinsicsBswap);
@@ -507,6 +553,8 @@ auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
   Register(map, "std.intrinsics.sitofp", Conv(ConvOp::SIToFP));
   Register(map, "std.intrinsics.uitofp", Conv(ConvOp::UIToFP));
   Register(map, "std.intrinsics.fptrunc", Conv(ConvOp::FPTrunc));
+  // A float narrowed with no check (IEEE's infinity past the range), as "float_*_ieee" are.
+  Register(map, "std.intrinsics.fptrunc_ieee", Conv(ConvOp::FPTruncIeee));
   Register(map, "std.intrinsics.strunc", Conv(ConvOp::Trunc));
   Register(map, "std.intrinsics.utrunc", Conv(ConvOp::Trunc));
   Register(map, "std.intrinsics.szext", Conv(ConvOp::SExt));
@@ -562,8 +610,8 @@ auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
   Register(map, "std.threading.atomic.Atom.fetch_sub", AtomicRmw(AtomicRmwOp::Sub));
   Register(map, "std.threading.atomic.Atom.fetch_fadd", AtomicRmw(AtomicRmwOp::FAdd));
   Register(map, "std.threading.atomic.Atom.fetch_fsub", AtomicRmw(AtomicRmwOp::FSub));
-  Register(map, "std.threading.atomic.Atom.fetch_fmax", AtomicRmw(AtomicRmwOp::FMax));
-  Register(map, "std.threading.atomic.Atom.fetch_fmin", AtomicRmw(AtomicRmwOp::FMin));
+  Register(map, "std.threading.atomic.Atom.fetch_fmax", AtomicRmw(AtomicRmwOp::FMaximum));
+  Register(map, "std.threading.atomic.Atom.fetch_fmin", AtomicRmw(AtomicRmwOp::FMinimum));
   Register(map, "std.threading.atomic.Atom.fetch_smax", AtomicRmw(AtomicRmwOp::Max));
   Register(map, "std.threading.atomic.Atom.fetch_umax", AtomicRmw(AtomicRmwOp::UMax));
   Register(map, "std.threading.atomic.Atom.fetch_smin", AtomicRmw(AtomicRmwOp::Min));

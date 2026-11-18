@@ -30,6 +30,7 @@ use(spp::analyse::errors, struct SppIdentifierDuplicateError);
 use(spp::analyse::errors, struct SppRecursiveTypeError);
 use(spp::analyse::errors, struct SppGenericInstantiationDepthError);
 use(spp::analyse::errors, struct SppFloatOutOfBoundsError);
+use(spp::analyse::errors, struct SppFloatNotFiniteError);
 use(spp::analyse::errors, struct SppIntegerOutOfBoundsError);
 use(spp::analyse::errors, struct SppOrderInvalidError);
 use(spp::analyse::errors, struct SppExpansionOfNonTupleError);
@@ -330,6 +331,10 @@ SPP_EXP_CLS struct spp::analyse::errors::SppRecursiveTypeError final : SemanticE
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericInstantiationDepthError final : SemanticError {
   explicit SppGenericInstantiationDepthError(Ast const &type);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppFloatNotFiniteError final : SemanticError {
+  explicit SppFloatNotFiniteError(Ast const &site, bool is_nan, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFloatOutOfBoundsError final : SemanticError {

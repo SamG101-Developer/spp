@@ -9,7 +9,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> Void {
-        let p = () "string"
+        let p = || "string"
         g(p)
     }
 )");
@@ -124,7 +124,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let x = 1_u32
-        let c = (caps &x) { ret x + 1_u32 }
+        let c = |caps &x| { ret x + 1_u32 }
         let y = take(&c)
     }
 )");
@@ -139,7 +139,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut x = 1_s32
-        let mut c = (caps &mut x) { x@ = 2_s32 }
+        let mut c = |caps &mut x| { x@ = 2_s32 }
         run(&mut c)
         std::mem::ops::drop(c)
     }
@@ -154,7 +154,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> Void {
         let mut x = 1_s32
-        let mut c = (caps &mut x) { x@ = 2_s32 }
+        let mut c = |caps &mut x| { x@ = 2_s32 }
         run(&c)
     }
 )");
@@ -168,7 +168,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> Void {
         let mut x = 1_s32
-        let mut c = (caps &mut x) { x@ = 2_s32 }
+        let mut c = |caps &mut x| { x@ = 2_s32 }
         run(&mut c, &mut x)
     }
 )");

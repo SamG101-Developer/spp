@@ -19,7 +19,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Wrap[T] { }
 
     sup [T] Wrap[T] {
-        fun new() -> Wrap[T] { ret Wrap[T]() }
+        !public fun new() -> Wrap[T] { ret Wrap[T]() }
     }
 
     fun f[T](w: Wrap[T] = Wrap[T]::new()) -> Void {
@@ -49,7 +49,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Wrap[T] { }
 
     sup [T] Wrap[T] {
-        fun new() -> Wrap[T] { ret Wrap[T]() }
+        !public fun new() -> Wrap[T] { ret Wrap[T]() }
     }
 
     fun f[T](w: Wrap[T] = (Wrap[T]::new())) -> Void {
@@ -67,7 +67,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Wrap[T] { }
 
     sup [T] Wrap[T] {
-        fun new() -> Wrap[T] { ret Wrap[T]() }
+        !public fun new() -> Wrap[T] { ret Wrap[T]() }
     }
 
     fun f[T](p: (S32, Wrap[T]) = (1, Wrap[T]::new())) -> Void {
@@ -86,7 +86,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Wrap[T] { }
 
     sup [T] Wrap[T] {
-        fun new() -> Wrap[T] { ret Wrap[T]() }
+        !public fun new() -> Wrap[T] { ret Wrap[T]() }
     }
 
     fun f[T](a: Arr[Wrap[T], 2_uz] = [Wrap[T]::new(), Wrap[T]::new()]) -> Void {
@@ -201,7 +201,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Wrap[T] { }
 
     sup [T] Wrap[T] {
-        fun new() -> Wrap[T] { ret Wrap[T]() }
+        !public fun new() -> Wrap[T] { ret Wrap[T]() }
     }
 
     fun f[T](w: Wrap[T] = Wrap[T]::new()) -> Void {

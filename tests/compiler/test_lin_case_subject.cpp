@@ -158,7 +158,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         case x of {
             is A(v) {
                 consume(v)
-                let c = (x: T) -> Void { }
+                let c = |x: T| -> Void { }
                 c(T())
             }
             else { std::mem::ops::drop(x) }

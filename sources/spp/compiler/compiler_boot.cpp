@@ -78,8 +78,11 @@ auto spp::compiler::CompilerBoot::Parse(
     mod->ModuleAst = parse::ParserSpp(mod->Tokens, mod->Formatter).Parse();
 
     // What "!cfg" leaves out of this build goes before any scope is made, so it
-    // never names anything; an editor greys it out.
+    // never names anything; an editor greys it out. Not a line of the prelude
+    // appended behind the author's code ("F128"'s "use" off 64-bit Linux): no
+    // editor shows it.
     for (auto const &[start, end] : cfg::ApplyCfg(*mod->ModuleAst, Mode)) {
+      if (mod->Formatter->IsPastUserSource(start)) { continue; }
       lsp::resolution_index::RecordInactive(*mod->Formatter, start, end);
     }
 
@@ -100,6 +103,10 @@ auto spp::compiler::CompilerBoot::Parse(
       mod->Tokens, utils::files::DisplayString(mod->Path),
       lexer.PreludeTokenIndex());
     mod->ModuleAst = parse::ParserSpp(mod->Tokens, mod->Formatter).Parse();
+
+    // The harness has the prelude too, whose "!cfg" lines are filtered as any
+    // module's are; no editor shows it, so nothing is greyed out.
+    ignore = cfg::ApplyCfg(*mod->ModuleAst, Mode);
     _Modules.emplace_back(mod->ModuleAst.get());
     bar.Next();
   }
@@ -534,8 +541,11 @@ auto spp::compiler::CompilerBoot::_GenerateTestHarness(
   // Boilerplate code that then runs all the tests using the wrapper code from
   // above.
   return Str("fun main() -> Void {\n")
-    + "  let only = std::process::get_env(\"" + Str(utils::env::NameOf(utils::env::Var::TestOnly))
-    + "\").unwrap_or(Str::from(\"\"))\n"
+    + "  let only_os = std::os::env::get_env(\""
+    + Str(utils::env::NameOf(utils::env::Var::TestOnly))
+    + "\").unwrap_or(std::os::os_string::OsStr::new())\n"
+    + "  let only = only_os.to_str_lossy()\n"
+    + "  std::mem::ops::drop(only_os)\n"
     + "  let run_all = only.len() == 0_uz\n"
     + body
     + "  std::console::println(\"[ DONE ]\")\n"

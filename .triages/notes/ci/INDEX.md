@@ -1,4 +1,4 @@
-- [CI gcc from Homebrew](ci-gcc-from-homebrew.md) — PPA is stale; needs brew binutils; specs inject rpath+loader
+- [CI gcc from Homebrew](ci-gcc-from-homebrew.md) — PPA is stale; Clang lanes borrow it via clang.cfg; needs brew binutils; specs inject rpath+loader
 - [ccache-action key quirks](ccache-action-key-quirks.md) — append-timestamp:false broken in v1.2.24; keys end in ISO date (prune :3)
 - [ccache serves stale clang module objects](ccache-stale-clang-modules.md) — <4.14.1 ignores BMIs (fixed #1774); CI pins ccache 4.14.2 + sccache; GCC uncacheable
 - [CI runner core topology](ci-runner-core-topology.md) — x86 4 vCPU = 2 cores on a varying CPU pool, ARM 4 real cores; don't lower workers
@@ -39,3 +39,5 @@
 - [clang-cl: -Wall is -Weverything](clang-cl-wall-is-weverything.md) — ~46k C++98-compat warnings; Warnings.cmake gives clang-cl /W4
 - [Defender already off on x64](windows-defender-already-off-x64.md) — windows-2025 x64 runs with real-time scan off (ARM on); exclusions can't speed the x64 shards
 - [clang-tidy CI job](clang-tidy-ci-job.md) — advisory in _analysis.yaml on the Linux Clang tree; PRs --since base, nightly full; shared scan script
+- [Claude review: project prompt](claude-review-project-prompt.md) — Opus on .github/review/prompt.md: areas in parallel, findings verified, summary always; replaced the generic plugin
+- [Windows 8 MB main stack](windows-8mb-main-stack.md) — /STACK:8388608 on spp_lib (INTERFACE): 1 MB default overflowed at 1000 nested comp-time calls on ARM64

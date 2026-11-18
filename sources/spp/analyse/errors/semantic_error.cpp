@@ -470,6 +470,19 @@ spp::analyse::errors::SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
     INLINE_HELP(upper.Decimal()) + INLINE_HELP("]") + ".");
 }
 
+spp::analyse::errors::SppFloatNotFiniteError::SppFloatNotFiniteError(
+  Ast const &site, const bool is_nan, const StrView what) {
+  AddHeader(128, "Float Not Finite Error");
+  AddErr(&site, is_nan
+    ? "Evaluates to a NaN here (an invalid operation)"
+    : "Evaluates to an infinity here (a division by zero or an overflow)");
+  AddFooter(
+    "A compile-time " + INLINE_NOTE(what) + " is always finite, as a checked float operation's result is at run "
+    "time.",
+    "Compute it at run time, where " + INLINE_HELP("nan()") + ", " + INLINE_HELP("inf()") + " and the " +
+    INLINE_HELP("*_ieee") + " forms make one on purpose.");
+}
+
 spp::analyse::errors::SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(
   Ast const &literal, numex::BigInt const &value, numex::BigInt const &lower, numex::BigInt const &upper,
   const StrView what) {

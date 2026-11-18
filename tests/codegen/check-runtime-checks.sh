@@ -17,9 +17,13 @@
 #     report their check by name; a division in range exits 0;
 #   - the lowest S32 remainder by -1 is 0 (it fits, so it is not an
 #     overflow), not a check.
+#   - a shift ("<<", ">>", signed ">>", "<<=") by the width or more reports
+#     the distance and the width, a distance past the operand's type
+#     included (it is not narrowed into range first); one below the width
+#     exits 0 with the shifted value.
 #
-# The division cases need an sppc that names checks 0x16-0x18; an older one
-# reports "unknown check".
+# The division cases need an sppc that names checks 0x16-0x18, and the shift
+# cases one that names 0x19; an older one reports "unknown check".
 #
 #   [SPPC_LIB=path/to/libsppc.so] tests/codegen/check-runtime-checks.sh [path/to/spp]
 
@@ -62,6 +66,24 @@ fun rem_s32(a: S32, b: S32) -> S32 {
   ret a % b
 }
 
+fun shl_u32(a: U32, by: U32) -> U32 {
+  ret a << by
+}
+
+fun shr_u8(a: U8, by: U32) -> U8 {
+  ret a >> by
+}
+
+fun shr_s16(a: S16, by: U32) -> S16 {
+  ret a >> by
+}
+
+fun shl_assign_u64(a: U64, by: U32) -> U64 {
+  let mut x = a
+  x <<= by
+  ret x
+}
+
 fun to_s32(x: F64) -> S32 {
   ret S32::from(x)
 }
@@ -71,8 +93,7 @@ fun to_u8(x: F64) -> U8 {
 }
 
 fun nan() -> F64 {
-  let z = 0.0_f64
-  ret z / z
+  ret F64::nan()
 }
 
 fun main() -> Void {
@@ -141,6 +162,19 @@ for mode in dev rel; do
     check "${mode}" "division in range" "let x = div_s32(-7_s32, 2_s32)" 0 ""
     check "${mode}" "lowest S32 remainder by -1 is zero" \
         "case rem_s32(-2147483648_s32, -1_s32) == 0_s32 { std::console::println(\"rem zero\") }" 0 "rem zero"
+    check "${mode}" "shift left by the width" "let x = shl_u32(1_u32, 32_u32)" 134 \
+        "[sppc] check failed: shift distance 32 is not less than the width 32"
+    check "${mode}" "shift left past the width" "let x = shl_u32(1_u32, 40_u32)" 134 \
+        "[sppc] check failed: shift distance 40 is not less than the width 32"
+    check "${mode}" "shift right past the operand's type" "let x = shr_u8(1_u8, 256_u32)" 134 \
+        "[sppc] check failed: shift distance 256 is not less than the width 8"
+    check "${mode}" "signed shift right by the width" "let x = shr_s16(-2_s16, 16_u32)" 134 \
+        "[sppc] check failed: shift distance 16 is not less than the width 16"
+    check "${mode}" "shift-assign past the width" "let x = shl_assign_u64(1_u64, 64_u32)" 134 \
+        "[sppc] check failed: shift distance 64 is not less than the width 64"
+    check "${mode}" "shifts in range" \
+        "std::console::println(\"{} {} {} {}\", shl_u32(1_u32, 31_u32), shr_u8(128_u8, 7_u32), shr_s16(-2_s16, 15_u32), shl_assign_u64(1_u64, 63_u32))" \
+        0 "2147483648 1 -1 9223372036854775808"
 done
 
 finish

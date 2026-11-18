@@ -130,7 +130,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let c: FunMut[(), Void]
         {
             let mut x = 1_s32
-            c = (caps &mut x) { x@ = 2_s32 }
+            c = |caps &mut x| { x@ = 2_s32 }
         }
     }
 )");
@@ -195,7 +195,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let c: FunMut[(), Void]
             {
-                c = (caps &mut x) { x@ = 2_s32 }
+                c = |caps &mut x| { x@ = 2_s32 }
             }
             std::mem::ops::drop(c)
         }

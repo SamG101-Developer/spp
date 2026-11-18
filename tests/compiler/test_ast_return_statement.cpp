@@ -18,6 +18,34 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstReturnStatementAst,
+    test_invalid_ret_statement_no_expr_in_subroutine_returning_a_value,
+    SppTypeMismatchError, R"(
+    fun f() -> S32 {
+        ret
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstReturnStatementAst,
+    test_invalid_ret_statement_no_expr_on_one_path,
+    SppTypeMismatchError, R"(
+    fun f(b: Bool) -> S32 {
+        case b { ret }
+        ret 1
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstReturnStatementAst,
+    test_invalid_ret_statement_no_expr_in_subroutine_returning_a_res_of_void,
+    SppTypeMismatchError, R"(
+    fun f() -> Res[Void, Str] {
+        ret
+    }
+)");
+
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstReturnStatementAst,
     test_valid_ret_statement_in_coroutine_no_expr, R"(

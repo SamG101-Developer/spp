@@ -75,14 +75,17 @@ auto spp::asts::FunctionImplementationLoweredAst::_ValidateZeroDivision(
     "std.intrinsics.srem", "std.intrinsics.srem_assign",
     "std.intrinsics.urem", "std.intrinsics.urem_assign",
     "std.intrinsics.float_div", "std.intrinsics.float_div_assign",
-    "std.intrinsics.float_rem", "std.intrinsics.float_rem_assign",
   };
   if (not genex::contains(dividing_builtins, _Builtin->Name) or args.size() < 2) { return; }
 
   // The divisor has already been resolved to a literal, so
-  // whether it is zero is known here.
+  // whether it is zero is known here. A float "0 / 0" (and any
+  // float "x % 0") is a NaN, an invalid operation, as at run
+  // time: it is left to the result check (E128).
   auto const &divisor = *args[1];
-  const auto is_zero = comp_time_intrinsics::IsZeroDivisor(divisor);
+  const auto is_float = _Builtin->Name.starts_with("std.intrinsics.float_");
+  const auto is_zero = comp_time_intrinsics::IsZeroDivisor(divisor)
+    and not (is_float and comp_time_intrinsics::IsZeroDivisor(*args[0]));
 
   // Folded from a call, the division is the call the user
   // wrote; neither this builtin nor its folded divisor is

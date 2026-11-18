@@ -46,6 +46,13 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
   /// "std::BigDec" is not desired, such as "_f32" or "_f64".
   Str Type;
 
+  /// What comp-time arithmetic gave, when no constant can hold it: a NaN or an
+  /// infinity. The literal's own digits are then meaningless, and
+  /// "ValidateBounds" rejects it; a compile-time float is always finite, as a
+  /// checked float operation's result is at run time.
+  enum class NonFiniteKind : std::uint8_t { None, NaN, Infinity };
+  NonFiniteKind NonFinite = NonFiniteKind::None;
+
   FloatLiteralAst(
     decltype(TokSign) &&tok_sign,
     decltype(IntVal) &&int_val,
@@ -55,13 +62,17 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 
   ~FloatLiteralAst() override;
 
-  SPP_ATTR_NODISCARD auto EqualsFloatLiteral(FloatLiteralAst const &) const -> Ordering override;
+  SPP_ATTR_NODISCARD auto EqualsFloatLiteral(
+    FloatLiteralAst const &) const -> Ordering override;
 
-  SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
+  SPP_ATTR_NODISCARD auto Equals(
+    ExpressionAst const &other) const -> Ordering override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override;
 
   auto EvaluateCompTime(
     ScopeManager *sm, CompilerMetaData *meta) -> void override;

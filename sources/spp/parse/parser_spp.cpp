@@ -243,22 +243,24 @@ auto spp::parse::ParserSpp::ParseClassAttributeDefaultValue()
 
 auto spp::parse::ParserSpp::ParseSupPrototypeFunctions()
   -> Unique<SupPrototypeFunctionsAst> {
+  PARSE_ZERO_OR_MORE(p0, ParseAnnotation, ParseNothing);
   PARSE_ONCE(p1, ParseKeywordSup);
   PARSE_OPTIONAL(p2, ParseGenericParameterGroup);
   PARSE_ONCE(p3, ParseTypeExpression);
   PARSE_ONCE(p4, ParseSupImplementation);
-  return _CreateAst<SupPrototypeFunctionsAst>(p1, p2, p3, p4);
+  return _CreateAst<SupPrototypeFunctionsAst>(p0, p1, p2, p3, p4);
 }
 
 auto spp::parse::ParserSpp::ParseSupPrototypeExtension()
   -> Unique<SupPrototypeExtensionAst> {
+  PARSE_ZERO_OR_MORE(p0, ParseAnnotation, ParseNothing);
   PARSE_ONCE(p1, ParseKeywordSup);
   PARSE_OPTIONAL(p2, ParseGenericParameterGroup);
   PARSE_ONCE(p3, ParseTypeExpression);
   PARSE_ONCE(p4, ParseKeywordExt);
   PARSE_ONCE(p5, ParseTypeExpression);
   PARSE_ONCE(p6, ParseSupImplementation);
-  return _CreateAst<SupPrototypeExtensionAst>(p1, p2, p3, p4, p5, p6);
+  return _CreateAst<SupPrototypeExtensionAst>(p0, p1, p2, p3, p4, p5, p6);
 }
 
 auto spp::parse::ParserSpp::ParseSupImplementation()
@@ -548,7 +550,7 @@ auto spp::parse::ParserSpp::ParseGenericParameterTypeVariadic()
 auto spp::parse::ParserSpp::ParseGenericParameterTypeConstraints()
   -> Unique<GenericParameterTypeConstraintsAst> {
   PARSE_ONCE(p1, ParseTokenColon);
-  PARSE_ONE_OR_MORE(p2, ParseTypeExpression, ParseTokenBitAnd);
+  PARSE_ONE_OR_MORE(p2, ParseTypeExpression, ParseKeywordAnd);
   return _CreateAst<GenericParameterTypeConstraintsAst>(p1, p2);
 }
 
@@ -697,6 +699,8 @@ auto spp::parse::ParserSpp::ParseBinaryExpression(const std::uint8_t min_prec)
         if (auto r = try_tok([this] { return ParseTokenRem(); }, 11)) return std::move(*r);
         break;
       case RT::TK_VERTICAL_BAR:
+        // A "|" starting a line opens a closure, so never continues the line before.
+        if (genex::any_of(genex::span(_Tokens).subspan(_Pos, peek - _Pos), [](auto const &t) { return t.Type == RT::TK_LINE_FEED; })) break;
         if (auto r = try_tok([this] { return ParseTokenBitIorAssign(); }, 1)) return std::move(*r);
         if (auto r = try_tok([this] { return ParseTokenBitIor(); }, 6)) return std::move(*r);
         break;
@@ -1686,8 +1690,6 @@ auto spp::parse::ParserSpp::ParseClosureExpressionWithoutReturnType()
   -> Unique<ClosureExpressionAst> {
   PARSE_OPTIONAL(p1, ParseKeywordCor);
   PARSE_ONCE(p2, ParseClosureExpressionParameterAndCaptureGroup);
-  // Prevent "()" tuple on one line combining with stmt on next.
-  if (_LineFeedAhead()) { return nullptr; }
   PARSE_ONCE(p3, ParseExpression);
   return _CreateAst<ClosureExpressionAst>(p1, p2, nullptr, nullptr, p3);
 }
@@ -1708,10 +1710,10 @@ auto spp::parse::ParserSpp::ParseClosureExpressionCapture()
 
 auto spp::parse::ParserSpp::ParseClosureExpressionParameterAndCaptureGroup()
   -> Unique<ClosureExpressionParameterAndCaptureGroupAst> {
-  PARSE_ONCE(p1, ParseTokenLeftParenthesis);
+  PARSE_ONCE(p1, ParseTokenVerticalBar);
   PARSE_ONCE(p2, ParseClosureExpressionParameterGroup);
   PARSE_OPTIONAL(p3, ParseClosureExpressionCaptureGroup);
-  PARSE_ONCE(p4, ParseTokenRightParenthesis);
+  PARSE_ONCE(p4, ParseTokenVerticalBar);
   return _CreateAst<ClosureExpressionParameterAndCaptureGroupAst>(p1, p2, p3, p4);
 }
 
@@ -2580,6 +2582,12 @@ auto spp::parse::ParserSpp::ParseTokenDiv()
 auto spp::parse::ParserSpp::ParseTokenRem()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_PERCENT_SIGN, lex::SppTokenType::TK_REM); });
+  return FORWARD_AST(p1);
+}
+
+auto spp::parse::ParserSpp::ParseTokenVerticalBar()
+  -> Unique<TokenAst> {
+  PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_VERTICAL_BAR, lex::SppTokenType::TK_VERTICAL_BAR); });
   return FORWARD_AST(p1);
 }
 

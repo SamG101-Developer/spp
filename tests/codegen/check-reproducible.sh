@@ -27,7 +27,7 @@ fun pick(n: U64) -> U64 {
 }
 
 fun main() -> Void {
-  let f = (x: U64) pick(x)
+  let f = |x: U64| pick(x)
   let mut sum = f(1_u64)
   loop i in std::range::Range[U64]::between(0_u64, 3_u64) {
     sum = sum + pick(i)

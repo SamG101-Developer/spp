@@ -1,7 +1,7 @@
 ---
 name: hardening-needs-feature-gate
 description: Any hardening measure that can break a niche setup ships default-on behind an spp.toml key, failing loudly rather than degrading
-updated: 2026-11-11
+updated: 2026-11-13
 ---
 
 Every memory-safety/hardening measure that can be a problem in some niche scenario (old kernel, child that JITs,
@@ -22,6 +22,9 @@ one only needs `.MinLinux` and its `Applied` call where the shim is built.
 **Toolchain left-outs (2026-11-11):** the same "left out where on by default, refused where set explicitly" rule for
 what only the build can find out: `features::LeaveOut(key, why)` and `features::IsExplicit(key)` (first user: `bti`,
 when the link driver's start files lack the BTI property, [[aarch64-branch-protection-fallbacks]]).
+The record is emitted into the LTO module (`EmitRecord`, right after `ApplyHardening`), **before the link**: a
+`LeaveOut` from anything in `LinkExecutable` (the `*_ffi` library checks, the post-link reads) never reaches it. Decide
+those in `CheckTargetSupport` instead, from `TargetFacts` (as the `*_ffi` keys are: `LeaveOutOrRefuse` there).
 
 **How to apply:** whether the target can have a measure is a `DoesTargetSupport<X>(triple = TargetTriple())` in
 `llvm_support` (one list of every such check; tests pass other triples). A compile-time measure is gated with

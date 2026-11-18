@@ -18,7 +18,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" "$@"
 
 read -r -d '' PROGRAM <<'SPP'
 fun main() -> Void {
-    let h = std::threading::thread::spawn(() -> Void { }).expect("spawn failed")
+    let h = std::threading::thread::spawn(|| -> Void { }).expect("spawn failed")
     h.join().expect("join failed")
     let now = std::time::time_point::TimePoint::now()
     let path = std::fs::path::Path::new("/nonexistent")

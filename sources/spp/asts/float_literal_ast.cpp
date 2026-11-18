@@ -80,12 +80,14 @@ auto spp::asts::FloatLiteralAst::PosEnd() const -> std::size_t {
 
 auto spp::asts::FloatLiteralAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<FloatLiteralAst>(
+  auto ast = MakeUnique<FloatLiteralAst>(
     AstClone(TokSign),
     AstClone(IntVal),
     AstClone(TokDot),
     AstClone(FracVal),
     Type.c_str());
+  ast->NonFinite = NonFinite;
+  return ast;
 }
 
 auto spp::asts::FloatLiteralAst::ToString() const -> Str {
@@ -99,9 +101,19 @@ auto spp::asts::FloatLiteralAst::ToString() const -> Str {
 }
 
 auto spp::asts::FloatLiteralAst::Stage7_AnalyseSemantics(
-  ScopeManager *, CompilerMetaData *) -> void {
-  // Check the written value is one the type can hold.
+  ScopeManager *sm, CompilerMetaData *) -> void {
+  using namespace spp::analyse::errors;
+
+  // The suffix's type may not exist on this target ("F128" is compiled only
+  // where its maths functions are right, std's "!cfg"), which is an unknown
+  // type, named at the literal.
   Type = TypeOrDefault();
+  auto const &type = _PrecompiledType(sm);
+  RaiseIf<SppIdentifierUnknownError>(
+    sm->CurrentScope->FindTypeSymbol(&type) == nullptr,
+    ERR_ARGS(*this, "float type " + type.ToString()));
+
+  // Check the written value is one the type can hold.
   ValidateBounds(*this);
 }
 
@@ -124,6 +136,12 @@ auto spp::asts::FloatLiteralAst::BigVal() const -> numex::BigDec {
 auto spp::asts::FloatLiteralAst::ValidateBounds(
   Ast const &owner) const -> void {
   using namespace spp::analyse::errors;
+
+  // A NaN or an infinity from comp-time arithmetic: never a compile-time value,
+  // as no checked float operation gives one.
+  RaiseIf<SppFloatNotFiniteError>(
+    NonFinite != NonFiniteKind::None,
+    ERR_ARGS(owner, NonFinite == NonFiniteKind::NaN, Type));
 
   // A value the type cannot hold is the same error whether
   // it was written down or computed by comp-time arithmetic.

@@ -49,6 +49,16 @@ namespace spp::codegen {
   SPP_EXP_FUN auto UnhardenedSegments(
     char const *path) -> Expected<Opt<Str>, Str>;
 
+  /// Check if the executable specified by "path" was linked without the
+  /// loader flags that randomise and protect its image: on COFF, a movable
+  /// image with its relocations kept, high-entropy on 64 bits, and DEP; on
+  /// Mach-O, PIE and a non-executable stack. The returned string says what is
+  /// missing, otherwise None when it has them all or is ELF (whose segments
+  /// and RELRO are checked apart), or the unexpected error when it cannot be
+  /// read.
+  SPP_EXP_FUN auto UnhardenedImage(
+    char const *path) -> Expected<Opt<Str>, Str>;
+
   /// Check if the executable specified by "path" lost its BTI property (an
   /// AArch64 landing-pad requirement) at the link, so the loader will not guard
   /// it. The returned string says what is missing, otherwise None when it has

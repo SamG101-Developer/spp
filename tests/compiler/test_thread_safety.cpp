@@ -129,7 +129,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun needs_safe[T: ThreadSafe](x: T) -> Void { std::mem::ops::drop(x) }
 
     fun f() -> Void {
-        needs_safe(() -> std::number::S32 { ret 1 })
+        needs_safe(|| -> std::number::S32 { ret 1 })
     }
 )");
 
@@ -142,7 +142,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let n = 7
-        needs_safe((caps n) -> std::number::S32 { ret n })
+        needs_safe(|caps n| -> std::number::S32 { ret n })
     }
 )");
 
@@ -160,7 +160,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> Void {
         let h = Haz()
-        needs_safe((caps h) -> std::number::S32 {
+        needs_safe(|caps h| -> std::number::S32 {
             std::mem::ops::drop(h)
             ret 1
         })
@@ -177,7 +177,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> Void {
         let n = 7
-        needs_safe((caps &n) -> std::void::Void { })
+        needs_safe(|caps &n| -> std::void::Void { })
     }
 )");
 
@@ -186,7 +186,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_borrow_capturing_closure_is_still_callable, R"(
     fun f() -> Void {
         let n = 7
-        let g = (caps &n) -> std::void::Void { }
+        let g = |caps &n| -> std::void::Void { }
         g()
     }
 )");
@@ -197,7 +197,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun take(g: std::function::FunRef[(), std::number::S32]) -> Void { std::mem::ops::drop(g) }
 
     fun f() -> Void {
-        let g: std::function::FunRef[(), std::number::S32] = () -> std::number::S32 { ret 1 }
+        let g: std::function::FunRef[(), std::number::S32] = || -> std::number::S32 { ret 1 }
         let a = g()
         let b = g()
         std::mem::ops::drop(a)
@@ -210,7 +210,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestThreadSafety,
   test_valid_spawn_a_safe_closure, R"(
     fun f() -> Void {
-        let h = std::threading::thread::spawn(() -> std::void::Void { }).expect("spawn failed")
+        let h = std::threading::thread::spawn(|| -> std::void::Void { }).expect("spawn failed")
         h.join().expect("join failed")
     }
 )");
@@ -220,7 +220,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_spawn_a_closure_holding_a_mutex, R"(
     fun f() -> Void {
         let m = std::threading::mutex::Mutex[std::number::S32]::new(1)
-        let h = std::threading::thread::spawn((caps m) -> std::void::Void { std::mem::ops::drop(m) })
+        let h = std::threading::thread::spawn(|caps m| -> std::void::Void { std::mem::ops::drop(m) })
             .expect("spawn failed")
         h.join().expect("join failed")
     }
@@ -232,7 +232,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   SppFunctionCallNoValidSignaturesError, R"(
     fun f() -> Void {
         let r = std::rc::rc::Rc[std::number::S32]::new(1)
-        let h = std::threading::thread::spawn((caps r) -> std::void::Void { std::mem::ops::drop(r) })
+        let h = std::threading::thread::spawn(|caps r| -> std::void::Void { std::mem::ops::drop(r) })
             .expect("spawn failed")
         h.join().expect("join failed")
     }
@@ -245,7 +245,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> Void {
         let m = std::threading::mutex::Mutex[std::rc::rc::Rc[std::number::S32]]::new(
             std::rc::rc::Rc[std::number::S32]::new(1))
-        let h = std::threading::thread::spawn((caps m) -> std::void::Void { std::mem::ops::drop(m) })
+        let h = std::threading::thread::spawn(|caps m| -> std::void::Void { std::mem::ops::drop(m) })
             .expect("spawn failed")
         h.join().expect("join failed")
     }
@@ -256,7 +256,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   test_invalid_spawn_a_closure_returning_a_hazard,
   SppFunctionCallNoValidSignaturesError, R"(
     fun f() -> Void {
-        let h = std::threading::thread::spawn(() -> std::rc::rc::Rc[std::number::S32] {
+        let h = std::threading::thread::spawn(|| -> std::rc::rc::Rc[std::number::S32] {
             ret std::rc::rc::Rc[std::number::S32]::new(1)
         }).expect("spawn failed")
         std::mem::ops::drop(h.join().expect("join failed"))

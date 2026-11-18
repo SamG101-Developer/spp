@@ -246,7 +246,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   SppAccessViolationError, R"(
     fun f() -> Void {
         let s = Str::from("a")
-        let c = (caps s) { }
+        let c = |caps s| { }
         c.drop()
     }
 )");

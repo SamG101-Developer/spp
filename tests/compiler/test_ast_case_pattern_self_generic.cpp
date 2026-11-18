@@ -54,7 +54,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls W[T] { !public v: T }
 
     sup [T: std::copy::Copy] W[T] {
-        fun present(o: std::option::Opt[S32]) -> Bool {
+        !public fun present(o: std::option::Opt[S32]) -> Bool {
             case o is std::option::Some[S32](val) { ret true }
             ret false
         }

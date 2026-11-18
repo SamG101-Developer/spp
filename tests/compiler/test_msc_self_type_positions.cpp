@@ -214,7 +214,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A {
         !public fun m(&self) -> A {
-            let c = () -> Self { ret A() }
+            let c = || -> Self { ret A() }
             ret c()
         }
     }
@@ -232,7 +232,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A {
         !public fun m(&self) -> Void {
-            let c = (x: Self) -> Void { std::mem::ops::drop(x) }
+            let c = |x: Self| -> Void { std::mem::ops::drop(x) }
             c(A())
         }
     }

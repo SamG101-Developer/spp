@@ -27,15 +27,15 @@ sha256 = "03878e08f47b66cc95bc4b544b0db3c6d9ce8d60e6cf2492ae357984330a9eae"
 # Refreshed to the newest final release of the [pin.llvm-lib]
 # major. macOS takes brew's llvm instead (built with RTTI).
 [pin.llvm-win]
-tag = "llvmorg-23.1.5"
-asset = "clang+llvm-23.1.5-x86_64-pc-windows-msvc.tar.xz"
-sha256 = "62fdada7f6fa2b73856486dfbbdba3d2c1882991621615bcb55c60207611c6d4"
+tag = "llvmorg-23.1.6"
+asset = "clang+llvm-23.1.6-x86_64-pc-windows-msvc.tar.xz"
+sha256 = "16af05919cf36958dfb4ddaa4fc4d9d4ff577f5daeb76bc112ea49cd8ced82b2"
 
 # The same release for the windows-11-arm runner.
 [pin.llvm-win-arm]
-tag = "llvmorg-23.1.5"
-asset = "clang+llvm-23.1.5-aarch64-pc-windows-msvc.tar.xz"
-sha256 = "f06382f2c99c68a4e80f7044446df1fcf52bc3cc05158626bd0b966d51a5369a"
+tag = "llvmorg-23.1.6"
+asset = "clang+llvm-23.1.6-aarch64-pc-windows-msvc.tar.xz"
+sha256 = "fa5a25df6a1405fdfb9942f4d5cc73bfc3b8b31cfd43ee2fbd43bd2e3168be01"
 
 # That Windows release names ZLIB::ZLIB, zstd::libzstd_static
 # and LibXml2::LibXml2 in its exported targets, and the runner
@@ -94,8 +94,8 @@ version = "18.1"
 sha256 = "cd9fc3fe2b47743840e42c1592d3d87f8302eb18639c0b8b4ba0898002e2348f"
 
 [pin.qemu-user]
-tag = "spp-2026.11.09.3"
-sha256 = "64e805c66d9f64d9d1bedd6dc44b280ee8dc1e5aa7237f606b467a27481705f7"
+tag = "spp-2026.11.16"
+sha256 = "6c239a0f8f9709a19345c535c04f1cacbeb4997d6f6c4e4065be678e8d8621d7"
 
 [pin.arm-gnu]
 version = "15.3.rel2"
@@ -180,25 +180,25 @@ commit = "bcc2bb5801fb920a1df06a2ee205b93b2514964e"
 [[library]]
 name = "mimalloc"
 repo = "https://github.com/microsoft/mimalloc.git"
-commit = "dcd6f09b1d878e06d62949dabea3417eec98c89a"
+commit = "1d8fd85aa3abe719cd9c42c855f1fc27dbccf84d"
 cmake-flags = ["-DMI_SECURE=OFF", "-DMI_BUILD_TESTS=OFF"]
 cmake-flags-windows = ["-DMI_OVERRIDE=OFF"]
 
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "cdfb130fa6582e8dbfae5391201c1c747290b071"
+commit = "d732d616badc771ab1e85876b3a9eb8191fdf4c0"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
 name = "tomlplusplus"
 repo = "https://github.com/marzer/tomlplusplus.git"
-commit = "cfd715973663275575701cd779fb60d303561cc1"
+commit = "c38c9b922a68fc9772b25d7f606133d3ec4decfd"
 
 [[library]]
 name = "magic_enum"
 repo = "https://github.com/Neargye/magic_enum.git"
-commit = "4a0f8aa6f05be991caeec3d7cf44dead75d8cc08"
+commit = "9a0b6ef556d71c571be6adaecb776a16aeb17c0f"
 cmake-flags = [
   "-DMAGIC_ENUM_OPT_BUILD_TESTS=OFF",
   "-DMAGIC_ENUM_OPT_BUILD_EXAMPLES=OFF",
@@ -216,7 +216,7 @@ cmake-flags = [
 [[library]]
 name = "CLI11"
 repo = "https://github.com/CLIUtils/CLI11.git"
-commit = "1764a057b760e8873eab03f4635b4aaed5303a04"
+commit = "301c80eff2debf088b8213d9c153c76e1e97a854"
 cmake-flags = ["-DCLI11_BUILD_TESTS=OFF", "-DCLI11_BUILD_EXAMPLES=OFF"]
 
 [[library]]
@@ -242,7 +242,7 @@ commit = "9ad6bafe4d9fe9e2d588a3e620299b81ce8814c2"
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "7b303cdf7f3fe816437398ea1db869ecad20ead6"
+commit = "521e68f6bbb55d4f3371690e74d3ed6b637c4070"
 
 [[library]]
 name = "NumEx"

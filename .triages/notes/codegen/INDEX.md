@@ -1,6 +1,6 @@
 - [Codegen coercion sites](codegen-coercion-sites.md) — one CoerceToSlot (llvm_coerce); site list; check-coercions.sh sees wrong values
 - [Variant widening in generic args](spp-variant-widening-in-generic-args.md) — codegen rebuilds (llvm_variant)
-- [Cross-module globals + inherited self](spp-codegen-cross-module-and-inherited.md) — mirror globals; bodies emit into ctx->Module; bridge
+- [Cross-module globals + inherited self](spp-codegen-cross-module-and-inherited.md) — mirror globals; bodies emit into ctx->Module; inherited methods compiled per receiver
 - [Stand-ins lose the field map](llvm-info-standins-lose-field-map.md) — LlvmType + FieldIndexMap together
 - [cls layout reorders fields](spp-cls-layout-reorders-fields.md) — unless !ffi or !conv("C"); C structs need one
 - [Convention table (!conv)](abi-conventions-table.md) — codegen::Abi entries spp/C: layout + call hooks; !ffi implies C; "Abi" as Convention means &/&mut
@@ -39,3 +39,5 @@
 - [Debug info: line tables](debug-info-line-tables.md) — [binary.debug] info; CU per module, subprogram per body, location per statement; verify spp.o with dwarfdump 23; no .debug_names
 - [Source-line table](source-line-table.md) — crash-report lines: llvm_lines builds a table from spp.o's DWARF, keyed by name hash; no IR refs (BTI); LoadedObjectInfo for sections at 0
 - [Opaque struct layout cache](opaque-struct-layout-cache.md) — never size a registered-but-unfilled struct: LLVM caches an empty layout per module; Opt[BigInt] had a [0 x i8] payload
+- [Builtin coroutine bodies](builtin-coroutine-bodies.md) — mock gens are never analysed: SetOwnedAtSuspend per gen; a by-move self slot holds the value, no load
+- [Float checks shape](float-checks-shape.md) — one hot uno(r-r) branch, cold classifier; deferral reads only the hot flag (0x23); +-* checks elided into their checked users

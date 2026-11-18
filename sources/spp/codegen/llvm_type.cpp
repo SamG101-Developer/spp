@@ -29,6 +29,7 @@ import spp.codegen.llvm_size;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_variant;
 import spp.lex.tokens;
+import spp.utils.functions;
 import spp.utils.ice;
 import spp.utils.numbers;
 import spp.utils.types;
@@ -306,10 +307,10 @@ auto spp::codegen::EnsureLlvmTypeComplete(
     // Stand-ins can name each other - the "Self" of a scope whose class scope
     // carries another "Self" - and following the chain would then never end.
     thread_local auto in_progress = Set<TypeSymbol const*>();
-    if (not in_progress.insert(&type_sym).second) { return; }
+    const auto entry = spp::utils::functions::ScopedInsert(in_progress, &type_sym);
+    if (not entry.Inserted()) { return; }
     EnsureLlvmTypeComplete(*linked_sym, sm, ctx);
     AdoptLlvmTypeInfo(*type_sym.LlvmInfo, *linked_sym->LlvmInfo);
-    in_progress.erase(&type_sym);
     return;
   }
 
@@ -340,11 +341,12 @@ auto spp::codegen::EnsureLlvmTypeComplete(
 
   // Laying the body out asks for the sizes of the attributes, which comes back
   // through here for each of them, so a type that contains itself would recurse
-  // forever. Prevent this with a guard.
+  // forever. Prevent this with a guard, which also comes out on a throw
+  // ("FillLlvmLayout" raises an "!ffi" class's attribute errors).
   thread_local auto in_progress = Set<llvm::StructType const*>();
-  if (not in_progress.insert(struct_type).second) { return; }
+  const auto entry = spp::utils::functions::ScopedInsert(in_progress, struct_type);
+  if (not entry.Inserted()) { return; }
   type_sym.Type->FillLlvmLayout(&sm, &type_sym, ctx);
-  in_progress.erase(struct_type);
 }
 
 /// [CHECKED]

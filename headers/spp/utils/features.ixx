@@ -31,6 +31,7 @@ namespace spp::utils::features {
     BinaryCodegenJumpTableBounds,
     BinaryCodegenFfiUnwindGuard,
     BinaryCodegenAirIntegers,
+    BinaryCodegenFloatChecks,
     BinaryLinkHarden,
     BinaryLinkFortifiedFfi,
     BinaryLinkRelroFfi,
@@ -76,6 +77,9 @@ namespace spp::utils::features {
     bool SafeStackCanary;
     bool PacRet;
     bool IsLinux;
+    bool IsElf;
+    bool IsMachO;
+    bool IsGlibc;
     StrView Folder;
   };
 
@@ -127,8 +131,10 @@ namespace spp::utils::features {
   SPP_EXP_FUN auto CheckFloor(
     TargetFacts const &target, Vec<Str> &errors) -> bool;
 
-  /// Refuse a measure the target cannot have, on by default or not. Building
-  /// without it would quietly revert hardening.
+  /// A measure the target cannot have: left out where it is on by default
+  /// (the record says why), refused where the project set it itself. The
+  /// ffi library checks are decided here too, as the record is written
+  /// before the link that runs them.
   SPP_EXP_FUN auto CheckTargetSupport(
     TargetFacts const &target, Vec<Str> &errors) -> bool;
 

@@ -58,6 +58,7 @@ jobs:
             build
             ci
             core
+            meta
           requireScope: false
           subjectPattern: '^[a-z][a-z0-9 ./:-]*$'
           subjectPatternError: "The description must match the regex."

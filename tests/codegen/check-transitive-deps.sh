@@ -48,7 +48,7 @@ version = "0.1.0"
 build = "lib"
 
 [vcs]
-std = { git = "${STD_GIT}", branch = "master" }
+std = { git = "${STD_GIT}", branch = "${STD_BRANCH}" }
 ${vcs}
 EOF2
 }

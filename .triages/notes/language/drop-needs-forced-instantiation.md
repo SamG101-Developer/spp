@@ -1,7 +1,7 @@
 ---
 name: drop-needs-forced-instantiation
-description: "Destructors are reached only from C++ codegen, so they must be force-instantiated during monomorphisation"
-updated: 2026-08-31
+description: "Destructors are reached only from C++ codegen, so every site that synthesises a drop must force-instantiate it during analysis"
+updated: 2026-11-15
 ---
 
 Nothing in S++ source ever names a destructor - `Drop::drop` is `!protected` and every discard goes through
@@ -11,6 +11,15 @@ the only prototype that exists is then the template's, which is pure generic, ne
 `EmitDrop` silently emits nothing. That was the Vec/Str buffer leak, fixed 2026-08-31 by
 `drop_utils::EnsureDropInstantiated` + `monomorphization::RequireFnInstance`, hooked off the drop intrinsics in
 `FunctionPrototypeAst::AnalysePendingGnSubstitutions`.
+
+**Every site that synthesises a drop has to do this itself**, during analysis, with `EnsureDropInstantiated`:
+the drop intrinsics (`_EnsureDropsForBuiltin`), what a coroutine frame owns at a suspension or at its initial
+suspend (`linear_utils::OwnedAtSuspend`), and a closure's by-value captures
+(`ClosureExpressionCaptureGroupAst::Stage8_CheckMemory`). A miss today is not "nothing emitted" but worse:
+`FindDropOverload` returns null, so `EmitDrop` destroys the value **field by field**, and a `Vec` frees its buffer
+without dropping its elements. It only shows when nothing else in the program instantiated that type's `drop`, so a
+probe that drops the same type elsewhere hides it (the unstarted `Vec[Noisy]::iter_mov` leak, 2026-11-15). Test a
+new site with an element type nothing else in the program drops.
 
 **The general rule this is an instance of:** any method the compiler calls from C++ rather than from analysed S++
 needs its instantiation minted **inside the monomorphisation drain** (Stage 9.5). Minting it at Stage10/11 gives a

@@ -110,6 +110,7 @@ target_link_libraries(
 
 if (WIN32)
   target_link_libraries(${PROJECT_NAME}_lib PRIVATE pthreads4w::pthreadVC3)
+  target_link_options(${PROJECT_NAME}_lib INTERFACE "/STACK:8388608")
 endif ()
 
 add_executable(${PROJECT_NAME} main.cpp)

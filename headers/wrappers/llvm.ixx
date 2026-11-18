@@ -21,7 +21,9 @@ module;
 #include <llvm/IR/Verifier.h>
 #include <llvm/MC/MCSubtargetInfo.h>
 #include <llvm/MC/TargetRegistry.h>
+#include <llvm/Object/COFF.h>
 #include <llvm/Object/ELFObjectFile.h>
+#include <llvm/Object/MachO.h>
 #include <llvm/Object/ObjectFile.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/SHA256.h>
@@ -77,8 +79,8 @@ export namespace llvm {
   using ::llvm::APFloat;
   using ::llvm::APFloatBase;
   using ::llvm::Argument;
-  using ::llvm::maxnum;
-  using ::llvm::minnum;
+  using ::llvm::maximum;
+  using ::llvm::minimum;
   using ::llvm::ArrayRef;
   using ::llvm::ArrayType;
   using ::llvm::AtomicOrdering;
@@ -200,16 +202,30 @@ export namespace llvm {
   }
 
   namespace object {
+    using ::llvm::object::COFFObjectFile;
     using ::llvm::object::ELF32BE;
     using ::llvm::object::ELF32LE;
     using ::llvm::object::ELF64BE;
     using ::llvm::object::ELF64LE;
     using ::llvm::object::ELFFile;
     using ::llvm::object::ELFObjectFileBase;
+    using ::llvm::object::MachOObjectFile;
     using ::llvm::object::ObjectFile;
     using ::llvm::object::SectionRef;
     using ::llvm::object::SymbolRef;
     using ::llvm::object::make_error_code;
+  }
+
+  namespace COFF {
+    using ::llvm::COFF::IMAGE_DLL_CHARACTERISTICS_DYNAMIC_BASE;
+    using ::llvm::COFF::IMAGE_DLL_CHARACTERISTICS_HIGH_ENTROPY_VA;
+    using ::llvm::COFF::IMAGE_DLL_CHARACTERISTICS_NX_COMPAT;
+    using ::llvm::COFF::IMAGE_FILE_RELOCS_STRIPPED;
+  }
+
+  namespace MachO {
+    using ::llvm::MachO::MH_ALLOW_STACK_EXECUTION;
+    using ::llvm::MachO::MH_PIE;
   }
 
   namespace ELF {

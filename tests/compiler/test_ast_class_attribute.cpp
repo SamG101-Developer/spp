@@ -211,7 +211,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   test_invalid_closure_default,
   SppInvalidDefaultValueError, R"(
     cls A {
-        a: FunRef[(S32,), S32] = (x: S32) { ret x }
+        a: FunRef[(S32,), S32] = |x: S32| { ret x }
     }
 )");
 

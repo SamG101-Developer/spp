@@ -4,6 +4,8 @@ import std;
 
 // Defined here, not inline in the interface: MSVC emits no definition
 // for an exported inline variable with a dynamic initialiser.
+// "F128" is compiled only where SPP-STL declares it (its "!cfg" in
+// "std/number.spp", float-upgrade L1): the two conditions must match.
 const spp::Str spp::compiler::kPrelude = R"(
 use std::annotations::annotation
 use std::annotations::public
@@ -42,7 +44,7 @@ use std::number::F8
 use std::number::F16
 use std::number::F32
 use std::number::F64
-use std::number::F128
+!cfg(os="linux", pointer_width="64") use std::number::F128
 use std::void::Void
 use std::option::Opt
 use std::option::None
@@ -80,7 +82,11 @@ auto spp::compiler::PreludeFor(
     const auto end = rest.find('\n');
     const auto line = rest.substr(0, end);
     rest = end == StrView::npos ? StrView() : rest.substr(end + 1);
-    if (line.starts_with(own) and line.find("::", own.length()) == StrView::npos) { continue; }
+
+    // A "use" behind an annotation ("!cfg(...) use ...") is read from the "use".
+    const auto use_at = line.find("use ");
+    const auto use = use_at == StrView::npos ? line : line.substr(use_at);
+    if (use.starts_with(own) and use.find("::", own.length()) == StrView::npos) { continue; }
     prelude.append(line).push_back('\n');
   }
   return prelude;

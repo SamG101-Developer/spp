@@ -96,6 +96,12 @@ namespace spp::utils::features {
   /// (then the return-signing pass refuses it, naming the key).
   static auto LeaveOutSplitStack(
     spp::utils::features::TargetFacts const &target, const spp::StrView why) -> void;
+
+  /// Leave out "key" ("name" under "[section]"), which the target cannot have,
+  /// for "why" where it is on by default; refused, into "errors", where the
+  /// project set it itself. False when refused.
+  static auto LeaveOutOrRefuse(
+    ConfigKey key, StrView section, StrView name, StrView why, Vec<Str> &errors) -> bool;
 }
 
 /// [CHECKED]
@@ -413,6 +419,19 @@ auto spp::utils::features::LeaveOutSplitStack(
   }
 }
 
+auto spp::utils::features::LeaveOutOrRefuse(
+  const ConfigKey key, const StrView section, const StrView name, const StrView why, Vec<Str> &errors) -> bool {
+  if (not IsEnabled(key)) { return true; }
+  if (IsExplicit(key)) {
+    errors.emplace_back(
+      "'" + Str(name) + "' in [" + Str(section) + "] cannot be applied: " + Str(why) + "; set '" + Str(name)
+      + " = false'");
+    return false;
+  }
+  LeaveOut(key, why);
+  return true;
+}
+
 auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
   static const auto schema = Vec<SectionSpec>{
     SectionSpec{
@@ -605,6 +624,18 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           "stops it, naming the check; the report is where the value was used. Off, every check is made at its "
           "operation. rel only; dev always checks at the operation."
         },
+        KeySpec{
+          .Key = ConfigKey::BinaryCodegenFloatChecks,
+          .Name = "float_checks",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "A float operation whose result is a NaN or infinite stops the program, as an integer overflow "
+          "does: invalid (0/0, inf - inf, sqrt(-1), or a NaN going in), division by zero, and overflow (a result too "
+          "large, including narrowing a float, or an integer, to a type it does not fit, or an infinity going in). A "
+          "value made non-finite on purpose goes through the *_ieee forms, as wrapping goes through *_wrapping. Off, "
+          "floats follow IEEE 754's non-stop rules."
+        },
       },
       .FreeForm = false,
     },
@@ -640,7 +671,8 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           .Default = true,
           .Help = "Make every section that only startup writes read-only once startup is over, leave the stack "
           "non-executable and the code its own mapping, and fail the link on a text relocation, a "
-          "writable-and-executable segment or code that shares a page with data."
+          "writable-and-executable segment or code that shares a page with data. On Windows and macOS, link a "
+          "movable image at a high-entropy address with non-executable data, and fail the link where it is not."
         },
         KeySpec{
           .Key = ConfigKey::BinaryLinkFortifiedFfi,
@@ -649,8 +681,8 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           .Required = false,
           .Default = true,
           .Help = "Fail the link against an ffi library that calls, unchecked, a libc function libc has a checked "
-          "version of (memcpy, sprintf, printf, ...), as one built without _FORTIFY_SOURCE does. ELF libraries "
-          "against glibc only. Rebuild the library with -O2 -D_FORTIFY_SOURCE=3, or turn this off."
+          "version of (memcpy, sprintf, printf, ...), as one built without _FORTIFY_SOURCE does. glibc targets "
+          "only; left out elsewhere. Rebuild the library with -O2 -D_FORTIFY_SOURCE=3, or turn this off."
         },
         KeySpec{
           .Key = ConfigKey::BinaryLinkRelroFfi,
@@ -660,7 +692,7 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           .Default = true,
           .Help = "Fail the link against an ffi library linked without full RELRO (a PT_GNU_RELRO segment and "
           "BIND_NOW), whose relocated data, its GOT included, would stay writable after startup where the "
-          "program's own does not. ELF libraries only. Relink the library with -Wl,-z,relro,-z,now, or turn "
+          "program's own does not. ELF targets only; left out elsewhere. Relink the library with -Wl,-z,relro,-z,now, or turn "
           "this off."
         },
         KeySpec{
@@ -671,8 +703,9 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           .Default = true,
           .Help = "Fail the link against an ffi library with a writable-and-executable segment, or code that shares "
           "a page with data, which mapping the page executable makes executable too. Checked in the library, so "
-          "a linker that ignored the flags is caught. ELF libraries only. Relink the library with "
-          "-Wl,-z,separate-code (binutils 2.31 or newer), or turn this off."
+          "a linker that ignored the flags is caught. On Windows, fail on a DLL that cannot be moved or has DEP "
+          "off. Left out on macOS. Relink the library with -Wl,-z,separate-code (binutils 2.31 or newer), or "
+          "turn this off."
         },
       },
       .FreeForm = false,
@@ -710,8 +743,9 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
     SectionSpec{
       .Name = "target.linkers",
       .Help = "The linker for a target, keyed by its folder name (\"s390x-linux-gnu\"): a command, run with the "
-      "link's arguments after it. Unnamed, the host links with 'cc', and a Linux target with its GNU cross "
-      "compiler, \"<arch>-linux-<env>-gcc\" or the newest versioned one, \"...-gcc-N\".",
+      "link's arguments after it. Its program is a name on PATH or a path; a full path on its own may have spaces, "
+      "and one followed by arguments is quoted inside the string. Unnamed, the host links with 'cc', and a Linux "
+      "target with its GNU cross compiler, \"<arch>-linux-<env>-gcc\" or the newest versioned one, \"...-gcc-N\".",
       .Keys = Vec<KeySpec>{},
       .FreeForm = true,
     },
@@ -945,7 +979,27 @@ auto spp::utils::features::CheckTargetSupport(
       return false;
     }
   }
-  return true;
+
+  // The ffi library checks read ELF's own structures, and glibc's checked
+  // calls; a Windows DLL's segments are checked as its image flags.
+  const auto folder = Str(target.Folder);
+  auto ok = true;
+  if (not target.IsGlibc) {
+    ok &= LeaveOutOrRefuse(
+      ConfigKey::BinaryLinkFortifiedFfi, "binary.link", "fortified_ffi",
+      "only glibc has checked calls, and " + folder + " does not use it", errors);
+  }
+  if (not target.IsElf) {
+    ok &= LeaveOutOrRefuse(
+      ConfigKey::BinaryLinkRelroFfi, "binary.link", "relro_ffi",
+      "RELRO is ELF's, and " + folder + " is not ELF", errors);
+  }
+  if (target.IsMachO) {
+    ok &= LeaveOutOrRefuse(
+      ConfigKey::BinaryLinkSegmentsFfi, "binary.link", "segments_ffi",
+      "Mach-O libraries are not checked yet", errors);
+  }
+  return ok;
 }
 
 /// [CHECKED]

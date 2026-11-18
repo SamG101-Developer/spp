@@ -17,6 +17,27 @@ auto spp::codegen::IsAbortBlock(
     and &bb.front() == call;
 }
 
+auto spp::codegen::IsAbortPath(
+  llvm::BasicBlock const &bb, const llvm::function_ref<void(llvm::BasicBlock const &)> each) -> bool {
+  // A float check's classifier, its infinity's test and three aborts are the
+  // most there are.
+  constexpr auto max_blocks = 8uz;
+  auto seen = Set<llvm::BasicBlock const*>();
+  auto work = Vec<llvm::BasicBlock const*>{&bb};
+  while (not work.empty()) {
+    const auto at = work.back();
+    work.pop_back();
+    if (not seen.insert(at).second) { continue; }
+    if (seen.size() > max_blocks) { return false; }
+    each(*at);
+    if (IsAbortBlock(*at)) { continue; }
+    if (llvm::succ_empty(at)) { return false; }
+    if (genex::any_of(*at, [](llvm::Instruction const &i) { return i.mayHaveSideEffects(); })) { return false; }
+    for (const auto succ : llvm::successors(at)) { work.emplace_back(succ); }
+  }
+  return true;
+}
+
 auto spp::codegen::VersionLoop(
   llvm::Loop &loop, llvm::BasicBlock *exit,
   llvm::function_ref<llvm::User*(llvm::Instruction *before)> make_condition,
@@ -50,18 +71,43 @@ auto spp::codegen::VersionLoop(
         }
         continue;
       }
-      if (not IsAbortBlock(*succ)) { continue; }
-      const auto reads_loop = genex::any_of(succ->front().operands(), [&](llvm::Use const &op) {
-        return map.count(op.get()) > 0;
+
+      // An abort path (an abort, or a float check's classifier before its
+      // aborts) reading the loop's values gets a copy of its own, reading the
+      // copy's; its phis (a classifier is an exit block, so in closed form it
+      // reads the result through one) take the copy's blocks.
+      auto path = Vec<llvm::BasicBlock*>();
+      if (not IsAbortPath(*succ, [&](llvm::BasicBlock const &b) { path.emplace_back(const_cast<llvm::BasicBlock*>(&b)); })) {
+        continue;
+      }
+      const auto reads_loop = genex::any_of(path, [&](llvm::BasicBlock const *b) {
+        return genex::any_of(*b, [&](llvm::Instruction const &inst) {
+          return llvm::isa<llvm::PHINode>(inst) or genex::any_of(inst.operands(), [&](llvm::Use const &op) {
+            return map.count(op.get()) > 0;
+          });
+        });
       });
       if (not reads_loop) { continue; }
       auto &copy = abort_copies[succ];
       if (copy == nullptr) {
         auto local = llvm::ValueToValueMapTy();
-        copy = llvm::CloneBasicBlock(succ, local, suffix, succ->getParent());
-        for (auto &inst : *copy) {
-          llvm::RemapInstruction(&inst, map, llvm::RF_IgnoreMissingLocals | llvm::RF_NoModuleLevelChanges);
+        auto copies = Vec<llvm::BasicBlock*>();
+        for (const auto b : path) {
+          const auto c = llvm::CloneBasicBlock(b, local, suffix, succ->getParent());
+          local[b] = c;
+          copies.emplace_back(c);
         }
+        for (const auto c : copies) {
+          for (auto &inst : *c) {
+            llvm::RemapInstruction(&inst, local, llvm::RF_IgnoreMissingLocals | llvm::RF_NoModuleLevelChanges);
+            llvm::RemapInstruction(&inst, map, llvm::RF_IgnoreMissingLocals | llvm::RF_NoModuleLevelChanges);
+          }
+        }
+        copy = copies.front();
+      }
+      // A phi in the original path now has only the original loop's edges.
+      for (auto &phi : succ->phis()) {
+        if (phi.getBasicBlockIndex(copy_bb) >= 0) { phi.removeIncomingValue(copy_bb, false); }
       }
       copy_bb->getTerminator()->replaceSuccessorWith(succ, copy);
     }

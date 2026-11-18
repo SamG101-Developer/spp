@@ -4,51 +4,12 @@ module;
 #include <version>  // _GLIBCXX_RELEASE
 
 module spp.utils.files;
-import spp.utils.env;
 import genex;
 import std;
 import sys;
 
 namespace fs = std::filesystem;
 constexpr auto SPP_EXT = ".spp";
-
-namespace spp::utils::files {
-  /// The directories on PATH, in order. Split by the given separator (which
-  /// is platform dependent).
-  static auto PathDirectories() -> Vec<Path>;
-
-  /// Whether "path" is a file this process may run. On windows, provided the
-  /// file is regular, it's always executable (sys::X_OK is "exists").
-  static auto IsExecutable(Path const &path) -> bool;
-}
-
-/// [CHECKED]
-auto spp::utils::files::PathDirectories() -> Vec<Path> {
-  // Get the PATH from the environment. If it is empty, then no extra
-  // processing needs to happen. Return early.
-  auto dirs = spp::Vec<Path>();
-  const auto raw = env::Get(env::Var::Path);
-  if (not raw.has_value()) { return dirs; }
-
-  // Move through the "rest" which is a view over the "raw" PATH value, and
-  // get the next path (upto the separator), and then trim and continue.
-  auto rest = StrView(*raw);
-  while (not rest.empty()) {
-    const auto end = rest.find(PathListSeparator);
-    const auto dir = rest.substr(0, end);
-    if (not dir.empty()) { dirs.emplace_back(dir); }
-    rest = end == StrView::npos ? StrView() : rest.substr(end + 1);
-  }
-  return dirs;
-}
-
-/// [CHECKED]
-auto spp::utils::files::IsExecutable(Path const &path) -> bool {
-  auto ec = std::error_code();
-  // Run the two checks (regular file, and access control).
-  return fs::is_regular_file(path, ec)
-    and sys::access(path.c_str(), sys::X_OK) == 0;
-}
 
 /// [CHECKED]
 auto spp::utils::files::DisplayString(Path const &path) -> Str {
@@ -110,76 +71,6 @@ auto spp::utils::files::GlobSpp(Path const &path) -> Vec<Path> {
   // and declarations should be order agnostic.
   paths |= genex::actions::sort;
   return paths;
-}
-
-/// [CHECKED]
-auto spp::utils::files::SharedLibraryName(
-  const StrView package, const StrView extension) -> Str {
-  const auto prefix = extension == "dll" ? "" : "lib";
-  return prefix + Str(package) + "." + Str(extension);
-}
-
-/// [CHECKED]
-auto spp::utils::files::FindProgram(const StrView name) -> Opt<Path> {
-  // Loop through the PATH directories, looking for one that contains the given
-  // filename. Return the qualified filename (+directory) if found.
-  for (auto const &dir : PathDirectories()) {
-    if (const auto candidate = dir / name; IsExecutable(candidate)) {
-      return candidate;
-    }
-#if SPP_PLATFORM_WINDOWS
-    // A shell there finds "lld-link" as "lld-link.exe".
-    if (not Path(name).has_extension()) {
-      if (const auto candidate = dir / (Str(name) + ".exe"); IsExecutable(candidate)) {
-        return candidate;
-      }
-    }
-#endif
-  }
-  return Nullopt;
-}
-
-/// [CHECKED]
-auto spp::utils::files::FindNewestVersion(const StrView name) -> Opt<Path> {
-  // The prefix is the start of the filename, ie "loongarch64-linux-gnu-gcc"
-  // will become "loongarch64-linux-gnu-gcc-" and the version will be found
-  // afterwards.
-  const auto prefix = Str(name) + "-";
-  auto best = Opt<Path>();
-  auto best_version = 0UL;
-  const auto is_digit = [](const char c) { return c >= '0' and c <= '9'; };
-
-  // Use the path directories again, as this is the shell-searchable set of
-  // directories.
-  for (auto const &dir : PathDirectories()) {
-    auto ec = std::error_code();
-    for (
-      auto it = fs::directory_iterator(dir, ec);
-      not ec and it != fs::directory_iterator();
-      it.increment(ec)) {
-      // Filter out files that don't start with the same prefix (irrelevant), or
-      // don't have anything after the prefix (non-versioned name).
-      const auto file = NativeString(it->path().filename());
-      if (not file.starts_with(prefix)) { continue; }
-      if (file.size() == prefix.size()) { continue; }
-
-      // Get the suffix digits following the prefix part of the filename, and
-      // check the version is numeric.
-      const auto digits = StrView(file).substr(prefix.size());
-      if (not genex::all_of(digits, is_digit)) {
-        continue;
-      }
-
-      // Parse the version into a number, and compare it against the current
-      // best version of the file. Lower version or non-executable is skipped.
-      const auto version = std::stoul(Str(digits));
-      if (best.has_value() and version <= best_version) { continue; }
-      if (not IsExecutable(it->path())) { continue; }
-      best = it->path();
-      best_version = version;
-    }
-  }
-  return best;
 }
 
 SPP_MOD_BEGIN

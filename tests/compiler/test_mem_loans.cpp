@@ -296,7 +296,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> Void {
         let mut x = 1_s32
-        let mut c = (caps &mut x) { x@ = 2_s32 }
+        let mut c = |caps &mut x| { x@ = 2_s32 }
         take(&c, &mut x)
     }
 )");

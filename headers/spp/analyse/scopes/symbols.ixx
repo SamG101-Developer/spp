@@ -821,6 +821,12 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// thread hazard type. Opposite: thread safe.
   SPP_ATTR_NODISCARD auto IsThreadSafe() const -> bool;
 
+  /// Whether a value of this type can hold a borrow: only closures (and other
+  /// function values), generators and futures can, so whether it is or holds
+  /// one, through generic arguments or attributes. An unbound generic or an
+  /// unresolved type answers yes, as either could be one.
+  SPP_ATTR_NODISCARD auto CanHoldBorrows() const -> bool;
+
   /// Equality is done by pointer comparison. We only want to
   /// know if two pointers are the same effectively.
   auto operator==(TypeSymbol const &that) const -> bool;

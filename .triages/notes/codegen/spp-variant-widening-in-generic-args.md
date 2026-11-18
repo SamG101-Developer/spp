@@ -27,7 +27,7 @@ about lowering types rather than about converting values into one):
 borrow against a value (`&StrView` vs `StrView`, which `TypeEq` also calls unequal) and rebuilt a struct where a
 pointer was wanted, producing invalid ir in `string_view.spp`, `single.spp` and `ops/idx.spp`.
 
-**The closure site, same shape, also fixed.** A closure's type is its body's, so `o.and_then((t: T) Some(val=..))`
+**The closure site, same shape, also fixed.** A closure's type is its body's, so `o.and_then(|t: T| Some(val=..))`
 has a `Some[U]` where the constraint wants an `Opt[U]`. A closure reached through a generic is called by the signature
 its constraint promised (`sym->IndirectFnType`), while the function it points at was compiled with its own - so the
 call read back a value that was never written and the chain quietly answered the `unwrap_or` default. The closure-call

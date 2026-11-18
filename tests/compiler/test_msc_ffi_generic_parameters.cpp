@@ -47,7 +47,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(f: std::cffi::CClosure[(), Void]) -> S32 { }
 
     fun f() -> Void {
-        let n = g(std::cffi::CClosure[(), Void]::from(() -> Void { }))
+        let n = g(std::cffi::CClosure[(), Void]::from(|| -> Void { }))
     }
 )");
 

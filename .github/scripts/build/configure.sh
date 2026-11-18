@@ -25,6 +25,12 @@ fi
 # ICE and fails the whole build.
 FORTIFY_OFF="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"
 
+# Clang on Linux borrows Homebrew's GCC (install-clang-linux.sh). Its
+# config file names it for every run; passing it here also puts it in
+# compile_commands.json, for clang-tidy's own driver.
+COMPILER_FLAGS="$FORTIFY_OFF${SPP_CI_GCC_INSTALL_DIR:+ --gcc-install-dir=$SPP_CI_GCC_INSTALL_DIR}"
+CXX_COMPILER_FLAGS="$COMPILER_FLAGS${SPP_CI_CLANG_CXX_FLAGS:+ $SPP_CI_CLANG_CXX_FLAGS}"
+
 # Ninja lives in a per-run RUNNER_TEMP directory, so its
 # absolute path changes every run. A restored build tree
 # still names the previous run's path in CMAKE_MAKE_PROGRAM,
@@ -47,8 +53,8 @@ run_configure() {
   # shellcheck disable=SC2086
   cmake -S . -B build -G Ninja \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-    -DCMAKE_C_FLAGS="$FORTIFY_OFF" \
-    -DCMAKE_CXX_FLAGS="$FORTIFY_OFF" \
+    -DCMAKE_C_FLAGS="$COMPILER_FLAGS" \
+    -DCMAKE_CXX_FLAGS="$CXX_COMPILER_FLAGS" \
     -DSPP_WERROR=ON \
     -DSPP_BUILD_TESTS=ON \
     -DSPP_USE_DEV_RPATH=OFF \

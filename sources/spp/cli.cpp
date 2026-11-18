@@ -63,6 +63,9 @@ inline constexpr spp::Str TST_FOLDER = "tst";
 inline constexpr spp::Str MAIN_FILE = "main.spp";
 inline constexpr spp::Str CONFIG_FILE = "spp.toml";
 
+/// Appended to a shell command whose output only its exit status is wanted for.
+inline constexpr auto kDiscardOutput = SPP_PLATFORM_WINDOWS ? " >NUL 2>&1" : " >/dev/null 2>&1";
+
 inline constexpr auto CMD_HELP_TEXT_BUILD_TARGET =
   "Target triple to build for; the host by default. Pass an unknown one to "
   "list what this build supports. A target other than the host is compiled and "
@@ -129,11 +132,13 @@ namespace spp::cli {
   /// Wraps all git command calls made from the CLI.
   static auto RunGit(Str const &args) -> bool;
 
-  /// Given a url of a repository, extract the host from it. Simple parsing by
-  /// character detection at either end.
-  static auto GetUrlHost(Str const &url) -> Str;
-
+  /// Whether git can list the repository at "url". A repository that does not
+  /// exist reads the same as a host that is down.
   static auto IsRemoteReachable(Str const &url) -> bool;
+
+  /// Whether the checkout at "quoted_target" fetches from "url": its "origin"
+  /// is that exact url.
+  static auto IsGitOrigin(Str const &quoted_target, Str const &url) -> bool;
 
   /// "spp info executable": print where the project's executable is built to
   /// under "mode" and "target" (empty for the host), as an absolute path on a
@@ -280,6 +285,9 @@ auto spp::cli::LoadProjectFeatures(const bool for_debugger) -> bool {
     .SafeStackCanary = codegen::DoesTargetSupportSafeStackCanary(),
     .PacRet = codegen::DoesTargetSupportPacRet(),
     .IsLinux = codegen::TargetIsLinux(),
+    .IsElf = codegen::TargetIsElf(),
+    .IsMachO = codegen::TargetIsMachO(),
+    .IsGlibc = codegen::TargetIsGlibc(),
     .Folder = codegen::TargetFolderName()
   };
 
@@ -337,25 +345,6 @@ auto spp::cli::RunGit(Str const &args) -> bool {
   return true;
 }
 
-/// [CHECKED]
-auto spp::cli::GetUrlHost(Str const &url) -> Str {
-  // Strip a scheme prefix off of the url, searching for "://" and removing
-  // everything before it, and those 3 characters too.
-  auto rest = StrView(url);
-  if (const auto scheme = rest.find("://"); scheme != StrView::npos) {
-    rest.remove_prefix(scheme + 3);
-  }
-
-  // Only a "user@" before the first "/" is credentials; an "@" further in
-  // belongs to the path.
-  const auto slash = rest.find('/');
-  if (const auto at = rest.find('@');
-    at != StrView::npos and (slash == StrView::npos or at < slash)) {
-    rest.remove_prefix(at + 1);
-  }
-  return Str(rest.substr(0, rest.find_first_of(":/?")));
-}
-
 auto spp::cli::IsRemoteReachable(Str const &url) -> bool {
   // Bypass the check when there is no url being checked (failsafe), or the
   // env var has been provided to bypass network checks.
@@ -371,11 +360,19 @@ auto spp::cli::IsRemoteReachable(Str const &url) -> bool {
     + utils::shell::Quote(url);
 
 #if SPP_PLATFORM_WINDOWS
-  const auto command = "set GIT_TERMINAL_PROMPT=0&& git" + args + " >NUL 2>&1";
+  const auto command = "set GIT_TERMINAL_PROMPT=0&& git" + args + kDiscardOutput;
 #else
-  const auto command = "GIT_TERMINAL_PROMPT=0 git" + args + " >/dev/null 2>&1";
+  const auto command = "GIT_TERMINAL_PROMPT=0 git" + args + kDiscardOutput;
 #endif
   return utils::shell::Run(command) == 0;
+}
+
+auto spp::cli::IsGitOrigin(Str const &quoted_target, Str const &url) -> bool {
+  // "--get" with a value exits 0 only when the value matches; "--fixed-value"
+  // makes that an exact compare rather than a regex.
+  const auto command = "git -C " + quoted_target
+    + " config --get --fixed-value remote.origin.url " + utils::shell::Quote(url);
+  return utils::shell::Run(command + kDiscardOutput) == 0;
 }
 
 auto spp::cli::PrintExecutable(
@@ -816,86 +813,114 @@ auto spp::cli::HandleVcs() -> bool {
     auto const &repo_folder = dependency.Folder;
     const auto quoted_target = utils::shell::Quote(utils::files::NativeString(repo_folder));
     const auto quoted_branch = utils::shell::Quote(repo_branch);
+    const auto quoted_url = utils::shell::Quote(repo_url);
 
-    // Ping the host before handing it to git, and cache per host, so that later
-    // repositories on the same host reuse the answer.
-    const auto host = GetUrlHost(repo_url);
-    auto host_is_up = [&] {
-      auto [cached, first_seen] = reachable.try_emplace(host, false);
+    // Ask whether the repository can be reached only once git has failed, and
+    // only once per repository. A host that is down fails the same way for
+    // every repository on it, but a repository that does not exist fails alone.
+    auto repo_is_up = [&] {
+      auto [cached, first_seen] = reachable.try_emplace(repo_url, false);
       if (first_seen) { cached->second = IsRemoteReachable(repo_url); }
       return cached->second;
     };
 
     // A pinned dependency is checked out at its commit, detached, and never
     // pulled. One already at it needs no git and no network, so a build with an
-    // unchanged pin works offline.
-    if (dependency.Rev.has_value()) {
-      auto const &rev = *dependency.Rev;
-      if (compiler::dependencies::FindCheckedOutRev(repo_folder) == rev) { return true; }
+    // unchanged pin works offline. A commit is the same code whichever
+    // repository it came from, so a changed url does not matter here.
+    const auto is_pinned = dependency.Rev.has_value();
+    if (is_pinned and compiler::dependencies::FindCheckedOutRev(repo_folder) == dependency.Rev) { return true; }
 
-      if (not std::filesystem::exists(repo_folder)) {
-        if (not RunGit("clone --no-checkout " + utils::shell::Quote(repo_url) + " " + quoted_target)) {
-          if (not host_is_up()) {
-            std::cerr
-              << "Error: '"s << host << "' is unreachable, and "
-              << repo_name << " has not been cloned yet.\n";
-          }
-          return false;
-        }
-      }
-
-      // The pinned commit may be newer than the checkout, so fetch first. A
-      // host that is down only matters if the commit is not here already,
-      // which the checkout then reports.
-      else if (not RunGit("-C " + quoted_target + " fetch origin")) {
-        if (host_is_up()) { return false; }
-        std::cerr
-          << "Warning: '"s << host << "' is unreachable; looking for "
-          << rev << " in the existing checkout of " << repo_name << ".\n";
-      }
-
-      if (not RunGit("-C " + quoted_target + " checkout --quiet --detach " + utils::shell::Quote(rev))) {
-        return false;
-      }
-      std::cout
-        << "Checked out "s << repo_name << " from " << repo_url
-        << " at " << rev << "\n";
-      return true;
-    }
-
-    // If the repo doesn't exist locally, then clone it on the correct branch.
-    // If the clone fails, check if the host is up or not, and report the error.
-    if (not std::filesystem::exists(repo_folder)) {
-      if (not RunGit(
-        "clone --branch " + quoted_branch + " " + utils::shell::Quote(repo_url) + " " + quoted_target)) {
-        if (not host_is_up()) {
+    // A dependency not here yet is cloned: on its branch, or with nothing
+    // checked out for a pin, which the checkout below then picks.
+    const auto cloned = not std::filesystem::exists(repo_folder);
+    if (cloned) {
+      const auto clone_args = is_pinned ? "clone --no-checkout "s : "clone --branch " + quoted_branch + " ";
+      if (not RunGit(clone_args + quoted_url + " " + quoted_target)) {
+        if (not repo_is_up()) {
           std::cerr
-            << "Error: '"s << host << "' is unreachable, and "
+            << "Error: '"s << repo_url << "' could not be reached, and "
             << repo_name << " has not been cloned yet.\n";
         }
         return false;
       }
-      std::cout
-        << "Cloned "s << repo_name << " from "
-        << repo_url << "\n";
+      if (not is_pinned) {
+        std::cout << "Cloned "s << repo_name << " from " << repo_url << "\n";
+        return true;
+      }
     }
 
-    // Otherwise, update the branch (for mutating tags like "master"). Same
-    // error system as above; attempt, then check if host is up etc.
-    else if (
-      not RunGit("-C " + quoted_target + " checkout --quiet " + quoted_branch) or
-      not RunGit("-C " + quoted_target + " pull --quiet origin " + quoted_branch)) {
-      if (host_is_up()) { return false; }
-      std::cerr
-        << "Warning: '"s << host
-        << "' is unreachable; using the existing checkout of "
-        << repo_name << ".\n";
+    // One already here is fetched before the checkout: a branch pushed or a
+    // commit made since the clone is not in it yet. The fetch is from the url
+    // "spp.toml" declares, not the clone's "origin", which a url changed since
+    // the clone would leave fetching the old repository; "origin" is moved
+    // over only once that fetch works. When it fails, the existing checkout is
+    // used only if it is of the declared repository, and that repository
+    // cannot be reached; the checkout then reports a branch or commit it lacks.
+    auto fetched = cloned;
+    auto moved_repository = false;
+    if (not cloned) {
+      const auto from_origin = IsGitOrigin(quoted_target, repo_url);
+      fetched = RunGit(
+        "-C " + quoted_target + " fetch --quiet --prune " + quoted_url + " "
+        + utils::shell::Quote("+refs/heads/*:refs/remotes/origin/*"));
+
+      if (fetched and not from_origin and not RunGit("-C " + quoted_target + " remote set-url origin " + quoted_url)) {
+        return false;
+      }
+      moved_repository = fetched and not from_origin;
+      if (not fetched and not from_origin) {
+        std::cerr
+          << "Error: "s << repo_name << " could not be fetched from '" << repo_url
+          << "', and its existing checkout is of another repository.\n";
+        return false;
+      }
+      if (not fetched) {
+        if (repo_is_up()) { return false; }
+        std::cerr
+          << "Warning: '"s << repo_url
+          << "' could not be reached; using the existing checkout of "
+          << repo_name << ".\n";
+      }
     }
-    else {
+
+    // A pin is checked out detached at its commit.
+    if (is_pinned) {
+      if (not RunGit("-C " + quoted_target + " checkout --quiet --detach " + utils::shell::Quote(*dependency.Rev))) {
+        return false;
+      }
       std::cout
-        << "Updated "s << repo_name << " from " << repo_url
-        << " (" << repo_branch << ")" << "\n";
+        << "Checked out "s << repo_name << " from " << repo_url
+        << " at " << *dependency.Rev << "\n";
+      return true;
     }
+
+    // A branch of a repository the url now names instead of the one cloned
+    // is that repository's: its history need not share anything with the
+    // local branch, so it is taken as fetched rather than fast-forwarded.
+    if (moved_repository) {
+      if (not RunGit(
+        "-C " + quoted_target + " checkout --quiet -B " + quoted_branch + " "
+        + utils::shell::Quote("origin/" + repo_branch))) {
+        return false;
+      }
+      std::cout
+        << "Checked out "s << repo_name << " from " << repo_url
+        << " (" << repo_branch << ")" << "\n";
+      return true;
+    }
+
+    // A branch is checked out and, when the fetch worked, brought up to what
+    // it fetched (a branch like "master" moves on).
+    if (not RunGit("-C " + quoted_target + " checkout --quiet " + quoted_branch)) { return false; }
+    if (not fetched) { return true; }
+    if (not RunGit(
+      "-C " + quoted_target + " merge --quiet --ff-only " + utils::shell::Quote("origin/" + repo_branch))) {
+      return false;
+    }
+    std::cout
+      << "Updated "s << repo_name << " from " << repo_url
+      << " (" << repo_branch << ")" << "\n";
     return true;
   };
   return compiler::dependencies::Fetch(
@@ -933,7 +958,7 @@ auto spp::cli::HandleBuild(
   // that caused it, so stop here instead.
   if (not skip_vcs and not HandleVcs()) {
     std::cerr <<
-      "Error: Aborting the build; the [vcs] dependencies could not be"
+      "Error: Aborting the build; the [vcs] dependencies could not be "
       "fetched.\n";
     return false;
   }

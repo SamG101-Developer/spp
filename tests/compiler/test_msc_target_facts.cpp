@@ -26,7 +26,20 @@ namespace {
   };
 
   constexpr auto WINDOWS = spp::utils::features::TargetFacts{
-    .SafeStack = false, .SafeStackCanary = false, .PacRet = false, .IsLinux = false, .Folder = "x86_64-windows-msvc"};
+    .SafeStack = false, .SafeStackCanary = false, .PacRet = false, .IsLinux = false, .IsElf = false,
+    .IsMachO = false, .IsGlibc = false, .Folder = "x86_64-windows-msvc"};
+
+  constexpr auto MACOS = spp::utils::features::TargetFacts{
+    .SafeStack = true, .SafeStackCanary = true, .PacRet = false, .IsLinux = false, .IsElf = false,
+    .IsMachO = true, .IsGlibc = false, .Folder = "aarch64-macos"};
+
+  constexpr auto LINUX_MUSL = spp::utils::features::TargetFacts{
+    .SafeStack = true, .SafeStackCanary = true, .PacRet = false, .IsLinux = true, .IsElf = true,
+    .IsMachO = false, .IsGlibc = false, .Folder = "x86_64-linux-musl"};
+
+  constexpr auto LINUX_GNU = spp::utils::features::TargetFacts{
+    .SafeStack = true, .SafeStackCanary = true, .PacRet = false, .IsLinux = true, .IsElf = true,
+    .IsMachO = false, .IsGlibc = true, .Folder = "x86_64-linux-gnu"};
 }
 
 TEST(TestTargetFacts, test_default_split_and_pac_ret_left_out_without_an_unsafe_stack) {
@@ -87,4 +100,51 @@ TEST(TestTargetFacts, test_nothing_left_out_where_the_target_has_everything) {
   EXPECT_TRUE(spp::utils::features::IsEnabled(ConfigKey::MemoryStackSplit));
   EXPECT_TRUE(spp::utils::features::IsEnabled(ConfigKey::BinaryCodegenPacRet));
   EXPECT_TRUE(spp::utils::features::IsEnabled(ConfigKey::MemoryStackProtect));
+}
+
+TEST(TestTargetFacts, test_default_ffi_checks_left_out_off_elf_but_dll_segments_kept) {
+  const auto config = LoadedConfig("");
+  auto errors = spp::Vec<spp::Str>();
+  EXPECT_TRUE(spp::utils::features::CheckTargetSupport(WINDOWS, errors));
+  EXPECT_FALSE(spp::utils::features::IsEnabled(ConfigKey::BinaryLinkFortifiedFfi));
+  EXPECT_FALSE(spp::utils::features::IsEnabled(ConfigKey::BinaryLinkRelroFfi));
+  EXPECT_TRUE(spp::utils::features::IsEnabled(ConfigKey::BinaryLinkSegmentsFfi));
+  const auto record = spp::utils::features::EffectiveSettings(false);
+  EXPECT_NE(record.find("binary.link.relro_ffi = left out (RELRO is ELF's, and x86_64-windows-msvc is not ELF)"),
+    spp::Str::npos) << record;
+}
+
+TEST(TestTargetFacts, test_default_segments_ffi_left_out_on_macho) {
+  const auto config = LoadedConfig("");
+  auto errors = spp::Vec<spp::Str>();
+  EXPECT_TRUE(spp::utils::features::CheckTargetSupport(MACOS, errors));
+  EXPECT_FALSE(spp::utils::features::IsEnabled(ConfigKey::BinaryLinkSegmentsFfi));
+  EXPECT_FALSE(spp::utils::features::IsEnabled(ConfigKey::BinaryLinkRelroFfi));
+  EXPECT_FALSE(spp::utils::features::IsEnabled(ConfigKey::BinaryLinkFortifiedFfi));
+}
+
+TEST(TestTargetFacts, test_default_fortified_ffi_left_out_on_musl_only) {
+  const auto config = LoadedConfig("");
+  auto errors = spp::Vec<spp::Str>();
+  EXPECT_TRUE(spp::utils::features::CheckTargetSupport(LINUX_MUSL, errors));
+  EXPECT_FALSE(spp::utils::features::IsEnabled(ConfigKey::BinaryLinkFortifiedFfi));
+  EXPECT_TRUE(spp::utils::features::IsEnabled(ConfigKey::BinaryLinkRelroFfi));
+  EXPECT_TRUE(spp::utils::features::IsEnabled(ConfigKey::BinaryLinkSegmentsFfi));
+}
+
+TEST(TestTargetFacts, test_no_ffi_check_left_out_on_glibc) {
+  const auto config = LoadedConfig("");
+  auto errors = spp::Vec<spp::Str>();
+  EXPECT_TRUE(spp::utils::features::CheckTargetSupport(LINUX_GNU, errors));
+  EXPECT_TRUE(spp::utils::features::IsEnabled(ConfigKey::BinaryLinkFortifiedFfi));
+  EXPECT_TRUE(spp::utils::features::IsEnabled(ConfigKey::BinaryLinkRelroFfi));
+  EXPECT_TRUE(spp::utils::features::IsEnabled(ConfigKey::BinaryLinkSegmentsFfi));
+}
+
+TEST(TestTargetFacts, test_explicit_ffi_check_refused_where_the_target_cannot_have_it) {
+  const auto config = LoadedConfig("[binary.link]\nrelro_ffi = true\n");
+  auto errors = spp::Vec<spp::Str>();
+  EXPECT_FALSE(spp::utils::features::CheckTargetSupport(WINDOWS, errors));
+  ASSERT_EQ(errors.size(), 1U);
+  EXPECT_NE(errors.front().find("set 'relro_ffi = false'"), spp::Str::npos) << errors.front();
 }

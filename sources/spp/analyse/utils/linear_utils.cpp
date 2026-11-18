@@ -242,6 +242,10 @@ auto spp::analyse::utils::linear_utils::OwnedAtSuspend(
       // Destroying the frame destroys what is left of it, which a part's own "drop" cannot be run on (E106 here,
       // as at a scope's end): putting the part back later does not reach a destruction at this suspension.
       drop_utils::CheckDestructorStillReachable(*sym, suspend_point, sm, meta);
+
+      // Nothing written calls this drop, so its destructor may never have been instantiated, and destroying it
+      // without one would go field by field: a "Vec" frees its buffer without dropping the elements in it.
+      drop_utils::EnsureDropInstantiated(sym->TypeRefIn(*scope), sm, meta);
       values.emplace_back(sym, std::move(moved));
     }
 

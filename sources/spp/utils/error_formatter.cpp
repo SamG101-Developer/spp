@@ -180,6 +180,26 @@ auto spp::utils::errors::ErrorFormatter::ErrorRawPos(
     + (colex::reset & colex::fg_bright_red) + message + "\n"s;
 }
 
+auto spp::utils::errors::ErrorFormatter::SyntaxErrorRawPos(
+  const std::size_t ast_start_pos,
+  const std::size_t ast_size,
+  Str &&message,
+  Str &&tag_message)
+  -> Str {
+  using namespace std::string_literals;
+  if (not IsPastUserSource(ast_start_pos)) {
+    return ErrorRawPos(ast_start_pos, ast_size, std::move(message), std::move(tag_message));
+  }
+  const auto quote = _Quote{
+    .Location = "at the end of the file"s,
+    .LineNumber = ""s,
+    .LineText = "<end of file>"s,
+    .LeftPadding = ""s,
+    .Carets = " <- "s + (colex::fg_bright_white & colex::st_bold) + tag_message
+  };
+  return _RenderQuote(true, quote) + (colex::reset & colex::fg_bright_red) + message + "\n"s;
+}
+
 auto spp::utils::errors::ErrorFormatter::ErrorRawPosMinimal(
   const std::size_t ast_start_pos,
   const std::size_t ast_size,
@@ -195,8 +215,13 @@ auto spp::utils::errors::ErrorFormatter::_Render(
   Str &&tag_message) const
   -> Str {
   //
+  return _RenderQuote(is_error, _QuoteRawPos(ast_start_pos, ast_size, std::move(tag_message)));
+}
+
+auto spp::utils::errors::ErrorFormatter::_RenderQuote(
+  const bool is_error, _Quote const &quote) const
+  -> Str {
   using namespace std::string_literals;
-  const auto quote = _QuoteRawPos(ast_start_pos, ast_size, std::move(tag_message));
   const auto heading = is_error ? "Error in file '"s : "Context from file '"s;
   const auto quoted = is_error ? (colex::fg_bright_red & colex::st_bold) : (colex::fg_bright_green & colex::st_bold);
   const auto carets = is_error ? (colex::reset & colex::fg_bright_red) : (colex::reset & colex::fg_bright_green);
@@ -317,17 +342,19 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   // Synthetic/generated ASTs have no real source position
   // (token 0 is the lexer's prepended newline sentinel), and
   // neither has anything past the end of what the author wrote,
-  // which is the prelude appended behind it. Quoting either back
-  // would point at a line the user didn't type. A position that
-  // is not this file's (another file's ast, or code the compiler
-  // parsed for itself) has none here either.
-  const auto index = _UserTokenIndexOf(ast_start_pos);
-  if (not index.has_value()) {
+  // which is the prelude appended behind it: no line the user
+  // typed. A position that is not this file's (another file's
+  // ast, or code the compiler parsed for itself) has none here
+  // either. A prelude position still has its line quoted (the
+  // prelude's own "use"), with no line number.
+  const auto user_index = _UserTokenIndexOf(ast_start_pos);
+  const auto past_user = not user_index.has_value() and IsPastUserSource(ast_start_pos);
+  if (not user_index.has_value() and not past_user) {
     auto nowhere = _RawLocation();
     nowhere.Generated = true;
-    nowhere.PastUserSource = IsPastUserSource(ast_start_pos);
     return nowhere;
   }
+  const auto index = user_index.has_value() ? user_index : _TokenIndexOf(ast_start_pos);
 
   // The line the token is on, quoted as its tokens' text, with
   // the trailing spaces dropped. Its offset is the bytes before
@@ -340,8 +367,8 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   while (not text.empty() and text.back() == ' ') { text.pop_back(); }
 
   return {
-    .Generated = false,
-    .PastUserSource = false,
+    .Generated = past_user,
+    .PastUserSource = past_user,
     .Line = line,
     .LineText = std::move(text),
     .ByteOffset = _ByteLength(first, *index),
@@ -357,11 +384,11 @@ auto spp::utils::errors::ErrorFormatter::_QuoteRawPos(
   using namespace std::literals;
 
   const auto loc = _LocateRawPos(ast_start_pos, ast_size);
-  if (loc.Generated) {
+  if (loc.Generated and not loc.PastUserSource) {
     return {
-      .Location = loc.PastUserSource ? "at the end of the file"_str : "in generated code"_str,
+      .Location = "in generated code"_str,
       .LineNumber = ""_str,
-      .LineText = loc.PastUserSource ? "<end of file>"_str : "<generated code>"_str,
+      .LineText = "<generated code>"_str,
       .LeftPadding = ""_str,
       .Carets = " <- "s + (colex::fg_bright_white & colex::st_bold) + tag_message
     };
@@ -373,9 +400,14 @@ auto spp::utils::errors::ErrorFormatter::_QuoteRawPos(
   carets.insert(0, Str(loc.ByteOffset + 1, ' '));
   carets += (colex::fg_bright_white & colex::st_bold) + " <- "s + tag_message;
 
-  const auto line_number = std::to_string(loc.Line);
+  // A line of the prelude ("kPrelude", appended to every file)
+  // has no number, as no user wrote it: something in it std does
+  // not have means this compiler and its std do not match.
+  const auto line_number = loc.PastUserSource ? Str() : std::to_string(loc.Line);
   return {
-    .Location = "on line "s + line_number,
+    .Location = loc.PastUserSource
+      ? "in the prelude every file imports (this compiler and its std do not match)"_str
+      : "on line "s + line_number,
     .LineNumber = line_number,
     .LineText = loc.LineText,
     .LeftPadding = Str(line_number.length(), ' '),

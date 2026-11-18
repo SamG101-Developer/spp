@@ -20,27 +20,35 @@ export namespace spp::codegen::fn_impls {
   enum class BinOp {
     Add, Sub, Mul, SDiv, UDiv, SRem, URem, Shl, LShr, AShr, Or, And, Xor,
     ICmpEQ, ICmpNE, ICmpSLT, ICmpULT, ICmpSLE, ICmpULE, ICmpSGT, ICmpUGT,
-    ICmpSGE, ICmpUGE, FCmpOEQ, FCmpONE, FCmpOLT, FCmpOLE, FCmpOGT, FCmpOGE,
+    ICmpSGE, ICmpUGE, FCmpOEQ, FCmpUNE, FCmpOLT, FCmpOLE, FCmpOGT, FCmpOGE,
     FAdd, FSub, FMul, FDiv, FRem, SAddChecked, UAddChecked, SSubChecked,
-    USubChecked, SMulChecked, UMulChecked,
+    USubChecked, SMulChecked, UMulChecked, FAddChecked, FSubChecked,
+    FMulChecked, FDivChecked, FRemChecked,
   };
 
   /// The unary arithmetic operations shareable across the signature "(T) -> T".
   enum class UnOp {
-    Neg, Not, FNeg
+    Neg, Not, FNeg, FSqrt, FSqrtChecked
   };
 
   /// Value-conversion operations: "(Src) -> Dest", where "Src" and "Dest" can
   /// differ.
   enum class ConvOp {
-    SIToFP, UIToFP, FPTrunc, Trunc, SExt, ZExt, FPExt, BitCast, FPToSI, FPToUI
+    SIToFP, UIToFP, FPTrunc, FPTruncIeee, Trunc, SExt, ZExt, FPExt, BitCast, FPToSI, FPToUI
+  };
+
+  /// The maths functions a float check names ("SimpleCheckedFloatMath"): each is
+  /// an LLVM intrinsic of one operand, or two for "Atan2" and "Pow".
+  enum class FloatMathFn {
+    Exp, Exp2, Exp10, Log, Log2, Log10, Sin, Cos, Tan, Asin, Acos, Atan, Atan2,
+    Sinh, Cosh, Tanh, Pow
   };
 
   /// Atomic read-modify-write operations shareable across the atomic methods
   /// "Atom[T]::fetch_*"/"exchange".
   enum class AtomicRmwOp {
-    Xchg, Add, Sub, And, Nand, Or, Xor, Max, Min, UMax, UMin, FAdd, FSub, FMax,
-    FMin
+    Xchg, Add, Sub, And, Nand, Or, Xor, Max, Min, UMax, UMin, FAdd, FSub, FMaximum,
+    FMinimum
   };
 
   /// =========================================================================
@@ -66,10 +74,6 @@ export namespace spp::codegen::fn_impls {
   /// True if "op" is a comparison, and therefore returns "Bool" (i1) rather
   /// than the operand type.
   auto IsCompareBinOp(BinOp op) -> bool;
-
-  /// True if "op" is a shift, whose distance operand is separately typed in the
-  /// source and so needs coercing.
-  auto IsShiftBinOp(BinOp op) -> bool;
 
   /// Build the actual instruction for a "BinOp" on operands "a" and "b".
   auto ApplyBinOp(
@@ -132,12 +136,9 @@ export namespace spp::codegen::fn_impls {
   /// "(T, T) -> T": call a two-operand LLVM intrinsic directly (e.g.
   /// "llvm.smax") and return its result as-is - for intrinsics whose result
   /// type genuinely is "T" (unlike, say, the "with.overflow" family below).
-  /// "rhs_ty" is the second operand's type when it is not "T" ("(T, S32) -> T"
-  /// for "llvm.powi").
   auto SimpleBinaryIntrinsicCall(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty,
-    llvm::Intrinsic::IndependentIntrinsics intrinsic,
-    llvm::Type *rhs_ty = nullptr) -> void;
+    llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void;
 
   /// "(T, T) -> (T, Bool)": call a two-operand "with.overflow"-shaped LLVM
   /// intrinsic (e.g. "llvm.sadd.with.overflow"), whose result is already the
@@ -146,6 +147,21 @@ export namespace spp::codegen::fn_impls {
   auto SimpleBinaryIntrinsicCallOverflow(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty,
     llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void;
+
+  /// "(T, T) -> (T, Bool)" (or "(T) -> (T, Bool)" for a square root): a float
+  /// operation's IEEE result, and whether it raised one of the exceptions a
+  /// float check stops on (invalid, division by zero, overflow), with no
+  /// check. "op" is the plain operation ("FAdd", ..., or "FSqrt" through
+  /// "unary").
+  auto SimpleFloatRaised(
+    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, BinOp op, bool unary) -> void;
+
+  /// "(T) -> T" (or "(T, T) -> T" for "Atan2" and "Pow"): the maths function's
+  /// LLVM intrinsic, then the float check of its result (with
+  /// "[binary.codegen] float_checks"): a NaN is invalid, an infinity at a pole
+  /// ("log(0)", "pow(0, -1)") division by zero, any other overflow.
+  auto SimpleCheckedFloatMath(
+    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, FloatMathFn fn) -> void;
 
   /// "(T) -> T": call a one-operand LLVM intrinsic directly (e.g. "llvm.sqrt")
   /// and return its result.
@@ -185,9 +201,9 @@ export namespace spp::codegen::fn_impls {
   /// fixed-size, inline array one at a time, moving each element out via a
   /// "gen"-style suspend/resume point. The array's length is a compile-time
   /// constant, so this unrolls into one yield per element instead of a runtime
-  /// loop.
+  /// loop. Destroyed part-way, the frame drops the elements not yet yielded.
   auto SimpleCoroIter(
-    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, bool reverse, bool borrow) -> void;
+    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, bool reverse) -> void;
 
   /// Shared codegen for a coroutine that hands out the elements of a
   /// dynamically-sized view one at a time, using a loop and counter strategy.
@@ -258,8 +274,6 @@ export namespace spp::codegen::fn_impls {
   auto StdIntrinsicsFmaxVal(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
-  auto StdIntrinsicsFpowi(
-    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdIntrinsicsSshlSaturating(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdIntrinsicsUshlSaturating(
