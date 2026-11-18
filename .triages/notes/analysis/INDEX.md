@@ -28,3 +28,4 @@
 - [AST reflection refactor (reverted)](spp-ast-reflection-refactor.md) — latent ast bugs found; retry lessons
 - [JSON inline backticks](json-diagnostics-inline-backticks.md) — INLINE_* spans become `backticks` in JSON diagnostics, matched by exact colour codes
 - [Overridables recorded at stage 7](overridables-recorded-at-stage-7.md) — sup-ext 'still to override' record; MethodsOf caches, so not before stage 7; names as written
+- [Guards through ScopedInsert/Assign](thread-local-guards-scoped.md) — thread_local guard sets and saved values: utils::functions helpers only; a hand erase skipped by a throw leaks into the next compile
