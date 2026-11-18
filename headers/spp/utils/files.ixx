@@ -32,26 +32,6 @@ namespace spp::utils::files {
   /// is used to load the module trees.
   SPP_EXP_FUN auto GlobSpp(Path const &path) -> Vec<Path>;
 
-  /// The library name for a package and extension. For example, "sppc" and "so"
-  /// will get "libsppc.so", where-as "sppc" and "dll" is just "sppc.dll".
-  SPP_EXP_FUN auto SharedLibraryName(StrView package, StrView extension) -> Str;
-
-  /// What separates the directories on PATH: ";" on Windows, where a drive
-  /// letter takes ":", and ":" elsewhere.
-#if SPP_PLATFORM_WINDOWS
-  SPP_EXP_CON inline constexpr auto PathListSeparator = ';';
-#else
-  SPP_EXP_CON inline constexpr auto PathListSeparator = ':';
-#endif
-
-  /// Find a program as a shell would, by searching for "name" in each directory
-  /// on PATH. The first that is an executable file.
-  SPP_EXP_FUN auto FindProgram(StrView name) -> Opt<Path>;
-
-  /// The newest "name-N" on PATH, like "loongarch64-linux-gnu-gcc-14"; gcc
-  /// names a versioned driver and sometimes multiple versions might exist.
-  SPP_EXP_FUN auto FindNewestVersion(StrView name) -> Opt<Path>;
-
   /// An advisory lock over a whole file: "flock(2)" on POSIX, and the
   /// equivalent whole-range "LockFileEx" on Windows. Both platforms hold the
   /// lock on the open file rather than on the process, so it is released when
