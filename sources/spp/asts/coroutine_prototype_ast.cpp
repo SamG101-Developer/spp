@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
@@ -135,7 +136,16 @@ auto spp::asts::CoroutinePrototypeAst::_CloneWithImpl(
     AstClone(ReturnType),
     std::move(impl));
   _CloneStateInto(*ast);
+  ast->_OwnedAtStart = _OwnedAtStart;
   return ast;
+}
+
+auto spp::asts::CoroutinePrototypeAst::Stage8_AfterParams(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Calling a coroutine stores its parameters and parks before the body runs (generators are lazy), so a generator
+  // dropped unresumed is destroyed here, owning every parameter it took by value.
+  IMPORT_UTILS;
+  _OwnedAtStart = linear_utils::OwnedAtSuspend(*this, *sm, meta);
 }
 
 auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
@@ -371,10 +381,15 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   // first "gen" here instead made every generator a value ahead,
   // so one fed by I/O blocked producing the next value before the
   // caller had even seen this one.
+  // Destroyed before it was ever resumed, the frame still owns every parameter it took by value, so its destroy
+  // edge drops them ("_OwnedAtStart") before the frame's cleanup. Filled in below, once the generator is set up.
+  const auto initial_destroy_bb = llvm::BasicBlock::Create(
+    *ctx->Context, "coro.initial.destroy" + uid, llvm_func_target);
   codegen::EmitLlvmGeneratorSuspend(
-    false, suspend_bb, cleanup_bb,
+    false, suspend_bb, initial_destroy_bb,
     "coro.initial.suspend" + uid,
     "coro.initial.resume" + uid, ctx);
+  const auto body_start_bb = ctx->Builder.GetInsertBlock();
 
   {
     const auto _meta_guard = MetaGuard(meta, true);

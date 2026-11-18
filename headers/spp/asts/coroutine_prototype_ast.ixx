@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.coroutine_prototype_ast;
+import spp.analyse.utils.linear_utils;
 import spp.asts.ast_kind;
 import spp.asts.function_prototype_ast;
 import spp.codegen.llvm_ctx;
@@ -50,11 +51,19 @@ SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst
   /// coroutine itself.
   SPP_ATTR_NODISCARD auto GenOnceLowered() const -> SubroutinePrototypeAst*;
 
+protected:
+  auto Stage8_AfterParams(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
 private:
   bool _IsOnce;
   Shared<TypeAst> _YieldType;
   Shared<TypeRef> _SendRef;
   Unique<SubroutinePrototypeAst> _GenOnceLowered;
+
+  /// What the frame owns at the initial suspend, before the body has run: the
+  /// parameters taken by value, as "OwnedAtSuspend" records them. Dropped if
+  /// the coroutine is destroyed without ever being resumed.
+  Vec<Vec<analyse::utils::linear_utils::OwnedValue>> _OwnedAtStart;
 
   /// Desugar a "GenOnce" coroutine into a subroutine returning
   /// the yielded value: nothing ever resumes it, so there is no

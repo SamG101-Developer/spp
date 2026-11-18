@@ -403,8 +403,9 @@ auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
   sup_ext_impl_members.emplace_back(std::move(clone));
   auto mock_sup_ext_impl = MakeUnique<SupImplementationAst>(nullptr, std::move(sup_ext_impl_members), nullptr);
   auto mock_sup_ext = MakeUnique<SupPrototypeExtensionAst>(
-    nullptr, GnParamGroup->OptionalToRequired(), std::move(mock_class_name), nullptr, std::move(function_type),
-    std::move(mock_sup_ext_impl));
+    decltype(SupPrototypeExtensionAst::Annotations)(), nullptr,
+    GnParamGroup->OptionalToRequired(), std::move(mock_class_name), nullptr,
+    std::move(function_type), std::move(mock_sup_ext_impl));
   mock_sup_ext->SetAstCtx(_Ctx);
 
   // Manipulate the context body with the new mock
@@ -694,19 +695,7 @@ auto spp::asts::FunctionPrototypeAst::Stage8_CheckMemory(
     const auto _meta_guard = MetaGuard(meta, true);
     meta->EnclosingFnScope = sm->CurrentScope;
     const auto _flow = memory_state::BodyFlow(*sm->CurrentScope);
-    FnParamGroup->Stage8_CheckMemory(sm, meta);
-    Impl->Stage8_CheckMemory(sm, meta);
-
-    // A function whose body is not written in S++ is exempt: an
-    // intrinsic is implemented by code generation, an ffi function
-    // by a foreign library, and an abstract method by whoever
-    // overrides it. There is no body that could have consumed the
-    // parameters, so there is nothing to hold to the rule.
-    if (BuiltinAnnotation == nullptr and FfiAnnotation == nullptr and AbstractAnnotation == nullptr
-      and not Impl->Diverges(sm, meta)) {
-      linear_utils::CheckScopeExit(
-        *sm->CurrentScope, *Impl, "Function end", *sm, meta);
-    }
+    _CheckBodyMemory(sm, meta);
   }
 
   // What the function's own scope holds - its parameters and
@@ -718,6 +707,30 @@ auto spp::asts::FunctionPrototypeAst::Stage8_CheckMemory(
 
   // Move out of the function scope, as it is now complete.
   sm->MoveOutOfCurrentScope();
+}
+
+auto spp::asts::FunctionPrototypeAst::Stage8_AfterParams(
+  ScopeManager *, CompilerMetaData *) -> void {
+  // A subroutine has nothing to record at its start.
+}
+
+auto spp::asts::FunctionPrototypeAst::_CheckBodyMemory(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+  FnParamGroup->Stage8_CheckMemory(sm, meta);
+  Stage8_AfterParams(sm, meta);
+  Impl->Stage8_CheckMemory(sm, meta);
+
+  // A function whose body is not written in S++ is exempt: an
+  // intrinsic is implemented by code generation, an ffi function
+  // by a foreign library, and an abstract method by whoever
+  // overrides it. There is no body that could have consumed the
+  // parameters, so there is nothing to hold to the rule.
+  if (BuiltinAnnotation == nullptr and FfiAnnotation == nullptr and AbstractAnnotation == nullptr
+    and not Impl->Diverges(sm, meta)) {
+    linear_utils::CheckScopeExit(
+      *sm->CurrentScope, *Impl, "Function end", *sm, meta);
+  }
 }
 
 auto spp::asts::FunctionPrototypeAst::Stage10_PreCodeGen(
@@ -749,7 +762,7 @@ auto spp::asts::FunctionPrototypeAst::Stage10_PreCodeGen(
 }
 
 auto spp::asts::FunctionPrototypeAst::_CodeGenGnSubstitutions(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> void {
+  ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> void {
   // Emit the bodies of this prototype's instantiations. Their own bodies
   // were analysed by the monomorphisation stage, which ran to a fixed
   // point before any code generation: an instantiation reached only from
@@ -846,13 +859,7 @@ auto spp::asts::FunctionPrototypeAst::AnalysePendingGnSubstitutions(
       }
     }
 
-    sub.Proto->FnParamGroup->Stage8_CheckMemory(&tm, meta);
-    sub.Proto->Impl->Stage8_CheckMemory(&tm, meta);
-    if (sub.Proto->BuiltinAnnotation == nullptr and sub.Proto->FfiAnnotation == nullptr
-      and sub.Proto->AbstractAnnotation == nullptr and not sub.Proto->Impl->Diverges(&tm, meta)) {
-      linear_utils::CheckScopeExit(
-        *tm.CurrentScope, *sub.Proto->Impl, "Function end", tm, meta);
-    }
+    sub.Proto->_CheckBodyMemory(&tm, meta);
 
     _EnsureDropsForBuiltin(*sub.Proto, tm, meta);
   }
@@ -1103,8 +1110,8 @@ auto spp::asts::FunctionPrototypeAst::_DeduceMockClsType() const -> Pair<Shared<
 }
 
 auto spp::asts::FunctionPrototypeAst::_IsPureGn(
-  ScopeManager *sm, CompilerMetaData *meta,
-  codegen::LlvmCtx const *ctx) const -> Tup<bool, llvm::Type*, Vec<llvm::Type*>> {
+  ScopeManager *sm, CompilerMetaData *meta, LlvmCtx const *ctx) const
+  -> Tup<bool, llvm::Type*, Vec<llvm::Type*>> {
   //
   IMPORT_UTILS;
 
