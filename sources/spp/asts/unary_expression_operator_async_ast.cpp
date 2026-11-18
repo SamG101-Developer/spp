@@ -137,7 +137,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
     ERR_ARGS(*TokAsync, *WrittenOperand));
   rhs_fn_call->MarkAsAsync(this);
 
-  // "async f(a, b)" becomes "Fut[T]::spawn(() f(a, b))".
+  // "async f(a, b)" becomes "Fut[T]::spawn(|| f(a, b))".
 
   // The future type wraps the target's type. Built once, here:
   // "InferType" answers it, and the spawn call is made on it.
@@ -230,18 +230,16 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
 
   // Create the closure, with its required parameters and
   // captures, and place the inner call into the closures
-  // body. It'll look like "() inner_call(arg1)" - no {}.
+  // body. It'll look like "|caps ...| inner_call(arg1)" - no {}.
   auto param_group = MakeUnique<FunctionParameterGroupAst>(
-    tok(lex::SppTokenType::TK_LEFT_PARENTHESIS),
-    Vec<Unique<FunctionParameterAst>>(),
-    tok(lex::SppTokenType::TK_RIGHT_PARENTHESIS));
+    nullptr, Vec<Unique<FunctionParameterAst>>(), nullptr);
   auto capture_group = captures.empty()
     ? nullptr
     : MakeUnique<ClosureExpressionCaptureGroupAst>(
       tok(lex::SppTokenType::KW_CAPS), std::move(captures));
   auto pc_group = MakeUnique<ClosureExpressionParameterAndCaptureGroupAst>(
-    tok(lex::SppTokenType::TK_LEFT_PARENTHESIS), std::move(param_group),
-    std::move(capture_group), tok(lex::SppTokenType::TK_RIGHT_PARENTHESIS));
+    tok(lex::SppTokenType::TK_VERTICAL_BAR), std::move(param_group),
+    std::move(capture_group), tok(lex::SppTokenType::TK_VERTICAL_BAR));
   auto closure = MakeUnique<ClosureExpressionAst>(
     nullptr, std::move(pc_group), nullptr, nullptr, std::move(inner_call));
 
