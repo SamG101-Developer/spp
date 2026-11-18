@@ -27,7 +27,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Normalised platform macros](conventions/use-normalised-platform-macros.md) — `#if SPP_COMPILER_MSVC` from macros-platforms.hpp, never raw _MSC_VER
 - [Env vars are registered](conventions/env-vars-registered.md) — SPP_ names live in utils/env.cpp, CI's are SPP_CI_; anything else stops spp at startup
 - [sys:: names vs C macros](conventions/sys-names-vs-c-macros.md) — a macro-named sys:: export breaks where the C header is included (gtest); #undef there
-- [Shell through utils::shell](conventions/shell-through-utils-shell.md) — shell::Run and shell::Quote only; why cmd /c needs an outer pair of quotes
+- [Shell through utils::shell](conventions/shell-through-utils-shell.md) — shell::Run/Quote, and shell::Find* for programs on PATH; why cmd /c needs an outer pair of quotes
 - [and/or/not, not &&/||/!](conventions/alternative-operator-keywords.md) — keyword logical ops; Sonar S3659 ignored; clang-tidy readability-operators-representation enforces
 - [Enums over strings](conventions/enums-over-strings.md) — fields and params hold the enum; convert once where a user writes it; "any" is Opt<Enum>
 - [Tickets: a folder each](conventions/tickets-one-folder-each.md) — .triages/tickets/<slug>/ with README.md + repro files; URL in the status line once filed
