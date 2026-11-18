@@ -45,13 +45,17 @@ SPP_EXP_CLS struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
 
   ~GenExpressionAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
+  auto InferTypeRef(
+    ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   /// The rest of the analysis once the generator type is known: the
   /// yield type read off it, the value forwarded and checked against
@@ -60,14 +64,21 @@ SPP_EXP_CLS struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
   /// on the yield type ("CompilerMetaData::ClosureRetJoin"), with
   /// "sm" where this is written and the type this "gen" gave.
   auto ResolveYield(
-    Shared<TypeAst> gen_type, Shared<TypeAst> expr_type, ScopeManager *sm, CompilerMetaData *meta)
-    -> void;
+    Shared<TypeAst> gen_type, Shared<TypeAst> expr_type, ScopeManager *sm,
+    CompilerMetaData *meta) -> void;
 
   /// A "gen" diverges where it reads as the return: in a "GenOnce"
   /// lowered to a subroutine ("CoroutinePrototypeAst::_LowerGenOnce"),
   /// which is generated with the enclosing flavour "fun". In a
   /// coroutine it suspends, and control comes back to it.
-  SPP_ATTR_NODISCARD auto Diverges(ScopeManager *sm, CompilerMetaData *meta) -> bool override;
+  SPP_ATTR_NODISCARD auto Diverges(
+    ScopeManager *sm, CompilerMetaData *meta) -> bool override;
+
+  /// For a "gen" the compiler builds at codegen rather than analyses (a builtin
+  /// coroutine's body), which so has no "OwnedAtSuspend" of its own: what
+  /// destroying the frame at this suspension drops, as that records it.
+  auto SetOwnedAtSuspend(
+    Vec<Vec<analyse::utils::linear_utils::OwnedValue>> owned) -> void;
 
 private:
   Shared<TypeAst> _GenType;

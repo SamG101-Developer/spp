@@ -269,6 +269,11 @@ auto spp::asts::GenExpressionAst::Diverges(
   return meta->EnclosingFnFlavour != nullptr and meta->EnclosingFnFlavour->TokenType == lex::SppTokenType::KW_FUN;
 }
 
+auto spp::asts::GenExpressionAst::SetOwnedAtSuspend(
+  Vec<Vec<analyse::utils::linear_utils::OwnedValue>> owned) -> void {
+  _OwnedAtSuspend = std::move(owned);
+}
+
 auto spp::asts::GenExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
