@@ -8,6 +8,8 @@ Todo
 [Aa]sync
 [Aa]uditable
 [Bb]acktraces?
+[Bb]itcast
+[Bb]itwise
 [Bb]ooleans?
 [Bb]reakpoints?
 [Bb]uiltins?
@@ -22,6 +24,7 @@ Todo
 [Dd]ereferencing
 [Dd]estructures?
 [Dd]estructured
+[Dd]estructors?
 [Dd]estructuring
 [Ee]lementwise
 [Ff]ormatters?
@@ -33,13 +36,14 @@ Todo
 [Ii]mmediates?
 [Ll]ockfiles?
 [Ll]ockdown
+[Ll]ossy
 [Mm]ergeable
 [Mm]isnumered
 [Mm]isordering
 [Mm]itigations?
 [Mm]onomorphis(e|es|ed|ing|ation)
 [Mm]ultiprecision
-[Mm]utexes
+[Mm]utex[es]?
 [Nn]amespaces?
 [Oo]ptionals
 [Pp]arameterization
@@ -146,3 +150,5 @@ Cfg
 CLion
 IntelliJ
 PyCharm
+IEEE
+DLLs?
