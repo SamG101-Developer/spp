@@ -375,22 +375,14 @@ auto spp::utils::errors::ErrorFormatter::_QuoteRawPos(
   carets.insert(0, Str(loc.ByteOffset + 1, ' '));
   carets += (colex::fg_bright_white & colex::st_bold) + " <- "s + tag_message;
 
-  // A line of the prelude ("kPrelude", appended to every file),
-  // which no user wrote: something in it std does not have means
-  // this compiler and its std do not match.
-  if (loc.PastUserSource) {
-    return {
-      .Location = "in the prelude every file imports (this compiler and its std do not match)"_str,
-      .LineNumber = ""_str,
-      .LineText = loc.LineText,
-      .LeftPadding = ""_str,
-      .Carets = std::move(carets)
-    };
-  }
-
-  const auto line_number = std::to_string(loc.Line);
+  // A line of the prelude ("kPrelude", appended to every file)
+  // has no number, as no user wrote it: something in it std does
+  // not have means this compiler and its std do not match.
+  const auto line_number = loc.PastUserSource ? Str() : std::to_string(loc.Line);
   return {
-    .Location = "on line "s + line_number,
+    .Location = loc.PastUserSource
+      ? "in the prelude every file imports (this compiler and its std do not match)"_str
+      : "on line "s + line_number,
     .LineNumber = line_number,
     .LineText = loc.LineText,
     .LeftPadding = Str(line_number.length(), ' '),
