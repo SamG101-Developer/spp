@@ -821,16 +821,25 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::EvaluateCompTime(
   if (variadic != nullptr) {
     fn_arg_map[variadic->ExtractName()] = MakeUnique<TupleLiteralAst>(nullptr, std::move(pack_elems), nullptr);
   }
+
+  // A call inside a template's body being folded is written in the template's
+  // terms ("Self::zero()" in "SizedFloatingPoint[w]"): its types are read with
+  // what the folded call bound the template's parameters to.
+  thread_local auto cmp_template_bindings = analyse::scopes::GenericSubst();
+  const auto in_folded = [&](analyse::scopes::TypeId id) {
+    return cmp_template_bindings.IsEmpty() ? id : analyse::scopes::SubstituteTypeId(id, cmp_template_bindings);
+  };
   for (auto &&gn_arg : GnArgGroup->GetTypeArgs()) {
     gn_arg_type_map.emplace_back(MakeShared<TypeRef>(
-      TypeRef::Of(*gn_arg->TypeVal, *sm->CurrentScope)));
+      TypeRef::Of(in_folded(sm->CurrentScope->TypeIdOf(*gn_arg->TypeVal)), *sm->CurrentScope)));
   }
 
   // What "Self" stands for at this call goes after the call's own
   // type arguments: a builtin with none of its own reads the type
   // it was called on from it ("S32::zero()" is an "S32").
-  if (_OverloadInfo->SelfId != nullptr) {
-    gn_arg_type_map.emplace_back(MakeShared<TypeRef>(TypeRef::Of(_OverloadInfo->SelfId, *sm->CurrentScope)));
+  const auto self_id = _OverloadInfo->SelfId != nullptr ? in_folded(_OverloadInfo->SelfId) : nullptr;
+  if (self_id != nullptr) {
+    gn_arg_type_map.emplace_back(MakeShared<TypeRef>(TypeRef::Of(self_id, *sm->CurrentScope)));
   }
 
   // Each comp argument by the parameter it binds ("type_resolution::
@@ -877,6 +886,21 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::EvaluateCompTime(
     fn_proto->AnalyseAhead(*owner, sm, meta);
     auto *const fn_scope = fn_proto->GetAstScope();
     auto tm = sm->NewManagerAt(not fn_scope->Children.empty() ? fn_scope->Children[0].get() : fn_scope);
+
+    // The template's own "Self" (its sup's type, in the sup's parameters) matched against the concrete one, for the
+    // calls in its body. Each fold binds afresh, and the caller's bindings are back once it returns.
+    auto bindings = analyse::scopes::GenericSubst();
+    if (self_id != nullptr) {
+      if (const auto tmpl_self = fn_scope->FindEnclosingSelfType(*meta); tmpl_self != nullptr) {
+        ignore = analyse::scopes::UnifyTypeIds(
+          self_id, fn_scope->TypeIdOf(*tmpl_self), *sm->CurrentScope, *fn_scope, bindings, false, false);
+      }
+    }
+    std::swap(bindings, cmp_template_bindings);
+    struct BindingsGuard {
+      analyse::scopes::GenericSubst &Slot, &Saved;
+      ~BindingsGuard() { std::swap(Slot, Saved); }
+    } const bindings_guard{cmp_template_bindings, bindings};
     fn_proto->Impl->EvaluateCompTime(&tm, meta);
 
     // Each "&mut" argument's place takes the value the callee left
