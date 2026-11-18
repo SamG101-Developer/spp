@@ -31,6 +31,7 @@ Todo
 [Gg]lobals?
 [Ii]nlined?
 [Ii]nitialisers?
+[Ii]nstantiation
 [Ii]ntrinsics?
 [Ii]terables?
 [Ii]mmediates?
@@ -61,6 +62,7 @@ Todo
 [Ss]erialisers?
 [Ss]harded
 [Ss]tackless
+[Ss]ubagents?
 [Ss]ubfolders?
 [Ss]ubstring
 [Ss]uperimpositions?
@@ -138,6 +140,7 @@ debootstrap
 binfmt
 checksummed
 binutils
+shellcheck
 io_uring
 seccomp
 errno
@@ -152,3 +155,7 @@ IntelliJ
 PyCharm
 IEEE
 DLLs?
+libSystem
+musl
+ci
+PR
