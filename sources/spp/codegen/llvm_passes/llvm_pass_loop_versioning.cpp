@@ -71,18 +71,43 @@ auto spp::codegen::VersionLoop(
         }
         continue;
       }
-      if (not IsAbortBlock(*succ)) { continue; }
-      const auto reads_loop = genex::any_of(succ->front().operands(), [&](llvm::Use const &op) {
-        return map.count(op.get()) > 0;
+
+      // An abort path (an abort, or a float check's classifier before its
+      // aborts) reading the loop's values gets a copy of its own, reading the
+      // copy's; its phis (a classifier is an exit block, so in closed form it
+      // reads the result through one) take the copy's blocks.
+      auto path = Vec<llvm::BasicBlock*>();
+      if (not IsAbortPath(*succ, [&](llvm::BasicBlock const &b) { path.emplace_back(const_cast<llvm::BasicBlock*>(&b)); })) {
+        continue;
+      }
+      const auto reads_loop = genex::any_of(path, [&](llvm::BasicBlock const *b) {
+        return genex::any_of(*b, [&](llvm::Instruction const &inst) {
+          return llvm::isa<llvm::PHINode>(inst) or genex::any_of(inst.operands(), [&](llvm::Use const &op) {
+            return map.count(op.get()) > 0;
+          });
+        });
       });
       if (not reads_loop) { continue; }
       auto &copy = abort_copies[succ];
       if (copy == nullptr) {
         auto local = llvm::ValueToValueMapTy();
-        copy = llvm::CloneBasicBlock(succ, local, suffix, succ->getParent());
-        for (auto &inst : *copy) {
-          llvm::RemapInstruction(&inst, map, llvm::RF_IgnoreMissingLocals | llvm::RF_NoModuleLevelChanges);
+        auto copies = Vec<llvm::BasicBlock*>();
+        for (const auto b : path) {
+          const auto c = llvm::CloneBasicBlock(b, local, suffix, succ->getParent());
+          local[b] = c;
+          copies.emplace_back(c);
         }
+        for (const auto c : copies) {
+          for (auto &inst : *c) {
+            llvm::RemapInstruction(&inst, local, llvm::RF_IgnoreMissingLocals | llvm::RF_NoModuleLevelChanges);
+            llvm::RemapInstruction(&inst, map, llvm::RF_IgnoreMissingLocals | llvm::RF_NoModuleLevelChanges);
+          }
+        }
+        copy = copies.front();
+      }
+      // A phi in the original path now has only the original loop's edges.
+      for (auto &phi : succ->phis()) {
+        if (phi.getBasicBlockIndex(copy_bb) >= 0) { phi.removeIncomingValue(copy_bb, false); }
       }
       copy_bb->getTerminator()->replaceSuccessorWith(succ, copy);
     }
