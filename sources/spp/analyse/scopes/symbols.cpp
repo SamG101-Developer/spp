@@ -136,6 +136,25 @@ namespace spp::analyse::scopes {
     spp::Set<TypeSymbol const*> &seen)
     -> bool;
 
+  /// Whether "sym" is one of the compiler's own kinds in "known", by its class: an instantiation shares its template's
+  /// class, and a user's own type of the same name is not one.
+  static auto IsCompilerKind(
+    TypeSymbol const &sym,
+    spp::Vec<spp::Shared<spp::asts::TypeAst>> const &known)
+    -> bool;
+
+  /// Whether "visit" answers true for any type a value of "sym" holds directly: the arguments of a compiler-lowered
+  /// type (tuple, variant, array, pointer, generator, future), then each attribute's type. Stops at the first.
+  static auto AnyHeldType(
+    TypeSymbol const &sym,
+    spp::FuncRef<bool(TypeSymbol const*)> visit)
+    -> bool;
+
+  static auto CanHoldBorrowsRec(
+    TypeSymbol const *sym,
+    spp::Set<TypeSymbol const*> &seen)
+    -> bool;
+
   static auto GnTypeParams() -> spp::Map<std::uint64_t, spp::analyse::scopes::TypeSymbol*>&;
 
   static auto GnCompParams() -> spp::Map<std::uint64_t, spp::analyse::scopes::VariableSymbol*>&;
@@ -274,53 +293,77 @@ auto spp::analyse::scopes::IsThreadSafeRec(
     return ok;
   }
 
-  // The arguments are resolved through the instantiation's own
-  // scope, which lives as long as the symbol. "ScopeDefinedIn"
-  // is where the type was first written, which can be a body
-  // scope of a generic function instantiation that is later
-  // discarded. The arguments are qualified by then.
-  const auto arg_scope = sym->LinkedScope;
+  // Unsafe if anything it holds is.
+  return not AnyHeldType(*sym, [&](TypeSymbol const *held) { return not IsThreadSafeRec(held, seen); });
+}
 
-  // There are some types that don't hold attributes in the
-  // std library, but are representative of internal values,
-  // lowered directly from LLVM, such as a NonNull owning a
-  // T value, but not written in the compiler. Each is known by
-  // its class, not its name, so a user's own "Arr" is not one;
-  // an instantiation shares its template's class.
-  const auto compiler_special_type = [&] {
-    if (sym->Name == nullptr or arg_scope == nullptr or sym->Type == nullptr) { return false; }
-    return genex::any_of(
-      spp::Vec{TUP, VAR, ARR, NON_NULL, GEN, GEN_ONCE, FUT},
-      [&](auto const &known) {
-        const auto known_sym = arg_scope->FindTypeSymbol(known.get());
-        return known_sym != nullptr and known_sym->Type == sym->Type;
-      });
-  }();
+auto spp::analyse::scopes::IsCompilerKind(
+  TypeSymbol const &sym,
+  spp::Vec<spp::Shared<spp::asts::TypeAst>> const &known)
+  -> bool {
+  // Looked up through the symbol's own scope ("LinkedScope", which lives as long as it), not where it was first
+  // written, which can be a discarded generic body.
+  const auto scope = sym.LinkedScope;
+  if (sym.Name == nullptr or scope == nullptr or sym.Type == nullptr) { return false; }
+  return genex::any_of(known, [&](auto const &kind) {
+    const auto kind_sym = scope->FindTypeSymbol(kind.get());
+    return kind_sym != nullptr and kind_sym->Type == sym.Type;
+  });
+}
 
-  // Its arguments as its identity holds them: its name spells them as they were written where it was made, which
-  // they need not mean here.
-  if (compiler_special_type and sym->Id != nullptr) {
-    auto const &head = HeaderOf(sym->Id);
+auto spp::analyse::scopes::AnyHeldType(
+  TypeSymbol const &sym,
+  spp::FuncRef<bool(TypeSymbol const*)> visit)
+  -> bool {
+  using spp::analyse::utils::type_members::GetAllAttrs;
+  using namespace spp::asts::generate::common_types_precompiled;
+
+  // Some types hold their values without attributes, lowered straight to LLVM (a "NonNull" owning a "T"): what they
+  // hold is their arguments, as the identity holds them (the name spells them as written where it was made, which
+  // they need not mean here).
+  if (IsCompilerKind(sym, {TUP, VAR, ARR, NON_NULL, GEN, GEN_ONCE, FUT}) and sym.Id != nullptr) {
+    auto const &head = HeaderOf(sym.Id);
     auto arg_ids = spp::Vec<TypeId>();
     if (head.Kind == TypeKey::Tag::Inst) {
       for (auto const &arg : ArgsOf(head.Args)) { if (arg.TypeVal != nullptr) { arg_ids.emplace_back(arg.TypeVal); } }
     }
     else if (head.Kind == TypeKey::Tag::Variant) { arg_ids.append_range(head.VariantMembers); }
     for (const auto arg_id : arg_ids) {
-      if (not IsThreadSafeRec(arg_scope->FindTypeSymbolById(arg_id), seen)) { return false; }
+      if (visit(sym.LinkedScope->FindTypeSymbolById(arg_id))) { return true; }
     }
   }
 
-  // Recurse into the attributes of the type; if there is a
-  // unsafe attribute type, then the overall type is also
-  // unsafe.
-  if (sym->LinkedScope != nullptr and sym->Type != nullptr) {
-    for (auto const &attr : GetAllAttrs(*sym)) {
-      if (not IsThreadSafeRec(spp::get<1>(attr).Symbol, seen)) { return false; }
+  // Every other type holds its attributes.
+  if (sym.LinkedScope != nullptr and sym.Type != nullptr) {
+    for (auto const &attr : GetAllAttrs(sym)) {
+      if (visit(spp::get<1>(attr).Symbol)) { return true; }
     }
   }
+  return false;
+}
 
-  return true;
+auto spp::analyse::scopes::CanHoldBorrowsRec(
+  TypeSymbol const *sym,
+  spp::Set<TypeSymbol const*> &seen)
+  -> bool {
+  using namespace spp::asts::generate::common_types_precompiled;
+
+  // An unresolved type could be anything. A type reached twice (a cycle) adds nothing to its first visit.
+  if (sym == nullptr) { return true; }
+  if (not seen.insert(sym).second) { return false; }
+
+  // Borrows are second class: only a closure's environment (any function value, a "$" mock included), a coroutine's
+  // frame or a future can carry one.
+  if (sym->IsMock() or IsCompilerKind(*sym, {FUN_MOV, FUN_MUT, FUN_REF, GEN, GEN_ONCE, FUT})) { return true; }
+
+  // A bound generic answers as what it is bound to; an unbound one could be a closure.
+  if (sym->IsGn()) {
+    const auto bound = sym->LinkedSymbol();
+    if (bound != sym and not bound->IsGn()) { return CanHoldBorrowsRec(bound, seen); }
+    return true;
+  }
+
+  return AnyHeldType(*sym, [&](TypeSymbol const *held) { return CanHoldBorrowsRec(held, seen); });
 }
 
 auto spp::analyse::scopes::GnTypeParams() -> spp::Map<std::uint64_t, spp::analyse::scopes::TypeSymbol*>& {
@@ -571,6 +614,11 @@ auto spp::analyse::scopes::TypeSymbol::IsThreadSafe() const -> bool {
   // type comparison.
   auto seen = Set<TypeSymbol const*>();
   return IsThreadSafeRec(this, seen);
+}
+
+auto spp::analyse::scopes::TypeSymbol::CanHoldBorrows() const -> bool {
+  auto seen = Set<TypeSymbol const*>();
+  return CanHoldBorrowsRec(this, seen);
 }
 
 auto spp::analyse::scopes::VariableSymbol::IsGn() const -> bool {
