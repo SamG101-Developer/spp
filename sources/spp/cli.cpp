@@ -858,6 +858,7 @@ auto spp::cli::HandleVcs() -> bool {
     // used only if it is of the declared repository, and that repository
     // cannot be reached; the checkout then reports a branch or commit it lacks.
     auto fetched = cloned;
+    auto moved_repository = false;
     if (not cloned) {
       const auto from_origin = IsGitOrigin(quoted_target, repo_url);
       fetched = RunGit(
@@ -867,6 +868,7 @@ auto spp::cli::HandleVcs() -> bool {
       if (fetched and not from_origin and not RunGit("-C " + quoted_target + " remote set-url origin " + quoted_url)) {
         return false;
       }
+      moved_repository = fetched and not from_origin;
       if (not fetched and not from_origin) {
         std::cerr
           << "Error: "s << repo_name << " could not be fetched from '" << repo_url
@@ -890,6 +892,21 @@ auto spp::cli::HandleVcs() -> bool {
       std::cout
         << "Checked out "s << repo_name << " from " << repo_url
         << " at " << *dependency.Rev << "\n";
+      return true;
+    }
+
+    // A branch of a repository the url now names instead of the one cloned
+    // is that repository's: its history need not share anything with the
+    // local branch, so it is taken as fetched rather than fast-forwarded.
+    if (moved_repository) {
+      if (not RunGit(
+        "-C " + quoted_target + " checkout --quiet -B " + quoted_branch + " "
+        + utils::shell::Quote("origin/" + repo_branch))) {
+        return false;
+      }
+      std::cout
+        << "Checked out "s << repo_name << " from " << repo_url
+        << " (" << repo_branch << ")" << "\n";
       return true;
     }
 

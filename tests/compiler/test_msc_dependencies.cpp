@@ -705,6 +705,10 @@ namespace {
     explicit LocalRemote(ScratchProject const &project, spp::Str const &name = "remote") : Folder(project.Base / name) {
       std::filesystem::create_directories(Folder / "src");
       std::ofstream(Folder / "spp.toml") << kProject;
+      // The remote's own name in its first commit, so two remotes never share
+      // a history: made in the same second, their first commits would
+      // otherwise be the same commit, and a "fork" would not be one.
+      std::ofstream(Folder / ".remote") << name;
       Git("init --quiet --initial-branch=master");
       Commit("first");
     }
@@ -771,6 +775,8 @@ TEST(Dependencies, test_vcs_fast_forwards_an_existing_branch) {
   EXPECT_TRUE(IsFetched(project, "second"));
 }
 
+// The url now names another repository, whose history shares nothing with the clone's: its branch is taken as
+// fetched, as a fast-forward cannot reach it.
 TEST(Dependencies, test_vcs_follows_a_url_changed_after_the_clone) {
   const auto project = ScratchProject();
   const auto remote = LocalRemote(project);

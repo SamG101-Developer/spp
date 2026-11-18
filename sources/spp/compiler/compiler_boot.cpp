@@ -78,8 +78,11 @@ auto spp::compiler::CompilerBoot::Parse(
     mod->ModuleAst = parse::ParserSpp(mod->Tokens, mod->Formatter).Parse();
 
     // What "!cfg" leaves out of this build goes before any scope is made, so it
-    // never names anything; an editor greys it out.
+    // never names anything; an editor greys it out. Not a line of the prelude
+    // appended behind the author's code ("F128"'s "use" off 64-bit Linux): no
+    // editor shows it.
     for (auto const &[start, end] : cfg::ApplyCfg(*mod->ModuleAst, Mode)) {
+      if (mod->Formatter->IsPastUserSource(start)) { continue; }
       lsp::resolution_index::RecordInactive(*mod->Formatter, start, end);
     }
 
