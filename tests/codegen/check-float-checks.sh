@@ -22,11 +22,21 @@
 #     right value, and at rel its checks are deferred ("air.") and it is
 #     vectorised, at any vector width (float compares vectorise on SSE2);
 #   - the same loop with an element overflowing, or a NaN going in, reports
-#     the overflow or the invalid operation, at dev and rel;
+#     the overflow or the invalid operation at dev; at rel, where its checks
+#     are deferred and the multiply's is left to the add's, "not finite", at
+#     the add;
+#   - "a * b + 1" is checked once at rel: an overflowing multiply is reported
+#     at the add (at dev, at the multiply); a division keeps its own check, so
+#     "1 / 0 + 1" is a division by zero at both; "sqrt" passes a NaN or an
+#     infinity on too, so "sqrt(a * b + 1)" is checked at the "sqrt"; a
+#     multiply compared, or used
+#     as a divisor (either can lose an infinity), keeps its own check;
+#   - the loop over "Vec"s indexed up to one's length (an index check the
+#     bounds pass versions the loop by) is deferred and vectorised too;
 # and with the checks off ("float_checks = false"; on is the default), "1/0" is
 # IEEE's infinity, no report.
 #
-# The reports need an sppc that names checks 0x20-0x22 and the maths functions
+# The reports need an sppc that names checks 0x20-0x23 and the maths functions
 # (operations 8-24); an older one reports "unknown check", or "(F64 operation)".
 #
 #   [SPPC_LIB=path/to/libsppc.so] tests/codegen/check-float-checks.sh [path/to/spp]
@@ -128,12 +138,40 @@ check() {
 
 readonly INVALID="[sppc] check failed: float invalid operation: the result is a NaN"
 readonly OVERFLOW="[sppc] check failed: float overflow: the result is infinite"
+readonly NOT_FINITE="[sppc] check failed: float invalid operation or overflow: the result is a NaN or infinite"
 
 # The element-wise loop: "a" filled with "fill", "b" with 2.0 but for element
-# 700, "odd"; prints element 700 of "a" after "a[i] = a[i] * b[i] + 1".
+# 700, "odd"; prints element 700 of "a" after "a[i] = a[i] * b[i] + 1". In
+# "Arr"s, or (for "vec") "Vec"s indexed up to "a"'s length: "b[i]" keeps an
+# index check, which the bounds pass versions the loop by.
 make_loop_project() {
-    local dir="$1" fill="$2" odd="$3"
+    local dir="$1" fill="$2" odd="$3" container="$4"
     new_project "${dir}" "${ON}"
+    if [[ "${container}" == vec ]]; then
+        cat > "${dir}/src/main.spp" <<EOF
+use std::hints::black_box
+
+!std::llvm::no_inline
+fun scale(a: &mut Vec[F64], b: &Vec[F64]) -> Void {
+  let mut i = 0_uz
+  loop i < a.len() {
+    a[mut i]@ = a[i]@ * b[i]@ + 1.0_f64
+    i += 1_uz
+  }
+}
+
+fun main() -> Void {
+  let mut a = Vec[F64]::new_filled(black_box(1024_uz), black_box(${fill}))
+  let mut b = Vec[F64]::new_filled(black_box(1024_uz), black_box(2.0_f64))
+  b[mut 700_uz]@ = black_box(${odd})
+  scale(&mut a, &b)
+  std::console::println("{}", std::intrinsics::bit_cast[U64](a[700_uz]@))
+  drop(a)
+  drop(b)
+}
+EOF
+        return
+    fi
     cat > "${dir}/src/main.spp" <<EOF
 use std::hints::black_box
 
@@ -159,10 +197,10 @@ EOF
 # One loop case, as "check" does; "vectorised" also asks that the rel build's
 # loop is deferred and vectorised.
 check_loop() {
-    local mode="$1" name="$2" fill="$3" odd="$4" rc_want="$5" expect="$6" vectorised="${7:-}"
-    name="${mode}, loop: ${name}"
+    local mode="$1" name="$2" fill="$3" odd="$4" rc_want="$5" expect="$6" vectorised="${7:-}" container="${8:-arr}"
+    name="${mode}, loop over ${container}s: ${name}"
     local dir="${WORK}/${mode}-${RANDOM}/loop"
-    make_loop_project "${dir}" "${fill}" "${odd}"
+    make_loop_project "${dir}" "${fill}" "${odd}" "${container}"
     build_project "${name}" "${dir}" "${mode}" || { failures=$((failures + 1)); return; }
     run_exe "${EXE}" "${dir}/run.log"
     if [[ ${RC} -ne ${rc_want} ]] || ! grep -qF "${expect}" "${dir}/run.log"; then
@@ -196,6 +234,19 @@ for mode in dev rel; do
         "[sppc] check failed: float division by zero (F64 divide)"
     check "${mode}" "F32 division by zero" "let x = div32(-1.0_f32, 0.0_f32)" 134 \
         "[sppc] check failed: float division by zero (F32 divide)"
+    check "${mode}" "a multiply then an add, checked once at rel" \
+        "let x = add(mul(std::hints::black_box(${MAX_F64}), 2.0_f64), 1.0_f64)" 134 \
+        "${OVERFLOW} (F64 $([[ "${mode}" == rel ]] && echo add || echo multiply))"
+    check "${mode}" "a multiply then a square root, checked once at rel" \
+        "let x = root(add(mul(std::hints::black_box(${MAX_F64}), 2.0_f64), 1.0_f64))" 134 \
+        "${OVERFLOW} (F64 $([[ "${mode}" == rel ]] && echo 'square root' || echo multiply))"
+    check "${mode}" "a multiply then a comparison keeps its check" \
+        "let x = mul(std::hints::black_box(${MAX_F64}), 2.0_f64) > 0.0_f64" 134 "${OVERFLOW} (F64 multiply)"
+    check "${mode}" "a multiply used as a divisor keeps its check" \
+        "let x = div(1.0_f64, mul(std::hints::black_box(${MAX_F64}), 2.0_f64))" 134 "${OVERFLOW} (F64 multiply)"
+    check "${mode}" "a division by zero then an add, still a division by zero" \
+        "let x = add(div(1.0_f64, std::hints::black_box(0.0_f64)), 1.0_f64)" 134 \
+        "[sppc] check failed: float division by zero (F64 divide)"
     check "${mode}" "multiply overflowed" \
         "let x = mul(179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0_f64, 2.0_f64)" \
         134 "${OVERFLOW} (F64 multiply)"
@@ -228,9 +279,19 @@ for mode in dev rel; do
         "std::console::println(\"{}\", bits(div(1.0_f64, 0.0_f64)))" 0 "9218868437227405312" "${OFF}"
     check_loop "${mode}" "in range" "1.5_f64" "3.0_f64" 0 "4617878467915022336" \
         "$([[ "${mode}" == rel ]] && echo vectorised)"
-    check_loop "${mode}" "an element overflows" "${MAX_F64}" "4.0_f64" 134 "${OVERFLOW} (F64 multiply)"
-    check_loop "${mode}" "a NaN going in" \
-        "std::intrinsics::bit_cast[F64](9221120237041090560_u64)" "2.0_f64" 134 "${INVALID} (F64 multiply)"
+    check_loop "${mode}" "in range" "1.5_f64" "3.0_f64" 0 "4617878467915022336" \
+        "$([[ "${mode}" == rel ]] && echo vectorised)" vec
+    if [[ "${mode}" == rel ]]; then
+        check_loop "${mode}" "an element overflows" "${MAX_F64}" "4.0_f64" 134 "${NOT_FINITE} (F64 add)" "" vec
+        check_loop "${mode}" "an element overflows" "${MAX_F64}" "4.0_f64" 134 "${NOT_FINITE} (F64 add)"
+        check_loop "${mode}" "a NaN going in" \
+            "std::intrinsics::bit_cast[F64](9221120237041090560_u64)" "2.0_f64" 134 "${NOT_FINITE} (F64 add)"
+    else
+        check_loop "${mode}" "an element overflows" "${MAX_F64}" "4.0_f64" 134 "${OVERFLOW} (F64 multiply)" "" vec
+        check_loop "${mode}" "an element overflows" "${MAX_F64}" "4.0_f64" 134 "${OVERFLOW} (F64 multiply)"
+        check_loop "${mode}" "a NaN going in" \
+            "std::intrinsics::bit_cast[F64](9221120237041090560_u64)" "2.0_f64" 134 "${INVALID} (F64 multiply)"
+    fi
 done
 
 finish

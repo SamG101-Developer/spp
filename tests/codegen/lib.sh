@@ -7,7 +7,9 @@
 #
 # The first argument is the spp binary (the release build by default), and
 # SPPC_LIB, if set, replaces the vendored libsppc.so in every project, to check
-# a runtime that has not been shipped into SPP-STL yet.
+# a runtime that has not been shipped into SPP-STL yet. STD_BRANCH (master by
+# default) is the SPP-STL branch every project builds against, for a compiler
+# change that needs a std change not merged yet.
 
 set -uo pipefail
 
@@ -20,6 +22,7 @@ readonly SPPC_LIB="${SPPC_LIB:-}"
 HOST_FFI="$(uname -m)-linux-gnu"
 readonly HOST_FFI
 readonly STD_GIT="https://github.com/SamG101-Developer/SPP-STL"
+readonly STD_BRANCH="${STD_BRANCH:-master}"
 
 WORK="$(mktemp -d)"
 readonly WORK
@@ -27,16 +30,16 @@ trap 'rm -rf "${WORK}"' EXIT
 
 failures=0
 
-# Where projects copy std from: the gtest fixture's checkout when there is one,
-# or else one clone per script run, rather than one per build. Each build
-# still pulls it, so either is current.
+# Where projects copy std from: the gtest fixture's checkout when there is one
+# (it is on master), or else one clone per script run, rather than one per
+# build. Each build still pulls it, so either is current.
 std_vcs() {
-    if [[ -d "${FIXTURE}/vcs/std" ]]; then
+    if [[ "${STD_BRANCH}" == master && -d "${FIXTURE}/vcs/std" ]]; then
         echo "${FIXTURE}/vcs"
         return
     fi
     if [[ ! -d "${WORK}/vcs/std" ]]; then
-        git clone -q --branch master "${STD_GIT}" "${WORK}/vcs/std" >&2
+        git clone -q --branch "${STD_BRANCH}" "${STD_GIT}" "${WORK}/vcs/std" >&2
     fi
     echo "${WORK}/vcs"
 }
@@ -51,7 +54,7 @@ new_project() {
     # Pulled first, so the build's own pull has nothing to merge over the
     # replaced library.
     if [[ -n "${SPPC_LIB}" ]]; then
-        git -C "${dir}/vcs/std" pull -q origin master
+        git -C "${dir}/vcs/std" pull -q origin "${STD_BRANCH}"
         find "${dir}" -name libsppc.so -exec cp "${SPPC_LIB}" {} \;
     fi
 
@@ -62,7 +65,7 @@ version = "0.1.0"
 build = "exe"
 
 [vcs]
-std = { git = "${STD_GIT}", branch = "master" }
+std = { git = "${STD_GIT}", branch = "${STD_BRANCH}" }
 ${config}
 EOF
 }
