@@ -31,6 +31,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_debug;
+import spp.codegen.llvm_defer;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_target;
@@ -387,6 +388,11 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     meta->EnclosingFnSourceRetType = ReturnType;
     meta->ClosureRetJoin = nullptr;
     meta->EnclosingFnScope = sm->CurrentScope;
+
+    ctx->Builder.SetInsertPoint(initial_destroy_bb);
+    codegen::EnterDeferScope(*sm->CurrentScope, ctx);
+    codegen::EmitSuspendDestroy(_OwnedAtStart, *this, sm, meta, ctx);
+    ctx->Builder.SetInsertPoint(body_start_bb);
 
     // If there is an implementation, generate its code. Generic
     // bases have already returned above. There are no ffi

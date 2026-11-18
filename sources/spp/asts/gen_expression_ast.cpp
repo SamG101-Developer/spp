@@ -339,24 +339,9 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
     *ctx->Context, "gen.coro.destroy" + uid, parked_bb->getParent());
 
   // Destroying the frame here leaves every scope out to the
-  // coroutine's: each runs what it deferred, then drops what it
-  // still owns, newest first, before the next one out is left. A
-  // value partly moved out loses only what is left of it.
+  // coroutine's, running and dropping what each still holds.
   ctx->Builder.SetInsertPoint(destroy_bb);
-  auto const *scope = sm->CurrentScope;
-  for (auto const &owned : _OwnedAtSuspend) {
-    if (scope == nullptr) { break; }
-    codegen::EmitDeferredScope(*scope, sm, meta, ctx);
-    for (auto const &[name, moved] : owned) {
-      const auto sym = scope->FindVarSymbol(name.get(), true);
-      if (sym == nullptr or sym->LlvmInfo->Alloca == nullptr) {
-        Ice(*this, *sm->CurrentScope, "a value owned at a suspension has no storage to drop");
-      }
-      codegen::EmitDrop(sym->TypeRefIn(*scope), sym->LlvmInfo->Alloca, sm, meta, ctx, moved);
-    }
-    scope = scope == meta->EnclosingFnScope ? nullptr : scope->Parent;
-  }
-  ctx->Builder.CreateBr(meta->LlvmGenerator->CleanupBlock);
+  codegen::EmitSuspendDestroy(_OwnedAtSuspend, *this, sm, meta, ctx);
 
   ctx->Builder.SetInsertPoint(parked_bb);
   codegen::EmitLlvmGeneratorSuspend(

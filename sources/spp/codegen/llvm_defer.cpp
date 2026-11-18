@@ -4,12 +4,17 @@ module;
 module spp.codegen.llvm_defer;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.defer_statement_ast;
 import spp.asts.expression_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.meta.compiler_meta_data;
+import spp.codegen.llvm_coros;
+import spp.codegen.llvm_drop;
+import spp.utils.ice;
 import genex;
+import llvm;
 
 auto spp::codegen::EmitDeferredScope(
   analyse::scopes::Scope const &scope,
@@ -61,4 +66,29 @@ auto spp::codegen::ReachDefer(
   -> void {
   auto &reached = ctx->Deferred->InScope[&scope];
   if (not genex::contains(reached, &defer)) { reached.emplace_back(&defer); }
+}
+
+auto spp::codegen::EmitSuspendDestroy(
+  Vec<Vec<analyse::utils::linear_utils::OwnedValue>> const &owned,
+  asts::Ast const &at,
+  analyse::scopes::ScopeManager *const sm,
+  asts::meta::CompilerMetaData *const meta,
+  LlvmCtx *const ctx)
+  -> void {
+  // Each scope out to the coroutine's runs what it deferred, then drops what it still owns, newest first, before the
+  // next one out is left. A value partly moved out loses only what is left of it.
+  auto const *scope = sm->CurrentScope;
+  for (auto const &scope_owned : owned) {
+    if (scope == nullptr) { break; }
+    EmitDeferredScope(*scope, sm, meta, ctx);
+    for (auto const &[name, moved] : scope_owned) {
+      const auto sym = scope->FindVarSymbol(name.get(), true);
+      if (sym == nullptr or sym->LlvmInfo->Alloca == nullptr) {
+        Ice(at, *sm->CurrentScope, "a value owned at a suspension has no storage to drop");
+      }
+      EmitDrop(sym->TypeRefIn(*scope), sym->LlvmInfo->Alloca, sm, meta, ctx, moved);
+    }
+    scope = scope == meta->EnclosingFnScope ? nullptr : scope->Parent;
+  }
+  ctx->Builder.CreateBr(meta->LlvmGenerator->CleanupBlock);
 }

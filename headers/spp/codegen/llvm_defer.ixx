@@ -2,12 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_defer;
+import spp.analyse.utils.linear_utils;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::asts, struct Ast);
 use(spp::asts, struct DeferStatementAst);
 use(spp::asts::meta, struct CompilerMetaData);
 use(spp::codegen, struct DeferredReached);
@@ -46,4 +48,13 @@ namespace spp::codegen {
   SPP_EXP_FUN auto EmitScopeExit(
     Scope const *into, ScopeManager *sm, CompilerMetaData *meta,
     LlvmCtx *ctx) -> void;
+
+  /// Destroy the coroutine's frame at a suspension, into the current block:
+  /// leave every scope out to the coroutine's own, each running what it
+  /// deferred and then dropping what it still owns ("owned", one entry per
+  /// scope, innermost first, as "OwnedAtSuspend" records them), then go on to
+  /// the frame's cleanup. "at" is the suspension, for an internal error.
+  SPP_EXP_FUN auto EmitSuspendDestroy(
+    Vec<Vec<analyse::utils::linear_utils::OwnedValue>> const &owned, asts::Ast const &at,
+    ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> void;
 }
