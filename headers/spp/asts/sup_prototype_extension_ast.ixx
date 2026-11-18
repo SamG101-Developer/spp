@@ -14,6 +14,7 @@ import std;
 use_common(SupPrototypeExtensionAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::asts, struct AnnotationAst);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct SupImplementationAst);
@@ -28,6 +29,10 @@ use(spp::asts, struct TypeAst);
 ///   }
 SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMemberAst, SupMemberAst {
   SPP_AST_KEY_FUNCTIONS(SupPrototypeExtensionAst);
+
+  /// The annotations on the superimposition: "!cfg" compiles
+  /// the whole block only for the builds it names.
+  Vec<Unique<AnnotationAst>> Annotations;
 
   /// The "sup" keyword that starts the superimposition.
   Unique<TokenAst> TokSup;
@@ -55,6 +60,7 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
   Unique<SupImplementationAst> Impl;
 
   SupPrototypeExtensionAst(
+    decltype(Annotations) &&annotations,
     decltype(TokSup) &&tok_sup,
     decltype(GnParamGroup) &&generic_param_group,
     decltype(Name) name,
