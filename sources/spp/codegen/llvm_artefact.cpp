@@ -96,6 +96,14 @@ namespace spp::codegen {
   /// object linked in has it.
   template <class ELFT>
   static auto BranchTargetGaps(llvm::object::ELFFile<ELFT> const &elf) -> Expected<Str, Str>;
+
+  /// What a PE image lacks of ASLR and DEP, as "UnhardenedImage" describes;
+  /// empty when it has them all.
+  static auto CoffImageGaps(llvm::object::COFFObjectFile const &coff) -> Str;
+
+  /// What a Mach-O image lacks of PIE and a non-executable stack, as
+  /// "UnhardenedImage" describes; empty when it has both.
+  static auto MachOImageGaps(llvm::object::MachOObjectFile const &macho) -> Str;
 }
 
 auto spp::codegen::FortifiableByLibc() -> llvm::StringSet<> const& {
@@ -337,6 +345,36 @@ auto spp::codegen::BranchTargetGaps(llvm::object::ELFFile<ELFT> const &elf) -> E
   return Str("no BTI property");
 }
 
+auto spp::codegen::CoffImageGaps(llvm::object::COFFObjectFile const &coff) -> Str {
+  // Only an image has the optional header; the 32-bit one has no high-entropy
+  // address space to ask for.
+  auto dll_flags = std::uint16_t{0};
+  auto wide = false;
+  if (const auto pe32_plus = coff.getPE32PlusHeader()) {
+    dll_flags = pe32_plus->DLLCharacteristics;
+    wide = true;
+  }
+  else if (const auto pe32 = coff.getPE32Header()) { dll_flags = pe32->DLLCharacteristics; }
+  else { return "no PE optional header"; }
+
+  if ((coff.getCharacteristics() & llvm::COFF::IMAGE_FILE_RELOCS_STRIPPED) != 0) {
+    return "its relocations stripped, so it cannot be moved";
+  }
+  if ((dll_flags & llvm::COFF::IMAGE_DLL_CHARACTERISTICS_DYNAMIC_BASE) == 0) { return "a fixed load address"; }
+  if (wide and (dll_flags & llvm::COFF::IMAGE_DLL_CHARACTERISTICS_HIGH_ENTROPY_VA) == 0) {
+    return "a low-entropy load address";
+  }
+  if ((dll_flags & llvm::COFF::IMAGE_DLL_CHARACTERISTICS_NX_COMPAT) == 0) { return "DEP off"; }
+  return Str();
+}
+
+auto spp::codegen::MachOImageGaps(llvm::object::MachOObjectFile const &macho) -> Str {
+  const auto flags = macho.is64Bit() ? macho.getHeader64().flags : macho.getHeader().flags;
+  if ((flags & llvm::MachO::MH_PIE) == 0) { return "a fixed load address"; }
+  if ((flags & llvm::MachO::MH_ALLOW_STACK_EXECUTION) != 0) { return "an executable stack"; }
+  return Str();
+}
+
 /// [CHECKED]
 auto spp::codegen::EmitHardeningRecord(
   llvm::Module &llvm_mod, char const *record) -> void {
@@ -497,7 +535,24 @@ auto spp::codegen::UnguardedBranchTargets(
   return ElfFinding(path, [](auto const &e) { return BranchTargetGaps(e); });
 }
 
+/// [CHECKED]
 auto spp::codegen::UnhardenedSegments(
   char const *path) -> Expected<Opt<Str>, Str> {
   return ElfFinding(path, [](auto const &e) { return SegmentFaults(e); });
+}
+
+auto spp::codegen::UnhardenedImage(
+  char const *path) -> Expected<Opt<Str>, Str> {
+  auto object = llvm::object::ObjectFile::createObjectFile(path);
+  if (not object) { return Unexpected(llvm::toString(object.takeError())); }
+
+  auto gaps = Str();
+  if (const auto coff = llvm::dyn_cast<llvm::object::COFFObjectFile>(object->getBinary())) {
+    gaps = CoffImageGaps(*coff);
+  }
+  else if (const auto macho = llvm::dyn_cast<llvm::object::MachOObjectFile>(object->getBinary())) {
+    gaps = MachOImageGaps(*macho);
+  }
+  if (gaps.empty()) { return Nullopt; }
+  return gaps;
 }
