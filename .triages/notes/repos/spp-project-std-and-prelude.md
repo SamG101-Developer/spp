@@ -1,7 +1,7 @@
 ---
 name: spp-project-std-and-prelude
 description: "A project's vcs/std is a separate git clone; every module, std's own included, gets the prelude minus its own namespace's lines, so no file re-imports prelude names"
-updated: 2026-11-06
+updated: 2026-11-17
 ---
 
 A project's `vcs/std` is its own git checkout of SPP-STL, not part of the project or of this repo. Edits to the
@@ -17,6 +17,12 @@ may re-import a prelude name: `use std::number::S32`, `use std::annotations::pub
 
 Before 2026-11-06, std's sources skipped the prelude entirely (`Module::IsStd`) and imported those names themselves.
 That broke any build with std as the root project, where its sources weren't flagged, with E14 in every std file.
+
+A prelude line may carry `!cfg` (since 2026-11-17: `!cfg(os="linux", pointer_width="64") use std::number::F128`,
+matching std's `!cfg` on the alias). `PreludeFor` reads the `use` behind the annotation for the own-namespace rule,
+and the generated test harness has `!cfg` applied like any module (it was skipped before, so a `!cfg`'d prelude line
+broke every `spp test`). A prelude condition that differs from std's is E89 "type alias cyclic"
+(`type F128 = std::number::F128`) where std dropped the name, or E14 where the prelude did.
 
 **Why:** the error points at the `use` line rather than saying "this is a prelude name". A prelude name added to
 `kPrelude` must also have any `use` of it removed from SPP-STL, or std stops compiling.

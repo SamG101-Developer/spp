@@ -5,3 +5,4 @@
 - [Sibling libs install Release](sibling-libs-install-release.md) — NumEx's code comes from its install; an untyped build is -O0 and cost a third of compile time
 - [Merge spp before SPP-STL](merge-spp-before-stl-for-new-features.md) — fixture/CI compile SPP-STL master; std needing a new compiler feature pushes after the spp merge; how to test it first; benchmarks pin std.rev, bump it with the change
 - [Std grow paths are cold](std-grow-paths-cold.md) — Vec/RawBuf growth out of line (!cold !no_inline) and doubling; only the fits test inlines
+- [Test runner main calls std](test-runner-main-calls-std.md) — spp test's generated main uses std::os::env::get_env + OsStr; moving them breaks every spp test; keep an old-name shim in std, merge std first

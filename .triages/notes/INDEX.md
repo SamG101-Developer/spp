@@ -31,6 +31,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [and/or/not, not &&/||/!](conventions/alternative-operator-keywords.md) — keyword logical ops; Sonar S3659 ignored; clang-tidy readability-operators-representation enforces
 - [Enums over strings](conventions/enums-over-strings.md) — fields and params hold the enum; convert once where a user writes it; "any" is Opt<Enum>
 - [Tickets: a folder each](conventions/tickets-one-folder-each.md) — .triages/tickets/<slug>/ with README.md + repro files; URL in the status line once filed
+- [Commit subject format](conventions/commit-subject-format.md) — `type(scope): lowercase desc` like PR titles; commit-msg hook reads pr_title.yaml's types
 
 ## Build, test, verify
 - [Build workflow](build/build-workflow.md) — release build; probe loop; targeted suite for targeted changes; rebuild first, count failed/, wipe after kills
@@ -45,6 +46,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Codegen checks suite](build/codegen-checks-suite.md) — tests/codegen/run.sh, ~6 min with check-intrinsics (KNOWN list in intrinsics.py); new checks on lib.sh
 - [Test group bugs](build/spp-test-group-filter-bugs.md) — novel !test group segfaults; --group filter misbehaves
 - [s++ test writing idioms](build/spp-test-writing-idioms.md) — destructure-only patterns, literal-only unary minus; benchmark idioms (Arr type, closures, black_box, formatted println)
+- [Syntax rewrites from a parser dump](build/syntax-rewrites-from-a-parser-dump.md) — temp registry + dtor erase, gtest dumps offsets; lexer's leading \n; snippets in raw strings, heredocs, sh quotes
 - [Stale module objects](build/cmake-stale-module-objects.md) — a changed .cpp may not rebuild; touch it
 - [Split macro headers](build/split-macro-headers.md) — macros.hpp edit = 11 min rebuild; use narrow headers
 - [Genex on one line](build/cmake-genex-no-line-breaks.md) — a wrapped generator expression splits into args; ninja "bad $-escape"; use a variable
@@ -62,7 +64,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [CI and platforms](ci/INDEX.md) — workflow quirks, compiler caches, macOS libc++, MSVC bugs, cross-target blockers (40)
 - [Type identity](types/INDEX.md) — TypeKey/stamps, aliases, variant order, TypeEq vs Assignable, Self, comp key folding (13)
 - [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (23)
-- [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (25)
-- [Language semantics](language/INDEX.md) — linear types, drops, borrows, case/patterns, closures, generators (27)
-- [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path, source lines (41)
-- [Std and sibling repos](repos/INDEX.md) — SPP-STL and sppc: what lives where, prelude, link-time library checks (7)
+- [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (26)
+- [Language semantics](language/INDEX.md) — linear types, drops, borrows, case/patterns, closures, generators (29)
+- [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path, source lines (43)
+- [Std and sibling repos](repos/INDEX.md) — SPP-STL and sppc: what lives where, prelude, link-time library checks (8)

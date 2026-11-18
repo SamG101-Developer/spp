@@ -1,6 +1,6 @@
 - [Linear types](spp-linear-types.md) — non-Copy used exactly once; 5 rules, Drop bound
-- [Implicit destructors are gone](no-destructor-dispatch-yet.md) — linear typing; EmitDrop only for the drop intrinsics
-- [Drop needs forced instantiation](drop-needs-forced-instantiation.md) — mint in the monomorphisation drain
+- [Implicit destructors are gone](no-destructor-dispatch-yet.md) — linear typing; EmitDrop for drop intrinsics, closure captures, coroutine frames
+- [Drop needs forced instantiation](drop-needs-forced-instantiation.md) — every synthesised drop calls EnsureDropInstantiated; a miss drops field by field (Vec loses its elements)
 - [zero_type is not Copy](zero-type-implies-copy.md) — layout only; markers are linear unless Copy
 - [Markers only from own package](markers-only-from-own-package.md) — Copy/Drop/FwdRef/FwdMut: declaring package only (E111)
 - [Soundness audit 2026-09](spp-soundness-audit-2026-09.md) — branch-consumption on; where red tests live
@@ -15,12 +15,14 @@
 - [Nested case with no else](nested-case-in-generic-segfaults.md) — no-else case is Void, not Never
 - [Destructure alias scope](spp-destructure-alias-scope.md) — `x as y` only in object destructures
 - [Defer applies to earlier exits](defer-applies-to-earlier-exits.md) — Stage 8 clears Deferred on entry
-- [Closure return types](closure-return-types.md) — `(x: T) -> R { ret .. }`
+- [Closures are |..| delimited](closures-are-bar-delimited.md) — `|a: T caps b| body`; `||` no params; a line-leading `|` is never bit-or
+- [Closure return types](closure-return-types.md) — `|x: T| -> R { ret .. }`
 - [Closure captures in loops](closure-captures-in-loops.md) — fixed; loop tests need a 2nd pass
 - [Closure borrowed capture](closure-borrowed-capture-and-consuming-self.md) — caps &mut smash; E7 self
 - [Closure env ownership header](closure-env-ownership-header.md) — {i8 owns, ptr drop_captures} (N5.5a); llvm_fn env helpers; sppc mirrors it
 - [$ mock types](spp-dollar-mock-types.md) — TypeFuncEq for $ types; IsTypeFunction yes
 - [GenDone sentinel](generator-gen-done-sentinel.md) — finished Gen answers GenDone; E110
+- [GenOnce defer runs early](gen-once-defer-runs-before-borrow-use.md) — the frame finishes on read; a defer after gen runs before the borrow is used; locks are closure-scoped
 - [Resume ends &mut yields](resume-ends-mut-yields.md) — 2nd g.res() moves earlier &mut holders
 - [Green task detach UAF](spp-green-task-detach-uaf.md) — a dropped future must await
 - [!extends annotation plan](spp-extends-annotation-plan.md) — future; use `sup X ext Copy` for now
