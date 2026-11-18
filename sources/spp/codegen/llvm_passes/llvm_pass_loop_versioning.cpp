@@ -17,6 +17,27 @@ auto spp::codegen::IsAbortBlock(
     and &bb.front() == call;
 }
 
+auto spp::codegen::IsAbortPath(
+  llvm::BasicBlock const &bb, const llvm::function_ref<void(llvm::BasicBlock const &)> each) -> bool {
+  // A float check's classifier, its infinity's test and three aborts are the
+  // most there are.
+  constexpr auto max_blocks = 8uz;
+  auto seen = Set<llvm::BasicBlock const*>();
+  auto work = Vec<llvm::BasicBlock const*>{&bb};
+  while (not work.empty()) {
+    const auto at = work.back();
+    work.pop_back();
+    if (not seen.insert(at).second) { continue; }
+    if (seen.size() > max_blocks) { return false; }
+    each(*at);
+    if (IsAbortBlock(*at)) { continue; }
+    if (llvm::succ_empty(at)) { return false; }
+    if (genex::any_of(*at, [](llvm::Instruction const &i) { return i.mayHaveSideEffects(); })) { return false; }
+    for (const auto succ : llvm::successors(at)) { work.emplace_back(succ); }
+  }
+  return true;
+}
+
 auto spp::codegen::VersionLoop(
   llvm::Loop &loop, llvm::BasicBlock *exit,
   llvm::function_ref<llvm::User*(llvm::Instruction *before)> make_condition,

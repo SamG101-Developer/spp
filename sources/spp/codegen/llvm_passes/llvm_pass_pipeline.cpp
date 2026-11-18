@@ -80,7 +80,8 @@ auto spp::codegen::CheckCoroutinesLowered(llvm::Module const &llvm_mod) -> void 
 
 auto spp::codegen::RunOptimizationPipeline(
   void *llvm_module, void *target_machine, const unsigned opt_level,
-  void (*after_coro_split)(void *llvm_module), const bool air_integers) -> void {
+  void (*after_coro_split)(void *llvm_module), const bool air_integers,
+  const bool float_checks) -> void {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
 
   auto loop_am = llvm::LoopAnalysisManager();
@@ -140,9 +141,9 @@ auto spp::codegen::RunOptimizationPipeline(
     pass_builder.registerVectorizerStartEPCallback(
       [](llvm::FunctionPassManager &fpm, llvm::OptimizationLevel) { AddBoundsPasses(fpm); });
   }
-  if (air_integers and opt_level > 0) {
+  if ((air_integers or float_checks) and opt_level > 0) {
     pass_builder.registerVectorizerStartEPCallback(
-      [](llvm::FunctionPassManager &fpm, llvm::OptimizationLevel) { AddAirPasses(fpm); });
+      [air_integers](llvm::FunctionPassManager &fpm, llvm::OptimizationLevel) { AddAirPasses(fpm, air_integers); });
   }
 
   // Checked ops and their checks put back together for the backend,

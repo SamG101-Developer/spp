@@ -82,7 +82,7 @@ namespace spp::codegen {
           for (const auto bb : loop->blocks()) {
             size += bb->size();
             for (const auto succ : llvm::successors(bb)) {
-              if (loop->contains(succ) or IsAbortBlock(*succ)) { continue; }
+              if (loop->contains(succ) or IsAbortPath(*succ, [](llvm::BasicBlock const &) {})) { continue; }
               ++real_exits;
               exiting = bb;
               exit = succ;
