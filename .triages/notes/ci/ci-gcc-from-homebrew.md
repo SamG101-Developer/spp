@@ -34,5 +34,10 @@ with `--gcc-install-dir`, written to `clang.cfg` and `clang++.cfg` in clang's re
 (`/usr/lib/llvm-N/bin`; one beside the `/usr/bin` symlink is not read, checked locally), which every clang run reads,
 the sibling libraries' builds included. It checks `-v`'s "Selected GCC installation", and exports
 `SPP_CI_GCC_INSTALL_DIR`, which `configure.sh` adds to the C/C++ flags so `compile_commands.json` (clang-tidy's own
-driver) carries it. Before, they installed `g++-16` from the PPA: the March trunk snapshot's libstdc++, and a
+driver) carries it. Homebrew keeps `libstdc++` and `libgcc_s` beside the GCC (where `-print-file-name=libstdc++.a`
+points), not in the install dir, so a plain link failed CMake's first check ("cannot find -lgcc_s"): the config also
+has `-L` that dir, `-static-libgcc` and `-static-libstdc++` (the runner's `libstdc++.so.6` is older than GCC 16's),
+inside `--start-no-unused-arguments`/`--end-no-unused-arguments`, or every compile-only call warns and `-Werror` fails
+it. The script then builds and runs a C and a C++ program (an exception thrown and caught) so a broken link fails in
+setup. Before, they installed `g++-16` from the PPA: the March trunk snapshot's libstdc++, and a
 Launchpad 503 outage that day failed Linux Clang and Clang-Tidy after `retry`'s three tries.
