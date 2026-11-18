@@ -35,6 +35,10 @@ namespace spp::compiler::dependencies {
   /// its ".git/HEAD" with no git call. None when it is on a branch, or is not a
   /// checkout of its own.
   SPP_EXP_FUN auto FindCheckedOutRev(Path const &folder) -> Opt<Str>;
+
+  /// The branch a checkout at "folder" is on, read from its ".git/HEAD" with no
+  /// git call. None when it is detached, or is not a checkout of its own.
+  SPP_EXP_FUN auto FindCheckedOutBranch(Path const &folder) -> Opt<Str>;
 }
 
 /// One record of a "[vcs]" table.
