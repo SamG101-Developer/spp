@@ -98,7 +98,7 @@ struct spp::parse::errors::SyntacticErrorBuilder final : utils::errors::Abstract
     const auto position = this->_ErrFormatters[0]->PositionOf(Pos);
     this->_ErrObj->Span = this->_ErrFormatters[0]->SpanOfRawPos(position, 1);
     this->_ErrObj->Messages = {
-      this->_ErrFormatters[0]->ErrorRawPos(
+      this->_ErrFormatters[0]->SyntaxErrorRawPos(
         position, 1, std::move(err_msg), "Syntax error")
     };
     utils::errors::AbstractErrorBuilder<T>::Raise();

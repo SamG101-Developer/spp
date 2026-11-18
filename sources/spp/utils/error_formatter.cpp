@@ -180,6 +180,26 @@ auto spp::utils::errors::ErrorFormatter::ErrorRawPos(
     + (colex::reset & colex::fg_bright_red) + message + "\n"s;
 }
 
+auto spp::utils::errors::ErrorFormatter::SyntaxErrorRawPos(
+  const std::size_t ast_start_pos,
+  const std::size_t ast_size,
+  Str &&message,
+  Str &&tag_message)
+  -> Str {
+  using namespace std::string_literals;
+  if (not IsPastUserSource(ast_start_pos)) {
+    return ErrorRawPos(ast_start_pos, ast_size, std::move(message), std::move(tag_message));
+  }
+  const auto quote = _Quote{
+    .Location = "at the end of the file"s,
+    .LineNumber = ""s,
+    .LineText = "<end of file>"s,
+    .LeftPadding = ""s,
+    .Carets = " <- "s + (colex::fg_bright_white & colex::st_bold) + tag_message
+  };
+  return _RenderQuote(true, quote) + (colex::reset & colex::fg_bright_red) + message + "\n"s;
+}
+
 auto spp::utils::errors::ErrorFormatter::ErrorRawPosMinimal(
   const std::size_t ast_start_pos,
   const std::size_t ast_size,
@@ -195,8 +215,13 @@ auto spp::utils::errors::ErrorFormatter::_Render(
   Str &&tag_message) const
   -> Str {
   //
+  return _RenderQuote(is_error, _QuoteRawPos(ast_start_pos, ast_size, std::move(tag_message)));
+}
+
+auto spp::utils::errors::ErrorFormatter::_RenderQuote(
+  const bool is_error, _Quote const &quote) const
+  -> Str {
   using namespace std::string_literals;
-  const auto quote = _QuoteRawPos(ast_start_pos, ast_size, std::move(tag_message));
   const auto heading = is_error ? "Error in file '"s : "Context from file '"s;
   const auto quoted = is_error ? (colex::fg_bright_red & colex::st_bold) : (colex::fg_bright_green & colex::st_bold);
   const auto carets = is_error ? (colex::reset & colex::fg_bright_red) : (colex::reset & colex::fg_bright_green);

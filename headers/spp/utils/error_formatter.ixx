@@ -90,6 +90,15 @@ public:
     std::size_t ast_start_pos, std::size_t ast_size,
     Str &&message, Str &&tag_message) -> Str;
 
+  /// A syntax error, as "ErrorRawPos", except that a position
+  /// in the prelude is the end of the author's file: the parser
+  /// only reaches the prelude when their code ends early (an
+  /// unclosed "{"), so it is quoted as the end of the file, not
+  /// as a line of the prelude.
+  SPP_ATTR_COLD auto SyntaxErrorRawPos(
+    std::size_t ast_start_pos, std::size_t ast_size,
+    Str &&message, Str &&tag_message) -> Str;
+
   /// Given an ast position and size, throw the error with
   /// the minimally formatted version of the error builder
   /// output.
@@ -225,4 +234,8 @@ private:
   SPP_ATTR_NODISCARD auto _Render(
     bool is_error, std::size_t ast_start_pos, std::size_t ast_size,
     Str &&tag_message) const -> Str;
+
+  /// "_Render" of a quote already made.
+  SPP_ATTR_NODISCARD auto _RenderQuote(
+    bool is_error, _Quote const &quote) const -> Str;
 };
