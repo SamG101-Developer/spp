@@ -8,6 +8,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.drop_utils;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.asts.ast_kind;
@@ -41,7 +42,9 @@ import spp.codegen.llvm_size;
 import spp.codegen.llvm_target;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
+import spp.utils.features;
 import spp.utils.ice;
+import spp.utils.interner;
 import spp.utils.types;
 import spp.utils.uid;
 import llvm;
@@ -95,6 +98,21 @@ namespace spp::codegen::fn_impls {
       DivideByZero = 0x16,
       RemainderByZero = 0x17,
       SignedDiv = 0x18,
+      ShiftDistance = 0x19,
+      FloatInvalid = 0x20,
+      FloatDivideByZero = 0x21,
+      FloatOverflow = 0x22,
+      FloatNotFinite = 0x23,
+    };
+
+    /// What a float check reports it was computing ("a"; the
+    /// runtime names it, beside the width as "b"), as the crash
+    /// path cannot format a float to show the operands.
+    enum class FloatOp : std::uint64_t {
+      Add = 1, Sub = 2, Mul = 3, Div = 4, Rem = 5, Sqrt = 6, Convert = 7,
+      Exp = 8, Exp2 = 9, Exp10 = 10, Log = 11, Log2 = 12, Log10 = 13, Sin = 14,
+      Cos = 15, Tan = 16, Asin = 17, Acos = 18, Atan = 19, Atan2 = 20,
+      Sinh = 21, Cosh = 22, Tanh = 23, Pow = 24,
     };
   }
 
@@ -119,12 +137,13 @@ namespace spp::codegen::fn_impls {
   static auto EmitFloatToIntCheck(
     LlvmCtx *const ctx, llvm::Value *value, llvm::Type const *int_ty, const bool is_signed) -> void;
 
-  /// Emit a shift whose result is defined for any distance
-  /// (including one at or past the operand's width). A bare
-  /// shl/lhsr poisons if the distance reaches the operand's
-  /// bit width. Clamp the distance before the shift as well
-  /// as afterwards.
-  static auto EmitDefinedShift(
+  /// Emit a shift, failing the check if the distance reaches the
+  /// operand's width (llvm's shifts poison there; S++ aborts, as
+  /// an overflowing "+" does). The distance is its own integer
+  /// type ("bit_shl[T, U]"): it is checked at that width, then
+  /// narrowed to the operand's, which llvm requires and which is
+  /// lossless once it is below the width.
+  static auto EmitCheckedShift(
     LlvmCtx *ctx, const BinOp op,
     llvm::Value *a, llvm::Value *b) -> llvm::Value*;
 
@@ -150,6 +169,42 @@ namespace spp::codegen::fn_impls {
   static auto EmitCheckedArith(
     LlvmCtx *ctx, const BinOp op,
     llvm::Value *a, llvm::Value *b) -> llvm::Value*;
+
+  /// Whether float operations are checked ("[binary.codegen]
+  /// float_checks").
+  static auto FloatChecksOn() -> bool;
+
+  /// What a checked float operation stops on, branch-free: a result
+  /// that is not finite (a NaN or an infinity, so an invalid
+  /// operation, a division by zero or an overflow). Whatever the
+  /// operands were: a NaN or an infinity going in stops it too, so a
+  /// value made non-finite on purpose goes through the "*_ieee"
+  /// forms, as a deliberately wrapped integer goes through
+  /// "*_wrapping".
+  static auto EmitFloatNotFinite(
+    LlvmCtx *ctx, llvm::Value *result) -> llvm::Value*;
+
+  /// Check a float result: one hot test, the result not finite, to a
+  /// cold block naming the exception: invalid for a NaN, division by
+  /// zero where "by_zero" holds (built there: a division by zero, a
+  /// pole such as "log(0)"; null for an operation without one), else
+  /// overflow. Leaves the builder past the check.
+  static auto EmitFloatCheck(
+    LlvmCtx *ctx, FloatOp op, llvm::function_ref<llvm::Value*()> by_zero,
+    llvm::Value *result) -> void;
+
+  /// A float "+", "-", "*", "/" or "%", checked as above when
+  /// float checks are on, else IEEE's.
+  static auto EmitCheckedFloatArith(
+    LlvmCtx *ctx, BinOp op, llvm::Value *a, llvm::Value *b) -> llvm::Value*;
+
+  /// Whether a conversion can make an infinity from a finite
+  /// value: a float narrowed to another float, or an integer whose
+  /// magnitude can reach past the float's largest exponent ("U16"
+  /// into "F16", "U128" into "F32"). An "F8" is encoded saturating
+  /// (an integer type), so it is not one.
+  static auto ConversionCanOverflow(
+    ConvOp op, llvm::Type const *src_ty, llvm::Type const *dest_ty) -> bool;
 
   /// A division or remainder, checked as "+" is: it aborts only
   /// when the true result does not exist or does not fit. A zero
@@ -308,32 +363,33 @@ auto spp::codegen::fn_impls::EmitFloatToIntCheck(
 }
 
 /// [CHECKED]
-auto spp::codegen::fn_impls::EmitDefinedShift(
+auto spp::codegen::fn_impls::EmitCheckedShift(
   LlvmCtx *ctx, const BinOp op,
   llvm::Value *a, llvm::Value *b) -> llvm::Value* {
-  // Create some predefined types that will be reused through
-  // this function. Define the width and max for the shifts.
   const auto uid = "." + spp::utils::Uid();
   const auto ty = a->getType();
-  const auto width = llvm::ConstantInt::get(ty, ty->getIntegerBitWidth());
-  const auto max = llvm::ConstantInt::get(ty, ty->getIntegerBitWidth() - 1);
+  const auto width = ty->getIntegerBitWidth();
+  const auto dist_ty = llvm::cast<llvm::IntegerType>(b->getType());
 
-  // Do a width check and select the safe value if it trips;
-  // this is the "before" check.
-  const auto too_wide = ctx->Builder.CreateICmpUGE(b, width, "shift.wide" + uid);
-  const auto safe = ctx->Builder.CreateSelect(too_wide, max, b, "shift.safe" + uid);
-  const auto raw = op == BinOp::Shl ? ctx->Builder.CreateShl(a, safe, "shift.raw" + uid)
-    : op == BinOp::LShr ? ctx->Builder.CreateLShr(a, safe, "shift.raw" + uid)
-    : ctx->Builder.CreateAShr(a, safe, "shift.raw" + uid);
+  // Checked at the distance's own width: narrowing it first would wrap one past the operand's type into range
+  // ("1_u8 << 256_u32" shifting by 0). A distance type too narrow to hold the width can never reach it.
+  const auto dist_bits = dist_ty->getBitWidth();
+  if (dist_bits >= 64 or (static_cast<std::uint64_t>(width) >> dist_bits) == 0) {
+    const auto width_val = llvm::ConstantInt::get(dist_ty, width);
+    const auto fn = ctx->Builder.GetInsertBlock()->getParent();
+    const auto ok_bb = llvm::BasicBlock::Create(*ctx->Context, "shift.ok" + uid, fn);
+    const auto fail_bb = llvm::BasicBlock::Create(*ctx->Context, "shift.fail" + uid, fn);
+    ctx->Builder.CreateCondBr(
+      ctx->Builder.CreateICmpUGE(b, width_val, "shift.wide" + uid), fail_bb, ok_bb);
+    ctx->Builder.SetInsertPoint(fail_bb);
+    EmitCheckFailed(ctx, RuntimeCheck::ShiftDistance, b, width_val);
+    ctx->Builder.SetInsertPoint(ok_bb);
+  }
 
-  // An arithmetic shift by the clamped distance is already
-  // the answer past the width: every bit is the sign bit.
-  if (op == BinOp::AShr) { return raw; }
-
-  // Do a width check afterwards too on the result. This is
-  // the completion of the "<<" and ">>" safety.
-  return ctx->Builder.CreateSelect(
-    too_wide, llvm::ConstantInt::get(ty, 0), raw, "shift.result" + uid);
+  const auto by = ctx->Builder.CreateZExtOrTrunc(b, ty, "shift.by" + uid);
+  return op == BinOp::Shl ? ctx->Builder.CreateShl(a, by, "shift.result" + uid)
+    : op == BinOp::LShr ? ctx->Builder.CreateLShr(a, by, "shift.result" + uid)
+    : ctx->Builder.CreateAShr(a, by, "shift.result" + uid);
 }
 
 auto spp::codegen::fn_impls::EmitSaturatingShift(
@@ -484,6 +540,94 @@ auto spp::codegen::fn_impls::EmitCheckedArith(
   return flagged;
 }
 
+auto spp::codegen::fn_impls::FloatChecksOn() -> bool {
+  return utils::features::IsEnabled(utils::features::ConfigKey::BinaryCodegenFloatChecks);
+}
+
+auto spp::codegen::fn_impls::EmitFloatNotFinite(LlvmCtx *ctx, llvm::Value *result) -> llvm::Value* {
+  // A "uno" compare, one instruction on SSE2 (whose others are "eq", "lt", "le" and their negations: "one" and "ueq"
+  // are two there, and "|x| == inf" an integer compare of 64-bit lanes, which SSE2 lacks), of "r - r", a NaN exactly
+  // when "r" is not finite (InstCombine turns "|r| uge inf" into "ueq"), and not folded without "nnan".
+  const auto uid = "." + spp::utils::Uid();
+  return ctx->Builder.CreateFCmpUNO(
+    ctx->Builder.CreateFSub(result, result, "float.self_diff" + uid), llvm::ConstantFP::getZero(result->getType()),
+    "float.not_finite" + uid);
+}
+
+auto spp::codegen::fn_impls::EmitFloatCheck(
+  LlvmCtx *ctx, const FloatOp op, const llvm::function_ref<llvm::Value*()> by_zero, llvm::Value *result) -> void {
+  const auto uid = "." + spp::utils::Uid();
+  const auto fn = ctx->Builder.GetInsertBlock()->getParent();
+  const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
+  const auto what = llvm::ConstantInt::get(i64_ty, std::to_underlying(op));
+  const auto width = llvm::ConstantInt::get(i64_ty, result->getType()->getPrimitiveSizeInBits().getFixedValue());
+
+  // One hot test, "not finite ? classify : ok", which the AIR pass defers as it does an overflow check (reporting a
+  // deferred one as "FloatNotFinite": the classifier reads the result, which is gone by the loop's exit). The cold
+  // classifier only runs on the way to an abort, so the kind costs nothing on the hot path: a NaN is invalid, an
+  // infinity a division by zero where "by_zero" holds, else an overflow.
+  const auto ok_bb = llvm::BasicBlock::Create(*ctx->Context, "float.ok" + uid, fn);
+  const auto classify_bb = llvm::BasicBlock::Create(*ctx->Context, "float.classify" + uid, fn);
+  ctx->Builder.CreateCondBr(EmitFloatNotFinite(ctx, result), classify_bb, ok_bb);
+  const auto fail_bb = [&](const RuntimeCheck check) {
+    const auto abort_bb = llvm::BasicBlock::Create(*ctx->Context, "float.fail" + uid, fn);
+    ctx->Builder.SetInsertPoint(abort_bb);
+    EmitCheckFailed(ctx, check, what, width);
+    return abort_bb;
+  };
+
+  const auto invalid_bb = fail_bb(RuntimeCheck::FloatInvalid);
+  const auto overflow_bb = fail_bb(RuntimeCheck::FloatOverflow);
+  const auto infinite_bb = by_zero
+    ? llvm::BasicBlock::Create(*ctx->Context, "float.infinite" + uid, fn)
+    : overflow_bb;
+  ctx->Builder.SetInsertPoint(classify_bb);
+  ctx->Builder.CreateCondBr(
+    ctx->Builder.CreateFCmpUNO(result, result, "float.invalid" + uid), invalid_bb, infinite_bb);
+  if (by_zero) {
+    ctx->Builder.SetInsertPoint(infinite_bb);
+    const auto zero_bb = fail_bb(RuntimeCheck::FloatDivideByZero);
+    ctx->Builder.SetInsertPoint(infinite_bb);
+    ctx->Builder.CreateCondBr(by_zero(), zero_bb, overflow_bb);
+  }
+  ctx->Builder.SetInsertPoint(ok_bb);
+}
+
+auto spp::codegen::fn_impls::EmitCheckedFloatArith(
+  LlvmCtx *ctx, const BinOp op,
+  llvm::Value *a, llvm::Value *b) -> llvm::Value* {
+  const auto [plain, what] = [op]() -> Pair<BinOp, FloatOp> {
+    switch (op) {
+      case BinOp::FAddChecked: return {BinOp::FAdd, FloatOp::Add};
+      case BinOp::FSubChecked: return {BinOp::FSub, FloatOp::Sub};
+      case BinOp::FMulChecked: return {BinOp::FMul, FloatOp::Mul};
+      case BinOp::FDivChecked: return {BinOp::FDiv, FloatOp::Div};
+      case BinOp::FRemChecked: return {BinOp::FRem, FloatOp::Rem};
+      default: spp::Ice(std::format("not a checked float BinOp: {}", static_cast<int>(op)));
+    }
+  }();
+  const auto result = ApplyBinOp(ctx, plain, a, b);
+  if (FloatChecksOn()) {
+    const auto zero_divisor = [&]() -> llvm::Value* {
+      return ctx->Builder.CreateFCmpOEQ(b, llvm::ConstantFP::getZero(b->getType()), "float.zero_divisor");
+    };
+    EmitFloatCheck(ctx, what, op == BinOp::FDivChecked ? zero_divisor : llvm::function_ref<llvm::Value*()>(), result);
+  }
+  return result;
+}
+
+auto spp::codegen::fn_impls::ConversionCanOverflow(
+  const ConvOp op, llvm::Type const *src_ty, llvm::Type const *dest_ty) -> bool {
+  if (not dest_ty->isFloatingPointTy()) { return false; }
+  const auto max_exponent = llvm::APFloat::semanticsMaxExponent(dest_ty->getFltSemantics());
+  switch (op) {
+    case ConvOp::FPTrunc: return true;
+    case ConvOp::UIToFP: return static_cast<int>(src_ty->getIntegerBitWidth()) > max_exponent;
+    case ConvOp::SIToFP: return static_cast<int>(src_ty->getIntegerBitWidth()) - 1 > max_exponent;
+    default: return false;
+  }
+}
+
 auto spp::codegen::fn_impls::EmitCheckedDivRem(
   LlvmCtx *ctx, const BinOp op,
   llvm::Value *a, llvm::Value *b) -> llvm::Value* {
@@ -591,12 +735,16 @@ auto spp::codegen::fn_impls::ConvOpIsDefined(
     case ConvOp::SExt:
     case ConvOp::ZExt: return ints and src->getIntegerBitWidth() < dst->getIntegerBitWidth();
     case ConvOp::FPTrunc: return float_bits(dst) != 0 and float_bits(src) > float_bits(dst);
+    case ConvOp::FPTruncIeee: return dst->isFloatingPointTy() and float_bits(src) > float_bits(dst);
     case ConvOp::FPExt: return float_bits(src) != 0 and float_bits(src) < float_bits(dst);
     case ConvOp::SIToFP:
     case ConvOp::UIToFP: return src->isIntegerTy() and dst->isFloatingPointTy();
     case ConvOp::FPToSI:
     case ConvOp::FPToUI: return src->isFloatingPointTy() and dst->isIntegerTy();
-    case ConvOp::BitCast: return src->isPtrOrPtrVectorTy() == dst->isPtrOrPtrVectorTy()
+    // A struct or an array has no primitive size (0 for every one), so two of them would read as the same size, and
+    // llvm rejects a bitcast of either; "bit_cast" is bounded to scalars in std, this keeps any other caller off it.
+    case ConvOp::BitCast: return not src->isAggregateType() and not dst->isAggregateType()
+        and src->isPtrOrPtrVectorTy() == dst->isPtrOrPtrVectorTy()
         and (src->isPtrOrPtrVectorTy() or src->getPrimitiveSizeInBits() == dst->getPrimitiveSizeInBits());
     default: spp::Ice(std::format("unhandled ConvOp: {}", static_cast<int>(op)));
   }
@@ -651,16 +799,6 @@ auto spp::codegen::fn_impls::SimpleCreateFn(
 // Layer 2: enum-driven operation dispatchers.
 // =========================================================================================================
 
-auto spp::codegen::fn_impls::IsShiftBinOp(
-  const BinOp op) -> bool {
-  switch (op) {
-    case BinOp::Shl:
-    case BinOp::LShr:
-    case BinOp::AShr: return true;
-    default: return false;
-  }
-}
-
 auto spp::codegen::fn_impls::IsCompareBinOp(
   const BinOp op) -> bool {
   switch (op) {
@@ -675,7 +813,7 @@ auto spp::codegen::fn_impls::IsCompareBinOp(
     case BinOp::ICmpSGE:
     case BinOp::ICmpUGE:
     case BinOp::FCmpOEQ:
-    case BinOp::FCmpONE:
+    case BinOp::FCmpUNE:
     case BinOp::FCmpOLT:
     case BinOp::FCmpOLE:
     case BinOp::FCmpOGT:
@@ -700,7 +838,7 @@ auto spp::codegen::fn_impls::ApplyBinOp(
     case BinOp::URem: return EmitCheckedDivRem(ctx, op, a, b);
     case BinOp::Shl:
     case BinOp::LShr:
-    case BinOp::AShr: return EmitDefinedShift(ctx, op, a, b);
+    case BinOp::AShr: return EmitCheckedShift(ctx, op, a, b);
     case BinOp::Or: return ctx->Builder.CreateOr(a, b, name);
     case BinOp::And: return ctx->Builder.CreateAnd(a, b, name);
     case BinOp::Xor: return ctx->Builder.CreateXor(a, b, name);
@@ -715,7 +853,7 @@ auto spp::codegen::fn_impls::ApplyBinOp(
     case BinOp::ICmpSGE: return ctx->Builder.CreateICmpSGE(a, b, name);
     case BinOp::ICmpUGE: return ctx->Builder.CreateICmpUGE(a, b, name);
     case BinOp::FCmpOEQ: return ctx->Builder.CreateFCmpOEQ(a, b, name);
-    case BinOp::FCmpONE: return ctx->Builder.CreateFCmpONE(a, b, name);
+    case BinOp::FCmpUNE: return ctx->Builder.CreateFCmpUNE(a, b, name);
     case BinOp::FCmpOLT: return ctx->Builder.CreateFCmpOLT(a, b, name);
     case BinOp::FCmpOLE: return ctx->Builder.CreateFCmpOLE(a, b, name);
     case BinOp::FCmpOGT: return ctx->Builder.CreateFCmpOGT(a, b, name);
@@ -731,6 +869,11 @@ auto spp::codegen::fn_impls::ApplyBinOp(
     case BinOp::USubChecked:
     case BinOp::SMulChecked:
     case BinOp::UMulChecked: return EmitCheckedArith(ctx, op, a, b);
+    case BinOp::FAddChecked:
+    case BinOp::FSubChecked:
+    case BinOp::FMulChecked:
+    case BinOp::FDivChecked:
+    case BinOp::FRemChecked: return EmitCheckedFloatArith(ctx, op, a, b);
     default: Ice(std::format("Unsupported BinOp type: {}", name));
   }
 }
@@ -742,6 +885,12 @@ auto spp::codegen::fn_impls::ApplyUnOp(
     case UnOp::Neg: return ctx->Builder.CreateNeg(a, name);
     case UnOp::Not: return ctx->Builder.CreateNot(a, name);
     case UnOp::FNeg: return ctx->Builder.CreateFNeg(a, name);
+    case UnOp::FSqrt: return ctx->Builder.CreateUnaryIntrinsic(llvm::Intrinsic::sqrt, a, nullptr, name);
+    case UnOp::FSqrtChecked: {
+      const auto result = ctx->Builder.CreateUnaryIntrinsic(llvm::Intrinsic::sqrt, a, nullptr, name);
+      if (FloatChecksOn()) { EmitFloatCheck(ctx, FloatOp::Sqrt, {}, result); }
+      return result;
+    }
     default: Ice(std::format("Unsupported UnOp type: {}", name));
   }
 }
@@ -754,6 +903,7 @@ auto spp::codegen::fn_impls::ApplyConvOp(
     case ConvOp::UIToFP: return ctx->Builder.CreateUIToFP(a, dest_ty, name);
     case ConvOp::FPTrunc:
       return dest_ty->isIntegerTy() ? EmitF8Encode(ctx, a) : ctx->Builder.CreateFPTrunc(a, dest_ty, name);
+    case ConvOp::FPTruncIeee: return ctx->Builder.CreateFPTrunc(a, dest_ty, name);
     case ConvOp::Trunc: return ctx->Builder.CreateTrunc(a, dest_ty, name);
     case ConvOp::SExt: return ctx->Builder.CreateSExt(a, dest_ty, name);
     case ConvOp::ZExt: return ctx->Builder.CreateZExt(a, dest_ty, name);
@@ -793,15 +943,11 @@ auto spp::codegen::fn_impls::SimpleIntrinsicBinop(
   };
 
   const auto lhs = operand_of(fn->arg_begin(), *params[0]);
-  auto rhs = operand_of(fn->arg_begin() + 1, *params[1]);
+  const auto rhs = operand_of(fn->arg_begin() + 1, *params[1]);
 
   // A shift is the one binary operation whose two operands are separately typed in the source ("bit_shl[T, U](this: T,
-  // by: U)"), because a shift distance is a count rather than a value of the thing being shifted. Llvm requires both
-  // operands of one, so the distance is widened or narrowed to the shifted value's type. Neither direction can lose a
-  // meaningful distance: a distance that does not fit in "T" is already past the width being shifted.
-  if (IsShiftBinOp(op) and rhs->getType() != lhs->getType()) {
-    rhs = ctx->Builder.CreateZExtOrTrunc(rhs, lhs->getType(), "intrinsic.shift.by");
-  }
+  // by: U)"), because a shift distance is a count rather than a value of the thing being shifted. It is passed as it
+  // is: "EmitCheckedShift" checks it at its own width before narrowing it to the shifted value's type.
   ctx->Builder.CreateRet(ApplyBinOp(ctx, op, lhs, rhs));
 }
 
@@ -823,15 +969,10 @@ auto spp::codegen::fn_impls::SimpleIntrinsicBinopAssign(
   const auto fn = SimpleCreateFn(sm, proto, meta, ctx, void_ty, Vec{ptr_ty, operand_ty});
 
   const auto lhs = fn->arg_begin();
-  auto rhs = llvm::cast<llvm::Value>(fn->arg_begin() + 1);
+  const auto rhs = llvm::cast<llvm::Value>(fn->arg_begin() + 1);
   const auto loaded_val = ctx->Builder.CreateLoad(value_ty, lhs, "intrinsic.assign.loaded" + uid);
 
-  // As in the by-value form, a shift distance is widened or narrowed to the type being shifted, which llvm requires to
-  // match. Neither direction loses a meaningful distance: one that does not fit in the value's type is already past
-  // the width being shifted, and "ApplyBinOp" defines that case.
-  if (IsShiftBinOp(op) and rhs->getType() != value_ty) {
-    rhs = ctx->Builder.CreateZExtOrTrunc(rhs, value_ty, "intrinsic.shift.by" + uid);
-  }
+  // As in the by-value form, a shift distance is passed at its own type, for "EmitCheckedShift" to check and narrow.
   const auto result = ApplyBinOp(ctx, op, loaded_val, rhs);
   ctx->Builder.CreateStore(result, lhs);
   ctx->Builder.CreateRetVoid();
@@ -890,7 +1031,9 @@ auto spp::codegen::fn_impls::SimpleIntrinsicConv(
   if (op == ConvOp::FPToSI or op == ConvOp::FPToUI) {
     EmitFloatToIntCheck(ctx, operand, ty, op == ConvOp::FPToSI);
   }
-  ctx->Builder.CreateRet(ApplyConvOp(ctx, op, operand, ty));
+  const auto result = ApplyConvOp(ctx, op, operand, ty);
+  if (FloatChecksOn() and ConversionCanOverflow(op, src_ty, ty)) { EmitFloatCheck(ctx, FloatOp::Convert, {}, result); }
+  ctx->Builder.CreateRet(result);
 }
 
 auto spp::codegen::fn_impls::SimpleIntrinsicIsConst(
@@ -926,8 +1069,8 @@ auto spp::codegen::fn_impls::ApplyAtomicRmwOp(
     case AtomicRmwOp::UMin: return llvm::AtomicRMWInst::UMin;
     case AtomicRmwOp::FAdd: return llvm::AtomicRMWInst::FAdd;
     case AtomicRmwOp::FSub: return llvm::AtomicRMWInst::FSub;
-    case AtomicRmwOp::FMax: return llvm::AtomicRMWInst::FMax;
-    case AtomicRmwOp::FMin: return llvm::AtomicRMWInst::FMin;
+    case AtomicRmwOp::FMaximum: return llvm::AtomicRMWInst::FMaximum;
+    case AtomicRmwOp::FMinimum: return llvm::AtomicRMWInst::FMinimum;
     default: Ice(std::format("Unsupported AtomicRmwOp type: {}", static_cast<int>(op)));
   }
 }
@@ -1024,17 +1167,78 @@ auto spp::codegen::fn_impls::SimpleAtomicFetchRmw(
   ctx->Builder.CreateRet(FromAtomic(ctx, rmw(op, val_arg), val_ty));
 }
 
-auto spp::codegen::fn_impls::SimpleBinaryIntrinsicCall(
-  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic,
-  llvm::Type *rhs_ty) -> void {
-  // The intrinsic is overloaded on each operand type that differs from the result's ("llvm.powi" on "i32" too).
+auto spp::codegen::fn_impls::SimpleCheckedFloatMath(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const FloatMathFn math) -> void {
+  // Each function's intrinsic, the number it is reported by, and its arity.
+  struct Spec {
+    llvm::Intrinsic::IndependentIntrinsics Intrinsic;
+    FloatOp Op;
+    bool Binary;
+  };
+  const auto spec = [math]() -> Spec {
+    switch (math) {
+      case FloatMathFn::Exp: return {llvm::Intrinsic::exp, FloatOp::Exp, false};
+      case FloatMathFn::Exp2: return {llvm::Intrinsic::exp2, FloatOp::Exp2, false};
+      case FloatMathFn::Exp10: return {llvm::Intrinsic::exp10, FloatOp::Exp10, false};
+      case FloatMathFn::Log: return {llvm::Intrinsic::log, FloatOp::Log, false};
+      case FloatMathFn::Log2: return {llvm::Intrinsic::log2, FloatOp::Log2, false};
+      case FloatMathFn::Log10: return {llvm::Intrinsic::log10, FloatOp::Log10, false};
+      case FloatMathFn::Sin: return {llvm::Intrinsic::sin, FloatOp::Sin, false};
+      case FloatMathFn::Cos: return {llvm::Intrinsic::cos, FloatOp::Cos, false};
+      case FloatMathFn::Tan: return {llvm::Intrinsic::tan, FloatOp::Tan, false};
+      case FloatMathFn::Asin: return {llvm::Intrinsic::asin, FloatOp::Asin, false};
+      case FloatMathFn::Acos: return {llvm::Intrinsic::acos, FloatOp::Acos, false};
+      case FloatMathFn::Atan: return {llvm::Intrinsic::atan, FloatOp::Atan, false};
+      case FloatMathFn::Atan2: return {llvm::Intrinsic::atan2, FloatOp::Atan2, true};
+      case FloatMathFn::Sinh: return {llvm::Intrinsic::sinh, FloatOp::Sinh, false};
+      case FloatMathFn::Cosh: return {llvm::Intrinsic::cosh, FloatOp::Cosh, false};
+      case FloatMathFn::Tanh: return {llvm::Intrinsic::tanh, FloatOp::Tanh, false};
+      case FloatMathFn::Pow: return {llvm::Intrinsic::pow, FloatOp::Pow, true};
+    }
+    spp::Ice("not a float maths function");
+  }();
+
   const auto uid = "." + utils::Uid();
-  const auto rhs_type = rhs_ty != nullptr ? rhs_ty : ty;
-  const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty, rhs_type});
+  const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, spec.Binary ? Vec{ty, ty} : Vec{ty});
+  const auto x = fn->arg_begin();
+  const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), spec.Intrinsic, {ty});
+  const auto result = spec.Binary
+    ? ctx->Builder.CreateCall(intrinsic_fn, {x, fn->arg_begin() + 1}, "intrinsic.result" + uid)
+    : ctx->Builder.CreateCall(intrinsic_fn, {x}, "intrinsic.result" + uid);
+
+  // The poles, whose infinity is a division by zero (IEEE 754's divideByZero): a logarithm of zero, and zero to a
+  // negative power. Every other infinity from these functions is an overflow ("exp(1000)").
+  if (FloatChecksOn()) {
+    const auto zero = llvm::ConstantFP::getZero(ty);
+    const auto log_of_zero = [&]() -> llvm::Value* {
+      return ctx->Builder.CreateFCmpOEQ(x, zero, "float.log_of_zero" + uid);
+    };
+    const auto zero_to_a_negative_power = [&]() -> llvm::Value* {
+      return ctx->Builder.CreateAnd(
+        ctx->Builder.CreateFCmpOEQ(x, zero), ctx->Builder.CreateFCmpOLT(fn->arg_begin() + 1, zero),
+        "float.zero_to_a_negative_power" + uid);
+    };
+    const auto by_zero = [&]() -> llvm::function_ref<llvm::Value*()> {
+      switch (math) {
+        case FloatMathFn::Log:
+        case FloatMathFn::Log2:
+        case FloatMathFn::Log10: return log_of_zero;
+        case FloatMathFn::Pow: return zero_to_a_negative_power;
+        default: return {};
+      }
+    }();
+    EmitFloatCheck(ctx, spec.Op, by_zero, result);
+  }
+  ctx->Builder.CreateRet(result);
+}
+
+auto spp::codegen::fn_impls::SimpleBinaryIntrinsicCall(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void {
+  const auto uid = "." + utils::Uid();
+  const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty, ty});
   const auto lhs = fn->arg_begin();
   const auto rhs = fn->arg_begin() + 1;
-  const auto overloads = rhs_type != ty ? Vec<llvm::Type*>{ty, rhs_type} : Vec<llvm::Type*>{ty};
-  const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, overloads);
+  const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, {ty});
   const auto result = ctx->Builder.CreateCall(intrinsic_fn, {lhs, rhs}, "intrinsic.result" + uid);
   ctx->Builder.CreateRet(result);
 }
@@ -1075,6 +1279,29 @@ auto spp::codegen::fn_impls::SimpleBinaryIntrinsicCallOverflow(
   auto packed = llvm::cast<llvm::Value>(llvm::PoisonValue::get(ret_ty));
   packed = ctx->Builder.CreateInsertValue(packed, value, {0}, "intrinsic.packed" + uid);
   packed = ctx->Builder.CreateInsertValue(packed, overflowed, {1}, "intrinsic.packed" + uid);
+  ctx->Builder.CreateRet(packed);
+}
+
+auto spp::codegen::fn_impls::SimpleFloatRaised(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const BinOp op, const bool unary) -> void {
+  // "ty" is "{T, i1}", as for the integer "*_overflow" intrinsics: "T" is its first field.
+  const auto uid = "." + utils::Uid();
+  const auto ret_ty = llvm::cast<llvm::StructType>(ty);
+  const auto elem_ty = ret_ty->getElementType(0);
+  const auto fn = SimpleCreateFn(
+    sm, proto, meta, ctx, ret_ty, unary ? Vec<llvm::Type*>{elem_ty} : Vec<llvm::Type*>{elem_ty, elem_ty});
+  const auto operands = unary
+    ? Vec<llvm::Value*>{fn->arg_begin()}
+    : Vec<llvm::Value*>{fn->arg_begin(), fn->arg_begin() + 1};
+  const auto result = unary
+    ? ApplyUnOp(ctx, UnOp::FSqrt, operands[0])
+    : ApplyBinOp(ctx, op, operands[0], operands[1]);
+  const auto raised = EmitFloatNotFinite(ctx, result);
+
+  auto packed = llvm::cast<llvm::Value>(llvm::PoisonValue::get(ret_ty));
+  packed = ctx->Builder.CreateInsertValue(packed, result, {0}, "intrinsic.packed" + uid);
+  packed = ctx->Builder.CreateInsertValue(
+    packed, raised, {1}, "intrinsic.packed" + uid);
   ctx->Builder.CreateRet(packed);
 }
 
@@ -1142,62 +1369,52 @@ auto spp::codegen::fn_impls::SimpleGetValue(
 // =========================================================================================================
 
 auto spp::codegen::fn_impls::SimpleCoroIter(
-  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, const bool reverse, const bool borrow) -> void {
-  // Implementation strategy for iterating an array - start at the
-  // array pointer, and each step, increment the pointer value by
-  // the array element size. At each position, load the value out
-  // and place it into the yield slot, suspending after (mocks the
-  // gen expression).
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, const bool reverse) -> void {
+  // "self" is taken by move, so its slot holds the array itself (not a pointer to one, as a borrowed "self" would):
+  // each element is moved out of it in place into the yield slot, one "gen" per element, unrolled over the
+  // compile-time length.
   using asts::generate::common_types_precompiled::SELF_VAR;
-  const auto uid = "." + utils::Uid();
+  using analyse::utils::linear_utils::OwnedValue;
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
-  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "iter.self" + uid);
+  const auto self_ptr = self_sym->LlvmInfo->Alloca;
   const auto arr_ty = llvm::cast<llvm::ArrayType>(
     GetLlvmTypeOf(self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention(), ctx));
   const auto elem_ty = arr_ty->getElementType();
   const auto n = arr_ty->getNumElements();
-  const auto i = MakeUnique<std::size_t>(not reverse ? n : 0);
+  auto i = 0uz;
 
   struct CustomExpr : ExpressionAst {
     SPP_AST_KEY_FUNCTIONS_DEFAULT_IMPL
     SPP_AST_KIND(ExpressionAst)
 
-    decltype(i) &I;
-    decltype(arr_ty) &ArrTy;
-    decltype(elem_ty) &ElemTy;
-    decltype(self_ptr) &SelfPtr;
-    decltype(borrow) &Borrow;
+    std::size_t const &I;
+    llvm::ArrayType *ArrTy;
+    llvm::Type *ElemTy;
+    llvm::Value *SelfPtr;
 
-    CustomExpr(
-      decltype(i) &i, decltype(arr_ty) &arr_ty, decltype(elem_ty) &elem_ty, decltype(self_ptr) &self_ptr,
-      decltype(borrow) &borrow)
-      : I(i), ArrTy(arr_ty), ElemTy(elem_ty), SelfPtr(self_ptr), Borrow(borrow) {}
+    CustomExpr(std::size_t const &i, llvm::ArrayType *arr_ty, llvm::Type *elem_ty, llvm::Value *self_ptr)
+      : I(i), ArrTy(arr_ty), ElemTy(elem_ty), SelfPtr(self_ptr) {}
 
-    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta,
+    auto Stage11_CodeGen(ScopeManager *, CompilerMetaData *,
       LlvmCtx *ctx) -> llvm::Value* override {
       const auto idx_0 = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*ctx->Context), 0uz);
-      const auto idx_i = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*ctx->Context), *I);
+      const auto idx_i = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*ctx->Context), I);
       const auto shift = ctx->Builder.CreateGEP(ArrTy, SelfPtr, {idx_0, idx_i});
-      const auto value = ctx->Builder.CreateLoad(ElemTy, shift);
-      return Borrow ? shift : value;
+      return ctx->Builder.CreateLoad(ElemTy, shift);
     }
   };
 
   const auto mock_gen = MakeUnique<GenExpressionAst>(
-    nullptr, nullptr, MakeUnique<CustomExpr>(i, arr_ty, elem_ty, self_ptr, borrow));
+    nullptr, nullptr, MakeUnique<CustomExpr>(i, arr_ty, elem_ty, self_ptr));
 
-  if (not reverse) {
-    for (auto j = 0uz; j < n; ++j) {
-      *i = j;
-      mock_gen->Stage11_CodeGen(sm, meta, ctx);
-    }
-  }
-  else {
-    for (auto j = n; j > 0; --j) {
-      *i = j;
-      mock_gen->Stage11_CodeGen(sm, meta, ctx);
-    }
+  // Analysis never sees this "gen", so what the frame still owns at each suspension is given here: "self", less the
+  // elements yielded so far, named as an array's parts are ("0", "1", ...). Destroyed there, the frame drops the rest.
+  auto moved = Vec<Vec<spp::utils::InternedId>>();
+  for (auto j = 0uz; j < n; ++j) {
+    i = reverse ? n - 1 - j : j;
+    moved.push_back({spp::utils::Intern(std::to_string(i))});
+    mock_gen->SetOwnedAtSuspend({{OwnedValue{.Name = SELF_VAR, .Moved = moved}}});
+    mock_gen->Stage11_CodeGen(sm, meta, ctx);
   }
 }
 
@@ -1763,18 +1980,8 @@ auto spp::codegen::fn_impls::StdIntrinsicsFmaxVal(
 }
 
 // =========================================================================================================
-// Layer 3: two-operand intrinsics with a shape of their own ("powi"'s integer exponent, the saturating shifts)
+// Layer 3: two-operand intrinsics with a shape of their own (the saturating shifts)
 // =========================================================================================================
-
-auto spp::codegen::fn_impls::StdIntrinsicsFpowi(
-  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
-  -> void {
-  // "float_powi(base: T, exponent: S32)" raises a float to
-  // an *integer* power, so its two operands are different
-  // types, and "llvm.powi" is overloaded on both.
-  SimpleBinaryIntrinsicCall(
-    sm, proto, meta, ctx, ty, llvm::Intrinsic::powi, llvm::Type::getInt32Ty(*ctx->Context));
-}
 
 auto spp::codegen::fn_impls::StdIntrinsicsSshlSaturating(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
