@@ -206,7 +206,7 @@ auto spp::codegen::EmitCEntryPoint(
   // of the program may be inlined into it. It costs one call.
   if (split_stacks) { spp_main->addFnAttr(llvm::Attribute::NoInline); }
 
-  // The program's arguments go to sppc first, for "std::process::args":
+  // The program's arguments go to sppc first, for "std::os::env::args":
   // the S++ "main" takes none, as Rust's does not.
   const auto void_t = llvm::Type::getVoidTy(ctx);
   const auto set_args = llvm_mod.getOrInsertFunction(
