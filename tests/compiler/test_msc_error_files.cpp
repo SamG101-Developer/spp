@@ -56,3 +56,28 @@ TEST(TestErrorFiles, test_a_freed_file_owns_nothing) {
   }
   EXPECT_EQ(ErrorFormatter::Owning(position), nullptr);
 }
+
+TEST(TestErrorFiles, test_a_prelude_line_is_quoted_as_the_preludes) {
+  // The prelude is lexed behind the file's own code, so its positions are the file's; an error in one of its lines
+  // (open-bugs #65: a prelude name this std does not define) quotes that line, as the prelude's, not the end of the
+  // file with nothing quoted.
+  auto lexer = spp::lex::Lexer("fun main() -> Void { }\n", "\nuse std::number::F128\n");
+  auto tokens = lexer.Lex();
+  auto at = 0uz;
+  // The raw lexer makes a token of each letter: "F128" starts at its "F".
+  while (at < tokens.size() and tokens[at].Data != "F") { ++at; }
+  ASSERT_LT(at, tokens.size());
+  ASSERT_GE(at, lexer.PreludeTokenIndex());
+  const auto file = ErrorFormatter::ForFile(std::move(tokens), "main.spp", lexer.PreludeTokenIndex());
+
+  const auto name = spp::asts::IdentifierAst(file->PositionOf(at), "F128");
+  const auto quoted = spp_test::StripAnsi(file->ErrorAst(&name, "", "here"));
+  EXPECT_NE(quoted.find("in the prelude"), spp::Str::npos) << quoted;
+  EXPECT_NE(quoted.find("use std::number::F128"), spp::Str::npos) << quoted;
+  EXPECT_NE(quoted.find("^^^^ <- here"), spp::Str::npos) << quoted;
+  EXPECT_EQ(quoted.find("end of the file"), spp::Str::npos) << quoted;
+
+  // Still no line of the file the author wrote, for an editor.
+  EXPECT_TRUE(file->SpanOfAst(&name).Generated);
+  EXPECT_TRUE(file->IsPastUserSource(name.PosStart()));
+}

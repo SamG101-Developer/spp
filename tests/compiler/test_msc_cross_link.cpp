@@ -28,7 +28,8 @@ namespace {
 
   /// "first" then "second", as PATH lists directories.
   auto PathOf(spp::Path const &first, spp::Path const &second) -> spp::Str {
-    return spp::utils::files::NativeString(first) + spp::utils::files::PathListSeparator
+    return spp::utils::files::NativeString(first)
+      + spp::utils::shell::PathListSeparator
       + spp::utils::files::NativeString(second);
   }
 
@@ -66,11 +67,11 @@ TEST(TestCrossLink, test_the_newest_versioned_program_is_found) {
   Touch(first.Root / "cross-gcc-16x", true); // not a version
   const auto path = PathAs(PathOf(first.Root, second.Root));
 
-  const auto newest = spp::utils::files::FindNewestVersion("cross-gcc");
+  const auto newest = spp::utils::shell::FindNewestVersion("cross-gcc");
   ASSERT_TRUE(newest.has_value());
   EXPECT_EQ(*newest, second.Root / "cross-gcc-14");
-  EXPECT_FALSE(spp::utils::files::FindProgram("cross-gcc").has_value());
-  EXPECT_FALSE(spp::utils::files::FindNewestVersion("other-gcc").has_value());
+  EXPECT_FALSE(spp::utils::shell::FindProgram("cross-gcc").has_value());
+  EXPECT_FALSE(spp::utils::shell::FindNewestVersion("other-gcc").has_value());
 }
 
 TEST(TestCrossLink, test_a_program_is_found_on_path_in_order) {
@@ -83,7 +84,7 @@ TEST(TestCrossLink, test_a_program_is_found_on_path_in_order) {
   Touch(second.Root / "cross-gcc", true);
   const auto path = PathAs(PathOf(first.Root, second.Root));
 
-  const auto found = spp::utils::files::FindProgram("cross-gcc");
+  const auto found = spp::utils::shell::FindProgram("cross-gcc");
   ASSERT_TRUE(found.has_value());
   EXPECT_EQ(*found, second.Root / "cross-gcc"); // the first is not executable
 }
@@ -123,7 +124,7 @@ TEST(TestCrossLink, test_a_full_path_with_spaces_on_its_own_comes_back_quoted) {
   const auto linker = dir.Root / "my tools" / "cross-gcc";
   Touch(linker, true);
 
-  const auto command = spp::utils::files::FindCommand(spp::utils::files::NativeString(linker));
+  const auto command = spp::utils::shell::FindCommand(spp::utils::files::NativeString(linker));
   ASSERT_TRUE(command.has_value());
   EXPECT_EQ(*command, spp::utils::shell::Quote(spp::utils::files::NativeString(linker)));
 }
@@ -136,19 +137,19 @@ TEST(TestCrossLink, test_a_command_whose_program_is_there_comes_back_as_written)
   const auto path = PathAs(spp::utils::files::NativeString(dir.Root));
 
   // A name on PATH with arguments, and a quoted path with spaces with arguments.
-  EXPECT_EQ(spp::utils::files::FindCommand("cross-gcc -fuse-ld=lld"), "cross-gcc -fuse-ld=lld");
+  EXPECT_EQ(spp::utils::shell::FindCommand("cross-gcc -fuse-ld=lld"), "cross-gcc -fuse-ld=lld");
   const auto quoted = "\"" + spp::utils::files::NativeString(dir.Root / "my tools" / "cross-ld") + "\" -static";
-  EXPECT_EQ(spp::utils::files::FindCommand(quoted), quoted);
+  EXPECT_EQ(spp::utils::shell::FindCommand(quoted), quoted);
 }
 
 TEST(TestCrossLink, test_a_command_whose_program_is_not_there_is_refused) {
   const auto dir = ScratchDir();
   const auto path = PathAs(spp::utils::files::NativeString(dir.Root));
 
-  EXPECT_FALSE(spp::utils::files::FindCommand("no-such-gcc --target=s390x-linux-gnu").has_value());
+  EXPECT_FALSE(spp::utils::shell::FindCommand("no-such-gcc --target=s390x-linux-gnu").has_value());
   const auto missing = spp::utils::files::NativeString(dir.Root / "missing" / "gcc");
-  EXPECT_FALSE(spp::utils::files::FindCommand(missing).has_value());
-  EXPECT_FALSE(spp::utils::files::FindCommand("").has_value());
+  EXPECT_FALSE(spp::utils::shell::FindCommand(missing).has_value());
+  EXPECT_FALSE(spp::utils::shell::FindCommand("").has_value());
 }
 
 TEST(TestCrossLink, test_a_bare_name_is_looked_for_on_path_not_in_the_current_directory) {
@@ -159,7 +160,7 @@ TEST(TestCrossLink, test_a_bare_name_is_looked_for_on_path_not_in_the_current_di
 
   const auto cwd = std::filesystem::current_path();
   std::filesystem::current_path(here.Root);
-  const auto local = spp::utils::files::FindCommand("local-gcc");
+  const auto local = spp::utils::shell::FindCommand("local-gcc");
   std::filesystem::current_path(cwd);
   EXPECT_FALSE(local.has_value());
 }
@@ -171,5 +172,5 @@ TEST(TestCrossLink, test_a_non_executable_program_is_refused) {
   const auto dir = ScratchDir();
   const auto linker = dir.Root / "cross-gcc";
   Touch(linker, false);
-  EXPECT_FALSE(spp::utils::files::FindCommand(spp::utils::files::NativeString(linker)).has_value());
+  EXPECT_FALSE(spp::utils::shell::FindCommand(spp::utils::files::NativeString(linker)).has_value());
 }
