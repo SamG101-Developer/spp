@@ -36,7 +36,8 @@ namespace spp::compiler {
   static auto RecordFileSize(Path const &path, Str const &key) -> void;
 
   /// The command the link runs, followed by the arguments after it. Either
-  /// the one "[target.linkers]" names for the target, otherwise "lld-link"
+  /// the one "[target.linkers]" names for the target (its program checked to
+  /// exist, and a lone path quoted), otherwise "lld-link"
   /// for an MSVC target, "cc" for the host, and for another target its GNU
   /// cross compiler, or the newest versioned one. Nothing, reported, when
   /// none is on PATH.
@@ -117,6 +118,16 @@ namespace spp::compiler {
   /// from there.
   static auto BranchTargetsKept(Path const &exe_file) -> bool;
 
+  /// A randomised, non-executable-data image, as "[binary.link] harden" asked
+  /// of a COFF or Mach-O linker: checked in the output, as the loader reads
+  /// these flags from there and each linker has its own defaults.
+  static auto ImageHardened(Path const &exe_file) -> bool;
+
+  /// The lld-link options of "[binary.link] harden": a movable image, at a
+  /// high-entropy address on 64 bits, with DEP. lld-link and link.exe default
+  /// to each, but the record says hardening was applied, so it is asked for.
+  static auto MsvcLinkHardeningFlags() -> Str;
+
   /// Link for an MSVC target, with lld-link's options (which link.exe shares).
   /// Each ffi library is linked through its import library ("sppc.lib") and
   /// its DLL copied beside the executable, where Windows looks for it first:
@@ -133,8 +144,9 @@ namespace spp::compiler {
   /// gives and so the one the loader is asked for.
   static auto StageLibraries(OutLayout const &out, Vec<Path> const &libraries) -> Str;
 
-  /// Binary hardening, done by attaching flags to the linker. ELF only: ld64
-  /// already does each by default.
+  /// Binary hardening, done by attaching flags to the linker: ELF's, and
+  /// MinGW's ASLR and DEP. None for Mach-O: ld64 already does each by
+  /// default, and "ImageHardened" checks it did.
   static auto LinkHardeningFlags() -> Str;
 
   /// The command a cc-like driver links the program with: the object, the
@@ -185,8 +197,15 @@ auto spp::compiler::LinkerCommand() -> Opt<Str> {
   // Get the linker for the target, either specified in the toml file, or
   // "cc" for the host target.
   const auto folder = Str(codegen::TargetFolderName());
-  auto named = utils::features::Linker(folder);
-  if (named.has_value()) { return named; }
+  if (const auto named = utils::features::Linker(folder); named.has_value()) {
+    if (auto command = utils::files::FindCommand(*named); command.has_value()) { return command; }
+    std::cerr
+      << "Error: no linker for " << folder << ": '" << *named << "', which [target.linkers] names, does not start "
+      << "with a program that is there (neither an executable file nor a program on PATH).\n"
+      << "  Name the program by its full path, or as it is found on PATH. A path with spaces can be given on its "
+      << "own, or quoted inside the string when arguments follow it.\n";
+    return Nullopt;
+  }
 
   // The object is built against the MSVC runtime ("__security_cookie",
   // "__C_specific_handler"); "cc" on Windows is whatever GNU toolchain is
@@ -392,6 +411,19 @@ auto spp::compiler::BranchTargetsKept(Path const &exe_file) -> bool {
     "  -mbranch-protection=bti), or set 'bti = false' under [binary.codegen] in spp.toml.\n");
 }
 
+auto spp::compiler::ImageHardened(Path const &exe_file) -> bool {
+  return CheckLinked(
+    exe_file, codegen::UnhardenedImage,
+    "  The linker did not apply ASLR and DEP to the executable: use a linker that does, or set\n"
+    "  'harden = false' under [binary.link] in spp.toml.\n");
+}
+
+auto spp::compiler::MsvcLinkHardeningFlags() -> Str {
+  auto flags = Str(" /dynamicbase /nxcompat");
+  if (codegen::TargetTriple().isArch64Bit()) { flags += " /highentropyva"; }
+  return flags;
+}
+
 auto spp::compiler::LinkMsvcExecutable(
   OutLayout const &out, Str const &linker, Vec<Path> const &libraries) -> bool {
   const auto exe_file = out.ExecutablePath();
@@ -408,7 +440,10 @@ auto spp::compiler::LinkMsvcExecutable(
     command += " " + utils::shell::Quote(utils::files::NativeString(*import));
   }
   command += " libcmt.lib libvcruntime.lib libucrt.lib kernel32.lib";
-  return RunLink(command, exe_file);
+  FEATURE_GATE(BinaryLinkHarden) { command += MsvcLinkHardeningFlags(); }
+  if (not RunLink(command, exe_file)) { return false; }
+  FEATURE_GATE(BinaryLinkHarden) { if (not ImageHardened(exe_file)) { return false; } }
+  return true;
 }
 
 auto spp::compiler::StageLibraries(OutLayout const &out, Vec<Path> const &libraries) -> Str {
@@ -434,7 +469,16 @@ auto spp::compiler::StageLibraries(OutLayout const &out, Vec<Path> const &librar
 }
 
 auto spp::compiler::LinkHardeningFlags() -> Str {
-  if (not codegen::TargetTriple().isOSBinFormatELF()) { return Str(); }
+  const auto &triple = codegen::TargetTriple();
+  if (triple.isOSBinFormatCOFF()) {
+    auto flags = Str();
+    FEATURE_GATE(BinaryLinkHarden) {
+      flags += " -Wl,--dynamicbase,--nxcompat"; // Movable image, and data that cannot run.
+      if (triple.isArch64Bit()) { flags += " -Wl,--high-entropy-va"; } // Moved over the whole 64-bit space.
+    }
+    return flags;
+  }
+  if (not triple.isOSBinFormatELF()) { return Str(); }
   auto flags = Str();
 
   // Asked for whether or not hardening is on: a gcc configured to default to
@@ -483,7 +527,9 @@ auto spp::compiler::LinkCcExecutable(
   OutLayout const &out, Str const &linker, Vec<Path> const &libraries) -> bool {
   const auto exe_file = out.ExecutablePath();
   if (not RunLink(CcLinkCommand(out, linker, libraries), exe_file)) { return false; }
-  FEATURE_GATE(BinaryLinkHarden) { if (not SegmentsSeparated(exe_file)) { return false; } }
+  FEATURE_GATE(BinaryLinkHarden) {
+    if (not SegmentsSeparated(exe_file) or not ImageHardened(exe_file)) { return false; }
+  }
   FEATURE_GATE(BinaryCodegenBti) { if (not BranchTargetsKept(exe_file)) { return false; } }
   return true;
 }
@@ -500,12 +546,9 @@ auto spp::compiler::LinkExecutable(OutLayout const &out) -> bool {
   const auto libraries = ffi::Libraries(out.Root);
   if (not libraries.has_value()) { return false; }
 
-  // musl has no fortified calls ("__memcpy_chk" and friends are glibc's), so a
-  // library built against it has none to find. Check RELRO and segments for the
-  // FFI libraries too.
-  FEATURE_GATE(BinaryLinkFortifiedFfi, not codegen::TargetIsMusl()) {
-    if (not ffi::CheckFortified(out.Root, *libraries)) { return false; }
-  }
+  // Fortification, RELRO and segments of the FFI libraries; a check the
+  // target cannot have was left out before the record was written.
+  FEATURE_GATE(BinaryLinkFortifiedFfi) { if (not ffi::CheckFortified(out.Root, *libraries)) { return false; } }
   FEATURE_GATE(BinaryLinkRelroFfi) { if (not ffi::CheckRelro(out.Root, *libraries)) { return false; } }
   FEATURE_GATE(BinaryLinkSegmentsFfi) { if (not ffi::CheckSegments(out.Root, *libraries)) { return false; } }
 
@@ -571,7 +614,8 @@ auto spp::compiler::LinkTimeOptimize(
   codegen::RunOptimizationPipeline(
     lto_module.get(), codegen::SelectedTargetMachine(), opt_level,
     cfi ? +[](void *llvm_mod) { codegen::ApplyCfiCoroTypes(*static_cast<llvm::Module*>(llvm_mod)); } : nullptr,
-    utils::features::IsEnabled(utils::features::ConfigKey::BinaryCodegenAirIntegers));
+    utils::features::IsEnabled(utils::features::ConfigKey::BinaryCodegenAirIntegers),
+    utils::features::IsEnabled(utils::features::ConfigKey::BinaryCodegenFloatChecks));
   RecordIrSize(*lto_module, "after_opt");
   utils::stats::BeginPhase("write-ir-and-harden");
   WriteLtoIr(*lto_module, out);
