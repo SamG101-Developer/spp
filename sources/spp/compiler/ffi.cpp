@@ -28,6 +28,10 @@ namespace spp::compiler::ffi {
 
   static auto Name(spp::Path const &package) -> spp::Str;
 
+  /// The library name for a package and extension. For example, "sppc" and "so"
+  /// will get "libsppc.so", where-as "sppc" and "dll" is just "sppc.dll".
+  static auto SharedLibraryName(StrView package, StrView extension) -> Str;
+
   /// The one file name "package"'s library has in "target".
   static auto LibraryName(spp::Path const &package, spp::Str const &target) -> spp::Str;
 
@@ -43,6 +47,13 @@ namespace spp::compiler::ffi {
 
   /// Check one package's stub and target folders.
   static auto ValidatePackage(spp::Path const &root, spp::Path const &package) -> bool;
+}
+
+/// [CHECKED]
+auto spp::compiler::ffi::SharedLibraryName(
+  const StrView package, const StrView extension) -> Str {
+  const auto prefix = extension == "dll" ? "" : "lib";
+  return prefix + Str(package) + "." + Str(extension);
 }
 
 auto spp::compiler::ffi::Entries(spp::Path const &dir) -> spp::Vec<std::filesystem::directory_entry> {
@@ -74,7 +85,7 @@ auto spp::compiler::ffi::Name(spp::Path const &package) -> spp::Str {
 }
 
 auto spp::compiler::ffi::LibraryName(spp::Path const &package, spp::Str const &target) -> spp::Str {
-  return spp::utils::files::SharedLibraryName(Name(package), spp::codegen::SharedLibraryExtension(target.c_str()));
+  return SharedLibraryName(Name(package), spp::codegen::SharedLibraryExtension(target.c_str()));
 }
 
 auto spp::compiler::ffi::IsLibraryFile(spp::StrView const found, spp::StrView const base) -> bool {
@@ -122,7 +133,7 @@ auto spp::compiler::ffi::ValidatePackage(spp::Path const &root, spp::Path const 
     // folder, the old flat layout, is an error.
     if (not entry.is_directory()) {
       const auto misplaced = genex::any_of(spp::Arr<spp::StrView, 3>{"so", "dylib", "dll"}, [&](auto const ext) {
-        return IsLibraryFile(found, spp::utils::files::SharedLibraryName(Name(package), ext));
+        return IsLibraryFile(found, SharedLibraryName(Name(package), ext));
       });
       if (not misplaced) { continue; }
       std::cerr
@@ -279,12 +290,25 @@ auto spp::compiler::ffi::CheckRelro(
 auto spp::compiler::ffi::CheckSegments(
   Path const &root, Vec<Path> const &libraries) -> bool {
   for (auto const &library : libraries) {
-    const auto fault = codegen::UnhardenedSegments(utils::files::NativeString(library).c_str());
+    const auto native = utils::files::NativeString(library);
+    const auto fault = codegen::UnhardenedSegments(native.c_str());
     if (not fault) {
       ReportUnreadable(root, library, fault.error());
       return false;
     }
-    if (not fault->has_value()) { continue; }
+    if (not fault->has_value()) {
+      const auto image = codegen::UnhardenedImage(native.c_str());
+      if (not image) {
+        ReportUnreadable(root, library, image.error());
+        return false;
+      }
+      if (not image->has_value()) { continue; }
+      std::cerr
+        << "Error: " << Shown(root, library) << " was linked with " << **image << ".\n"
+        << "  Relink it with /dynamicbase /nxcompat (and /highentropyva on 64 bits), or set 'segments_ffi = false' "
+        << "under [binary.link] in spp.toml.\n";
+      return false;
+    }
     std::cerr
       << "Error: " << Shown(root, library) << " was linked with " << **fault << ".\n"
       << "  Relink it with -Wl,-z,separate-code (binutils 2.31 or newer), or set 'segments_ffi = false' under "
