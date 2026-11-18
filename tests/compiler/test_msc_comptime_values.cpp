@@ -449,9 +449,62 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCompTimeValues,
   test_invalid_float_overflow_from_addition,
-  SppFloatOutOfBoundsError, R"(
+  SppFloatNotFiniteError, R"(
   cmp a: F32 = 300000000000000000000000000000000000000.0 + 300000000000000000000000000000000000000.0
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_float_overflow_from_multiplication,
+  SppFloatNotFiniteError, R"(
+  cmp a: F64 = 100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0_f64 * 100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0_f64
+)");
+
+// 0 / 0 and x % 0 are NaNs (invalid operations), as at run time, not divisions by zero.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_float_zero_over_zero,
+  SppFloatNotFiniteError, R"(
+  cmp a: F64 = 0.0_f64 / 0.0_f64
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_float_remainder_by_zero,
+  SppFloatNotFiniteError, R"(
+  cmp a: F64 = 5.0_f64 % 0.0_f64
+)");
+
+// The IEEE forms make a NaN or an infinity on purpose, at run time only: no compile-time float is non-finite.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_float_ieee_division_by_zero,
+  SppFloatNotFiniteError, R"(
+  cmp a: F64 = 1.0_f64.div_ieee(0.0_f64)
+)");
+
+// A generic "cmp fun" reading "Self::zero()" folds with "Self" as the type it was called on (open-bugs #64).
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_float_nan_constant,
+  SppFloatNotFiniteError, R"(
+  cmp a: F64 = F64::nan()
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_float_infinity_constant,
+  SppFloatNotFiniteError, R"(
+  cmp a: F32 = F32::inf()
+)");
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_generic_self_calls_fold_per_type, R"(
+  cmp a: F16 = F16::one().add(F16::one())
+  cmp b: F64 = F64::neg_one()
+  cmp c: S32 = S32::zero().add(S32::one())
+)", {"a", "2.0_f16"}, {"b", "-1.0_f64"}, {"c", "1_s32"});
 
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,

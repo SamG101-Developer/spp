@@ -158,3 +158,51 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     !cfg(mode="!dev|rel", os="no_such_os")
     fun f() -> Void { }
 )");
+
+// A whole "sup" block, as std's "F128" ones are compiled only where the type is.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestCfg,
+  test_valid_unmet_sup_block_is_dropped, R"(
+    !cfg(mode="!dev|rel")
+    sup NoSuchType {
+        fun g(&self) -> Void { no_such_function() }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCfg,
+  test_invalid_met_sup_block_is_kept,
+  SppIdentifierUnknownError, R"(
+    cls A { }
+    !cfg(mode="dev|rel")
+    sup A {
+        fun g(&self) -> Void { no_such_function() }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestCfg,
+  test_valid_unmet_sup_ext_block_is_dropped, R"(
+    cls A { }
+    !cfg(mode="!dev|rel")
+    sup A ext NoSuchType { }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCfg,
+  test_invalid_unmet_sup_condition_still_checked,
+  SppCfgInvalidValueError, R"(
+    cls A { }
+    !cfg(mode="!dev|rel", os="no_such_os")
+    sup A { }
+)");
+
+// A sup block takes only annotations whose target includes "Annotation::sup_block".
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCfg,
+  test_invalid_other_annotation_on_sup_block,
+  SppCalledAnnotationAppliedToInvalidAstError, R"(
+    cls A { }
+    !public
+    sup A { }
+)");

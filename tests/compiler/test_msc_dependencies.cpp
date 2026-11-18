@@ -702,7 +702,7 @@ namespace {
   struct LocalRemote {
     spp::Path Folder;
 
-    explicit LocalRemote(ScratchProject const &project) : Folder(project.Base / "remote") {
+    explicit LocalRemote(ScratchProject const &project, spp::Str const &name = "remote") : Folder(project.Base / name) {
       std::filesystem::create_directories(Folder / "src");
       std::ofstream(Folder / "spp.toml") << kProject;
       Git("init --quiet --initial-branch=master");
@@ -721,12 +721,30 @@ namespace {
       Git("-c user.name=spp -c user.email=spp@example.com commit --quiet -m " + name);
     }
 
+    /// The commit "master" is at, from its loose ref (a fresh commit is not packed).
+    auto Head() const -> spp::Str {
+      auto rev = spp::Str();
+      std::getline(std::ifstream(Folder / ".git" / "refs" / "heads" / "master"), rev);
+      return rev;
+    }
+
+    /// A literal string, whose backslashes (a Windows path) are no escapes.
+    auto Url() const -> spp::Str {
+      return "'" + spp::utils::files::NativeString(Folder) + "'";
+    }
+
     auto Record(spp::Str const &branch) const -> spp::Str {
-      // A literal string, whose backslashes (a Windows path) are no escapes.
-      const auto url = spp::utils::files::NativeString(Folder);
-      return "[vcs]\na = { git = '" + url + "', branch = \"" + branch + "\" }\n";
+      return "[vcs]\na = { git = " + Url() + ", branch = \"" + branch + "\" }\n";
+    }
+
+    auto PinnedRecord(spp::Str const &rev) const -> spp::Str {
+      return "[vcs]\na = { git = " + Url() + ", rev = \"" + rev + "\" }\n";
     }
   };
+
+  auto IsFetched(ScratchProject const &project, spp::Str const &file) -> bool {
+    return std::filesystem::exists(project.Root / "vcs" / "a" / file);
+  }
 }
 
 TEST(Dependencies, test_vcs_switches_to_a_branch_pushed_after_the_clone) {
@@ -739,7 +757,7 @@ TEST(Dependencies, test_vcs_switches_to_a_branch_pushed_after_the_clone) {
   remote.Commit("second");
   project.Config(remote.Record("fix/new"));
   EXPECT_TRUE(spp::cli::HandleVcs());
-  EXPECT_TRUE(std::filesystem::exists(project.Root / "vcs" / "a" / "second"));
+  EXPECT_TRUE(IsFetched(project, "second"));
 }
 
 TEST(Dependencies, test_vcs_fast_forwards_an_existing_branch) {
@@ -750,5 +768,86 @@ TEST(Dependencies, test_vcs_fast_forwards_an_existing_branch) {
 
   remote.Commit("second");
   EXPECT_TRUE(spp::cli::HandleVcs());
-  EXPECT_TRUE(std::filesystem::exists(project.Root / "vcs" / "a" / "second"));
+  EXPECT_TRUE(IsFetched(project, "second"));
+}
+
+TEST(Dependencies, test_vcs_follows_a_url_changed_after_the_clone) {
+  const auto project = ScratchProject();
+  const auto remote = LocalRemote(project);
+  const auto fork = LocalRemote(project, "fork");
+  fork.Commit("forked");
+  project.Config(remote.Record("master"));
+  ASSERT_TRUE(spp::cli::HandleVcs());
+
+  project.Config(fork.Record("master"));
+  EXPECT_TRUE(spp::cli::HandleVcs());
+  EXPECT_TRUE(IsFetched(project, "forked"));
+}
+
+TEST(Dependencies, test_vcs_refuses_a_changed_url_it_cannot_fetch) {
+  const auto project = ScratchProject();
+  const auto remote = LocalRemote(project);
+  project.Config(remote.Record("master"));
+  ASSERT_TRUE(spp::cli::HandleVcs());
+
+  // Twice: a failed first run must not leave the checkout passing as the new
+  // repository's.
+  project.Config("[vcs]\na = { git = '" + spp::utils::files::NativeString(project.Base / "missing") + "' }\n");
+  EXPECT_FALSE(spp::cli::HandleVcs());
+  EXPECT_FALSE(spp::cli::HandleVcs());
+}
+
+TEST(Dependencies, test_vcs_uses_the_checkout_when_its_repository_is_unreachable) {
+  const auto project = ScratchProject();
+  const auto remote = LocalRemote(project);
+  project.Config(remote.Record("master"));
+  ASSERT_TRUE(spp::cli::HandleVcs());
+
+  std::filesystem::rename(remote.Folder, project.Base / "gone");
+  EXPECT_TRUE(spp::cli::HandleVcs());
+  EXPECT_TRUE(IsFetched(project, "first"));
+}
+
+TEST(Dependencies, test_vcs_moves_a_pin_to_a_newer_commit) {
+  const auto project = ScratchProject();
+  const auto remote = LocalRemote(project);
+  project.Config(remote.PinnedRecord(remote.Head()));
+  ASSERT_TRUE(spp::cli::HandleVcs());
+  EXPECT_EQ(spp::compiler::dependencies::FindCheckedOutRev(project.Root / "vcs" / "a"), remote.Head());
+
+  remote.Commit("second");
+  project.Config(remote.PinnedRecord(remote.Head()));
+  EXPECT_TRUE(spp::cli::HandleVcs());
+  EXPECT_TRUE(IsFetched(project, "second"));
+}
+
+TEST(Dependencies, test_find_checked_out_branch_reads_a_branch) {
+  const auto project = ScratchProject();
+  project.Write("vcs/a/.git/HEAD", "ref: refs/heads/fix/new\n");
+  EXPECT_EQ(
+    spp::compiler::dependencies::FindCheckedOutBranch(project.Root / "vcs" / "a"), spp::Opt<spp::Str>("fix/new"));
+}
+
+TEST(Dependencies, test_find_checked_out_branch_is_empty_when_detached) {
+  const auto project = ScratchProject();
+  project.Write("vcs/a/.git/HEAD", spp::Str(kRev) + "\n");
+  EXPECT_FALSE(spp::compiler::dependencies::FindCheckedOutBranch(project.Root / "vcs" / "a").has_value());
+}
+
+TEST(Dependencies, test_validate_accepts_a_dependency_on_its_branch) {
+  const auto project = ScratchProject();
+  project.Config(kSoundRecords);
+  project.Fetched("std");
+  project.Fetched("a");
+  project.Write("vcs/a/.git/HEAD", "ref: refs/heads/dev\n");
+  EXPECT_TRUE(spp::compiler::dependencies::Validate(project.Root));
+}
+
+TEST(Dependencies, test_validate_reports_a_dependency_away_from_its_branch) {
+  const auto project = ScratchProject();
+  project.Config(kSoundRecords);
+  project.Fetched("std");
+  project.Fetched("a");
+  project.Write("vcs/a/.git/HEAD", "ref: refs/heads/master\n");
+  EXPECT_FALSE(spp::compiler::dependencies::Validate(project.Root));
 }
