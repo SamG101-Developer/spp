@@ -198,7 +198,7 @@ auto spp::compiler::LinkerCommand() -> Opt<Str> {
   // "cc" for the host target.
   const auto folder = Str(codegen::TargetFolderName());
   if (const auto named = utils::features::Linker(folder); named.has_value()) {
-    if (auto command = utils::files::FindCommand(*named); command.has_value()) { return command; }
+    if (auto command = utils::shell::FindCommand(*named); command.has_value()) { return command; }
     std::cerr
       << "Error: no linker for " << folder << ": '" << *named << "', which [target.linkers] names, does not start "
       << "with a program that is there (neither an executable file nor a program on PATH).\n"
@@ -212,7 +212,7 @@ auto spp::compiler::LinkerCommand() -> Opt<Str> {
   // on PATH, whose runtime has neither. lld-link finds the MSVC and Windows
   // SDK libraries itself.
   if (codegen::TargetTriple().isWindowsMSVCEnvironment()) {
-    if (utils::files::FindProgram("lld-link").has_value()) { return Str("lld-link"); }
+    if (utils::shell::FindProgram("lld-link").has_value()) { return Str("lld-link"); }
     std::cerr
       << "Error: no linker for " << folder << ": 'lld-link' is not on PATH.\n"
       << "  Install LLVM (lld-link ships with it), or name one under [target.linkers] in spp.toml, as "
@@ -224,11 +224,11 @@ auto spp::compiler::LinkerCommand() -> Opt<Str> {
   // Create a target specific "gcc" program name, and if it is found on the
   // system, return it.
   auto gcc = Str(codegen::TargetGnuTriple()) + "-gcc";
-  if (utils::files::FindProgram(gcc).has_value()) { return gcc; }
+  if (utils::shell::FindProgram(gcc).has_value()) { return gcc; }
 
   // Otherwise, find the newest version of the gcc on the system (like
   // "xyz-gcc-14"), and use that.
-  if (const auto versioned = utils::files::FindNewestVersion(gcc); versioned.has_value()) {
+  if (const auto versioned = utils::shell::FindNewestVersion(gcc); versioned.has_value()) {
     return utils::files::NativeString(versioned->filename());
   }
 
