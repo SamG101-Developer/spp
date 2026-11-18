@@ -99,9 +99,19 @@ auto spp::asts::FloatLiteralAst::ToString() const -> Str {
 }
 
 auto spp::asts::FloatLiteralAst::Stage7_AnalyseSemantics(
-  ScopeManager *, CompilerMetaData *) -> void {
-  // Check the written value is one the type can hold.
+  ScopeManager *sm, CompilerMetaData *) -> void {
+  using namespace spp::analyse::errors;
+
+  // The suffix's type may not exist on this target ("F128" is compiled only
+  // where its maths functions are right, std's "!cfg"), which is an unknown
+  // type, named at the literal.
   Type = TypeOrDefault();
+  auto const &type = _PrecompiledType(sm);
+  RaiseIf<SppIdentifierUnknownError>(
+    sm->CurrentScope->FindTypeSymbol(&type) == nullptr,
+    ERR_ARGS(*this, "float type " + type.ToString()));
+
+  // Check the written value is one the type can hold.
   ValidateBounds(*this);
 }
 
