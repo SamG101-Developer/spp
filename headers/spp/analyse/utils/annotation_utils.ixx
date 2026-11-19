@@ -37,13 +37,13 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::AnnotationInfo {
 /// "kCfg" is acted on before analysis, by its written name
 /// ("compiler/cfg.cpp"), and "kVersioned" is documentation only.
 SPP_EXP_CLS enum class spp::analyse::utils::annotation_utils::BuiltinAnnotation {
-  kNone,
+  kNone = 0,
+  kPublic = 1,
+  kPackage = 2,
+  kProtected = 3,
+  kPrivate = 4,
   kAnnotation,
   kIntrinsic,
-  kPublic,
-  kPackage,
-  kProtected,
-  kPrivate,
   kVirtualMethod,
   kAbstractMethod,
   kFfi,

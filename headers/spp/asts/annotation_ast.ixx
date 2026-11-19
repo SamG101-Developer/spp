@@ -28,14 +28,15 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
   /// The name of the annotation (could be postfix static).
   Unique<ExpressionAst> Name;
 
-  /// The generic arguments into the annotation: !extend[Copy]()
+  /// The generic arguments into the annotation: !extend[Copy](). These will
+  /// likely be nullptr for the builtin asts. Currently not used by any.
   Unique<GenericArgumentGroupAst> GnArgGroup;
 
   /// The function arguments into annotation: !ffi(symbol="CRYPTO_memcmp")
   Unique<FunctionCallArgumentGroupAst> FnArgGroup;
 
-  /// Which builtin annotation this is ("kNone" for a custom one),
-  /// resolved from the function it names, once ("_ResolveBuiltin").
+  /// Which builtin annotation this is ("kNone" for a custom one), resolved from
+  /// the function it names, once ("_ResolveBuiltin").
   analyse::utils::annotation_utils::BuiltinAnnotation Builtin{};
 
   AnnotationAst(
@@ -46,67 +47,65 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
 
   ~AnnotationAst() override;
 
-  /// Do an expression ast equality against another annotations
-  /// name, which will move through postfix identifiers and
-  /// regular identifiers.
+  /// Do an expression ast equality against another annotation, by name, which
+  /// will move through postfix identifiers and regular identifiers.
   auto operator==(AnnotationAst const &that) const -> bool;
 
-  /// Run the default stage 1 steps to store the enclosing context
-  /// on this ast.
+  /// Run the default stage 1 steps to store the enclosing context on this ast.
   auto Stage1_PreProcess(Ast *ctx) -> void override;
 
-  /// Run the default stage 2 steps to store the enclosing scope
-  /// on this ast.
-  auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  /// Run the default stage 2 steps to store the enclosing scope on this ast.
+  auto Stage2_GenTopLvlScopes(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /// Ensure the target annotation definition is actually: a
-  /// function, a "cmp" function, and !annotation bound. This
-  /// is done is stage 4 because we rely on builtin annotations
-  /// legitimately existing in stage 5.
-  auto Stage4_ResolveDeclarations(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  /// Ensure the target annotation definition is actually: a function, a "cmp"
+  /// function, and !annotation bound. This is done in stage 4 because we rely
+  /// on builtin annotations legitimately existing in stage 5.
+  auto Stage4_ResolveDeclarations(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /// For builtin annotations, set fields on context asts
-  /// based on the annotations, like virtual/abstract, the
-  /// visibility etc, which are all checked in stage6+,
-  /// maintaining the order agnostic behaviour.
-  auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  /// For builtin annotations, set fields on context asts based on the
+  /// annotations, like virtual/abstract, the visibility etc, which are all
+  /// checked in stage6+, maintaining the order agnostic behaviour.
+  auto Stage5_LoadSupScopes(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /// Analyse the generic arguments and function arguments
-  /// (if provided), and do overload resolution on the target,
-  /// checking it exists (custom annotations), and that it may be
-  /// applied to what it is applied to ("_CheckTarget").
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  /// Analyse the generic arguments and function arguments (if provided), and do
+  /// overload resolution on the target, checking it exists (particularly for
+  /// custom annotations), and that the target ast is a valid target.
+  auto Stage7_AnalyseSemantics(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /// The convention name a "!conv" is written with, empty if it is
-  /// not a string literal: for the closest match to a misused one.
+  /// The convention name a "!conv" is written with, empty if it is not a string
+  /// literal. Needed for class and function prototype analysis.
   SPP_ATTR_NODISCARD auto ConvName() const -> Str;
 
 private:
-  /// Evaluate the annotation definition's "target" mask and check
-  /// the ast this is applied to is one of its kinds. Safe to do
-  /// it like this, because properties for builtins silently
-  /// fail (fine) for non-matched asts. Todo: For custom
-  /// annotations, this will need changing.
+  /// Evaluate the annotation definition's "target" bitmask and check the ast
+  /// this is applied to is one of its kinds. Safe to do it like this, because
+  /// properties for builtins silently fail (fine) for non-matched asts.
   auto _CheckTarget(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
-  /// The target that this annotation "is" ie the function
-  /// prototype defining it.
+  /// The target that this annotation is ie the function prototype defining it.
+  /// For example, if "!public" is used, then the target is the "fun public()"
+  /// function in annotations.spp.
   FunctionPrototypeAst *_Target;
 
-  /// Whether "Builtin" has been resolved: stage 4 does, once the
-  /// annotation's function is found; stage 5 tries again if not.
+  /// Whether "Builtin" has been resolved: stage 4 does, once the annotation's
+  /// function is found; stage 5 tries again if not.
   bool _BuiltinResolved = false;
 
-  /// Resolve "Builtin" from the annotation function's fully
-  /// qualified name, which bypasses a "use" import of it. False if
-  /// the function is not found yet.
+  /// Resolve "Builtin" from the annotation function's fully qualified name,
+  /// which bypasses a "use" import of it. False if the function is not found
+  /// yet.
   auto _ResolveBuiltin(ScopeManager *sm) -> bool;
 
-  /// The convention a "!conv" names, raising an unknown identifier
-  /// for a name no convention has. Null if it names none at all.
-  SPP_ATTR_NODISCARD auto _NamedAbi() const -> codegen::Abi const*;
+  /// The convention a "!conv" names, raising an unknown identifier for a name
+  /// no convention has. Null if it names none at all.
+  SPP_ATTR_NODISCARD auto _NamedAbi() const -> Abi const*;
 
-  /// The argument a "!conv" names its convention with, or null.
+  /// The argument a "!conv" names its convention with, or null. This gets
+  /// stringified for the "ConvName()" method.
   SPP_ATTR_NODISCARD auto _ConvNameArg() const -> ExpressionAst const*;
 };
 

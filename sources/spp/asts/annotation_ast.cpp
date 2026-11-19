@@ -38,6 +38,7 @@ import spp.codegen.llvm_abi;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
 import spp.utils.strings;
+import std;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, Scope);
@@ -49,25 +50,22 @@ use_alias(spp::codegen, LlvmCtx);
 
 namespace spp::asts {
   using namespace spp::asts::utils;
+  using namespace spp::analyse::utils;
 
-  /// The visibility a visibility annotation names, or Nullopt for any other
-  /// annotation.
-  static auto VisibilityOf(
-    analyse::utils::annotation_utils::BuiltinAnnotation builtin)
-    -> Opt<Visibility>;
+  /// The visibility a visibility annotation names, or "Nullopt" for any other
+  /// annotation. Casts between the builtin annotation name enum, and the known
+  /// visibility enum (1-to-1).
+  static auto _VisibilityOf(
+    annotation_utils::BuiltinAnnotation builtin) -> Opt<Visibility>;
 }
 
-auto spp::asts::VisibilityOf(
-  const analyse::utils::annotation_utils::BuiltinAnnotation builtin)
-  -> Opt<Visibility> {
-  using A = analyse::utils::annotation_utils::BuiltinAnnotation;
-  switch (builtin) {
-    case A::kPublic: return Visibility::kPublic;
-    case A::kPackage: return Visibility::kPackage;
-    case A::kProtected: return Visibility::kProtected;
-    case A::kPrivate: return Visibility::kPrivate;
-    default: return Nullopt;
-  }
+/// [CHECKED]
+auto spp::asts::_VisibilityOf(
+  const annotation_utils::BuiltinAnnotation builtin) -> Opt<Visibility> {
+  // The visibility builtins share Visibility's values.
+  using A = annotation_utils::BuiltinAnnotation;
+  if (builtin < A::kPublic or builtin > A::kPrivate) { return Nullopt; }
+  return static_cast<Visibility>(std::to_underlying(builtin));
 }
 
 SPP_MOD_BEGIN
@@ -154,7 +152,7 @@ auto spp::asts::AnnotationAst::Stage4_ResolveDeclarations(
   // function or class is public: it is what C names, or holds.
   const auto vis = Builtin == annotation_utils::BuiltinAnnotation::kFfi
     ? Opt(Visibility::kPublic)
-    : VisibilityOf(Builtin);
+    : _VisibilityOf(Builtin);
   if (vis.has_value()) {
     if (const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>()) {
       vis_ctx->Visibility = {*vis, this};
@@ -216,7 +214,7 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
     case A::kPackage:
     case A::kProtected:
     case A::kPrivate:
-      if (const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>()) { vis_ctx->Visibility = {*VisibilityOf(Builtin), this}; }
+      if (const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>()) { vis_ctx->Visibility = {*_VisibilityOf(Builtin), this}; }
       break;
 
     // Mark a method as "virtual" (overridable) or "abstract" (to
