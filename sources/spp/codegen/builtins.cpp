@@ -277,6 +277,7 @@ auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
   Register(map, "std.mem.ops.align_of_val", fn_impls::StdMemOpsAlignOfVal);
   Register(map, "std.mem.ops.replace", fn_impls::StdMemOpsReplace);
   Register(map, "std.mem.ops.swap", fn_impls::StdMemOpsSwap);
+  Register(map, "std.mem.ops.transmute", fn_impls::StdMemOpsTransmute);
   Register(map, "std.mem.ops.mem_copy", fn_impls::StdMemOpsMemCopy);
   Register(map, "std.mem.ops.mem_set", fn_impls::StdMemOpsMemSet);
   Register(map, "std.mem.ops.drop", fn_impls::StdMemOpsDrop, nullptr, "T");

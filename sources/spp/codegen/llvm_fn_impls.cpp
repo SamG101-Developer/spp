@@ -2722,6 +2722,26 @@ auto spp::codegen::fn_impls::StdMemOpsReplace(
   ctx->Builder.CreateRet(old_val);
 }
 
+auto spp::codegen::fn_impls::StdMemOpsTransmute(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
+  // "a" is a by-value "A", so its slot holds it directly; the same bytes are reloaded as a "B". Nothing is dropped: "a"
+  // was moved in, and its bytes leave as the result. Only std calls this ("!package"), so a size mismatch is a std bug.
+  const auto a_param = proto->FnParamGroup->GetAllParams()[0];
+  const auto a_sym = sm->CurrentScope->FindVarSymbol(a_param->ExtractName().get());
+  const auto a_ref = a_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
+  const auto b_ref = TypeRef::Of(*TypeIdentifierAst::FromString("B"), *sm->CurrentScope);
+  const auto a_size = SizeOf(*sm, a_ref);
+  const auto b_size = SizeOf(*sm, b_ref);
+  if (a_size != b_size) {
+    spp::Ice(std::format("transmute between types of different sizes: {} and {} bytes", a_size, b_size));
+  }
+
+  // The slot is aligned for "A"; read at the lesser of the two alignments.
+  const auto align = llvm::Align(std::min(AlignOf(*sm, a_ref), AlignOf(*sm, b_ref)));
+  const auto val = ctx->Builder.CreateAlignedLoad(ty, a_sym->LlvmInfo->Alloca, align, "mem.transmute");
+  ctx->Builder.CreateRet(val);
+}
+
 auto spp::codegen::fn_impls::StdMemOpsSwap(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // "a" and "b" are both "&mut T", so each slot holds an address. Both values are read before either is written, so

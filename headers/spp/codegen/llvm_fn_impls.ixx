@@ -352,6 +352,8 @@ export namespace spp::codegen::fn_impls {
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdMemOpsReplace(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto StdMemOpsTransmute(
+    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdMemOpsSwap(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdMemOpsMemCopy(
