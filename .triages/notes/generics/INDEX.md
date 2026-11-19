@@ -21,3 +21,4 @@
 - [Method as a value](spp-method-as-value-gap.md) — `Type::method` via `Owner::$M`; kinds follow self; generic owners: seed bindings, mocks deferred, ICE
 - [Comp args target their param type](comp-args-target-their-param-type.md) — ExpectedCompType, set in NamedGnArgs + ExpectedCompArgTypes; AnalyseCompExpr
 - [Pack constraints pairwise](pack-constraints-pairwise.md) — ..Ts: C per element; ..Ts: Add[Ts] every pair (Self = element); constraint inference skips packs
+- [Cmp generic constraints design](cmp-generic-constraints-design.md) — `cmp n: U32 and n > m`; symbolic args implied by caller's predicates, not deferred; sups filter, E60 unless disjoint
