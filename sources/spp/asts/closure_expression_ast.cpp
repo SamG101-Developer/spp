@@ -574,48 +574,23 @@ auto spp::asts::ClosureExpressionAst::_FnType(
   using generate::common_types::FunMutType;
   using generate::common_types::FunMovType;
   using generate::common_types::TupleType;
-  // Create the type as a nullptr, so it can be analysed
-  // later.
-  Shared<TypeAst> ty = nullptr;
+  auto param_types = PcGroup->ParamGroup->Params
+    | genex::views::transform([](auto const &x) { return x->Type; })
+    | genex::to<Vec>();
+  auto args = TupleType(PosStart(), std::move(param_types));
 
-  auto is_ref_cap = [](auto const &cap) { return cap->Conv and *cap->Conv == ConventionTag::REF; };
-  auto is_mut_cap = [](auto const &cap) { return cap->Conv and *cap->Conv == ConventionTag::MUT; };
-
-  // If there are no captures, return a FunRef type with
-  // the parameters and return type.
-  if (PcGroup->CaptureGroup->Captures.empty()) {
-    auto param_types = PcGroup->ParamGroup->Params
-      | genex::views::transform([](auto const &x) { return x->Type; })
-      | genex::to<Vec>();
-    ty = FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), _TrueRetType);
-  }
-
-  // If there are captures, but no borrowed captures, return
-  // a FunMov type with the parameters and return type.
-  else if (genex::any_of(PcGroup->CaptureGroup->Captures, [](auto const &x) { return x->Conv == nullptr; })) {
-    auto param_types = PcGroup->ParamGroup->Params
-      | genex::views::transform([](auto const &x) { return x->Type; })
-      | genex::to<Vec>();
-    ty = FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), _TrueRetType);
-  }
-
-  // If there are mutably borrowed captures, return a FunMut
-  // type with the parameters and return type.
-  else if (genex::any_of(PcGroup->CaptureGroup->Captures, is_mut_cap)) {
-    auto param_types = PcGroup->ParamGroup->Params
-      | genex::views::transform([](auto const &x) { return x->Type; })
-      | genex::to<Vec>();
-    ty = FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), _TrueRetType);
-  }
-
-  // If there are immutable borrowed captures, return a FunRef
-  // type with the parameters and return type.
-  else if (genex::any_of(PcGroup->CaptureGroup->Captures, is_ref_cap)) {
-    auto param_types = PcGroup->ParamGroup->Params
-      | genex::views::transform([](auto const &x) { return x->Type; })
-      | genex::to<Vec>();
-    ty = FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), _TrueRetType);
-  }
+  // The most constraining capture decides the kind: any by-value
+  // capture makes a FunMov, a "&mut" one a FunMut, and "&" ones or
+  // none a FunRef. A copied capture still makes a FunMov: its env
+  // is on the heap, and a FunRef is Copy and never dropped, so the
+  // env would leak; the consuming call is what frees it.
+  auto const &caps = PcGroup->CaptureGroup->Captures;
+  const auto is_mut_cap = [](auto const &cap) { return cap->Conv and *cap->Conv == ConventionTag::MUT; };
+  const auto is_mov_cap = [](auto const &cap) { return cap->Conv == nullptr; };
+  const auto ty =
+    genex::any_of(caps, is_mov_cap) ? FunMovType(PosStart(), std::move(args), _TrueRetType) :
+    genex::any_of(caps, is_mut_cap) ? FunMutType(PosStart(), std::move(args), _TrueRetType) :
+    FunRefType(PosStart(), std::move(args), _TrueRetType);
 
   // Analyse the type and return it.
   ty->Stage7_AnalyseSemantics(sm, meta);
