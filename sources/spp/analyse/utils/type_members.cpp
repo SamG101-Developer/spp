@@ -102,7 +102,7 @@ namespace spp::analyse::utils::type_members {
    * to walk separately - one over the symbol table, one over the class prototype's members, and only one of them
    * skipping generic symbols - so a single generic-typed attribute silently desynchronised them.
    * @param cls_sym The symbol of the type whose attributes are wanted.
-   * @return One pair per attribute, ordered by the type itself then its super scopes.
+   * @return One pair per attribute, ordered by the type itself then its super scopes, each in declaration order.
    */
   SPP_ATTR_HOT static auto CollectAttrSymbols(
     TypeSymbol const &cls_sym)
@@ -190,11 +190,18 @@ SPP_ATTR_HOT auto spp::analyse::utils::type_members::CollectAttrSymbols(
   auto all_scopes = Vec{cls_sym.LinkedScope};
   all_scopes.append_range(cls_sym.LinkedScope->GetSupScopes());
 
+  // Walked in the order the class declares them, each symbol found in that class's own table: the table's order is
+  // incidental (re-binding a comp parameter on instantiation moves entries), and a "!conv("C")" layout and
+  // "transmute" read this order.
   auto attrs = Vec<Pair<Scope*, VariableSymbol*>>{};
   for (auto *sup_scope : all_scopes) {
-    if (AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
-    for (auto *sym : sup_scope->GetAllVarSymbols(true)) {
-      if (sym->Kind != VariableKind::Attribute) { continue; }
+    const auto cls = AstAs<ClassPrototypeAst>(sup_scope->AstNode);
+    if (cls == nullptr) { continue; }
+    for (auto const &member : cls->Impl->Members) {
+      const auto attr = member->To<ClassAttributeAst>();
+      if (attr == nullptr) { continue; }
+      const auto sym = sup_scope->FindVarSymbol(attr->Name.get(), true, false);
+      if (sym == nullptr or sym->Kind != VariableKind::Attribute) { continue; }
       attrs.push_back(MakePair(sup_scope, sym));
     }
   }
