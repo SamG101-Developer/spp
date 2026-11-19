@@ -1229,6 +1229,7 @@ auto spp::analyse::utils::monomorphization::FindOrMakeClsInstance(
     old_cls_sym->IsDirectlyCopyable);
   new_cls_sym->DerivesFromSymbol = old_cls_sym;
   new_cls_sym->InstanceOf = old_cls_sym.get();
+  new_cls_sym->DeclaredAbi = old_cls_sym->DeclaredAbi;
   new_cls_sym->Id = args_id;
   if (const auto tmpl = scopes::HeaderOf(args_id).Symbol(); tmpl != nullptr) {
     tmpl->Instances[scopes::BareOf(args_id)] = new_cls_sym.get();
