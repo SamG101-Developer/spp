@@ -297,3 +297,13 @@ auto spp::analyse::scopes::UnifyTypeIds(
   };
   return UnifyType(given, declared, ctx);
 }
+
+auto spp::analyse::scopes::PatternsOverlap(
+  const scopes::TypeId a, Scope const &a_scope, const scopes::TypeId b, Scope const &b_scope,
+  const bool check_constraints)
+  -> bool {
+  auto fwd = GenericSubst();
+  auto rev = GenericSubst();
+  return UnifyTypeIds(a, b, a_scope, b_scope, fwd, false, check_constraints)
+    or UnifyTypeIds(b, a, b_scope, a_scope, rev, false, check_constraints);
+}

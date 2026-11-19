@@ -1066,6 +1066,12 @@ auto spp::analyse::scopes::TypeSymbol::GnSelfName() const -> Shared<TypeAst> {
   return fq;
 }
 
+auto spp::analyse::scopes::TypeSymbol::GnSelfId() const -> TypeId {
+  if (ScopeDefinedIn == nullptr) { return nullptr; }
+  const auto id = ScopeDefinedIn->TypeIdOf(*GnSelfName());
+  return id != nullptr ? id : ScopeDefinedIn->TypeIdOfSymbol(*this);
+}
+
 /// [CHECKED]
 spp::analyse::scopes::TypeRef::TypeRef(
   TypeSymbol *resolved,

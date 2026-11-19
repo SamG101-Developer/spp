@@ -17,7 +17,8 @@ use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 
-SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVariableAst {
+SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final :
+  LocalVariableAst {
   SPP_AST_KEY_FUNCTIONS(LocalVariableDestructureObjectAst);
 
   /// The type of the object being destructured, used to
@@ -46,18 +47,24 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVar
 
   SPP_ATTR_NODISCARD auto BindsByMove() const -> bool override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    ScopeManager *sm, CompilerMetaData *meta,
+    LlvmCtx *ctx) -> llvm::Value* override;
 
   auto EvaluateCompTime(
     ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
+  SPP_ATTR_NODISCARD auto ExtractNames() const
+    -> Vec<Shared<IdentifierAst>> override;
 
-  SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
+  SPP_ATTR_NODISCARD auto ExtractName() const
+    -> Shared<IdentifierAst> override;
 
 private:
   Vec<Unique<LetStatementInitializedAst>> _NewAsts;

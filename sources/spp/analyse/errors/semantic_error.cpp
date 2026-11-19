@@ -1165,6 +1165,16 @@ spp::analyse::errors::SppGenericParameterNotInferredError::SppGenericParameterNo
     "Provide an explicit type argument for the generic parameter.");
 }
 
+spp::analyse::errors::SppDestructureGenericAmbiguousError::SppDestructureGenericAmbiguousError(
+  Ast const &use, Ast const &subject_ty, Ast const &first, Ast const &second) {
+  AddHeader(129, "Destructure Generic Ambiguous Error");
+  AddErr(&use, "Generic arguments ambiguous here, over a subject of type " + INLINE_INFO(TypeForMessage(subject_ty)));
+  AddFooter(
+    "The subject holds more than one member this pattern can name, including " + INLINE_NOTE(TypeForMessage(first)) +
+    " and " + INLINE_NOTE(TypeForMessage(second)) + ".",
+    "Write the generic arguments that pick one, for example " + INLINE_HELP(TypeForMessage(first)) + ".");
+}
+
 spp::analyse::errors::SppGenericArgumentTooManyError::SppGenericArgumentTooManyError(
   Ast const &param, Ast const &owner, Ast const &arg) {
   AddHeader(73, "Generic Argument Too Many Error");

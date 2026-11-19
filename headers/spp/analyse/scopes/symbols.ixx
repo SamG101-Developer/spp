@@ -934,6 +934,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// a template, and what the sup blocks written over it
   /// are matched against.
   SPP_ATTR_NODISCARD auto GnSelfName() const -> Shared<TypeAst>;
+
+  /// "GnSelfName" by identity, read where the type is declared
+  /// (as the symbol, for a name that does not key). Null for a
+  /// type declared nowhere.
+  SPP_ATTR_NODISCARD auto GnSelfId() const -> TypeId;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::Symbol)

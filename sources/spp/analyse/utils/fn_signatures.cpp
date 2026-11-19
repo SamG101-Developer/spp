@@ -140,10 +140,7 @@ auto spp::analyse::utils::fn_signatures::_SupBlocksOverlap(
   auto const &scope_b = *sup_b->GetAstScope();
   const auto a = scope_a.TypeIdOf(*AstName(sup_a));
   const auto b = scope_b.TypeIdOf(*AstName(sup_b));
-  if (a == nullptr or b == nullptr) { return false; }
-  auto fwd = scopes::GenericSubst();
-  auto rev = scopes::GenericSubst();
-  return scopes::UnifyTypeIds(a, b, scope_a, scope_b, fwd) or scopes::UnifyTypeIds(b, a, scope_b, scope_a, rev);
+  return a != nullptr and b != nullptr and scopes::PatternsOverlap(a, scope_a, b, scope_b);
 }
 
 auto spp::analyse::utils::fn_signatures::IdTermsOf(

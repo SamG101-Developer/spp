@@ -1,7 +1,7 @@
 ---
 name: spp-self-type-resolution
 description: "Self is registered in stage 3 and substituted per written-type position; why it cannot be centralised in FqName"
-updated: 2026-11-04
+updated: 2026-11-19
 ---
 
 `Self` is a real `TypeSymbol` registered into the class or superimposition scope, linked to the scope of the type the
@@ -51,14 +51,15 @@ Positions still broken (red in `test_msc_self_type_positions_generic.cpp`, each 
 
 Related: [[spp-dollar-mock-types]], [[spp-visibility-stage-ordering]].
 
-**Decided once per call (2026-09-28).** `DetermineOverload` decides what `Self` stands for per candidate:
+**Decided once per call (2026-09-28).** `CallSelf`, per candidate in `CheckCandidate` (was `DetermineOverload`),
+decides what `Self` stands for:
 - the resolved receiver of `Type::method(..)`, unless the candidate was reached by forwarding (`FnOverload::FwdType`);
 - otherwise, or with no receiver, the instance scope's enclosing `Self`.
 
-It is carried as `PassedOverload::SelfType`, then `_OInfo::SelfType`. `ValidateArgsMatchParams`, `NarrowByReturnType` and
-the call's `InferType` read it instead of re-deriving it. Two traps found on the way, each giving E83 in `socket.spp`
+It is carried as an identity, `PassedOverload::SelfId`, then `_OInfo::SelfId` (an AST, `SelfType`, until the identity
+rewrite). `ValidateArgsMatchParams`, `NarrowByReturnType` and the call's `InferType` read it instead of re-deriving it. Two traps found on the way, each giving E83 in `socket.spp`
 (a `!package` field read as private):
-- **Unmarked value:** the decided type is cloned with every part's `ClearSourceWritten()`. A symbol's name is written
+- **Unmarked value:** the decided type is cloned with `ClearPartsSourceWritten()`. A symbol's name is written
   where the symbol is declared, and would answer access checks as if written at the call.
 - **Fresh return type:** a call through a receiver (`a.m()`, `A::m()`) must return a fresh, unstamped copy of its
   return type (`SubstituteGenerics`), *even when it names no `Self`*. Returning the stamped, shared `FqName` node broke

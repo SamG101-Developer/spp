@@ -1,7 +1,7 @@
 ---
 name: generic-param-sym-links-dummy-scope
 description: "A generic parameter's TypeSymbol has a non-null LinkedScope (its dummy scope) - test Kind==GenericParam for \\\"declared, unbound\\\"; and methods' inherited sup params"
-updated: 2026-09-14
+updated: 2026-11-19
 ---
 
 `GenericParameterTypeAst::Stage2` builds the parameter's `TypeSymbol` with its dummy scope as the third ctor arg,
@@ -17,8 +17,10 @@ Related design (2026-09-14): a method inside a generic `sup` still gets the bloc
 be removed. The copies are marked `GenericParameterAst::IsInherited`, carried by every param `Clone`. Inherited params
 register no symbol, so the body resolves `T` to the block's own. The bandaids that look related have other root
 causes, so this change doesn't remove them:
-- `BindBlanketAndPackGenericsFromReceiver`: attachment never binds blanket or pack generics.
-- The `DetermineOverload` merge: this is how the inherited params get bound.
+- `ReceiverGns` (was `BindBlanketAndPackGenericsFromReceiver`): attachment never binds blanket or pack generics
+  ([[spp-sup-generics-from-receiver]]).
+- The given layers in `CheckCandidate` (was the `DetermineOverload` merge): this is how the inherited params get
+  bound.
 
 **Superseded:** the "generic identity = dummy scope" layer (builds 72-84: `GenericBindingScope`,
 `GenericDeclaringScopes`, open instances registered in their declaring scope) was removed by the resolved-types

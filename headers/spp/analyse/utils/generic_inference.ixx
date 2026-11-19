@@ -13,6 +13,7 @@ use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::utils::generic_inference, class GenericSolver);
+use(spp::analyse::utils::generic_inference, struct Evidence);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericArgumentAst);
@@ -45,6 +46,13 @@ public:
   GenericSolver(
     GenericParameterGroupAst const &params, Scope const &owner_scope,
     ScopeManager &sm, CompilerMetaData &meta);
+
+  /// A solver for what a type name names ("Box", or a "use" or
+  /// "type" alias): its parameters, owned by its scope. An alias's
+  /// declared types (its class's attributes) are read through its
+  /// target, so they name the alias's own parameters.
+  GenericSolver(
+    TypeSymbol const &type_sym, ScopeManager &sm, CompilerMetaData &meta);
 
   GenericSolver(GenericSolver const &) = delete;
   ~GenericSolver();
@@ -186,4 +194,27 @@ namespace spp::analyse::utils::generic_inference {
   SPP_EXP_FUN auto NamedGnArgs(
     GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group, Scope const *params_scope,
     Ast const &owner, ScopeManager &sm, CompilerMetaData &meta) -> Unique<GenericArgumentGroupAst>;
+
+  /// Give "solver" (over what "type_sym" names) the evidence a use
+  /// site handed a type name ("TypeIdentifierAst::InferFrom"),
+  /// below its written arguments: its equations, and its subject's
+  /// one member of this class (E129 if more than one agrees with
+  /// what was written; "site" is where that error points).
+  SPP_EXP_FUN auto GiveEvidence(
+    GenericSolver &solver, Evidence &&evidence, TypeSymbol const &type_sym, Ast const &site,
+    ScopeManager const &sm) -> void;
 }
+
+/// What a type name's unwritten generic arguments are inferred from,
+/// besides its written ones: what a use site knows, handed to the name
+/// for its next analysis ("TypeIdentifierAst::InferFrom").
+SPP_EXP_CLS struct spp::analyse::utils::generic_inference::Evidence {
+  /// An object initializer's: each attribute's given type against
+  /// the type it is declared with, under the attribute's name
+  /// ("Box(val=1)" is a "Box[S32]").
+  Vec<Tup<Shared<IdentifierAst>, Shared<TypeAst>, Shared<TypeAst>>> Equations;
+
+  /// A destructure's: the type of the value taken apart, whose
+  /// members of the class are the candidates ("let Box(v) = b").
+  Shared<TypeAst> Subject;
+};

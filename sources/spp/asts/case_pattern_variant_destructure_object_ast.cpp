@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.generic_inference;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
@@ -157,9 +158,6 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
-  // All factors type analysis.
-  Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta);
-
   // Handle "@" in the condition and move into it. Todo is
   // this still needed? It helps with the variant breakdown
   // within the deref type.
@@ -168,6 +166,11 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
     auto *const inner = mapped_cond->To<PostfixExpressionAst>()->Lhs.get();
     if (inner->To<IdentifierAst>() != nullptr) { mapped_cond = inner; }
   }
+
+  // All factors type analysis. The arguments not written are the
+  // subject's member of this class ("case o is Some(val)").
+  Type = type_resolution::AnalyseInferredType(
+    *Type, {.Subject = meta->CaseCondition->InferType(sm, meta)}, *sm, *meta);
 
   // Flow-type the case condition (when it's a simple
   // identifier) so that the member-access bindings inside

@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.member_lookup;
@@ -452,6 +453,27 @@ auto spp::analyse::utils::type_members::SuperClsReads(
     out.emplace_back(TypeRef::Of(*cls_scope->LinkedTypeSymbol, *cls_scope), cls_scope);
   }
   return out;
+}
+
+auto spp::analyse::utils::type_members::UnifyInHierarchy(
+  const scopes::TypeId given, Scope const &given_scope, const scopes::TypeId declared, Scope const &declared_scope,
+  scopes::GenericSubst &bindings, const bool check_variant, const bool check_constraints)
+  -> bool {
+  if (scopes::UnifyTypeIds(given, declared, given_scope, declared_scope, bindings, check_variant, check_constraints)) {
+    return true;
+  }
+  auto const *const given_sym = TypeRef::Of(given, given_scope).Symbol;
+  if (given_sym == nullptr or given_sym->LinkedScope == nullptr) { return false; }
+  for (auto const &[cls, cls_scope] : SuperClsReads(given_sym->LinkedScope->GetSupScopes())) {
+    if (cls.Id == nullptr) { continue; }
+    auto sup_bindings = scopes::GenericSubst();
+    if (scopes::UnifyTypeIds(
+      scopes::BareOf(cls.Id), declared, *cls_scope, declared_scope, sup_bindings, check_variant, check_constraints)) {
+      bindings = std::move(sup_bindings);
+      return true;
+    }
+  }
+  return false;
 }
 
 auto spp::analyse::utils::type_members::FatPointerWidthOf(

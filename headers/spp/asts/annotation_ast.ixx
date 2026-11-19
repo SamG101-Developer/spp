@@ -16,9 +16,8 @@ use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct TokenAst);
 use(spp::codegen, class Abi);
 
-/// An annotation is used to represent a behavioural transformation
-/// inside an ast, such as marking a method as virtual or
-/// a type as private, etc.
+/// An annotation is used to represent a behavioural transformation inside an
+/// ast, such as marking a method as virtual or a type as private, etc.
 SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
   SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(AnnotationAst);
@@ -32,7 +31,7 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
   /// The generic arguments into the annotation: !extend[Copy]()
   Unique<GenericArgumentGroupAst> GnArgGroup;
 
-  /// The function arguments into annotation: !ffi(symbol="...")
+  /// The function arguments into annotation: !ffi(symbol="CRYPTO_memcmp")
   Unique<FunctionCallArgumentGroupAst> FnArgGroup;
 
   /// Which builtin annotation this is ("kNone" for a custom one),

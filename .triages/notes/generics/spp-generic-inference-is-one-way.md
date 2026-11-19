@@ -1,6 +1,7 @@
 ---
 name: spp-generic-inference-is-one-way
 description: "Generics are inferred from a thing's own arguments only, never from what its result flows into - so sometimes you must write them"
+updated: 2026-11-19
 ---
 
 **The rule (by design, confirmed by the user 2026-09-06).** Inference runs **one way**, left to right and top to
@@ -26,5 +27,9 @@ did both; the test was removed.)
 a shape the analyser accepts cannot be one code generation quietly mishandles. `ret Pass(val=Some(..))` returning a
 `Res[Opt[T], E]` now works, because the value is rebuilt as the alternative it matched; see
 [[spp-variant-widening-in-generic-args]].
+
+**A destructure's subject is its argument** (maintainer, 2026-11-19): `let Box(v) = b` and `case o is Some(val)` read
+their unwritten arguments off the value being taken apart, which flows into the pattern as a call's argument flows
+into the call, so this is still one way. See [[destructure-infers-from-subject]].
 
 Related: [[spp-variant-widening-in-generic-args]], [[closure-return-types]].

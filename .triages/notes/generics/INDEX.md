@@ -1,5 +1,6 @@
-- [Generic inference engine](generic-inference-engine-shape.md) — GenericSolver: Give, Unify, worklist
+- [Generic inference engine](generic-inference-engine-shape.md) — two constructors, given layers, Evidence, one matcher; shared helpers to hook into
 - [Inference is one-way](spp-generic-inference-is-one-way.md) — from a thing's own args, never its result
+- [Destructures infer from the subject](destructure-infers-from-subject.md) — let/case patterns take unwritten args from the value; written args filter variant members; >1 left is E129
 - [Variadic pack model](variadic-pack-model.md) — every pack a list, never named; tuples/variants are classes over a pack; E123/E124; helpers
 - [Pack in a variant flattens](variant-pack-flattens.md) — f[S32, Str] on Bool or Rest is Bool or S32 or Str (maintainer, 2026-10-22)
 - [Generic alias constraints](generic-alias-constraints.md) — aliases::TargetOf; checks from arg scope
@@ -11,7 +12,7 @@
 - [Module-order failures](module-order-failures.md) — 5-10% of shuffled orders crash or fail; a use-after-free holding a reference into NormalSupBlocks; GlobSpp's sort hides it
 - [Lazy attach needs a clean context](lazy-attach-clean-context.md) — ResetContext under a heavy MetaGuard
 - [GetSupScopes is a snapshot](getsupscopes-snapshot.md) — SupScopeList; old const& was a UAF
-- [Sup generics from the receiver](spp-sup-generics-from-receiver.md) — bind blanket/pack sups off the receiver
+- [Sup generics from the receiver](spp-sup-generics-from-receiver.md) — blanket/pack sups unbound at attach; ReceiverGns then BoundGnsOf bind them
 - [E60 is order-dependent](e60-double-extension-order-dependent.md) — CI-only from unsorted module glob order
 - [Tuple sup matching](tuple-sup-matching-broken.md) — history: tuple args were positional; gone in phase 11, tuples are ordinary classes
 - [Constraint failure on a call is E51](constraint-failure-on-a-call-is-e51.md) — E78 only for class/alias/sup constraints; a call wraps it in E51

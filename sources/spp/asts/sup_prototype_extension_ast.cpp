@@ -103,12 +103,7 @@ auto spp::asts::FindMatchingExtension(
     if (ext == nullptr or sc->TypeIdOf(*ext->SuperCls) != super_id) { continue; }
     const auto ext_id = sc->TypeIdOf(*ext->Name);
     if (ext_id == nullptr) { continue; }
-    auto fwd = analyse::scopes::GenericSubst();
-    auto rev = analyse::scopes::GenericSubst();
-    if (analyse::scopes::UnifyTypeIds(ext_id, name_id, *sc, check_scope, fwd, false, check_constraints)
-      or analyse::scopes::UnifyTypeIds(name_id, ext_id, check_scope, *sc, rev, false, check_constraints)) {
-      return {sc, ext};
-    }
+    if (analyse::scopes::PatternsOverlap(ext_id, *sc, name_id, check_scope, check_constraints)) { return {sc, ext}; }
   }
   return {nullptr, nullptr};
 }

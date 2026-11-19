@@ -91,6 +91,12 @@ namespace spp::analyse::utils::marker_sups {
   SPP_EXP_FUN auto FwdTargetOf(
     TypeRef const &fwd) -> TypeRef;
 
+  /// What a borrow forwards to, by its convention: the "T" of the type's "FwdRef" for a "&", of its "FwdMut" for a
+  /// "&mut"; none for a value, or a type that does not forward. The rule the argument check forwards by ("&Str"
+  /// reaches "&StrView", "Str" does not; "type_compare::TypeFwdEq").
+  SPP_EXP_FUN auto BorrowForwardTarget(
+    TypeRef const &borrow, Scope const &scope) -> TypeRef;
+
   /// Manually build the hidden forwarding call that is
   /// abstracted over for things like member access, assignment,
   /// returning etc. This is needed to the llvm codegen can

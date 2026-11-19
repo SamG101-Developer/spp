@@ -97,6 +97,7 @@ use(spp::analyse::errors, struct SppDereferenceNonBorrowedTypeError);
 use(spp::analyse::errors, struct SppNonCopyableTypeError);
 use(spp::analyse::errors, struct SppGenericParameterConflictError);
 use(spp::analyse::errors, struct SppGenericParameterNotInferredError);
+use(spp::analyse::errors, struct SppDestructureGenericAmbiguousError);
 use(spp::analyse::errors, struct SppGenericArgumentTooManyError);
 use(spp::analyse::errors, struct SppMissingMainFunctionError);
 use(spp::analyse::errors, struct SppInvalidVoidValueError);
@@ -638,6 +639,13 @@ SPP_EXP_CLS struct spp::analyse::errors::SppGenericParameterConflictError final 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericParameterNotInferredError final : SemanticError {
   explicit SppGenericParameterNotInferredError(Ast const &param, Ast const &use);
+};
+
+/// A destructure naming a generic class without all its arguments, over a subject holding more than one member of
+/// that class that the written arguments do not tell apart ("first" and "second" are two of them).
+SPP_EXP_CLS struct spp::analyse::errors::SppDestructureGenericAmbiguousError final : SemanticError {
+  explicit SppDestructureGenericAmbiguousError(Ast const &use, Ast const &subject_ty, Ast const &first,
+    Ast const &second);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericArgumentTooManyError final : SemanticError {

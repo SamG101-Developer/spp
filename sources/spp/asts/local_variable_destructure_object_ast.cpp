@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.destructure_utils;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.generic_inference;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
@@ -112,9 +113,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   // Get the value and analyse it and the type.
   const auto val = meta->LetStatementValue;
   const auto val_type = val->InferType(sm, meta);
-  // Todo: in a generic sup, "let Box[T](v) = self" (or "Self(v)") raises E105 though "v" is bound -
-  //  LocalVariableDestructureObjectGeneric.test_valid_destructure_of_a_generic_class_in_its_sup.
-  Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta);
+  // The arguments not written are the value's ("let Box(v) = b").
+  Type = type_resolution::AnalyseInferredType(*Type, {.Subject = val_type}, *sm, *meta);
 
   auto const *const cls_sym = sm->CurrentScope->FindTypeSymbol(Type.get());
   const auto cls_proto = cls_sym->Type;
@@ -255,7 +255,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* {
   // Generate the value into the hidden temporary once, before
   // anything indexes it.
   IMPORT_UTILS_AND_UID;

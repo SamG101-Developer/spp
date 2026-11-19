@@ -57,13 +57,14 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Stderr behind progress bar](build/spp-stderr-behind-progress-bar.md) — tr '\r' '\n' before grepping
 - [Binary memory cap](build/spp-run-binary-memory-cap.md) — ulimit -v guard in cli.cpp; keep it
 - [Every codegen part has a benchmark](build/every-codegen-part-has-a-benchmark.md) — new AST with codegen or codegen module: a `covers` entry or exempt.txt reason; pre-commit checks
+- [long-function instructions vary](build/compile-bench-long-function-instructions-vary.md) — cachegrind count swings 5-9% per run (LLVM trimLocationRanges); judge by counters or cg_diff
 - [std tests can't see unreachable](build/std-tests-cannot-see-unreachable.md) — spp test defaults to rel+LTO (`-m dev` keeps it); virtual base, no prior call
 
 ## Areas (open the area's INDEX.md when the work touches it)
 - [Toolchain](toolchain/INDEX.md) — GCC/clang C++20 module bugs and workarounds, LLVM wrapper module, linters (17)
 - [CI and platforms](ci/INDEX.md) — workflow quirks, compiler caches, macOS libc++, MSVC bugs, cross-target blockers (43)
 - [Type identity](types/INDEX.md) — TypeKey/stamps, aliases, variant order, TypeEq vs Assignable, Self, comp key folding (13)
-- [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (24)
+- [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (25)
 - [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (27)
 - [Language semantics](language/INDEX.md) — linear types, drops, borrows, case/patterns, closures, generators (30)
 - [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path, source lines (43)

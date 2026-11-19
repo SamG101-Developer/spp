@@ -399,3 +399,94 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CasePatternVariantDestructureObjectGeneric,
+  test_valid_generic_arguments_inferred_from_an_option_subject, R"(
+    fun f(o: Opt[S32]) -> Void {
+        case o is Some(val) { let x: S32 = val }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CasePatternVariantDestructureObjectGeneric,
+  test_invalid_binding_of_an_inferred_pattern_has_the_member_type,
+  SppTypeMismatchError, R"(
+    fun f(o: Opt[S32]) -> Void {
+        case o is Some(val) { let x: Bool = val }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CasePatternVariantDestructureObjectGeneric,
+  test_valid_generic_arguments_inferred_from_a_result_subject, R"(
+    fun f(r: Res[S32, Bool]) -> Void {
+        case r of {
+            is Pass(val) { let x: S32 = val }
+            is Fail(err) { let y: Bool = err }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CasePatternVariantDestructureObjectGeneric,
+  test_valid_generic_arguments_inferred_in_a_nested_pattern, R"(
+    fun f(z: Opt[Opt[S32]]) -> Void {
+        case z of {
+            is Some(val=Some(val)) { let x: S32 = val }
+            else { }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CasePatternVariantDestructureObjectGeneric,
+  test_valid_written_generic_argument_picks_a_variant_member, R"(
+    cls A[T] { !public v: T }
+
+    fun f(a: A[S32] or A[Bool]) -> Void {
+        case a of {
+            is A[S32](v) { let x: S32 = v }
+            is A[Bool](v) { let y: Bool = v }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CasePatternVariantDestructureObjectGeneric,
+  test_invalid_generic_arguments_ambiguous_over_two_variant_members,
+  SppDestructureGenericAmbiguousError, R"(
+    cls A[T] { !public v: T }
+
+    fun f(a: A[S32] or A[Bool]) -> Void {
+        case a of {
+            is A(v) { }
+            else { }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CasePatternVariantDestructureObjectGeneric,
+  test_valid_generic_arguments_inferred_inside_a_tuple_pattern, R"(
+    fun f(t: (Opt[S32], Opt[Bool])) -> Void {
+        case t of {
+            is (Some(val as a), Some(val as b)) {
+                let x: S32 = a
+                let y: Bool = b
+            }
+            else { }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CasePatternVariantDestructureObjectGeneric,
+  test_valid_generic_arguments_inferred_inside_an_array_pattern, R"(
+    fun f(a: Arr[Opt[S32], 2_uz]) -> Void {
+        case a of {
+            is [Some(val as x), ..] { let y: S32 = x }
+            else { }
+        }
+    }
+)");

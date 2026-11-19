@@ -366,3 +366,129 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a: S32 = Box(v=1).get()
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LocalVariableDestructureObjectGeneric,
+  test_valid_destructure_of_self_in_its_generic_sup, R"(
+    !public cls Box[T] { !public v: T }
+    sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
+    sup [T: std::copy::Copy] Box[T] {
+        !public fun get(self) -> T {
+            let Self(v) = self
+            ret v
+        }
+    }
+    fun f() -> Void {
+        let a: S32 = Box(v=1).get()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LocalVariableDestructureObjectGeneric,
+  test_valid_destructure_of_a_generic_class_in_its_sup_inferred, R"(
+    !public cls Box[T] { !public v: T }
+    sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
+    sup [T: std::copy::Copy] Box[T] {
+        !public fun get(self) -> T {
+            let Box(v) = self
+            ret v
+        }
+    }
+    fun f() -> Void {
+        let a: S32 = Box(v=1).get()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LocalVariableDestructureObjectGeneric,
+  test_valid_generic_arguments_inferred_from_the_value, R"(
+    cls Box[T] { !public v: T }
+
+    fun f() -> Void {
+        let b = Box(v=1_s32)
+        let Box(v) = b
+        let x: S32 = v
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  LocalVariableDestructureObjectGeneric,
+  test_invalid_binding_of_an_inferred_destructure_has_the_value_type,
+  SppTypeMismatchError, R"(
+    cls Box[T] { !public v: T }
+
+    fun f() -> Void {
+        let b = Box(v=1_s32)
+        let Box(v) = b
+        let x: Bool = v
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LocalVariableDestructureObjectGeneric,
+  test_valid_comp_generic_arguments_inferred_from_the_value, R"(
+    cls Parts[T, cmp k: USize, cmp m: USize] {
+        !public head: Arr[T, k]
+        !public tail: Arr[T, m]
+    }
+
+    fun f() -> Void {
+        let p = Parts[S32, 1_uz, 2_uz](head=[1_s32], tail=[2_s32, 3_s32])
+        let Parts(head, tail) = p
+        let h: Arr[S32, 1_uz] = head
+        let t: Arr[S32, 2_uz] = tail
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LocalVariableDestructureObjectGeneric,
+  test_valid_generic_arguments_inferred_in_a_nested_destructure, R"(
+    cls Box[T] { !public v: T }
+    cls Outer { !public inner: Box[S32] }
+
+    fun f() -> Void {
+        let o = Outer(inner=Box(v=1_s32))
+        let Outer(inner=Box(v)) = o
+        let x: S32 = v
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LocalVariableDestructureObjectGeneric,
+  test_valid_generic_arguments_inferred_through_an_alias, R"(
+    cls Box[T] { !public v: T }
+    type Bx[T] = Box[T]
+
+    fun f() -> Void {
+        let b = Box(v=1_s32)
+        let Bx(v) = b
+        let x: S32 = v
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LocalVariableDestructureObjectGeneric,
+  test_valid_generic_arguments_partly_written, R"(
+    cls Two[A, B] {
+        !public a: A
+        !public b: B
+    }
+
+    fun f() -> Void {
+        let t = Two(a=1_s32, b=false)
+        let Two[S32](a, b) = t
+        let y: Bool = b
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  LocalVariableDestructureObjectGeneric,
+  test_invalid_written_generic_argument_disagrees_with_the_value,
+  SppTypeMismatchError, R"(
+    cls Box[T] { !public v: T }
+
+    fun f() -> Void {
+        let b = Box(v=1_s32)
+        let Box[Bool](v) = b
+    }
+)");

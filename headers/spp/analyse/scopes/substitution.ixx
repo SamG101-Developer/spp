@@ -132,7 +132,16 @@ namespace spp::analyse::scopes {
   /// pattern take any of its members; "check_constraints" holds a
   /// bound type to its parameter's constraints.
   SPP_EXP_FUN auto UnifyTypeIds(
-    TypeId given, TypeId declared, Scope const &given_scope, Scope const &declared_scope,
-    GenericSubst &bindings, bool check_variant = false, bool check_constraints = true) -> bool;
+    TypeId given, TypeId declared, Scope const &given_scope,
+    Scope const &declared_scope, GenericSubst &bindings,
+    bool check_variant = false, bool check_constraints = true) -> bool;
+
+  /// Whether two patterns overlap: either takes the other
+  /// ("UnifyTypeIds" one way, then the other), each read in its
+  /// own scope. Two blocks over overlapping patterns can both
+  /// apply to one type.
+  SPP_EXP_FUN auto PatternsOverlap(
+    TypeId a, Scope const &a_scope, TypeId b, Scope const &b_scope,
+    bool check_constraints = true) -> bool;
 
 }

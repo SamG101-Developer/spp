@@ -119,6 +119,19 @@ auto spp::analyse::utils::type_resolution::AnalyseWrittenType(
   return t;
 }
 
+auto spp::analyse::utils::type_resolution::AnalyseInferredType(
+  TypeAst const &written, generic_inference::Evidence &&evidence,
+  ScopeManager &sm, CompilerMetaData &meta) -> Shared<TypeAst> {
+  auto type = self_type::SubstituteSelf(
+    written, sm.CurrentScope->FindEnclosingSelfType(meta).get(),
+    *sm.CurrentScope)->WithSourceSpanOf(written);
+  if (not evidence.Equations.empty() or evidence.Subject != nullptr) {
+    type->LastTypePart()->InferFrom(std::move(evidence));
+  }
+  type->Stage7_AnalyseSemantics(&sm, &meta);
+  return type;
+}
+
 /// [CHECKED]
 auto spp::analyse::utils::type_resolution::ParamsBoundByArgs(
   Vec<GenericArgumentAst*> const &args,

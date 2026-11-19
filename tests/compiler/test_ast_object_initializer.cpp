@@ -305,3 +305,18 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         std::mem::ops::drop(g)
     }
 )");
+
+// An attribute a class inherits ("sup [T] D[T] ext Base[T]") infers the class's arguments as its own attributes do.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstObjectInitializerAst,
+    test_valid_generic_arguments_inferred_from_an_inherited_attribute, R"(
+    cls Base[T] { !public x: T }
+    cls D[U] { }
+    sup [U] D[U] ext Base[U] { }
+
+    fun f() -> Void {
+        let d = D(x=1_s32)
+        let e: D[S32] = d
+        std::mem::ops::drop(e)
+    }
+)");

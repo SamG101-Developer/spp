@@ -2,7 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.type_members;
+import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
+import spp.analyse.scopes.type_key;
 import spp.utils.ptr;
 import spp.utils.types;
 import std;
@@ -130,6 +132,15 @@ namespace spp::analyse::utils::type_members {
   /// a sup type's name ("S32 ext Ord[Rhs=Self]") has no symbol.
   SPP_EXP_FUN auto SuperClsReads(
     Vec<Scope*> const &sup_scopes) -> Vec<Pair<TypeRef, Scope const*>>;
+
+  /// "UnifyTypeIds" for "given", else for the first of the classes
+  /// it is superimposed as ("SuperClsReads") that fits "declared":
+  /// what a type is matched as beside itself. "bindings" holds that
+  /// match's bindings, or, when none fits, what matching "given"
+  /// itself left.
+  SPP_EXP_FUN auto UnifyInHierarchy(
+    scopes::TypeId given, Scope const &given_scope, scopes::TypeId declared, Scope const &declared_scope,
+    scopes::GenericSubst &bindings, bool check_variant, bool check_constraints) -> bool;
 
   /// How many pointers a value of the type "ref" is: 2 for the
   /// "Fun*" family (and a "$" mock of one), a { fn_ptr, env_ptr }

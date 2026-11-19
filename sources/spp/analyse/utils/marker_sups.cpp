@@ -351,6 +351,14 @@ auto spp::analyse::utils::marker_sups::FwdTargetOf(
   return fwd.Symbol != nullptr ? fwd.Symbol->TypeArgRef("T") : TypeRef();
 }
 
+auto spp::analyse::utils::marker_sups::BorrowForwardTarget(
+  TypeRef const &borrow, Scope const &scope)
+  -> TypeRef {
+  if (borrow.Conv != asts::ConventionTag::REF and borrow.Conv != asts::ConventionTag::MUT) { return {}; }
+  const auto [fwd_ref, fwd_mut] = FindFwdSups(borrow, scope);
+  return FwdTargetOf(borrow.Conv == asts::ConventionTag::REF ? fwd_ref : fwd_mut);
+}
+
 auto spp::analyse::utils::marker_sups::BuildFwdCall(
   ExpressionAst const &receiver,
   TypeRef const &receiver_ref,

@@ -772,25 +772,12 @@ auto spp::analyse::utils::overload_resolution::ReceiverGns(
     ? fns->GnParamGroup.get()
     : nullptr;
   if (params == nullptr) { Ice(*sup_scope->AstNode, *sup_scope, "sup block has no generic parameter group"); }
-  auto bound = scopes::GenericSubst();
-  const auto matches = [&](const scopes::TypeId candidate_id, Scope const &candidate_scope) {
-    auto inferred = scopes::GenericSubst();
-    if (candidate_id == nullptr or not scopes::UnifyTypeIds(
-      candidate_id, pattern_id, candidate_scope, *sup_scope, inferred, false, false)) { return false; }
-    bound = scopes::BindingsFor(inferred, *params);
-    return true;
-  };
-
-  // The receiver itself, then the classes it extends, each keyed where it resolves, and only once the ones before
-  // it have not matched.
-  if (matches(sm.CurrentScope->TypeIdOf(*receiver_type), *sm.CurrentScope)) { return bound; }
-  if (auto const *const receiver_sym = sm.CurrentScope->FindTypeSymbol(receiver_type.get());
-    receiver_sym != nullptr and receiver_sym->LinkedScope != nullptr) {
-    for (auto const &[cls, cls_scope] : type_members::SuperClsReads(receiver_sym->LinkedScope->GetSupScopes())) {
-      if (matches(cls.Id, *cls_scope)) { break; }
-    }
-  }
-  return bound;
+  // The receiver itself, then the classes it extends, each keyed where it resolves ("UnifyInHierarchy").
+  const auto receiver_id = sm.CurrentScope->TypeIdOf(*receiver_type);
+  auto inferred = scopes::GenericSubst();
+  if (receiver_id == nullptr or not type_members::UnifyInHierarchy(
+    receiver_id, *sm.CurrentScope, pattern_id, *sup_scope, inferred, false, false)) { return {}; }
+  return scopes::BindingsFor(inferred, *params);
 }
 
 /// [CHECKED]

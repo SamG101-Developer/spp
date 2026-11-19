@@ -12,6 +12,7 @@ import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
+import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.packs;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
@@ -436,6 +437,14 @@ spp::analyse::utils::generic_inference::GenericSolver::GenericSolver(
   }
 }
 
+spp::analyse::utils::generic_inference::GenericSolver::GenericSolver(
+  TypeSymbol const &type_sym, ScopeManager &sm, CompilerMetaData &meta) :
+  GenericSolver(*type_sym.GnParams(), *type_sym.LinkedScope, sm, meta) {
+  if (const auto target = type_sym.AliasTargetId(); target != nullptr) {
+    ReadDeclaredWith(scopes::InstanceBindings(TypeRef::Of(target, *sm.CurrentScope)));
+  }
+}
+
 spp::analyse::utils::generic_inference::GenericSolver::~GenericSolver() = default;
 
 auto spp::analyse::utils::generic_inference::GenericSolver::_FindById(
@@ -810,24 +819,29 @@ auto spp::analyse::utils::generic_inference::GenericSolver::_MatchIds(
   auto inferred = scopes::GenericSubst();
   if (given == nullptr or declared == nullptr) { return inferred; }
   if (not _DeclaredReading.IsEmpty()) { declared = scopes::SubstituteTypeId(declared, _DeclaredReading); }
+  const auto borrows_alike = scopes::HeaderOf(given).Conv != 0
+    and scopes::HeaderOf(given).Conv == scopes::HeaderOf(declared).Conv;
   const auto given_id = scopes::BareOf(given);
   declared = scopes::BareOf(declared);
-  const auto matched = scopes::UnifyTypeIds(given_id, declared, scope, *_OwnerScope, inferred, true, true);
 
   // A value can match through a type it is superimposed with, and then that is what the generics are read from: a
   // closure is a "FunMov[(S32,), Bool]" only through its superimposition, so "f: FunMov[(S32,), U]" had nothing to
   // take "U" from. Only a target with a shape to match: a bare "x: T" that failed did so on its constraints, which a
   // supertype would silently dodge ("T: ThreadSafe" bound to a closure's sup).
-  auto const &d = scopes::HeaderOf(declared);
-  const auto is_bare_param = d.Kind == scopes::TypeKey::Tag::TypeParam;
-  if (matched or is_bare_param or not scopes::DoesTypeIdNameAnyGnParams(declared)) { return inferred; }
-  auto const *const given_sym = TypeRef::Of(given_id, scope).Symbol;
-  if (given_sym == nullptr or given_sym->LinkedScope == nullptr) { return inferred; }
-  for (auto const &[cls, cls_scope] : type_members::SuperClsReads(given_sym->LinkedScope->GetSupScopes())) {
-    if (cls.Id == nullptr) { continue; }
-    auto sup_inferred = scopes::GenericSubst();
-    if (scopes::UnifyTypeIds(scopes::BareOf(cls.Id), declared, *cls_scope, *_OwnerScope, sup_inferred, true, true)) {
-      return sup_inferred;
+  const auto is_bare_param = scopes::HeaderOf(declared).Kind == scopes::TypeKey::Tag::TypeParam;
+  if (is_bare_param or not scopes::DoesTypeIdNameAnyGnParams(declared)) {
+    ignore = scopes::UnifyTypeIds(given_id, declared, scope, *_OwnerScope, inferred, true, true);
+  }
+  else if (not type_members::UnifyInHierarchy(given_id, scope, declared, *_OwnerScope, inferred, true, true)
+    and borrows_alike) {
+    // Last, through what the given borrow forwards to, as the argument check accepts it: "&Arr[S32, 2]" for a
+    // "&View[T]" binds "T" through "Arr"'s "FwdRef[View[T]]". Never before a match of the type itself or its super
+    // classes, so forwarding cannot displace one.
+    const auto target = marker_sups::BorrowForwardTarget(TypeRef::Of(given, scope), scope);
+    auto forwarded = scopes::GenericSubst();
+    if (target.Id != nullptr and scopes::UnifyTypeIds(
+      scopes::BareOf(target.Id), declared, scope, *_OwnerScope, forwarded, true, true)) {
+      inferred = std::move(forwarded);
     }
   }
   return inferred;
@@ -928,40 +942,25 @@ auto spp::analyse::utils::generic_inference::GenericSolver::_ReadConstraints() -
     const auto inferred_id = entry->TypeVals[0].Id;
     if (inferred_id == nullptr) { continue; }
 
-    // The candidates are the type and its super classes, each with the scope its name resolves in: a sup type's
-    // name can hold a "Self" (as in "S32 ext Ord[Rhs=Self]"), which only has a symbol inside that sup scope.
+    // Matched as the type or one of its super classes ("UnifyInHierarchy"); a generic type has neither to match.
     auto const *const concrete_sym = TypeRef::Of(inferred_id, scope).Symbol;
-    auto candidates = Vec<Pair<scopes::TypeId, Scope const*>>{};
-    if (concrete_sym != nullptr and not concrete_sym->IsGn()) {
-      candidates.emplace_back(scope.TypeIdOfSymbol(*concrete_sym), &scope);
-      if (concrete_sym->LinkedScope != nullptr) {
-        for (auto const &[cls, cls_scope] : type_members::SuperClsReads(concrete_sym->LinkedScope->GetSupScopes())) {
-          candidates.emplace_back(cls.Id, cls_scope);
-        }
-      }
-    }
+    const auto concrete_id = concrete_sym != nullptr and not concrete_sym->IsGn()
+      ? scope.TypeIdOfSymbol(*concrete_sym)
+      : nullptr;
 
     for (auto const &constraint : entry->Param->TypeConstraints->Constraints) {
       // A constraint that does not key binds nothing and matches nothing; it is reported by "_CheckTypeArgs".
       const auto declared = _OwnerScope->TypeIdOf(*constraint);
       if (declared == nullptr) { continue; }
       auto inferred = scopes::GenericSubst();
-      auto matched = false;
-      for (auto const &[candidate, candidate_scope] : candidates) {
-        if (candidate == nullptr) { continue; }
-        inferred = scopes::GenericSubst();
-        if (scopes::UnifyTypeIds(
-          scopes::BareOf(candidate), scopes::BareOf(declared), *candidate_scope, *_OwnerScope, inferred, true, false)) {
-          matched = true;
-          break;
-        }
-      }
+      const auto matched = concrete_id != nullptr and type_members::UnifyInHierarchy(
+        scopes::BareOf(concrete_id), scope, scopes::BareOf(declared), *_OwnerScope, inferred, true, false);
 
       // A constraint that other parameters are inferred through ("U" in "P: FunMov[(T,), Opt[U]]") and that the
       // argument does not fit is reported as a constraint error here, rather than as the dependent parameter being
       // uninferred later, which would hide the cause. One naming no other generics ("P: Copy") is left to the
       // authoritative "_CheckTypeArgs".
-      if (not candidates.empty() and not matched) {
+      if (concrete_id != nullptr and not matched) {
         const auto constraint_drives_inference = genex::any_of(
           type_params, [&](auto const *other) {
             return type_predicates::DoesTypeNameAGnParam(*constraint, *other, *_OwnerScope);
@@ -1360,4 +1359,70 @@ auto spp::analyse::utils::generic_inference::NamedGnArgs(
   named->Args |= genex::actions::sort([&](auto const &a, auto const &b) { return index_of(*a) < index_of(*b); });
   named->Args.append_range(genex::views::move(elems));
   return named;
+}
+
+auto spp::analyse::utils::generic_inference::GiveEvidence(
+  GenericSolver &solver, Evidence &&evidence, TypeSymbol const &type_sym, Ast const &site,
+  ScopeManager const &sm) -> void {
+  IMPORT_UTILS;
+  for (auto &&[name, source, target] : evidence.Equations) {
+    solver.Unify(name, std::move(source), std::move(target));
+  }
+  if (evidence.Subject == nullptr) { return; }
+  auto const &subject = *evidence.Subject;
+  auto const &scope = *sm.CurrentScope;
+
+  // The subject's members of this class: itself, or each of a variant's.
+  const auto subject_ref = TypeRef::Of(subject, scope).WithoutConvention();
+  const auto members = type_predicates::IsTypeVariant(subject_ref, scope)
+    ? type_members::VariantMemberRefs(subject_ref, scope)
+    : Vec{subject_ref};
+
+  // A member's arguments, as bindings of the parameters this name declares, by matching the member against the
+  // name's pattern: a class as itself over its own parameters ("GnSelfId"); for a "use" or "type" alias, its target,
+  // in the alias's own parameters (a "use" of "Some" targets "Some[T]", in the "use"'s "T"). Nothing for a member
+  // that is not this class.
+  auto pattern = type_sym.AliasTargetId();
+  if (pattern == nullptr) { pattern = type_sym.GnSelfId(); }
+  const auto bindings_of = [&](TypeRef const &member) -> Opt<scopes::GenericSubst> {
+    auto bindings = scopes::GenericSubst();
+    if (pattern == nullptr or not scopes::UnifyTypeIds(
+      member.Id, pattern, scope, *type_sym.LinkedScope, bindings, false, false)) { return Nullopt; }
+    return bindings;
+  };
+
+  // A member agrees with what was written when every written argument is the member's own.
+  const auto known = solver.KnownBindings(*type_sym.GnParams());
+  const auto agrees = [&](scopes::GenericSubst const &member) {
+    if (not known.has_value()) { return true; }
+    for (auto const &[pid, id] : known->TypeParams) {
+      for (auto const &[member_pid, member_id] : member.TypeParams) {
+        if (pid != 0 and pid == member_pid and id != member_id) { return false; }
+      }
+    }
+    for (auto const &[pid, id] : known->CompParams) {
+      for (auto const &[member_pid, member_id] : member.CompParams) {
+        if (pid == member_pid and id != member_id) { return false; }
+      }
+    }
+    return true;
+  };
+
+  auto candidates = Vec<Pair<TypeRef, scopes::GenericSubst>>();
+  for (auto const &member : members) {
+    const auto bare = member.WithoutConvention();
+    auto bindings = bindings_of(bare);
+    if (not bindings.has_value() or bindings->IsEmpty() or not agrees(*bindings)) { continue; }
+    candidates.emplace_back(bare, std::move(*bindings));
+  }
+
+  if (candidates.empty()) { return; }
+  if (candidates.size() > 1) {
+    Raise<SppDestructureGenericAmbiguousError>(ERR_ARGS(
+      site, subject, ErrTypeAt(candidates[0].first, site, scope),
+      ErrTypeAt(candidates[1].first, site, scope)));
+  }
+
+  // Below the written arguments, so a written one that disagrees is the mismatch the destructure reports.
+  solver.Give(candidates[0].second);
 }

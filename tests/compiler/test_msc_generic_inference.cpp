@@ -776,3 +776,47 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         f[S32, Str](5_s32)
     }
 )");
+
+// A borrow of a type that forwards ("Arr" and "Vec" superimpose "FwdRef[View[T]]") binds the generics of the borrow it
+// forwards to, as the argument check accepts it: forwarding is tried last, after the type and its super classes.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Forwarding,
+  test_valid_generic_inferred_through_a_forwarded_array, R"(
+    fun mk[T: std::clone::Clone](v: &View[T]) -> Vec[T] { ret Vec[T]::from(v) }
+    fun g() -> Void {
+        let v: Vec[S32] = mk(&[1_s32, 2_s32])
+        std::mem::ops::drop(v)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Forwarding,
+  test_valid_generic_inferred_through_a_forwarded_vector, R"(
+    fun mk[T: std::clone::Clone](v: &View[T]) -> Vec[T] { ret Vec[T]::from(v) }
+    fun g() -> Void {
+        let a = Vec[S32]::from(&[1_s32])
+        let b: Vec[S32] = mk(&a)
+        std::mem::ops::drop(a, b)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Forwarding,
+  test_valid_generic_inferred_through_a_forwarded_mutable_borrow, R"(
+    fun touch[T](v: &mut View[T]) -> Void { }
+    fun g() -> Void {
+        let mut a = [1_s32, 2_s32]
+        touch(&mut a)
+    }
+)");
+
+// Forwarding needs a borrow on both sides ("&Str" reaches "&StrView", "Str" does not), so a value is not forwarded.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestGenericInference_Forwarding,
+  test_invalid_value_not_forwarded_to_a_borrowed_view,
+  SppFunctionCallNoValidSignaturesError, R"(
+    fun see[T](v: &View[T]) -> Void { }
+    fun g() -> Void {
+        see([1_s32, 2_s32])
+    }
+)");
