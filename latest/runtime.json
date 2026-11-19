@@ -5,26 +5,26 @@
       "gaps": [],
       "languages": {
         "spp": {
-          "executable_bytes": 96512,
-          "hash": "5c384c6ea64dcd75846c7bb667d8fcddaddcd640ec4d840b4244a955b778f6d9",
-          "instructions": 4410640186,
+          "executable_bytes": 86256,
+          "hash": "ba6a301cdad04d06fbc6e9fd60902868b37359484a2d2ee53c63a1075aff2072",
+          "instructions": 4435638721,
           "records": {
-            "executable.bytes": 96512,
-            "llvm.after_opt.blocks": 413,
-            "llvm.after_opt.functions": 23,
-            "llvm.after_opt.instructions": 1926,
-            "llvm.before_opt.blocks": 1023,
-            "llvm.before_opt.functions": 269,
-            "llvm.before_opt.instructions": 5770,
-            "object.bytes": 88096
+            "executable.bytes": 86256,
+            "llvm.after_opt.blocks": 307,
+            "llvm.after_opt.functions": 22,
+            "llvm.after_opt.instructions": 1630,
+            "llvm.before_opt.blocks": 1053,
+            "llvm.before_opt.functions": 271,
+            "llvm.before_opt.instructions": 5846,
+            "object.bytes": 71856
           },
-          "wall_ns": 434267618,
+          "wall_ns": 291419387,
           "wall_ns_rounds": [
-            439019362,
-            435110312,
-            439722636,
-            434267618,
-            434334267
+            292972886,
+            301908015,
+            301247298,
+            291419387,
+            309131423
           ]
         }
       },
@@ -39,60 +39,60 @@
         "c": {
           "executable_bytes": 16056,
           "hash": "6c87e27d5cc33bef1d8d09ceb019f439c57c76e977b4f9f4274ec20149f2ec80",
-          "instructions": 3200271831,
-          "wall_ns": 493549046,
+          "instructions": 3200271817,
+          "wall_ns": 394716831,
           "wall_ns_rounds": [
-            494191255,
-            493549046,
-            500435381,
-            495095582,
-            495961706
+            394716831,
+            396075127,
+            400464081,
+            396914593,
+            395724939
           ]
         },
         "rust": {
           "executable_bytes": 1952784,
           "hash": "34b16686c301277e482378a42748edd22f954d52774cf92511dea2047b35594a",
-          "instructions": 3910237970,
-          "wall_ns": 543580300,
+          "instructions": 3910237969,
+          "wall_ns": 420105933,
           "wall_ns_rounds": [
-            568605978,
-            543802993,
-            545123139,
-            550674207,
-            543580300
+            426334899,
+            421956041,
+            425209044,
+            420105933,
+            425313813
           ]
         },
         "spp": {
-          "executable_bytes": 95920,
-          "hash": "9661cea7dd0591ea83318dc094ebac7ddfa3ec8b5a5a84cbdc799e273b46ca22",
-          "instructions": 3800639608,
+          "executable_bytes": 85800,
+          "hash": "3b9bfac2b09069c9442e699a873172908b3c76fbf89ee48cb023e10923a2639d",
+          "instructions": 3800638428,
           "records": {
-            "executable.bytes": 95920,
-            "llvm.after_opt.blocks": 407,
-            "llvm.after_opt.functions": 19,
-            "llvm.after_opt.instructions": 1876,
-            "llvm.before_opt.blocks": 999,
-            "llvm.before_opt.functions": 263,
-            "llvm.before_opt.instructions": 5665,
-            "object.bytes": 85744
+            "executable.bytes": 85800,
+            "llvm.after_opt.blocks": 310,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 1642,
+            "llvm.before_opt.blocks": 1024,
+            "llvm.before_opt.functions": 264,
+            "llvm.before_opt.instructions": 5721,
+            "object.bytes": 69752
           },
-          "wall_ns": 533964885,
+          "wall_ns": 428087900,
           "wall_ns_rounds": [
-            534938524,
-            534914049,
-            533964885,
-            546362395,
-            558756823
+            428087900,
+            432414199,
+            433989399,
+            438511278,
+            434913094
           ]
         }
       },
       "layer": "core",
       "output": "777952\n57851\n6345\n",
       "ratios": {
-        "spp/c": 1.0818881919184178,
-        "spp/c_instructions": 1.1875989943055558,
-        "spp/rust": 0.9823109575530975,
-        "spp/rust_instructions": 0.9719714342603041
+        "spp/c": 1.0845443274244366,
+        "spp/c_instructions": 1.1875986307821802,
+        "spp/rust": 1.0189998911536438,
+        "spp/rust_instructions": 0.97197113273696
       }
     },
     "ast/calls": {
@@ -102,60 +102,60 @@
         "c": {
           "executable_bytes": 16144,
           "hash": "c36ee73ceeb8520b663a67e98e80e958018ad99f7ea4a31b9ae2cbba52474a90",
-          "instructions": 2700271054,
-          "wall_ns": 397981961,
+          "instructions": 2700271040,
+          "wall_ns": 366387260,
           "wall_ns_rounds": [
-            406123172,
-            398125267,
-            399124237,
-            398834179,
-            397981961
+            371977347,
+            372194845,
+            367448845,
+            366387260,
+            369816139
           ]
         },
         "rust": {
           "executable_bytes": 1952600,
           "hash": "29c4808995bacb5c5b0b40399a7d9c0543b43df36fb6b2827a78576a14dba161",
-          "instructions": 3050392989,
-          "wall_ns": 407770027,
+          "instructions": 3050392988,
+          "wall_ns": 371236271,
           "wall_ns_rounds": [
-            408361343,
-            410091055,
-            408245938,
-            407770027,
-            409193458
+            386952315,
+            383789414,
+            378322722,
+            382956633,
+            371236271
           ]
         },
         "spp": {
-          "executable_bytes": 95104,
-          "hash": "742cf681a67177123b559a60f27491069df77ad128570285de453cd171689803",
-          "instructions": 3950638484,
+          "executable_bytes": 80688,
+          "hash": "b1c9a396e1c93b098d8c31bbd0d093839e1d00a7a119987a140fa3a21f344528",
+          "instructions": 3950637043,
           "records": {
-            "executable.bytes": 95104,
-            "llvm.after_opt.blocks": 399,
-            "llvm.after_opt.functions": 21,
-            "llvm.after_opt.instructions": 1820,
-            "llvm.before_opt.blocks": 984,
-            "llvm.before_opt.functions": 259,
-            "llvm.before_opt.instructions": 5504,
-            "object.bytes": 84088
+            "executable.bytes": 80688,
+            "llvm.after_opt.blocks": 302,
+            "llvm.after_opt.functions": 22,
+            "llvm.after_opt.instructions": 1594,
+            "llvm.before_opt.blocks": 1007,
+            "llvm.before_opt.functions": 260,
+            "llvm.before_opt.instructions": 5558,
+            "object.bytes": 67600
           },
-          "wall_ns": 409793076,
+          "wall_ns": 376782193,
           "wall_ns_rounds": [
-            415643451,
-            414333834,
-            412950889,
-            412079613,
-            409793076
+            382021357,
+            382959232,
+            378950514,
+            377891906,
+            376782193
           ]
         }
       },
       "layer": "core",
       "output": "115921\n",
       "ratios": {
-        "spp/c": 1.0296775134489073,
-        "spp/c_instructions": 1.463052562129935,
-        "spp/rust": 1.0049612498860785,
-        "spp/rust_instructions": 1.295124430932791
+        "spp/c": 1.0283714368234311,
+        "spp/c_instructions": 1.4630520360652388,
+        "spp/rust": 1.0149390628912982,
+        "spp/rust_instructions": 1.2951239589592185
       }
     },
     "ast/case_expression": {
@@ -166,59 +166,59 @@
           "executable_bytes": 16056,
           "hash": "cb2fd9b9c880fbf95992e0e9f004ce2230ec0d27470527ef3833715eba19e5ae",
           "instructions": 1125258384,
-          "wall_ns": 841564287,
+          "wall_ns": 741190386,
           "wall_ns_rounds": [
-            843134283,
-            853998616,
-            844375666,
-            841564287,
-            843423165
+            774683356,
+            743849828,
+            741586815,
+            754178074,
+            741190386
           ]
         },
         "rust": {
           "executable_bytes": 1952104,
           "hash": "ee9b8e3b86a292dd74ef1a88906aff166893f47f8b9b3fe1343f68bac732badd",
-          "instructions": 1162902799,
-          "wall_ns": 804427972,
+          "instructions": 1162902812,
+          "wall_ns": 763463752,
           "wall_ns_rounds": [
-            810719029,
-            804427972,
-            834808048,
-            806349891,
-            810300882
+            785712517,
+            770426577,
+            766029229,
+            763463752,
+            772137391
           ]
         },
         "spp": {
-          "executable_bytes": 95536,
-          "hash": "b365c7c72639d4e1c62e251758679a92e9ca29df594889d4db5ee63fe14ce8a7",
-          "instructions": 938136145,
+          "executable_bytes": 81248,
+          "hash": "7f8b0fc988f094228a302e2dd9c328a42411f0695413b1d405b9c2932c115398",
+          "instructions": 938134581,
           "records": {
-            "executable.bytes": 95536,
-            "llvm.after_opt.blocks": 410,
-            "llvm.after_opt.functions": 18,
-            "llvm.after_opt.instructions": 1839,
-            "llvm.before_opt.blocks": 1006,
-            "llvm.before_opt.functions": 264,
-            "llvm.before_opt.instructions": 5616,
-            "object.bytes": 85096
+            "executable.bytes": 81248,
+            "llvm.after_opt.blocks": 313,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1613,
+            "llvm.before_opt.blocks": 1031,
+            "llvm.before_opt.functions": 265,
+            "llvm.before_opt.instructions": 5672,
+            "object.bytes": 68824
           },
-          "wall_ns": 761349606,
+          "wall_ns": 724764587,
           "wall_ns_rounds": [
-            762552979,
-            767865906,
-            761946075,
-            761349606,
-            775816272
+            762159122,
+            746916062,
+            733860237,
+            724764587,
+            764173452
           ]
         }
       },
       "layer": "core",
       "output": "1433\n",
       "ratios": {
-        "spp/c": 0.9046838343319575,
-        "spp/c_instructions": 0.8337073141060907,
-        "spp/rust": 0.9464484484634504,
-        "spp/rust_instructions": 0.8067193111984245
+        "spp/c": 0.9778386237729748,
+        "spp/c_instructions": 0.833705924203094,
+        "spp/rust": 0.9493110643450693,
+        "spp/rust_instructions": 0.8067179572698462
       }
     },
     "ast/case_patterns": {
@@ -228,60 +228,60 @@
         "c": {
           "executable_bytes": 16056,
           "hash": "878f394b7f8bdcff2bb6da176ac1e357893a335ae50ad4748a44a2cd78b3fcde",
-          "instructions": 2900271096,
-          "wall_ns": 173422828,
+          "instructions": 2900271082,
+          "wall_ns": 129676804,
           "wall_ns_rounds": [
-            173422828,
-            176881497,
-            176853277,
-            173700428,
-            174437368
+            132169860,
+            131675015,
+            132601728,
+            132785209,
+            129676804
           ]
         },
         "rust": {
           "executable_bytes": 1951840,
           "hash": "0ce1f452e8b5e2583011c89e94fe29645454a86f5226cd9aafd3830d0b9f62e3",
-          "instructions": 3241028569,
-          "wall_ns": 491550818,
+          "instructions": 3241028568,
+          "wall_ns": 408620451,
           "wall_ns_rounds": [
-            496988606,
-            495422458,
-            492571308,
-            493079799,
-            491550818
+            414750059,
+            417716771,
+            414570759,
+            408620451,
+            412823182
           ]
         },
         "spp": {
-          "executable_bytes": 95288,
-          "hash": "fe10f4a1b65685a642be5ca264c0ce30330d2f23067506f6f30778e91717dff5",
-          "instructions": 3300637806,
+          "executable_bytes": 80992,
+          "hash": "451d51a73dc71e2111d1f5c2f5102eabebd42c66da693c6bf498acd0ebe93b83",
+          "instructions": 3300636420,
           "records": {
-            "executable.bytes": 95288,
-            "llvm.after_opt.blocks": 400,
-            "llvm.after_opt.functions": 18,
-            "llvm.after_opt.instructions": 1834,
-            "llvm.before_opt.blocks": 1018,
-            "llvm.before_opt.functions": 262,
-            "llvm.before_opt.instructions": 5686,
-            "object.bytes": 84384
+            "executable.bytes": 80992,
+            "llvm.after_opt.blocks": 303,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1608,
+            "llvm.before_opt.blocks": 1043,
+            "llvm.before_opt.functions": 263,
+            "llvm.before_opt.instructions": 5742,
+            "object.bytes": 68160
           },
-          "wall_ns": 500754124,
+          "wall_ns": 427439218,
           "wall_ns_rounds": [
-            501198639,
-            500754124,
-            506554419,
-            501072555,
-            503596258
+            427439218,
+            438376716,
+            435121749,
+            434705221,
+            439379604
           ]
         }
       },
       "layer": "core",
       "output": "1546816965\n",
       "ratios": {
-        "spp/c": 2.8874752521046423,
-        "spp/c_instructions": 1.1380445816090015,
-        "spp/rust": 1.018723000070361,
-        "spp/rust_instructions": 1.0183920739144834
+        "spp/c": 3.29618871544675,
+        "spp/c_instructions": 1.1380441092161329,
+        "spp/rust": 1.0460543933959878,
+        "spp/rust_instructions": 1.0183916465866831
       }
     },
     "ast/closure_expression": {
@@ -291,60 +291,60 @@
         "c": {
           "executable_bytes": 16056,
           "hash": "62cc7eef451f81ba754c5a4f6a19f4ce5518592d4210f2bde6dbcf26a6e3a17a",
-          "instructions": 1200271038,
-          "wall_ns": 422152449,
+          "instructions": 1200271052,
+          "wall_ns": 368052670,
           "wall_ns_rounds": [
-            422152449,
-            426844234,
-            422393095,
-            446175299,
-            423396046
+            377324311,
+            381563027,
+            371628762,
+            384908156,
+            368052670
           ]
         },
         "rust": {
           "executable_bytes": 1952096,
           "hash": "72436fdc72500616cc7e9096fed958ff721400e2a1ff323483448d6cdb543e67",
-          "instructions": 1900393280,
-          "wall_ns": 421814443,
+          "instructions": 1900393260,
+          "wall_ns": 372805124,
           "wall_ns_rounds": [
-            422957048,
-            422584168,
-            425258689,
-            421814443,
-            422280147
+            383050227,
+            372805124,
+            377099433,
+            381273281,
+            386131473
           ]
         },
         "spp": {
-          "executable_bytes": 94400,
-          "hash": "b4f9f3a386dcf0dd2ed0ed2097d554ee1448a5bc87d2c09330aeb7813e6e76f3",
-          "instructions": 1700637703,
+          "executable_bytes": 76048,
+          "hash": "32514b8641133b4d2c3706022f068efa6f41b328a97aeb473e8a7ece3f8e6236",
+          "instructions": 1700636190,
           "records": {
-            "executable.bytes": 94400,
-            "llvm.after_opt.blocks": 394,
-            "llvm.after_opt.functions": 18,
-            "llvm.after_opt.instructions": 1808,
-            "llvm.before_opt.blocks": 978,
-            "llvm.before_opt.functions": 253,
-            "llvm.before_opt.instructions": 5473,
-            "object.bytes": 82584
+            "executable.bytes": 76048,
+            "llvm.after_opt.blocks": 297,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1582,
+            "llvm.before_opt.blocks": 1001,
+            "llvm.before_opt.functions": 254,
+            "llvm.before_opt.instructions": 5527,
+            "object.bytes": 66408
           },
-          "wall_ns": 461073700,
+          "wall_ns": 373156994,
           "wall_ns_rounds": [
-            463896985,
-            462388943,
-            462875434,
-            485071155,
-            461073700
+            373156994,
+            381756518,
+            378918844,
+            374854541,
+            382019265
           ]
         }
       },
       "layer": "core",
       "output": "809021\n",
       "ratios": {
-        "spp/c": 1.092197146059906,
-        "spp/c_instructions": 1.4168780626697084,
-        "spp/rust": 1.0930723393935564,
-        "spp/rust_instructions": 0.8948872430237177
+        "spp/c": 1.013868460728732,
+        "spp/c_instructions": 1.4168767855945925,
+        "spp/rust": 1.0009438443233414,
+        "spp/rust_instructions": 0.8948864562906311
       }
     },
     "ast/defer": {
@@ -354,60 +354,60 @@
         "c": {
           "executable_bytes": 16056,
           "hash": "a63ca3301287c4b7de7389f257c2634c767b35793c16492a530411caab12488a",
-          "instructions": 1650271047,
-          "wall_ns": 478690546,
+          "instructions": 1650271033,
+          "wall_ns": 392734581,
           "wall_ns_rounds": [
-            479523867,
-            478690546,
-            479177061,
-            478755108,
-            486457826
+            405154617,
+            404044370,
+            392734581,
+            403670999,
+            394131201
           ]
         },
         "rust": {
           "executable_bytes": 1951640,
           "hash": "59a41bc4e7f3b9f41a2f908fc77f7a40b22086d069f568aad59ee81dbbbd70c0",
-          "instructions": 1800392955,
-          "wall_ns": 478059400,
+          "instructions": 1800392954,
+          "wall_ns": 380021553,
           "wall_ns_rounds": [
-            479714005,
-            479360007,
-            479231258,
-            478059400,
-            479424180
+            389622802,
+            381925924,
+            390133344,
+            380021553,
+            380266482
           ]
         },
         "spp": {
-          "executable_bytes": 94680,
-          "hash": "fd208cd9869f86fe25142aff9e99788b663f1b1032d02ad2092e596c504bf921",
-          "instructions": 1700638483,
+          "executable_bytes": 76344,
+          "hash": "d8f976d2597d430adce7bc6dfd3fae6d48d692fe072f2198b91aade393b203fa",
+          "instructions": 1700637023,
           "records": {
-            "executable.bytes": 94680,
-            "llvm.after_opt.blocks": 392,
-            "llvm.after_opt.functions": 18,
-            "llvm.after_opt.instructions": 1793,
-            "llvm.before_opt.blocks": 982,
-            "llvm.before_opt.functions": 257,
-            "llvm.before_opt.instructions": 5484,
-            "object.bytes": 83072
+            "executable.bytes": 76344,
+            "llvm.after_opt.blocks": 295,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1567,
+            "llvm.before_opt.blocks": 1005,
+            "llvm.before_opt.functions": 258,
+            "llvm.before_opt.instructions": 5538,
+            "object.bytes": 66888
           },
-          "wall_ns": 450780492,
+          "wall_ns": 355762303,
           "wall_ns_rounds": [
-            451274708,
-            451324312,
-            450780492,
-            450917976,
-            455532643
+            355762303,
+            357945248,
+            364129146,
+            356647957,
+            360597641
           ]
         }
       },
       "layer": "core",
       "output": "629720\n",
       "ratios": {
-        "spp/c": 0.9416949964163278,
-        "spp/c_instructions": 1.030520705123902,
-        "spp/rust": 0.9429382457493776,
-        "spp/rust_instructions": 0.944592944710784
+        "spp/c": 0.9058593773284253,
+        "spp/c_instructions": 1.0305198291631166,
+        "spp/rust": 0.9361634891271549,
+        "spp/rust_instructions": 0.9445921343013655
       }
     },
     "ast/error_flow": {
@@ -417,60 +417,60 @@
         "c": {
           "executable_bytes": 16056,
           "hash": "eb6d710db7d29d6761e1e41f50827d3acf78ce5da3b313521109dfc5d397590f",
-          "instructions": 3332783690,
-          "wall_ns": 204710078,
+          "instructions": 3332783704,
+          "wall_ns": 159194828,
           "wall_ns_rounds": [
-            204710078,
-            205447842,
-            205067625,
-            228406376,
-            206087179
+            170387465,
+            170009135,
+            169046364,
+            168289273,
+            159194828
           ]
         },
         "rust": {
           "executable_bytes": 1952272,
           "hash": "e6a2ed331993b7a699ff7e9fd8a9292a802ff510c0add17d189aaf379a83df2f",
-          "instructions": 2032899156,
-          "wall_ns": 142000019,
+          "instructions": 2032899141,
+          "wall_ns": 121398419,
           "wall_ns_rounds": [
-            142334013,
-            142154795,
-            143836126,
-            142178393,
-            142000019
+            123627879,
+            126532255,
+            121398419,
+            124512261,
+            124343607
           ]
         },
         "spp": {
-          "executable_bytes": 95736,
-          "hash": "683cc40a8e48d0e323da77f4f1480288cdd2617ab0adb99f4e27be7eff2ef6ab",
-          "instructions": 2032116570,
+          "executable_bytes": 81008,
+          "hash": "c653acbbe6cb1da632f26258b675efdb39e1ee05433976cc4339bbf92244ca89",
+          "instructions": 2032115349,
           "records": {
-            "executable.bytes": 95736,
-            "llvm.after_opt.blocks": 408,
-            "llvm.after_opt.functions": 21,
-            "llvm.after_opt.instructions": 1903,
-            "llvm.before_opt.blocks": 1026,
-            "llvm.before_opt.functions": 260,
-            "llvm.before_opt.instructions": 5739,
-            "object.bytes": 85368
+            "executable.bytes": 81008,
+            "llvm.after_opt.blocks": 297,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 1584,
+            "llvm.before_opt.blocks": 1049,
+            "llvm.before_opt.functions": 261,
+            "llvm.before_opt.instructions": 5793,
+            "object.bytes": 68248
           },
-          "wall_ns": 142475366,
+          "wall_ns": 120134374,
           "wall_ns_rounds": [
-            143459762,
-            142475366,
-            142562280,
-            143192516,
-            144740797
+            122343703,
+            129575491,
+            122573550,
+            127949752,
+            120134374
           ]
         }
       },
       "layer": "core",
       "output": "454904369\n1027477\n",
       "ratios": {
-        "spp/c": 0.6959860862346015,
-        "spp/c_instructions": 0.6097355121177996,
-        "spp/rust": 1.0033475136366004,
-        "spp/rust_instructions": 0.9996150394387787
+        "spp/c": 0.7546374182457737,
+        "spp/c_instructions": 0.6097351431960795,
+        "spp/rust": 0.9895876321091134,
+        "spp/rust_instructions": 0.999614446194505
       }
     },
     "ast/gen_delegation": {
@@ -482,60 +482,60 @@
         "c": {
           "executable_bytes": 16056,
           "hash": "b0bc86f81824862806517939876e58931128c1f9f265b44009b0c8ca8d0fcc50",
-          "instructions": 550271542,
-          "wall_ns": 148738036,
+          "instructions": 550271556,
+          "wall_ns": 119747232,
           "wall_ns_rounds": [
-            148967174,
-            148863819,
-            154761492,
-            148738036,
-            148881272
+            124301334,
+            127133542,
+            119747232,
+            122765209,
+            122081088
           ]
         },
         "rust": {
           "executable_bytes": 1952344,
           "hash": "8abe171dafb86d3dd50a40c9c27712aea30680fc83d5b16bdf8443e0aa9b22ec",
-          "instructions": 1250393816,
-          "wall_ns": 181733843,
+          "instructions": 1250393801,
+          "wall_ns": 141730508,
           "wall_ns_rounds": [
-            185646146,
-            187453142,
-            183444118,
-            181733843,
-            183455546
+            143901920,
+            146047893,
+            145128648,
+            141730508,
+            146057227
           ]
         },
         "spp": {
-          "executable_bytes": 94968,
-          "hash": "2750843bcd23545c92d73dbadf1a9a41619c20bf8c920a97b9c4c885be689202",
-          "instructions": 950638941,
+          "executable_bytes": 76712,
+          "hash": "07f2973cc6df2a4dab4bbd54f770640330653ce6016bb615faef314b673ebf6b",
+          "instructions": 950637821,
           "records": {
-            "executable.bytes": 94968,
-            "llvm.after_opt.blocks": 401,
-            "llvm.after_opt.functions": 19,
-            "llvm.after_opt.instructions": 1834,
-            "llvm.before_opt.blocks": 1049,
-            "llvm.before_opt.functions": 257,
-            "llvm.before_opt.instructions": 5767,
-            "object.bytes": 82216
+            "executable.bytes": 76712,
+            "llvm.after_opt.blocks": 304,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 1600,
+            "llvm.before_opt.blocks": 1074,
+            "llvm.before_opt.functions": 258,
+            "llvm.before_opt.instructions": 5823,
+            "object.bytes": 66240
           },
-          "wall_ns": 169793461,
+          "wall_ns": 126995444,
           "wall_ns_rounds": [
-            169793461,
-            169963939,
-            170293264,
-            169944333,
-            172937641
+            131116233,
+            129684346,
+            129635983,
+            135459508,
+            126995444
           ]
         }
       },
       "layer": "core",
       "output": "831250007\n50000000\n",
       "ratios": {
-        "spp/c": 1.141560461373848,
-        "spp/c_instructions": 1.7275815092033235,
-        "spp/rust": 0.934297421972197,
-        "spp/rust_instructions": 0.7602716270951231
+        "spp/c": 1.0605292655115401,
+        "spp/c_instructions": 1.7275794298915206,
+        "spp/rust": 0.8960346349707573,
+        "spp/rust_instructions": 0.760270740497697
       }
     },
     "ast/gen_expression": {
@@ -547,60 +547,60 @@
         "c": {
           "executable_bytes": 16056,
           "hash": "a2cdc1b39a018ff1726cc11be202ebe2895420f4e05206e533cf9eceb138b3f1",
-          "instructions": 550271093,
-          "wall_ns": 148927928,
+          "instructions": 550271107,
+          "wall_ns": 121159503,
           "wall_ns_rounds": [
-            149019577,
-            148927928,
-            149298020,
-            150974420,
-            149075672
+            121159503,
+            126571467,
+            123095510,
+            127697705,
+            121974911
           ]
         },
         "rust": {
           "executable_bytes": 1952144,
           "hash": "ad4e6e71e20ce120588a9cf81c5dcc75e1809d176ac25eb478a5cb2293220a85",
-          "instructions": 850393210,
-          "wall_ns": 155299066,
+          "instructions": 850393195,
+          "wall_ns": 125423657,
           "wall_ns_rounds": [
-            155466848,
-            162730194,
-            155711801,
-            155373216,
-            155299066
+            130488379,
+            125423657,
+            132618058,
+            126795114,
+            133368740
           ]
         },
         "spp": {
-          "executable_bytes": 94256,
-          "hash": "4d1d2019c4610ce3f1a0034317645c5e28ada7db70878f951d38d77b02f4d173",
-          "instructions": 650637699,
+          "executable_bytes": 76000,
+          "hash": "e54203e41b2cfc26e6c94c88b026bb638063ea888a66a6a3a972f4069e52ab77",
+          "instructions": 650636289,
           "records": {
-            "executable.bytes": 94256,
-            "llvm.after_opt.blocks": 394,
-            "llvm.after_opt.functions": 18,
-            "llvm.after_opt.instructions": 1796,
-            "llvm.before_opt.blocks": 1006,
-            "llvm.before_opt.functions": 255,
-            "llvm.before_opt.instructions": 5549,
-            "object.bytes": 80976
+            "executable.bytes": 76000,
+            "llvm.after_opt.blocks": 297,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1570,
+            "llvm.before_opt.blocks": 1030,
+            "llvm.before_opt.functions": 256,
+            "llvm.before_opt.instructions": 5604,
+            "object.bytes": 64752
           },
-          "wall_ns": 141725280,
+          "wall_ns": 112488287,
           "wall_ns_rounds": [
-            145255456,
-            146628687,
-            141973280,
-            142842163,
-            141725280
+            114253606,
+            117821293,
+            112488287,
+            120941934,
+            114126625
           ]
         }
       },
       "layer": "core",
       "output": "898750007\n",
       "ratios": {
-        "spp/c": 0.9516366869751924,
-        "spp/c_instructions": 1.1823948364301957,
-        "spp/rust": 0.9125958297778816,
-        "spp/rust_instructions": 0.7651021802020268
+        "spp/c": 0.9284314000528708,
+        "spp/c_instructions": 1.182392243974387,
+        "spp/rust": 0.8968665855437463,
+        "spp/rust_instructions": 0.7651005356410454
       }
     },
     "ast/literals": {
@@ -611,59 +611,59 @@
           "executable_bytes": 16104,
           "hash": "1ffc24ef368b5201d2093e76212541d3a260aab3264d92d9cb1e792e6aab83c0",
           "instructions": 3000272224,
-          "wall_ns": 142154909,
+          "wall_ns": 107985636,
           "wall_ns_rounds": [
-            142296749,
-            142397752,
-            142154909,
-            144631253,
-            142273671
+            112185152,
+            113795147,
+            110716656,
+            107985636,
+            116588867
           ]
         },
         "rust": {
           "executable_bytes": 1953328,
           "hash": "97f4d12714ebe53b99020f1911454737ddf50219bc0c2ced4b056cc076b98c4d",
-          "instructions": 5400393904,
-          "wall_ns": 235086035,
+          "instructions": 5400393903,
+          "wall_ns": 194195487,
           "wall_ns_rounds": [
-            237468916,
-            237738864,
-            235086035,
-            236721976,
-            235126663
+            194195487,
+            199987101,
+            203976972,
+            197944383,
+            198723358
           ]
         },
         "spp": {
-          "executable_bytes": 96888,
-          "hash": "542e7c14b743028d2b4ff7c44dba95607fc93a6e189fce03df17ac68bcb661b1",
-          "instructions": 3400694105,
+          "executable_bytes": 87128,
+          "hash": "f7a5177e141126c17903f4336c24d8289a885ddf40ac8bff799198031d827f7e",
+          "instructions": 3800693289,
           "records": {
-            "executable.bytes": 96888,
-            "llvm.after_opt.blocks": 426,
-            "llvm.after_opt.functions": 19,
-            "llvm.after_opt.instructions": 1991,
-            "llvm.before_opt.blocks": 1083,
-            "llvm.before_opt.functions": 292,
-            "llvm.before_opt.instructions": 6049,
-            "object.bytes": 88736
+            "executable.bytes": 87128,
+            "llvm.after_opt.blocks": 336,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 1779,
+            "llvm.before_opt.blocks": 1110,
+            "llvm.before_opt.functions": 293,
+            "llvm.before_opt.instructions": 6112,
+            "object.bytes": 73656
           },
-          "wall_ns": 141991115,
+          "wall_ns": 123308720,
           "wall_ns_rounds": [
-            142600927,
-            141991115,
-            142414992,
-            142242830,
-            144386791
+            126700859,
+            128226968,
+            127838773,
+            123308720,
+            130428912
           ]
         }
       },
       "layer": "core",
       "output": "1250002937499985\n50000000\n",
       "ratios": {
-        "spp/c": 0.9988477780953734,
-        "spp/c_instructions": 1.133461849827131,
-        "spp/rust": 0.6039963837069267,
-        "spp/rust_instructions": 0.6297122331171345
+        "spp/c": 1.141899280011649,
+        "spp/c_instructions": 1.2667828134384649,
+        "spp/rust": 0.6349721196147056,
+        "spp/rust_instructions": 0.7037807532685084
       }
     },
     "ast/locals": {
@@ -673,60 +673,60 @@
         "c": {
           "executable_bytes": 16056,
           "hash": "05325be4726eaa8738145b734d4abbe077072e9e81edfac0cfb50f83bd01c809",
-          "instructions": 2300271494,
-          "wall_ns": 402544002,
+          "instructions": 2300271508,
+          "wall_ns": 312037447,
           "wall_ns_rounds": [
-            402993633,
-            405310270,
-            402544002,
-            406779211,
-            404983559
+            327270411,
+            312037447,
+            313112246,
+            322615777,
+            315725114
           ]
         },
         "rust": {
           "executable_bytes": 1952296,
           "hash": "57ab1e3a1b71c72f6c087d4706c882bcf18459b67e5e59de38c9195bc54e7464",
-          "instructions": 3100393538,
-          "wall_ns": 455856837,
+          "instructions": 3100393518,
+          "wall_ns": 338700595,
           "wall_ns_rounds": [
-            455856837,
-            457622961,
-            461432805,
-            457065837,
-            460469179
+            340553788,
+            350100504,
+            341096095,
+            338700595,
+            349971302
           ]
         },
         "spp": {
-          "executable_bytes": 95016,
-          "hash": "016f291f2c6b7545da5b3261554748bdd46e7400e6c00682c3ac3074c6177352",
-          "instructions": 2800638693,
+          "executable_bytes": 80792,
+          "hash": "dac0296a8cd94e19fbebb0289544ffd2e52771b2e0d7c627130c56b0f2b06abe",
+          "instructions": 2800637384,
           "records": {
-            "executable.bytes": 95016,
-            "llvm.after_opt.blocks": 401,
-            "llvm.after_opt.functions": 19,
-            "llvm.after_opt.instructions": 1845,
-            "llvm.before_opt.blocks": 982,
-            "llvm.before_opt.functions": 253,
-            "llvm.before_opt.instructions": 5581,
-            "object.bytes": 83832
+            "executable.bytes": 80792,
+            "llvm.after_opt.blocks": 304,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 1611,
+            "llvm.before_opt.blocks": 1005,
+            "llvm.before_opt.functions": 254,
+            "llvm.before_opt.instructions": 5635,
+            "object.bytes": 67832
           },
-          "wall_ns": 430677258,
+          "wall_ns": 312428476,
           "wall_ns_rounds": [
-            431677524,
-            437874600,
-            430677258,
-            437842625,
-            433668242
+            324946460,
+            324712968,
+            312428476,
+            323342542,
+            325060681
           ]
         }
       },
       "layer": "core",
       "output": "883008\n45152\n",
       "ratios": {
-        "spp/c": 1.0698886478502294,
-        "spp/c_instructions": 1.2175252792138458,
-        "spp/rust": 0.9447642835287782,
-        "spp/rust_instructions": 0.9033171623775975
+        "spp/c": 1.001253147671087,
+        "spp/c_instructions": 1.2175247027404383,
+        "spp/rust": 0.9224326163347897,
+        "spp/rust_instructions": 0.9033167460002411
       }
     },
     "ast/loops": {
@@ -736,60 +736,60 @@
         "c": {
           "executable_bytes": 16056,
           "hash": "b8adfe250026329b95e0bc89e98d55a84e2f6e01c8f70be309ace2f1fb58fd4f",
-          "instructions": 3056229266,
-          "wall_ns": 163274535,
+          "instructions": 3056229252,
+          "wall_ns": 142863721,
           "wall_ns_rounds": [
-            165306510,
-            164604602,
-            164101231,
-            163274535,
-            164861218
+            151783536,
+            149981295,
+            149763137,
+            153112304,
+            142863721
           ]
         },
         "rust": {
           "executable_bytes": 1951848,
           "hash": "e565b78f6c6af24bbc0ff1f324c72b9c6e36528d6c3e9400f97efcd0027c46f5",
-          "instructions": 3504778421,
-          "wall_ns": 155871028,
+          "instructions": 3504778420,
+          "wall_ns": 149802591,
           "wall_ns_rounds": [
-            156181113,
-            156137589,
-            155871028,
-            159168399,
-            157374528
+            149802591,
+            162056801,
+            156835323,
+            160717603,
+            153784667
           ]
         },
         "spp": {
-          "executable_bytes": 94984,
-          "hash": "1e01df4d737d64e5a858512b6d7c34f961c9f1a940b8fa197cca5358fba4614a",
-          "instructions": 2161992358,
+          "executable_bytes": 80720,
+          "hash": "eb262dd4ef652fe1fe9cb0d0f5d1cdd070ce00a3955e686502b21f392be97f12",
+          "instructions": 2528052358,
           "records": {
-            "executable.bytes": 94984,
-            "llvm.after_opt.blocks": 409,
-            "llvm.after_opt.functions": 18,
-            "llvm.after_opt.instructions": 1841,
-            "llvm.before_opt.blocks": 1027,
-            "llvm.before_opt.functions": 256,
-            "llvm.before_opt.instructions": 5642,
-            "object.bytes": 84016
+            "executable.bytes": 80720,
+            "llvm.after_opt.blocks": 318,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1630,
+            "llvm.before_opt.blocks": 1065,
+            "llvm.before_opt.functions": 258,
+            "llvm.before_opt.instructions": 5729,
+            "object.bytes": 67968
           },
-          "wall_ns": 105678526,
+          "wall_ns": 87649813,
           "wall_ns_rounds": [
-            106569307,
-            105947558,
-            105678526,
-            105788060,
-            106768167
+            88164355,
+            88609499,
+            87649813,
+            88148174,
+            88047672
           ]
         }
       },
       "layer": "core",
       "output": "203330547\n",
       "ratios": {
-        "spp/c": 0.647244385047552,
-        "spp/c_instructions": 0.7074051616649888,
-        "spp/rust": 0.6779869700994081,
-        "spp/rust_instructions": 0.6168699125301993
+        "spp/c": 0.613520440224289,
+        "spp/c_instructions": 0.8271802111525631,
+        "spp/rust": 0.5851021161576571,
+        "spp/rust_instructions": 0.7213158879242357
       }
     },
     "ast/members": {
@@ -800,59 +800,59 @@
           "executable_bytes": 16056,
           "hash": "f013f93db35082497a67a357960dfda927cea1e9f80829c642170b9de1c88674",
           "instructions": 3600271129,
-          "wall_ns": 412101600,
+          "wall_ns": 328717062,
           "wall_ns_rounds": [
-            412363847,
-            412101600,
-            417607685,
-            416522046,
-            414061263
+            328717062,
+            329244827,
+            331897454,
+            330345947,
+            330644016
           ]
         },
         "rust": {
           "executable_bytes": 1952112,
           "hash": "68bfae438f5d884444352ba6371c570122105d9609de4ef597a029108e66d395",
-          "instructions": 2400393264,
-          "wall_ns": 400929979,
+          "instructions": 2400393277,
+          "wall_ns": 300175505,
           "wall_ns_rounds": [
-            400929979,
-            418436762,
-            406577715,
-            401315788,
-            404964446
+            314007899,
+            314327920,
+            300175505,
+            315332384,
+            314334270
           ]
         },
         "spp": {
-          "executable_bytes": 94520,
-          "hash": "29f24350dc7fdc2208540d474dc36c373a910ac405e11b344fd59fd42aa4cdc8",
-          "instructions": 2400637710,
+          "executable_bytes": 76168,
+          "hash": "a60a2e7c6f442cb5886d7f8294a780b99486f0c1438b0d31066f3b813dc570e9",
+          "instructions": 2400636250,
           "records": {
-            "executable.bytes": 94520,
-            "llvm.after_opt.blocks": 394,
-            "llvm.after_opt.functions": 18,
-            "llvm.after_opt.instructions": 1805,
-            "llvm.before_opt.blocks": 982,
-            "llvm.before_opt.functions": 257,
-            "llvm.before_opt.instructions": 5495,
-            "object.bytes": 82976
+            "executable.bytes": 76168,
+            "llvm.after_opt.blocks": 297,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1579,
+            "llvm.before_opt.blocks": 1005,
+            "llvm.before_opt.functions": 258,
+            "llvm.before_opt.instructions": 5549,
+            "object.bytes": 66736
           },
-          "wall_ns": 401418234,
+          "wall_ns": 308843396,
           "wall_ns_rounds": [
-            423327114,
-            401418234,
-            407039948,
-            401782109,
-            404813154
+            308843396,
+            313878043,
+            311445056,
+            323514874,
+            310924903
           ]
         }
       },
       "layer": "core",
       "output": "18260791\n",
       "ratios": {
-        "spp/c": 0.9740758929351403,
-        "spp/c_instructions": 0.6667935897002273,
-        "spp/rust": 1.0012178061646022,
-        "spp/rust_instructions": 1.0001018358131837
+        "spp/c": 0.9395417266171598,
+        "spp/c_instructions": 0.6667931841752133,
+        "spp/rust": 1.0288760770136791,
+        "spp/rust_instructions": 1.000101222163188
       }
     },
     "ast/object_initializer": {
@@ -862,60 +862,60 @@
         "c": {
           "executable_bytes": 16056,
           "hash": "ff5d7273b03396eafcbaf464e6d3ec3e735ebdea1ebdd35410d9b780e118c8f4",
-          "instructions": 4200271459,
-          "wall_ns": 491588262,
+          "instructions": 4200271473,
+          "wall_ns": 397942657,
           "wall_ns_rounds": [
-            501975523,
-            494474267,
-            492270566,
-            491588262,
-            493552730
+            397942657,
+            410064010,
+            407220086,
+            407379224,
+            410030720
           ]
         },
         "rust": {
           "executable_bytes": 1953632,
           "hash": "d6c6b51efcd8c44fd2c391a4c521cb9bd0fbbbe5233e70d7884df2632b4c8e17",
-          "instructions": 4200393872,
-          "wall_ns": 480634111,
+          "instructions": 4200393852,
+          "wall_ns": 396390449,
           "wall_ns_rounds": [
-            481632673,
-            480634111,
-            492333296,
-            481579002,
-            486702683
+            401299355,
+            396390449,
+            406536367,
+            396710299,
+            400803356
           ]
         },
         "spp": {
-          "executable_bytes": 96248,
-          "hash": "517c878bf38b62ea81ae42dc99b2089d65e5e5ee2dae58ab87c35e9b2de96b9e",
-          "instructions": 4600638777,
+          "executable_bytes": 85888,
+          "hash": "b802d0fcb8a3a71a2a403001938a0ae07cef327310ae099935c232a04241562a",
+          "instructions": 4600637495,
           "records": {
-            "executable.bytes": 96248,
-            "llvm.after_opt.blocks": 410,
-            "llvm.after_opt.functions": 19,
-            "llvm.after_opt.instructions": 1872,
-            "llvm.before_opt.blocks": 1017,
-            "llvm.before_opt.functions": 270,
-            "llvm.before_opt.instructions": 5693,
-            "object.bytes": 86336
+            "executable.bytes": 85888,
+            "llvm.after_opt.blocks": 308,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 1635,
+            "llvm.before_opt.blocks": 1040,
+            "llvm.before_opt.functions": 271,
+            "llvm.before_opt.instructions": 5747,
+            "object.bytes": 69656
           },
-          "wall_ns": 488795371,
+          "wall_ns": 338159278,
           "wall_ns_rounds": [
-            502117098,
-            488932885,
-            488795371,
-            490586701,
-            493227774
+            345714758,
+            341337633,
+            345222206,
+            338159278,
+            338976059
           ]
         }
       },
       "layer": "core",
       "output": "728729\n486285\n",
       "ratios": {
-        "spp/c": 0.9943186377383437,
-        "spp/c_instructions": 1.0953193911174777,
-        "spp/rust": 1.0169801930683193,
-        "spp/rust_instructions": 1.095287469984196
+        "spp/c": 0.8497688600395509,
+        "spp/c_instructions": 1.0953190822482821,
+        "spp/rust": 0.8530964327044116,
+        "spp/rust_instructions": 1.095287169989887
       }
     },
     "ast/postfix_expression_operator_function_call": {
@@ -925,60 +925,60 @@
         "c": {
           "executable_bytes": 16080,
           "hash": "8f63da9f253a96dc178fa1e22d4669dc1b11a075d754c75a6b913963084b95fa",
-          "instructions": 1944620033,
-          "wall_ns": 160554075,
+          "instructions": 1944619972,
+          "wall_ns": 120927118,
           "wall_ns_rounds": [
-            163332452,
-            160814119,
-            160554075,
-            167760269,
-            169410302
+            128984719,
+            126650181,
+            122296471,
+            120927118,
+            124175031
           ]
         },
         "rust": {
           "executable_bytes": 1951744,
           "hash": "93362f446876ff5ca4bbe4d292f41158a082d54d51f7f89d1ced678f4aeb13e4",
-          "instructions": 2968083957,
-          "wall_ns": 329361758,
+          "instructions": 2968083956,
+          "wall_ns": 207881150,
           "wall_ns_rounds": [
-            329547225,
-            329411870,
-            329361758,
-            329894389,
-            344995775
+            213954430,
+            222073322,
+            219966038,
+            216653527,
+            207881150
           ]
         },
         "spp": {
-          "executable_bytes": 94328,
-          "hash": "26e0ea8a5641d81d5092140e1e3de074b287bac7423d6a79f4a241968618a95d",
-          "instructions": 3684667363,
+          "executable_bytes": 76000,
+          "hash": "2bfde46f41c940bc27d4e2a2e8dd0cae2d8fc3903b22fdec6c0ba26f5a5e20a7",
+          "instructions": 3684665896,
           "records": {
-            "executable.bytes": 94328,
-            "llvm.after_opt.blocks": 393,
-            "llvm.after_opt.functions": 19,
-            "llvm.after_opt.instructions": 1792,
-            "llvm.before_opt.blocks": 978,
-            "llvm.before_opt.functions": 253,
-            "llvm.before_opt.instructions": 5442,
-            "object.bytes": 82400
+            "executable.bytes": 76000,
+            "llvm.after_opt.blocks": 296,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 1566,
+            "llvm.before_opt.blocks": 1001,
+            "llvm.before_opt.functions": 254,
+            "llvm.before_opt.instructions": 5496,
+            "object.bytes": 66248
           },
-          "wall_ns": 335332939,
+          "wall_ns": 209705658,
           "wall_ns_rounds": [
-            336589402,
-            335368070,
-            337564893,
-            335610834,
-            335332939
+            221808794,
+            209705658,
+            210534747,
+            220150646,
+            222001355
           ]
         }
       },
       "layer": "core",
       "output": "63245986\n",
       "ratios": {
-        "spp/c": 2.088598118733517,
-        "spp/c_instructions": 1.8948006810953182,
-        "spp/rust": 1.018129551640297,
-        "spp/rust_instructions": 1.2414296281309674
+        "spp/c": 1.734149142626553,
+        "spp/c_instructions": 1.8947999861435136,
+        "spp/rust": 1.0087766880258262,
+        "spp/rust_instructions": 1.241429134290971
       }
     },
     "ast/slices": {
@@ -988,60 +988,60 @@
         "c": {
           "executable_bytes": 16136,
           "hash": "a5136fb5018e4e6456818ef589046f67e4541307b4383894d689c19b96e25d94",
-          "instructions": 1352829018,
-          "wall_ns": 75393009,
+          "instructions": 1352829032,
+          "wall_ns": 69759399,
           "wall_ns_rounds": [
-            75737949,
-            75393009,
-            75450545,
-            75519797,
-            75701212
+            71910580,
+            72698407,
+            69773440,
+            72880522,
+            69759399
           ]
         },
         "rust": {
           "executable_bytes": 1952256,
           "hash": "4b64ce55c231dd72dc0d0ed55d2d643e9ccba3edfafbad69707cfd2498e897f1",
-          "instructions": 4183650679,
-          "wall_ns": 458235331,
+          "instructions": 4183650659,
+          "wall_ns": 375306397,
           "wall_ns_rounds": [
-            458235331,
-            466689141,
-            458375421,
-            460891888,
-            458414479
+            383681177,
+            386949450,
+            387066788,
+            375306397,
+            386438386
           ]
         },
         "spp": {
-          "executable_bytes": 102424,
-          "hash": "c964da521bac5b0174a0d5ea6358e3cf14869441e8365fbc97128f22abb6804a",
-          "instructions": 3979816967,
+          "executable_bytes": 87520,
+          "hash": "ba37291756b1f163550b49efd3b53fd3a5aa6c4d77da3a2a28e5cb142de93429",
+          "instructions": 3979815606,
           "records": {
-            "executable.bytes": 102424,
-            "llvm.after_opt.blocks": 448,
-            "llvm.after_opt.functions": 20,
-            "llvm.after_opt.instructions": 2103,
-            "llvm.before_opt.blocks": 1150,
-            "llvm.before_opt.functions": 301,
-            "llvm.before_opt.instructions": 6514,
-            "object.bytes": 90672
+            "executable.bytes": 87520,
+            "llvm.after_opt.blocks": 337,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1796,
+            "llvm.before_opt.blocks": 1190,
+            "llvm.before_opt.functions": 303,
+            "llvm.before_opt.instructions": 6602,
+            "object.bytes": 73184
           },
-          "wall_ns": 458273788,
+          "wall_ns": 379350411,
           "wall_ns_rounds": [
-            460974965,
-            458286491,
-            464656781,
-            458273788,
-            459017582
+            379350411,
+            388458104,
+            384732089,
+            391412445,
+            389061493
           ]
         }
       },
       "layer": "std",
       "output": "832688400000\n",
       "ratios": {
-        "spp/c": 6.078465285819803,
-        "spp/c_instructions": 2.9418477235827596,
-        "spp/rust": 1.0000839241267496,
-        "spp/rust_instructions": 0.9512785058697296
+        "spp/c": 5.437982787093679,
+        "spp/c_instructions": 2.9418466870985958,
+        "spp/rust": 1.010775233335551,
+        "spp/rust_instructions": 0.9512781851033609
       }
     },
     "codegen/checked_add_in_place": {
@@ -1052,59 +1052,59 @@
           "executable_bytes": 16136,
           "hash": "e7e3cd4544ec97eb06862e6a0605068027140a1c7ca0a38c287a64e92a57766f",
           "instructions": 1127177783,
-          "wall_ns": 59080100,
+          "wall_ns": 35299359,
           "wall_ns_rounds": [
-            59091722,
-            59797411,
-            59376222,
-            59203875,
-            59080100
+            35299359,
+            36683625,
+            36844006,
+            37038269,
+            36290633
           ]
         },
         "rust": {
           "executable_bytes": 1953464,
           "hash": "6710d37e8d77c826ed3000794e201a2c8b256a0b161a87a58b7f3cce161abc3e",
-          "instructions": 1434249257,
-          "wall_ns": 59369594,
+          "instructions": 1434249256,
+          "wall_ns": 50557746,
           "wall_ns_rounds": [
-            59667709,
-            59624021,
-            60397666,
-            60790576,
-            59369594
+            50557746,
+            54305933,
+            52877841,
+            51839948,
+            51944972
           ]
         },
         "spp": {
-          "executable_bytes": 102616,
-          "hash": "70efbc4cd0d17fe520eb958a367c17e8d2ec9332babfc27730ae1321ec3cb5fc",
-          "instructions": 1434593787,
+          "executable_bytes": 87528,
+          "hash": "c7733e9b7c065bfc44bd08685a07eb242b019340b80249f77621fa0067a4789c",
+          "instructions": 1434542227,
           "records": {
-            "executable.bytes": 102616,
-            "llvm.after_opt.blocks": 434,
-            "llvm.after_opt.functions": 20,
-            "llvm.after_opt.instructions": 1990,
-            "llvm.before_opt.blocks": 1164,
-            "llvm.before_opt.functions": 309,
-            "llvm.before_opt.instructions": 6546,
-            "object.bytes": 91136
+            "executable.bytes": 87528,
+            "llvm.after_opt.blocks": 318,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1681,
+            "llvm.before_opt.blocks": 1202,
+            "llvm.before_opt.functions": 311,
+            "llvm.before_opt.instructions": 6632,
+            "object.bytes": 72928
           },
-          "wall_ns": 59944882,
+          "wall_ns": 51601759,
           "wall_ns_rounds": [
-            60676732,
-            60073970,
-            59944882,
-            60287140,
-            59983401
+            51601759,
+            51627027,
+            52817440,
+            53180097,
+            51942463
           ]
         }
       },
       "layer": "core",
       "output": "300002\n",
       "ratios": {
-        "spp/c": 1.0146374498350546,
-        "spp/c_instructions": 1.2727307161624566,
-        "spp/rust": 1.0096899433066697,
-        "spp/rust_instructions": 1.000240216265282
+        "spp/c": 1.4618327488609637,
+        "spp/c_instructions": 1.272684973600123,
+        "spp/rust": 1.0206499118849166,
+        "spp/rust_instructions": 1.0002042678417118
       }
     },
     "codegen/checked_dot": {
@@ -1115,59 +1115,122 @@
           "executable_bytes": 16136,
           "hash": "c4fa74d0f4c5c2d3308b3fd9fd40901af4fb97d8234fe54ed81d95cd734e2ae0",
           "instructions": 1640222248,
-          "wall_ns": 88467148,
+          "wall_ns": 71255640,
           "wall_ns_rounds": [
-            88820594,
-            89551127,
-            88467148,
-            88985408,
-            88730013
+            71255640,
+            101810978,
+            73818561,
+            72000813,
+            74260268
           ]
         },
         "rust": {
           "executable_bytes": 1955032,
           "hash": "7cb06d4f331ab88f1f84677f32099acf0804b1ced791a7b452748012f1d49e4e",
-          "instructions": 2459550665,
-          "wall_ns": 170684680,
+          "instructions": 2459550678,
+          "wall_ns": 99649120,
           "wall_ns_rounds": [
-            173588581,
-            171576196,
-            170684680,
-            175579334,
-            172996692
+            103974337,
+            111312894,
+            105514028,
+            99649120,
+            104851729
           ]
         },
         "spp": {
-          "executable_bytes": 109896,
-          "hash": "042f579392c51d20b536a0f72156e41a846b2160bfa8396fdb4a3a5165867cbd",
-          "instructions": 1640790933,
+          "executable_bytes": 94696,
+          "hash": "e7aa37f1aeec4ab0b24ecae8e740fe201fae4f650e4c830249c9dd561e329aa1",
+          "instructions": 1640797648,
           "records": {
-            "executable.bytes": 109896,
-            "llvm.after_opt.blocks": 465,
-            "llvm.after_opt.functions": 22,
-            "llvm.after_opt.instructions": 2120,
-            "llvm.before_opt.blocks": 1146,
-            "llvm.before_opt.functions": 313,
-            "llvm.before_opt.instructions": 6463,
-            "object.bytes": 99560
+            "executable.bytes": 94696,
+            "llvm.after_opt.blocks": 349,
+            "llvm.after_opt.functions": 21,
+            "llvm.after_opt.instructions": 1805,
+            "llvm.before_opt.blocks": 1171,
+            "llvm.before_opt.functions": 314,
+            "llvm.before_opt.instructions": 6519,
+            "object.bytes": 80960
           },
-          "wall_ns": 90062550,
+          "wall_ns": 70895778,
           "wall_ns_rounds": [
-            99220325,
-            90991675,
-            90062550,
-            97769108,
-            90839921
+            71763105,
+            73550698,
+            71936466,
+            73638931,
+            70895778
           ]
         }
       },
       "layer": "core",
       "output": "54974741\n",
       "ratios": {
-        "spp/c": 1.0180338355657175,
-        "spp/c_instructions": 1.0003467121609242,
-        "spp/rust": 0.527654561616192,
-        "spp/rust_instructions": 0.6671100361333683
+        "spp/c": 0.9949497050338753,
+        "spp/c_instructions": 1.0003508061183182,
+        "spp/rust": 0.711454130252229,
+        "spp/rust_instructions": 0.6671127627808123
+      }
+    },
+    "codegen/checked_float_scale": {
+      "description": "a[i] = a[i] * b[i] + 1 over two 4096-element Vec[F64], 25K times: a checked multiply and add per element, deferred to the loop's exit and vectorised; C and Rust do not check floats, so this is the checks' cost against IEEE's non-stop arithmetic",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16136,
+          "hash": "2b8c675d61e693afddc8c25fb3722ff2239d7002ff563a12f65db5522c51c624",
+          "instructions": 333305407,
+          "wall_ns": 16259528,
+          "wall_ns_rounds": [
+            16259528,
+            16630466,
+            16735545,
+            16519649,
+            16832451
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1952880,
+          "hash": "f28a991d34c660fa2dbdbf3ce0f3c8a544dd892d8e4af1313357b965c53ea626",
+          "instructions": 334079845,
+          "wall_ns": 16353619,
+          "wall_ns_rounds": [
+            16618398,
+            16714353,
+            16843598,
+            16353619,
+            17301718
+          ]
+        },
+        "spp": {
+          "executable_bytes": 88488,
+          "hash": "3ec3eae2e5e7a463a1d4bebc068d2fdee6d97d83ae708fc5016eb31367013983",
+          "instructions": 487673831,
+          "records": {
+            "executable.bytes": 88488,
+            "llvm.after_opt.blocks": 337,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 1806,
+            "llvm.before_opt.blocks": 1193,
+            "llvm.before_opt.functions": 308,
+            "llvm.before_opt.instructions": 6603,
+            "object.bytes": 75760
+          },
+          "wall_ns": 20262138,
+          "wall_ns_rounds": [
+            20804976,
+            21228043,
+            20766217,
+            20863023,
+            20262138
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "9223372036854775808\n",
+      "ratios": {
+        "spp/c": 1.2461701225275421,
+        "spp/c_instructions": 1.4631440737473544,
+        "spp/rust": 1.2390002482019424,
+        "spp/rust_instructions": 1.4597523265733077
       }
     },
     "codegen/checked_map": {
@@ -1178,59 +1241,59 @@
           "executable_bytes": 16184,
           "hash": "5ec7b50691ca494a1e9bf340518edf7902ba62003e2597f9dfbec38532f378ef",
           "instructions": 1639557175,
-          "wall_ns": 116429315,
+          "wall_ns": 100902816,
           "wall_ns_rounds": [
-            116581881,
-            116429315,
-            116942321,
-            117100457,
-            117294091
+            103220628,
+            105908488,
+            106079656,
+            100902816,
+            107620988
           ]
         },
         "rust": {
           "executable_bytes": 1955056,
           "hash": "6a9cdbbc2c6b18f92ac00f3ea983a46aae40b624dfda29819c02b23a0d46138a",
-          "instructions": 2868753719,
-          "wall_ns": 173796716,
+          "instructions": 2868753732,
+          "wall_ns": 128487724,
           "wall_ns_rounds": [
-            174064697,
-            173796716,
-            174706552,
-            175199484,
-            174970842
+            128487724,
+            131709909,
+            133113214,
+            130372764,
+            133836302
           ]
         },
         "spp": {
-          "executable_bytes": 111728,
-          "hash": "061ea9124d876a33ba16f072f3ac2d3640af26c4e169f77d8dfd1d4e2cccfc55",
-          "instructions": 2254774399,
+          "executable_bytes": 96624,
+          "hash": "4b690d106eabc89e72c365060420a4998707841463da9aa08ae4c2daff943b1a",
+          "instructions": 2254722948,
           "records": {
-            "executable.bytes": 111728,
-            "llvm.after_opt.blocks": 493,
-            "llvm.after_opt.functions": 22,
-            "llvm.after_opt.instructions": 2217,
-            "llvm.before_opt.blocks": 1217,
-            "llvm.before_opt.functions": 332,
-            "llvm.before_opt.instructions": 6819,
-            "object.bytes": 104176
+            "executable.bytes": 96624,
+            "llvm.after_opt.blocks": 377,
+            "llvm.after_opt.functions": 21,
+            "llvm.after_opt.instructions": 1906,
+            "llvm.before_opt.blocks": 1257,
+            "llvm.before_opt.functions": 334,
+            "llvm.before_opt.instructions": 6907,
+            "object.bytes": 85752
           },
-          "wall_ns": 116864910,
+          "wall_ns": 114407702,
           "wall_ns_rounds": [
-            117698349,
-            117781041,
-            116864910,
-            117408431,
-            117351815
+            114407702,
+            119965445,
+            116375927,
+            120375253,
+            118360808
           ]
         }
       },
       "layer": "core",
       "output": "147308441\n",
       "ratios": {
-        "spp/c": 1.0037412828547518,
-        "spp/c_instructions": 1.3752337724971377,
-        "spp/rust": 0.6724230048167308,
-        "spp/rust_instructions": 0.7859769850811651
+        "spp/c": 1.1338405263139535,
+        "spp/c_instructions": 1.3752023914628047,
+        "spp/rust": 0.8904173755930177,
+        "spp/rust_instructions": 0.7859590465536691
       }
     },
     "codegen/checked_sum": {
@@ -1241,59 +1304,59 @@
           "executable_bytes": 16136,
           "hash": "971bf4484486d81be779ff78f752692a21bbf4eb3210b34547ded84203fc168e",
           "instructions": 718253401,
-          "wall_ns": 58420925,
+          "wall_ns": 48033550,
           "wall_ns_rounds": [
-            73868471,
-            58420925,
-            59692444,
-            58472621,
-            58644274
+            50581179,
+            48033550,
+            49390835,
+            48852093,
+            49647852
           ]
         },
         "rust": {
           "executable_bytes": 1954200,
           "hash": "6f4164dc726fad7fc49042557edcb176eaadb5188802bc1ef3eae909593ac52c",
-          "instructions": 1025497023,
-          "wall_ns": 72889981,
+          "instructions": 1025497036,
+          "wall_ns": 49679890,
           "wall_ns_rounds": [
-            85045631,
-            85795332,
-            72889981,
-            80748802,
-            87264023
+            51728688,
+            52917088,
+            49679890,
+            49796597,
+            51713184
           ]
         },
         "spp": {
-          "executable_bytes": 104456,
-          "hash": "fe59d99f1a20b47f0716a96b42bc0372f95447d233e2692b694711baf8a7572c",
-          "instructions": 1025837300,
+          "executable_bytes": 89440,
+          "hash": "61d0aaec8c495916fe2dbbe0c38b3dd91aad8453d2a4d6af60745aca1445e130",
+          "instructions": 1025835854,
           "records": {
-            "executable.bytes": 104456,
-            "llvm.after_opt.blocks": 442,
-            "llvm.after_opt.functions": 22,
-            "llvm.after_opt.instructions": 2022,
-            "llvm.before_opt.blocks": 1143,
-            "llvm.before_opt.functions": 313,
-            "llvm.before_opt.instructions": 6441,
-            "object.bytes": 95504
+            "executable.bytes": 89440,
+            "llvm.after_opt.blocks": 326,
+            "llvm.after_opt.functions": 21,
+            "llvm.after_opt.instructions": 1707,
+            "llvm.before_opt.blocks": 1168,
+            "llvm.before_opt.functions": 314,
+            "llvm.before_opt.instructions": 6497,
+            "object.bytes": 77296
           },
-          "wall_ns": 59594182,
+          "wall_ns": 48951974,
           "wall_ns_rounds": [
-            68461465,
-            59663888,
-            59762769,
-            60303805,
-            59594182
+            63983932,
+            50726427,
+            52193517,
+            49563586,
+            48951974
           ]
         }
       },
       "layer": "core",
       "output": "787818567\n",
       "ratios": {
-        "spp/c": 1.0200828213521098,
-        "spp/c_instructions": 1.428238694827983,
-        "spp/rust": 0.8175908565540715,
-        "spp/rust_instructions": 1.0003318166629138
+        "spp/c": 1.0191204689222428,
+        "spp/c_instructions": 1.4282366816109235,
+        "spp/rust": 0.9853478741599468,
+        "spp/rust_instructions": 1.0003303939339714
       }
     },
     "codegen/drops": {
@@ -1303,60 +1366,60 @@
         "c": {
           "executable_bytes": 16056,
           "hash": "f41088d82145986bd28b679b4389010fa45bdf2c76a6189e272637fd78887d2a",
-          "instructions": 950271125,
-          "wall_ns": 148576347,
+          "instructions": 950271106,
+          "wall_ns": 127233820,
           "wall_ns_rounds": [
-            148620583,
-            148576347,
-            148974321,
-            148800147,
-            154526004
+            128355991,
+            129784113,
+            128882183,
+            130404541,
+            127233820
           ]
         },
         "rust": {
           "executable_bytes": 1951776,
           "hash": "69a71a6c830b5b0144c0e64a2ffdad3d83899cf009fcb7856f6002328fcc835d",
-          "instructions": 1650393284,
-          "wall_ns": 161503022,
+          "instructions": 1650393283,
+          "wall_ns": 135521483,
           "wall_ns_rounds": [
-            162149076,
-            161641221,
-            161934372,
-            161503022,
-            162906200
+            135863501,
+            141959564,
+            136374050,
+            139094038,
+            135521483
           ]
         },
         "spp": {
-          "executable_bytes": 94696,
-          "hash": "23f8efa9cc2f03cfa831c317eb5756bd60675597b1ec8a9ba22836bbd59984b8",
-          "instructions": 900637727,
+          "executable_bytes": 75832,
+          "hash": "9c4bb08bbf9fdc8d55a5dd7cae56b6e3b51119ed17c7695cec03302c36e10d9f",
+          "instructions": 900636253,
           "records": {
-            "executable.bytes": 94696,
-            "llvm.after_opt.blocks": 401,
-            "llvm.after_opt.functions": 20,
-            "llvm.after_opt.instructions": 1861,
-            "llvm.before_opt.blocks": 1085,
-            "llvm.before_opt.functions": 286,
-            "llvm.before_opt.instructions": 6165,
-            "object.bytes": 83496
+            "executable.bytes": 75832,
+            "llvm.after_opt.blocks": 290,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1550,
+            "llvm.before_opt.blocks": 1108,
+            "llvm.before_opt.functions": 287,
+            "llvm.before_opt.instructions": 6219,
+            "object.bytes": 66096
           },
-          "wall_ns": 155390166,
+          "wall_ns": 125062880,
           "wall_ns_rounds": [
-            155824883,
-            155575479,
-            155480331,
-            155994543,
-            155390166
+            133711499,
+            127588355,
+            133862667,
+            125062880,
+            129633824
           ]
         }
       },
       "layer": "std",
       "output": "266249989\n",
       "ratios": {
-        "spp/c": 1.045860725058747,
-        "spp/c_instructions": 0.9477692242832276,
-        "spp/rust": 0.9621502067001569,
-        "spp/rust_instructions": 0.5457109743061703
+        "spp/c": 0.9829373982483588,
+        "spp/c_instructions": 0.9477676920969119,
+        "spp/rust": 0.922826973491723,
+        "spp/rust_instructions": 0.5457100815163703
       }
     },
     "codegen/iter_adapters": {
@@ -1366,60 +1429,60 @@
         "c": {
           "executable_bytes": 16136,
           "hash": "f6a7e505001cfd5235a2dd17ba763b289a19e0f37f1b8c87a7e2fac2748de749",
-          "instructions": 871596390,
-          "wall_ns": 58914648,
+          "instructions": 871596376,
+          "wall_ns": 37074113,
           "wall_ns_rounds": [
-            59713736,
-            59151995,
-            58992781,
-            58914648,
-            60158599
+            37360167,
+            37791216,
+            39197595,
+            37762739,
+            37074113
           ]
         },
         "rust": {
           "executable_bytes": 1952408,
           "hash": "240a20a38e82cddefbdd1aede1846de1a9c7ea8cc5019611bf4509503ee6d4a0",
-          "instructions": 871797042,
-          "wall_ns": 58904778,
+          "instructions": 871797041,
+          "wall_ns": 36672059,
           "wall_ns_rounds": [
-            59551602,
-            59023146,
-            58904778,
-            59376796,
-            60336042
+            36672059,
+            37848362,
+            39501683,
+            38851600,
+            36900330
           ]
         },
         "spp": {
-          "executable_bytes": 106680,
-          "hash": "83911451b152baba2f587930fcf018efaf3bf2856454f32f7017321afa543503",
-          "instructions": 17532333914,
+          "executable_bytes": 95744,
+          "hash": "a8c4fefada1b5899159083b0c5fa5eb7c1748d45f99cc15ba30913b2e6c5276d",
+          "instructions": 17532432885,
           "records": {
-            "executable.bytes": 106680,
-            "llvm.after_opt.blocks": 474,
-            "llvm.after_opt.functions": 30,
-            "llvm.after_opt.instructions": 2245,
-            "llvm.before_opt.blocks": 1192,
-            "llvm.before_opt.functions": 308,
-            "llvm.before_opt.instructions": 6656,
-            "object.bytes": 100648
+            "executable.bytes": 95744,
+            "llvm.after_opt.blocks": 365,
+            "llvm.after_opt.functions": 29,
+            "llvm.after_opt.instructions": 1937,
+            "llvm.before_opt.blocks": 1220,
+            "llvm.before_opt.functions": 309,
+            "llvm.before_opt.instructions": 6719,
+            "object.bytes": 82840
           },
-          "wall_ns": 2175112333,
+          "wall_ns": 1839004952,
           "wall_ns_rounds": [
-            2179048507,
-            2197358456,
-            2181717103,
-            2175112333,
-            2195777319
+            1874914921,
+            1843520002,
+            1955780428,
+            1885208335,
+            1839004952
           ]
         }
       },
       "layer": "std",
       "output": "17229105217883260800\n",
       "ratios": {
-        "spp/c": 36.91972042334871,
-        "spp/c_instructions": 20.115197946150282,
-        "spp/rust": 36.925906638677084,
-        "spp/rust_instructions": 20.110568250815422
+        "spp/c": 49.60347809265187,
+        "spp/c_instructions": 20.11531182066319,
+        "spp/rust": 50.14730566396613,
+        "spp/rust_instructions": 20.11068179915972
       }
     },
     "codegen/iter_mut": {
@@ -1430,59 +1493,59 @@
           "executable_bytes": 16136,
           "hash": "d10098f163669668781b3ca5aaef672bba4738c7a5ef36e406ffcd19cb6a31e0",
           "instructions": 1434103572,
-          "wall_ns": 85270835,
+          "wall_ns": 54239008,
           "wall_ns_rounds": [
-            85715824,
-            88890155,
-            87012911,
-            85270835,
-            86530338
+            58145224,
+            56788960,
+            54239008,
+            57602476,
+            56665884
           ]
         },
         "rust": {
           "executable_bytes": 1952688,
           "hash": "b08eb507c3b5bbdbd74d7250f4c0f76b33cc5d05d7496e33cb242544568b1bcd",
-          "instructions": 973758330,
-          "wall_ns": 44599187,
+          "instructions": 973758329,
+          "wall_ns": 41005220,
           "wall_ns_rounds": [
-            44599187,
-            44758101,
-            44994827,
-            44641360,
-            44824332
+            41775260,
+            41005220,
+            43168248,
+            42996800,
+            41810653
           ]
         },
         "spp": {
-          "executable_bytes": 103688,
-          "hash": "bde97be77c2de38bc19ffe39ae8b2822316a936d1684698e0cebeaa6346033e0",
-          "instructions": 769998963,
+          "executable_bytes": 88832,
+          "hash": "d6dcf440ae61acfbdeb7169014c031a3dacecc9f8c5ac4c2eee7d9d689ef69f7",
+          "instructions": 769997893,
           "records": {
-            "executable.bytes": 103688,
-            "llvm.after_opt.blocks": 443,
-            "llvm.after_opt.functions": 22,
-            "llvm.after_opt.instructions": 2048,
-            "llvm.before_opt.blocks": 1129,
-            "llvm.before_opt.functions": 295,
-            "llvm.before_opt.instructions": 6357,
-            "object.bytes": 93632
+            "executable.bytes": 88832,
+            "llvm.after_opt.blocks": 332,
+            "llvm.after_opt.functions": 21,
+            "llvm.after_opt.instructions": 1737,
+            "llvm.before_opt.blocks": 1155,
+            "llvm.before_opt.functions": 296,
+            "llvm.before_opt.instructions": 6414,
+            "object.bytes": 76200
           },
-          "wall_ns": 35341145,
+          "wall_ns": 47519644,
           "wall_ns_rounds": [
-            35947391,
-            35341145,
-            35395077,
-            35350417,
-            37036967
+            50888149,
+            50374586,
+            47519644,
+            49969276,
+            50365372
           ]
         }
       },
       "layer": "std",
       "output": "3945200747419093206\n",
       "ratios": {
-        "spp/c": 0.41445759268101456,
-        "spp/c_instructions": 0.5369200509877818,
-        "spp/rust": 0.792416798987838,
-        "spp/rust_instructions": 0.7907495517907405
+        "spp/c": 0.8761156546225919,
+        "spp/c_instructions": 0.5369193048770957,
+        "spp/rust": 1.158868163614291,
+        "spp/rust_instructions": 0.7907484537675261
       }
     },
     "codegen/iter_ref": {
@@ -1493,59 +1556,59 @@
           "executable_bytes": 16136,
           "hash": "517f347358839b77ab9400195db35ab5f387839c6776f1e63c1f0ffeb90198bb",
           "instructions": 461996390,
-          "wall_ns": 29865283,
+          "wall_ns": 24687193,
           "wall_ns_rounds": [
-            30694090,
-            29865283,
-            30349961,
-            29927616,
-            30848264
+            25766599,
+            24687193,
+            25850665,
+            25217361,
+            25621239
           ]
         },
         "rust": {
           "executable_bytes": 1952408,
           "hash": "86fe5443b3ab012e010d55abb4c1c5cc35efa3252bf6ea86b39155471972b16b",
-          "instructions": 462347009,
-          "wall_ns": 20375390,
+          "instructions": 462347008,
+          "wall_ns": 24568303,
           "wall_ns_rounds": [
-            20592812,
-            20409296,
-            20375390,
-            21574815,
-            21218570
+            25120055,
+            24568303,
+            25614199,
+            25237502,
+            25740880
           ]
         },
         "spp": {
-          "executable_bytes": 103536,
-          "hash": "fb475c452fd52595010f718611d8a2dfefa47c39a35e27efcb2219aa48ada7e3",
-          "instructions": 463237708,
+          "executable_bytes": 88656,
+          "hash": "099232247a4af974987e8a64cd6e8e02e53db670fb23a5c32702a46d2ba963a1",
+          "instructions": 463236672,
           "records": {
-            "executable.bytes": 103536,
-            "llvm.after_opt.blocks": 434,
-            "llvm.after_opt.functions": 22,
-            "llvm.after_opt.instructions": 2014,
-            "llvm.before_opt.blocks": 1125,
-            "llvm.before_opt.functions": 296,
-            "llvm.before_opt.instructions": 6340,
-            "object.bytes": 93096
+            "executable.bytes": 88656,
+            "llvm.after_opt.blocks": 323,
+            "llvm.after_opt.functions": 21,
+            "llvm.after_opt.instructions": 1703,
+            "llvm.before_opt.blocks": 1151,
+            "llvm.before_opt.functions": 297,
+            "llvm.before_opt.instructions": 6397,
+            "object.bytes": 75664
           },
-          "wall_ns": 22864662,
+          "wall_ns": 25535150,
           "wall_ns_rounds": [
-            24797385,
-            25875402,
-            26983482,
-            22864662,
-            28324803
+            26666745,
+            25535150,
+            25835332,
+            26446763,
+            26062685
           ]
         }
       },
       "layer": "std",
       "output": "16011466361954569984\n",
       "ratios": {
-        "spp/c": 0.7655933479686096,
-        "spp/c_instructions": 1.0026868564925366,
-        "spp/rust": 1.1221705204170325,
-        "spp/rust_instructions": 1.0019264729362616
+        "spp/c": 1.0343480524497053,
+        "spp/c_instructions": 1.0026846140507721,
+        "spp/rust": 1.0393534303122198,
+        "spp/rust_instructions": 1.0019242343620833
       }
     },
     "codegen/variants": {
@@ -1556,59 +1619,59 @@
           "executable_bytes": 16056,
           "hash": "44f7917bd7a80f5cb8867f1245927dac149407b569baf24d98cd5a310bf8ef18",
           "instructions": 1680271073,
-          "wall_ns": 250465335,
+          "wall_ns": 209776570,
           "wall_ns_rounds": [
-            250580149,
-            250465335,
-            250563312,
-            252693888,
-            273227707
+            215914275,
+            209776570,
+            215351647,
+            226827767,
+            218021535
           ]
         },
         "rust": {
           "executable_bytes": 1952200,
           "hash": "c3c6fe7f79b3801f8d08a4ebd03cc988b5f891777e8bc7d2c96c9f69f23d76a9",
-          "instructions": 1960393300,
-          "wall_ns": 254845234,
+          "instructions": 1960393299,
+          "wall_ns": 210635137,
           "wall_ns_rounds": [
-            255488390,
-            255615038,
-            257233930,
-            255252290,
-            254845234
+            223297106,
+            216801671,
+            212183195,
+            210635137,
+            222923179
           ]
         },
         "spp": {
-          "executable_bytes": 94544,
-          "hash": "f5f5a660964be49a42079aa9909ac54f78fd7c791dacd6342de875cd5a87b022",
-          "instructions": 2500637758,
+          "executable_bytes": 76168,
+          "hash": "714ac189b0dc8579815c45fd13a158334ea5f83ab765aab655fd055408c29537",
+          "instructions": 2500636359,
           "records": {
-            "executable.bytes": 94544,
-            "llvm.after_opt.blocks": 401,
-            "llvm.after_opt.functions": 18,
-            "llvm.after_opt.instructions": 1814,
-            "llvm.before_opt.blocks": 987,
-            "llvm.before_opt.functions": 253,
-            "llvm.before_opt.instructions": 5501,
-            "object.bytes": 83032
+            "executable.bytes": 76168,
+            "llvm.after_opt.blocks": 304,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1588,
+            "llvm.before_opt.blocks": 1010,
+            "llvm.before_opt.functions": 254,
+            "llvm.before_opt.instructions": 5555,
+            "object.bytes": 66768
           },
-          "wall_ns": 231280318,
+          "wall_ns": 191999901,
           "wall_ns_rounds": [
-            231280318,
-            255276552,
-            231508025,
-            231340243,
-            231340906
+            197870365,
+            200218432,
+            203053122,
+            195566695,
+            191999901
           ]
         }
       },
       "layer": "core",
       "output": "964000007\n",
       "ratios": {
-        "spp/c": 0.9234025059795201,
-        "spp/c_instructions": 1.4882347248502563,
-        "spp/rust": 0.9075324437890018,
-        "spp/rust_instructions": 1.275579628842845
+        "spp/c": 0.9152590348864985,
+        "spp/c_instructions": 1.4882338922465042,
+        "spp/rust": 0.9115283600570403,
+        "spp/rust_instructions": 1.2755789158612096
       }
     },
     "programs/bytecode-vm": {
@@ -1619,59 +1682,59 @@
           "executable_bytes": 16232,
           "hash": "15fb92ea03178348b2a8904ddf4e023b74596f13649cfc2ab3cda150fb555241",
           "instructions": 1680274505,
-          "wall_ns": 141280737,
+          "wall_ns": 66581039,
           "wall_ns_rounds": [
-            142084698,
-            141288976,
-            141280737,
-            141706763,
-            141296064
+            71856877,
+            66581039,
+            67214283,
+            69681290,
+            67975079
           ]
         },
         "rust": {
           "executable_bytes": 1955784,
           "hash": "9ee9ba0491b44a93728b26072fd550d193a9bb44c3ac86f8eda02cec3088bcda",
-          "instructions": 3120394848,
-          "wall_ns": 236692252,
+          "instructions": 3120394847,
+          "wall_ns": 114193594,
           "wall_ns_rounds": [
-            236692252,
-            259748518,
-            236863204,
-            237186639,
-            236835114
+            116108127,
+            114193594,
+            118251947,
+            118784880,
+            122421468
           ]
         },
         "spp": {
-          "executable_bytes": 103392,
-          "hash": "64928d6d04e76e9c76e1d15c2595ead0e3144582a8911275408900fff586dfa3",
-          "instructions": 3210639979,
+          "executable_bytes": 88584,
+          "hash": "4957917b7d9d73c5c5daa85986137c7aa4330928f410b31c4f9e74136d0c6ce0",
+          "instructions": 3210638774,
           "records": {
-            "executable.bytes": 103392,
-            "llvm.after_opt.blocks": 460,
-            "llvm.after_opt.functions": 23,
-            "llvm.after_opt.instructions": 2071,
-            "llvm.before_opt.blocks": 1124,
-            "llvm.before_opt.functions": 298,
-            "llvm.before_opt.instructions": 6408,
-            "object.bytes": 94144
+            "executable.bytes": 88584,
+            "llvm.after_opt.blocks": 349,
+            "llvm.after_opt.functions": 22,
+            "llvm.after_opt.instructions": 1760,
+            "llvm.before_opt.blocks": 1147,
+            "llvm.before_opt.functions": 299,
+            "llvm.before_opt.instructions": 6462,
+            "object.bytes": 76840
           },
-          "wall_ns": 179820050,
+          "wall_ns": 109554525,
           "wall_ns_rounds": [
-            182652119,
-            180811341,
-            275696431,
-            179820050,
-            179907984
+            117756511,
+            111915872,
+            115466031,
+            114305683,
+            109554525
           ]
         }
       },
       "layer": "core",
       "output": "450000015000256\n",
       "ratios": {
-        "spp/c": 1.2727853337854544,
-        "spp/c_instructions": 1.9107830116127364,
-        "spp/rust": 0.7597208969899023,
-        "spp/rust_instructions": 1.0289210614028037
+        "spp/c": 1.645431291632442,
+        "spp/c_instructions": 1.9107822944680102,
+        "spp/rust": 0.9593754006901648,
+        "spp/rust_instructions": 1.0289206755634666
       }
     },
     "programs/collatz": {
@@ -1682,59 +1745,59 @@
           "executable_bytes": 16056,
           "hash": "78f7e2d396beee0185978113ba8e76d76b2ebc03db35d7f72d4fa4a5fa37cc60",
           "instructions": 1196180290,
-          "wall_ns": 150484152,
+          "wall_ns": 96413072,
           "wall_ns_rounds": [
-            150850262,
-            151302811,
-            151410471,
-            152527963,
-            150484152
+            103234819,
+            96413072,
+            97342973,
+            102029624,
+            102249174
           ]
         },
         "rust": {
           "executable_bytes": 1952280,
           "hash": "08f5c8c7bf58777b1e1817044cc0d8d0910624df892df758db8bf89bfc6e4d6f",
-          "instructions": 1328126493,
-          "wall_ns": 295639929,
+          "instructions": 1328126492,
+          "wall_ns": 177397860,
           "wall_ns_rounds": [
-            296960362,
-            299749254,
-            297472756,
-            297700449,
-            295639929
+            181819292,
+            181622134,
+            177397860,
+            179538576,
+            179110641
           ]
         },
         "spp": {
-          "executable_bytes": 95440,
-          "hash": "42027538e3c5ee55a6a3c374b498454109d23ecca41fe6af485bdb970e20e5b8",
-          "instructions": 1546021847,
+          "executable_bytes": 81224,
+          "hash": "7ca4b10453c4b42cb3006294fd5d850fc61c35495d93651a0fab4cc507336f01",
+          "instructions": 1546020776,
           "records": {
-            "executable.bytes": 95440,
-            "llvm.after_opt.blocks": 408,
-            "llvm.after_opt.functions": 19,
-            "llvm.after_opt.instructions": 1858,
-            "llvm.before_opt.blocks": 1006,
-            "llvm.before_opt.functions": 262,
-            "llvm.before_opt.instructions": 5653,
-            "object.bytes": 84600
+            "executable.bytes": 81224,
+            "llvm.after_opt.blocks": 311,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 1624,
+            "llvm.before_opt.blocks": 1029,
+            "llvm.before_opt.functions": 263,
+            "llvm.before_opt.instructions": 5707,
+            "object.bytes": 68528
           },
-          "wall_ns": 233375032,
+          "wall_ns": 208715192,
           "wall_ns_rounds": [
-            233854513,
-            233375032,
-            233874305,
-            233651609,
-            234998698
+            221807807,
+            215509948,
+            226642690,
+            208715192,
+            214254528
           ]
         }
       },
       "layer": "core",
       "output": "837799\n524\n131434272\n",
       "ratios": {
-        "spp/c": 1.5508279702436705,
-        "spp/c_instructions": 1.292465575569716,
-        "spp/rust": 0.7893894197221242,
-        "spp/rust_instructions": 1.1640621997591611
+        "spp/c": 2.164801801979715,
+        "spp/c_instructions": 1.292464680219735,
+        "spp/rust": 1.1765372592431498,
+        "spp/rust_instructions": 1.1640613942365363
       }
     },
     "programs/fannkuch": {
@@ -1744,60 +1807,60 @@
         "c": {
           "executable_bytes": 16192,
           "hash": "0d96a95c3300dedb98851924a9de58d5ac2c442b51cae9efb09ef936f84891ce",
-          "instructions": 1029455004,
-          "wall_ns": 195684608,
+          "instructions": 1029454990,
+          "wall_ns": 189611914,
           "wall_ns_rounds": [
-            196049476,
-            196055365,
-            195711035,
-            195684608,
-            195905624
+            199647282,
+            191583321,
+            190834586,
+            202819802,
+            189611914
           ]
         },
         "rust": {
           "executable_bytes": 1955720,
           "hash": "e2465600a3360ede7a1c098c8d4d1799c8d5ab2cffd9daa2390b84ee4ddbd179",
-          "instructions": 743435956,
-          "wall_ns": 171562931,
+          "instructions": 743435955,
+          "wall_ns": 147668854,
           "wall_ns_rounds": [
-            174049709,
-            174926750,
-            177261344,
-            171562931,
-            172098729
+            162026565,
+            158562352,
+            147668854,
+            161117966,
+            154153874
           ]
         },
         "spp": {
-          "executable_bytes": 102248,
-          "hash": "345d80b131426e6cdf787b6e1f11a202cc4311e5c7af62a15d3cb62563be4768",
-          "instructions": 841306779,
+          "executable_bytes": 87808,
+          "hash": "b497ec8a595f5830c03e7aef9069231d9f4237f27bf4bcd7154bd4fefc967aa9",
+          "instructions": 841305276,
           "records": {
-            "executable.bytes": 102248,
-            "llvm.after_opt.blocks": 488,
-            "llvm.after_opt.functions": 19,
-            "llvm.after_opt.instructions": 2220,
-            "llvm.before_opt.blocks": 1076,
-            "llvm.before_opt.functions": 283,
-            "llvm.before_opt.instructions": 5972,
-            "object.bytes": 90584
+            "executable.bytes": 87808,
+            "llvm.after_opt.blocks": 386,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 1983,
+            "llvm.before_opt.blocks": 1099,
+            "llvm.before_opt.functions": 284,
+            "llvm.before_opt.instructions": 6026,
+            "object.bytes": 73936
           },
-          "wall_ns": 162261643,
+          "wall_ns": 137592113,
           "wall_ns_rounds": [
-            162261643,
-            162443757,
-            163293137,
-            162564972,
-            162728206
+            148805795,
+            140474782,
+            142639386,
+            137592113,
+            140154944
           ]
         }
       },
       "layer": "core",
       "output": "73196\n38\n",
       "ratios": {
-        "spp/c": 0.8291998264881416,
-        "spp/c_instructions": 0.8172351154067536,
-        "spp/rust": 0.9457849784578465,
-        "spp/rust_instructions": 1.1316466095164222
+        "spp/c": 0.7256512003776303,
+        "spp/c_instructions": 0.8172336665248473,
+        "spp/rust": 0.9317612297580369,
+        "spp/rust_instructions": 1.1316445893446194
       }
     },
     "programs/fnv1a": {
@@ -1807,60 +1870,60 @@
         "c": {
           "executable_bytes": 16056,
           "hash": "0900f9826c503fdc6c2e6ea7f961647c478c8e11ebfccc4218df72ce3ec1ee53",
-          "instructions": 1300271206,
-          "wall_ns": 225020654,
+          "instructions": 1300271220,
+          "wall_ns": 186431524,
           "wall_ns_rounds": [
-            253051666,
-            225020654,
-            225689658,
-            225124962,
-            225819242
+            188866582,
+            191498677,
+            192810092,
+            186431524,
+            189302993
           ]
         },
         "rust": {
           "executable_bytes": 1951232,
           "hash": "26dc70e5672adee252f0b58b6a1cb906f71ba756ac9f5848f70773c4e0e205c2",
-          "instructions": 1300393312,
-          "wall_ns": 225203424,
+          "instructions": 1300393297,
+          "wall_ns": 183860330,
           "wall_ns_rounds": [
-            225425311,
-            228425446,
-            225654990,
-            226243397,
-            225203424
+            186938572,
+            183860330,
+            194674952,
+            188786130,
+            184691516
           ]
         },
         "spp": {
-          "executable_bytes": 95080,
-          "hash": "8ef7a76725352e8a436e3dff96a667f81c81619370cbbacb42515c2b5de578af",
-          "instructions": 1300638111,
+          "executable_bytes": 76736,
+          "hash": "529e10c78e91558bd6e8ff16d3b33d7cd02f6ace6243c4a7d912458453d8627c",
+          "instructions": 1300637111,
           "records": {
-            "executable.bytes": 95080,
-            "llvm.after_opt.blocks": 395,
-            "llvm.after_opt.functions": 18,
-            "llvm.after_opt.instructions": 1833,
-            "llvm.before_opt.blocks": 985,
-            "llvm.before_opt.functions": 260,
-            "llvm.before_opt.instructions": 5509,
-            "object.bytes": 83536
+            "executable.bytes": 76736,
+            "llvm.after_opt.blocks": 298,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1607,
+            "llvm.before_opt.blocks": 1010,
+            "llvm.before_opt.functions": 261,
+            "llvm.before_opt.instructions": 5565,
+            "object.bytes": 67352
           },
-          "wall_ns": 225509151,
+          "wall_ns": 182811466,
           "wall_ns_rounds": [
-            246245433,
-            225509151,
-            227164594,
-            226068879,
-            226072805
+            190223977,
+            193882599,
+            182811466,
+            183727040,
+            193963598
           ]
         }
       },
       "layer": "core",
       "output": "13607023556064612108\n",
       "ratios": {
-        "spp/c": 1.002170898498944,
-        "spp/c_instructions": 1.0002821757478801,
-        "spp/rust": 1.0013575592882638,
-        "spp/rust_instructions": 1.0001882499684833
+        "spp/c": 0.9805823718954312,
+        "spp/c_instructions": 1.00028139590754,
+        "spp/rust": 0.9942953218891754,
+        "spp/rust_instructions": 1.0001874925075072
       }
     },
     "programs/mandelbrot": {
@@ -1871,59 +1934,59 @@
           "executable_bytes": 16056,
           "hash": "7d81538f4410e0b47a744fd0a69bb20520d94cbd8f08b31c2f35ce297fcedbb3",
           "instructions": 1565635232,
-          "wall_ns": 210233466,
+          "wall_ns": 167002716,
           "wall_ns_rounds": [
-            210460364,
-            210233466,
-            210378702,
-            210603530,
-            211835272
+            167002716,
+            175777185,
+            173558422,
+            169282040,
+            167336879
           ]
         },
         "rust": {
           "executable_bytes": 1952056,
           "hash": "b907e8ca6b09ebee4ca2c11e9c1b8c0301d25693b29b024327b5f58feca446f6",
-          "instructions": 1566330859,
-          "wall_ns": 211583767,
+          "instructions": 1566330872,
+          "wall_ns": 162386331,
           "wall_ns_rounds": [
-            211686365,
-            212143184,
-            211704501,
-            212069672,
-            211583767
+            162386331,
+            170855910,
+            171871571,
+            167199171,
+            162857051
           ]
         },
         "spp": {
-          "executable_bytes": 96120,
-          "hash": "8185bcbe50d4c14e077d60dda67873f169c46fea1b47418b2cd7638ba4bb7af4",
-          "instructions": 1567911326,
+          "executable_bytes": 86056,
+          "hash": "618a61d77588131c64dd76dad1226b3316949056e86caf9518a8a07fa49bb33f",
+          "instructions": 2527886022,
           "records": {
-            "executable.bytes": 96120,
-            "llvm.after_opt.blocks": 402,
-            "llvm.after_opt.functions": 18,
-            "llvm.after_opt.instructions": 1846,
-            "llvm.before_opt.blocks": 1003,
-            "llvm.before_opt.functions": 264,
-            "llvm.before_opt.instructions": 5607,
-            "object.bytes": 87072
+            "executable.bytes": 86056,
+            "llvm.after_opt.blocks": 330,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1683,
+            "llvm.before_opt.blocks": 1044,
+            "llvm.before_opt.functions": 265,
+            "llvm.before_opt.instructions": 5701,
+            "object.bytes": 71464
           },
-          "wall_ns": 209305761,
+          "wall_ns": 191105506,
           "wall_ns_rounds": [
-            209641461,
-            210313314,
-            209826414,
-            209789952,
-            209305761
+            200516483,
+            196405096,
+            191105506,
+            202140280,
+            202657630
           ]
         }
       },
       "layer": "core",
       "output": "1285984\n",
       "ratios": {
-        "spp/c": 0.9955872629717287,
-        "spp/c_instructions": 1.001453783073783,
-        "spp/rust": 0.9892335502278868,
-        "spp/rust_instructions": 1.0010090250031907
+        "spp/c": 1.1443257365946073,
+        "spp/c_instructions": 1.6146072663239608,
+        "spp/rust": 1.1768570964264227,
+        "spp/rust_instructions": 1.613890185776789
       }
     },
     "programs/matmul": {
@@ -1936,59 +1999,59 @@
           "executable_bytes": 16136,
           "hash": "614de93a41257d4bbf8d992f3ed98f4609b7b199be9586205d222d35150c1969",
           "instructions": 3102715538,
-          "wall_ns": 185170500,
+          "wall_ns": 154143723,
           "wall_ns_rounds": [
-            191979966,
-            185170500,
-            187165943,
-            185348388,
-            185395023
+            156749032,
+            158228006,
+            157564807,
+            159575526,
+            154143723
           ]
         },
         "rust": {
           "executable_bytes": 1954496,
           "hash": "79341dbedc4074b7c09864aa16e8344cc30d6ed5ae24bae1c5323a5026394637",
-          "instructions": 7569430515,
-          "wall_ns": 356856714,
+          "instructions": 7569430528,
+          "wall_ns": 282247086,
           "wall_ns_rounds": [
-            357521940,
-            394529552,
-            357847120,
-            361715149,
-            356856714
+            282247086,
+            288078471,
+            294572133,
+            288171992,
+            290555342
           ]
         },
         "spp": {
-          "executable_bytes": 105048,
-          "hash": "c10a9fcff90476b66db832ae199da491337a00992045913fa59c79547162d97a",
-          "instructions": 5167086575,
+          "executable_bytes": 94120,
+          "hash": "bc81baf20474143aaf3c86bf4a0fd28d0b1ade5663cbe3c4d3e9178a004ea7f8",
+          "instructions": 5167085222,
           "records": {
-            "executable.bytes": 105048,
-            "llvm.after_opt.blocks": 469,
-            "llvm.after_opt.functions": 21,
-            "llvm.after_opt.instructions": 2124,
-            "llvm.before_opt.blocks": 1197,
-            "llvm.before_opt.functions": 322,
-            "llvm.before_opt.instructions": 6756,
-            "object.bytes": 97368
+            "executable.bytes": 94120,
+            "llvm.after_opt.blocks": 353,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 1815,
+            "llvm.before_opt.blocks": 1237,
+            "llvm.before_opt.functions": 324,
+            "llvm.before_opt.instructions": 6844,
+            "object.bytes": 78896
           },
-          "wall_ns": 255097105,
+          "wall_ns": 187586175,
           "wall_ns_rounds": [
-            263287562,
-            255097105,
-            256606455,
-            257202784,
-            259062846
+            195023468,
+            194153271,
+            190279333,
+            187586175,
+            195034276
           ]
         }
       },
       "layer": "std",
       "output": "839561115142\n",
       "ratios": {
-        "spp/c": 1.3776336133455382,
-        "spp/c_instructions": 1.6653433135319542,
-        "spp/rust": 0.7148446280878997,
-        "spp/rust_instructions": 0.6826255376491821
+        "spp/c": 1.216956301230638,
+        "spp/c_instructions": 1.6653428774623296,
+        "spp/rust": 0.664616870482057,
+        "spp/rust_instructions": 0.6826253577315348
       }
     },
     "programs/nbody": {
@@ -1998,60 +2061,60 @@
         "c": {
           "executable_bytes": 16136,
           "hash": "667729d6e9b4e40766f39337b77c9b637d60c1f98b2a3a12a03a565cc080f65a",
-          "instructions": 3205272873,
-          "wall_ns": 255901828,
+          "instructions": 3205272887,
+          "wall_ns": 231596218,
           "wall_ns_rounds": [
-            258185283,
-            258145590,
-            257983709,
-            255916970,
-            255901828
+            231596218,
+            239616606,
+            242599867,
+            240253893,
+            240273600
           ]
         },
         "rust": {
           "executable_bytes": 1961352,
           "hash": "0cc0075680c52f85d732da038a698f039562dd9e35dea0c6216e4cc0acceab9d",
-          "instructions": 3130394693,
-          "wall_ns": 256425817,
+          "instructions": 3130394678,
+          "wall_ns": 228607614,
           "wall_ns_rounds": [
-            281843569,
-            259113080,
-            258015251,
-            256425817,
-            261844049
+            235888908,
+            228607614,
+            234497268,
+            235339924,
+            233474508
           ]
         },
         "spp": {
-          "executable_bytes": 108808,
-          "hash": "60425a241b78d800a2ddda9f70b771242a0906ed1e267ef9adbccb5d10b0c8e5",
-          "instructions": 3340695540,
+          "executable_bytes": 98320,
+          "hash": "922148773c31afb0655d46078dd469de82adac1d3c6a5a11fc005ff18905f84a",
+          "instructions": 5510695020,
           "records": {
-            "executable.bytes": 108808,
-            "llvm.after_opt.blocks": 408,
-            "llvm.after_opt.functions": 20,
-            "llvm.after_opt.instructions": 2337,
-            "llvm.before_opt.blocks": 1051,
-            "llvm.before_opt.functions": 283,
-            "llvm.before_opt.instructions": 6264,
-            "object.bytes": 98096
+            "executable.bytes": 98320,
+            "llvm.after_opt.blocks": 417,
+            "llvm.after_opt.functions": 21,
+            "llvm.after_opt.instructions": 2279,
+            "llvm.before_opt.blocks": 1096,
+            "llvm.before_opt.functions": 284,
+            "llvm.before_opt.instructions": 6367,
+            "object.bytes": 83264
           },
-          "wall_ns": 236696910,
+          "wall_ns": 353232752,
           "wall_ns_rounds": [
-            238968968,
-            236920424,
-            236802803,
-            236696910,
-            236758646
+            353232752,
+            358916640,
+            357078681,
+            363717631,
+            361455350
           ]
         }
       },
       "layer": "core",
       "output": "-169075163\n-169083133\n",
       "ratios": {
-        "spp/c": 0.9249520093307032,
-        "spp/c_instructions": 1.0422499650936896,
-        "spp/rust": 0.923061931786689,
-        "spp/rust_instructions": 1.0671802975740605
+        "spp/c": 1.5252095006145567,
+        "spp/c_instructions": 1.719259237598886,
+        "spp/rust": 1.5451486755817327,
+        "spp/rust_instructions": 1.7603834617814924
       }
     },
     "programs/popcount": {
@@ -2063,60 +2126,60 @@
         "c": {
           "executable_bytes": 16056,
           "hash": "1ba767d3e8cf7a6e62e5e5c683edb1af05e04869190d55e8fe0770a8b4a689f1",
-          "instructions": 2100271097,
-          "wall_ns": 156462114,
+          "instructions": 2100271083,
+          "wall_ns": 105115354,
           "wall_ns_rounds": [
-            156462114,
-            157233004,
-            156755354,
-            157123026,
-            156873362
+            105115354,
+            109552167,
+            112036189,
+            110040561,
+            110949090
           ]
         },
         "rust": {
           "executable_bytes": 1951736,
           "hash": "65276fd1cc78a2861e9478ae31dd680bfaecbc2bfc15e32e7127a0b018481835",
-          "instructions": 2300393300,
-          "wall_ns": 153242979,
+          "instructions": 2300393299,
+          "wall_ns": 104452756,
           "wall_ns_rounds": [
-            153829896,
-            154232775,
-            153242979,
-            153405662,
-            157532469
+            104452756,
+            111196123,
+            107852717,
+            109191611,
+            106268787
           ]
         },
         "spp": {
-          "executable_bytes": 94816,
-          "hash": "618399597b946d61c58f56ee6ebe521dc78e45a17420d7922fe4577b8f6a2522",
-          "instructions": 2300637810,
+          "executable_bytes": 76464,
+          "hash": "bfaca292d6ff59aa342784623959dd4cb2617e76ab686bbf6de84a82c46f1ebb",
+          "instructions": 2300636405,
           "records": {
-            "executable.bytes": 94816,
-            "llvm.after_opt.blocks": 392,
-            "llvm.after_opt.functions": 18,
-            "llvm.after_opt.instructions": 1799,
-            "llvm.before_opt.blocks": 988,
-            "llvm.before_opt.functions": 263,
-            "llvm.before_opt.instructions": 5548,
-            "object.bytes": 83240
+            "executable.bytes": 76464,
+            "llvm.after_opt.blocks": 295,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1573,
+            "llvm.before_opt.blocks": 1013,
+            "llvm.before_opt.functions": 264,
+            "llvm.before_opt.instructions": 5604,
+            "object.bytes": 67096
           },
-          "wall_ns": 153618230,
+          "wall_ns": 105802970,
           "wall_ns_rounds": [
-            154329599,
-            154826280,
-            154198116,
-            153618230,
-            153649305
+            106440300,
+            105802970,
+            131645576,
+            109574851,
+            109756442
           ]
         }
       },
       "layer": "core",
       "output": "3200001878\n",
       "ratios": {
-        "spp/c": 0.9818238171062932,
-        "spp/c_instructions": 1.0954004048744952,
-        "spp/rust": 1.0024487320884046,
-        "spp/rust_instructions": 1.0001062905199734
+        "spp/c": 1.0065415372144397,
+        "spp/c_instructions": 1.0953997432149571,
+        "spp/rust": 1.012926552172544,
+        "spp/rust_instructions": 1.000105680189603
       }
     },
     "programs/sieve": {
@@ -2126,60 +2189,60 @@
         "c": {
           "executable_bytes": 16136,
           "hash": "ac0755dd2e4afb12126bdb7246f047e1c7a48b3886fe86df69cce938750c6195",
-          "instructions": 380838770,
-          "wall_ns": 87528116,
+          "instructions": 380838784,
+          "wall_ns": 38026491,
           "wall_ns_rounds": [
-            88648199,
-            88884666,
-            88921445,
-            89468604,
-            87528116
+            38026491,
+            39467802,
+            40796814,
+            40852828,
+            38831964
           ]
         },
         "rust": {
           "executable_bytes": 1952496,
           "hash": "5d4cc72c03aa4de3a44ccfe4bb3ea0f84fe9c2e5ee7c73afa951ba64bf1e87ee",
-          "instructions": 437711347,
-          "wall_ns": 90442983,
+          "instructions": 437711332,
+          "wall_ns": 40431824,
           "wall_ns_rounds": [
-            91262854,
-            91760332,
-            91608857,
-            91446769,
-            90442983
+            40942373,
+            40431824,
+            41806134,
+            41907547,
+            47286189
           ]
         },
         "spp": {
-          "executable_bytes": 97168,
-          "hash": "740794d80a1453818f93c9195a430dbd8f3009fe8e978e4419a7d611f22fb8ad",
-          "instructions": 857957180,
+          "executable_bytes": 86448,
+          "hash": "89926814deccc5d9921042d00d28b47841629958dd2780816af105a90d664bf5",
+          "instructions": 857956120,
           "records": {
-            "executable.bytes": 97168,
-            "llvm.after_opt.blocks": 429,
-            "llvm.after_opt.functions": 21,
-            "llvm.after_opt.instructions": 1959,
-            "llvm.before_opt.blocks": 1153,
-            "llvm.before_opt.functions": 300,
-            "llvm.before_opt.instructions": 6507,
-            "object.bytes": 88504
+            "executable.bytes": 86448,
+            "llvm.after_opt.blocks": 318,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 1640,
+            "llvm.before_opt.blocks": 1191,
+            "llvm.before_opt.functions": 302,
+            "llvm.before_opt.instructions": 6593,
+            "object.bytes": 71248
           },
-          "wall_ns": 100916168,
+          "wall_ns": 47956218,
           "wall_ns_rounds": [
-            102269485,
-            100916168,
-            102383718,
-            101052254,
-            104445794
+            47956218,
+            49682809,
+            50071545,
+            50346790,
+            50081159
           ]
         }
       },
       "layer": "std",
       "output": "1270607\n12272577818052\n",
       "ratios": {
-        "spp/c": 1.1529571595028962,
-        "spp/c_instructions": 2.2528094500462754,
-        "spp/rust": 1.1157987568808958,
-        "spp/rust_instructions": 1.960098100906669
+        "spp/c": 1.2611265656881145,
+        "spp/c_instructions": 2.2528065839008664,
+        "spp/rust": 1.1861007804149524,
+        "spp/rust_instructions": 1.960095746390226
       }
     },
     "programs/spectral-norm": {
@@ -2189,60 +2252,60 @@
         "c": {
           "executable_bytes": 16224,
           "hash": "4130bb53820f19178d2f9c9ee7ba7b144319a534e892e1070fe842d049c2aed3",
-          "instructions": 2721986993,
-          "wall_ns": 180579965,
+          "instructions": 2721987007,
+          "wall_ns": 153614739,
           "wall_ns_rounds": [
-            180625414,
-            182238136,
-            180579965,
-            182383178,
-            188238175
+            153614739,
+            153982071,
+            157302413,
+            156843608,
+            156880544
           ]
         },
         "rust": {
           "executable_bytes": 1954744,
           "hash": "30fbdb70d9ee12853eabf46ab50369115dd1c65451573aaf277d54a0fee52c85",
-          "instructions": 4161669004,
-          "wall_ns": 203657197,
+          "instructions": 4161668984,
+          "wall_ns": 154666138,
           "wall_ns_rounds": [
-            206059862,
-            204418580,
-            206149256,
-            203657197,
-            210278472
+            158467248,
+            156360194,
+            158792938,
+            155231039,
+            154666138
           ]
         },
         "spp": {
-          "executable_bytes": 114512,
-          "hash": "5bc9c47dbd9a21d7129d14645197baf24c0ff2fefb1090ed1efcf9d57dccf450",
-          "instructions": 4001480115,
+          "executable_bytes": 95400,
+          "hash": "4b869d7d0ad05e293690b21d2ad8a520c7acd2ca31b406098e894254a4548aec",
+          "instructions": 5441583724,
           "records": {
-            "executable.bytes": 114512,
-            "llvm.after_opt.blocks": 494,
-            "llvm.after_opt.functions": 23,
-            "llvm.after_opt.instructions": 2281,
-            "llvm.before_opt.blocks": 1206,
-            "llvm.before_opt.functions": 327,
-            "llvm.before_opt.instructions": 6783,
-            "object.bytes": 102032
+            "executable.bytes": 95400,
+            "llvm.after_opt.blocks": 418,
+            "llvm.after_opt.functions": 22,
+            "llvm.after_opt.instructions": 2026,
+            "llvm.before_opt.blocks": 1262,
+            "llvm.before_opt.functions": 329,
+            "llvm.before_opt.instructions": 6909,
+            "object.bytes": 84864
           },
-          "wall_ns": 220129709,
+          "wall_ns": 204222822,
           "wall_ns_rounds": [
-            220922956,
-            220335035,
-            222140750,
-            220129709,
-            220579362
+            208864334,
+            208066893,
+            204222822,
+            208162056,
+            205589025
           ]
         }
       },
       "layer": "std",
       "output": "1274224152\n",
       "ratios": {
-        "spp/c": 1.2190151271764837,
-        "spp/c_instructions": 1.4700584996513244,
-        "spp/rust": 1.0808835250737543,
-        "spp/rust_instructions": 0.961508498430309
+        "spp/c": 1.3294480941701825,
+        "spp/c_instructions": 1.9991218584093704,
+        "spp/rust": 1.3204106900244705,
+        "spp/rust_instructions": 1.3075484246634643
       }
     },
     "programs/startup": {
@@ -2253,70 +2316,70 @@
           "executable_bytes": 16056,
           "hash": "a647d7f9b0b065a1a6aba54d5d3def7b66136ad1d6d85db220b8f0dc02d9c3c0",
           "instructions": 270938,
-          "wall_ns": 598455,
+          "wall_ns": 647696,
           "wall_ns_rounds": [
-            703894,
-            700531,
-            637177,
-            598455,
-            599991
+            707626,
+            676269,
+            647696,
+            678002,
+            736365
           ]
         },
         "rust": {
           "executable_bytes": 1951008,
           "hash": "0f38cf6b92e10335c24ada59e305cb65c8edbb4c7906826cfc975aeddcbda958",
-          "instructions": 393154,
-          "wall_ns": 665399,
+          "instructions": 393153,
+          "wall_ns": 706945,
           "wall_ns_rounds": [
-            793908,
-            693395,
-            726039,
-            665399,
-            713105
+            759253,
+            752394,
+            774477,
+            706945,
+            777822
           ]
         },
         "spp": {
-          "executable_bytes": 94080,
-          "hash": "f452ff16516ab0e3285abfa55d07b73d23febcf97d13e66e8a957b617e776c01",
-          "instructions": 637582,
+          "executable_bytes": 75744,
+          "hash": "147df0f16f11ab7339e158059b98ca8d1bf83599fb49e5c2e74428b7fc3ca649",
+          "instructions": 635906,
           "records": {
-            "executable.bytes": 94080,
-            "llvm.after_opt.blocks": 388,
-            "llvm.after_opt.functions": 18,
-            "llvm.after_opt.instructions": 1775,
-            "llvm.before_opt.blocks": 974,
-            "llvm.before_opt.functions": 252,
-            "llvm.before_opt.instructions": 5424,
-            "object.bytes": 81736
+            "executable.bytes": 75744,
+            "llvm.after_opt.blocks": 291,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1549,
+            "llvm.before_opt.blocks": 997,
+            "llvm.before_opt.functions": 253,
+            "llvm.before_opt.instructions": 5478,
+            "object.bytes": 65592
           },
-          "wall_ns": 899657,
+          "wall_ns": 924333,
           "wall_ns_rounds": [
-            1449846,
-            962296,
-            899657,
-            917010,
-            916586
+            1270985,
+            979326,
+            966566,
+            963151,
+            924333
           ]
         }
       },
       "layer": "core",
       "output": "0\n",
       "ratios": {
-        "spp/c": 1.5032993291057808,
-        "spp/c_instructions": 2.3532394865245925,
-        "spp/rust": 1.3520564353117452,
-        "spp/rust_instructions": 1.62171057651709
+        "spp/c": 1.4271093228922211,
+        "spp/c_instructions": 2.3470535694513135,
+        "spp/rust": 1.3075034125709921,
+        "spp/rust_instructions": 1.6174517299880709
       }
     }
   },
   "keys": {
-    "cc": "Ubuntu clang version 23.1.6 (++20261108033755+c47d7823685a-1~exp1~20261108153854.96)",
-    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "cc": "Ubuntu clang version 23.1.6 (++20261116013850+5b10d2d74929-1~exp1~20261116133903.98)",
+    "cpu": "AMD EPYC 9V45 96-Core Processor",
     "llvm": "23.1.6",
     "rounds": 5,
     "rustc": "rustc 1.100.0 (0ef1bc386 2026-11-09)",
-    "spp_commit": "c99de695b593edb9a6f3ebc147de7e28a7d6dd43",
-    "std_rev": "2e471c230fb6688278072b4c3ae876f09dd88e4f",
+    "spp_commit": "8d3bcd42f8dffb847848366d0b7db125fce002f0",
+    "std_rev": "741c0f710e8e0d2eb7c45e6319fca5944f7f4a48",
     "valgrind": "valgrind-3.28.0"
   },
   "kind": "runtime",
