@@ -20,6 +20,7 @@
 - [Closure captures in loops](closure-captures-in-loops.md) — fixed; loop tests need a 2nd pass
 - [Closure borrowed capture](closure-borrowed-capture-and-consuming-self.md) — caps &mut smash; E7 self
 - [Closure env ownership header](closure-env-ownership-header.md) — {i8 owns, ptr drop_captures} (N5.5a); llvm_fn env helpers; sppc mirrors it
+- [Copied capture is FunMov](closure-copied-capture-is-fun-mov.md) — copyable by-value capture still FunMov: FunRef is Copy, heap env would leak; reverted 2026-11-19
 - [$ mock types](spp-dollar-mock-types.md) — TypeFuncEq for $ types; IsTypeFunction yes
 - [GenDone sentinel](generator-gen-done-sentinel.md) — finished Gen answers GenDone; E110
 - [GenOnce defer runs early](gen-once-defer-runs-before-borrow-use.md) — the frame finishes on read; a defer after gen runs before the borrow is used; locks are closure-scoped
