@@ -1494,6 +1494,7 @@ EXCLUDED: dict[str, str] = {
     "std.mem.ops.drop": "destruction",
     "std.mem.ops.swap": "moves",
     "std.mem.ops.replace": "moves",
+    "std.mem.ops.transmute": "moves, reinterpreted",
     "std.mem.ops.mem_copy": "byte copies",
     "std.mem.ops.mem_set": "byte fills",
     "std.mem.ops.size_of_val": "the run-time form of size_of",
