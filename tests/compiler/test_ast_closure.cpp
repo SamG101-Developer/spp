@@ -58,6 +58,20 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+// A copied capture still makes a FunMov: its environment is on the heap, and a FunRef is Copy and never dropped.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClosureExpressionAst,
+  test_invalid_closure_copied_capture_is_not_fun_ref,
+  SppFunctionCallNoValidSignaturesError, R"(
+    fun g(func: FunRef[(), U32]) -> Void { }
+
+    fun f() -> Void {
+        let a = 5_u32
+        let x = |caps a| a
+        g(x)
+    }
+)");
+
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_type_mut,
