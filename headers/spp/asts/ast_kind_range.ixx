@@ -8,7 +8,6 @@ import spp.asts.ast_kind;
 
 namespace spp::asts {
   SPP_EXP_CLS struct AnnotationAst;
-  SPP_EXP_CLS struct ArrayLiteralAst;
   SPP_EXP_CLS struct ArrayLiteralExplicitElementsAst;
   SPP_EXP_CLS struct ArrayLiteralRepeatedElementAst;
   SPP_EXP_CLS struct AssignmentStatementAst;
@@ -148,13 +147,6 @@ namespace spp::asts {
     static constexpr auto Known = true;
     static constexpr auto First = AstKind::kAnnotationAst;
     static constexpr auto Last = AstKind::kAnnotationAst;
-  };
-
-  template <>
-  struct AstKindRange<ArrayLiteralAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kArrayLiteralAst;
-    static constexpr auto Last = AstKind::kArrayLiteralRepeatedElementAst;
   };
 
   template <>

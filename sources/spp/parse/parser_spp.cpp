@@ -18,7 +18,6 @@ import std;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::asts, AnnotationAst);
-use_alias(spp::asts, ArrayLiteralAst);
 use_alias(spp::asts, ArrayLiteralExplicitElementsAst);
 use_alias(spp::asts, ArrayLiteralRepeatedElementAst);
 use_alias(spp::asts, AssignmentStatementAst);
@@ -2066,10 +2065,10 @@ auto spp::parse::ParserSpp::ParseLiteralTuple(
 
 auto spp::parse::ParserSpp::ParseLiteralArray(
   Func<Unique<ExpressionAst>()> &&elem_parser)
-  -> Unique<ArrayLiteralAst> {
+  -> Unique<LiteralAst> {
   auto parser_e = [elem_parser, this] mutable { return ParseLiteralArrayExplicitElements(std::move(elem_parser)); };
   auto parser_r = [elem_parser, this] mutable { return ParseLiteralArrayRepeatedElement(std::move(elem_parser)); };
-  PARSE_ALTERNATE(p1, ArrayLiteralAst, parser_e, parser_r);
+  PARSE_ALTERNATE(p1, LiteralAst, parser_e, parser_r);
   return FORWARD_AST(p1);
 }
 

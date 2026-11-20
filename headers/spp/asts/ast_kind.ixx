@@ -102,7 +102,6 @@ SPP_EXP_CLS enum class spp::asts::AstKind : std::uint8_t {
   kFunctionImplementationAst,
   kFunctionImplementationLoweredAst,
   kLiteralAst,
-  kArrayLiteralAst,
   kArrayLiteralExplicitElementsAst,
   kArrayLiteralRepeatedElementAst,
   kBooleanLiteralAst,

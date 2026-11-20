@@ -2,8 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.array_literal_explicit_elements_ast;
-import spp.asts.array_literal_ast;
 import spp.asts.ast_kind;
+import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -19,7 +19,7 @@ use(spp::asts, struct TypeAst);
 /// The explicit array ast represents an array literal with
 /// a variable number of elements. This maps to the Arr[T, n]
 /// type.
-SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiteralAst {
+SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : LiteralAst {
   SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ArrayLiteralExplicitElementsAst);
 

@@ -1,6 +1,5 @@
 export module spp.asts._all;
 export import spp.asts.annotation_ast;
-export import spp.asts.array_literal_ast;
 export import spp.asts.array_literal_explicit_elements_ast;
 export import spp.asts.array_literal_repeated_element_ast;
 export import spp.asts.assignment_statement_ast;

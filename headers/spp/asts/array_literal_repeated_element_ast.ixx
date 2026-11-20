@@ -2,8 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.array_literal_repeated_element_ast;
-import spp.asts.array_literal_ast;
 import spp.asts.ast_kind;
+import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
@@ -21,7 +21,7 @@ use(spp::asts, struct TypeAst);
 /// which copies, by bits, the provided element (so it must
 /// superimpose Copy), n amounts of times into the "Arr[T, n]"
 /// type.
-SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLiteralAst {
+SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : LiteralAst {
   SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ArrayLiteralRepeatedElementAst);
 

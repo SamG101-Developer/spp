@@ -70,7 +70,6 @@ use(spp::asts, struct FoldExpressionAst);
 use(spp::asts, struct LiteralAst);
 use(spp::asts, struct FloatLiteralAst);
 use(spp::asts, struct IntegerLiteralAst);
-use(spp::asts, struct ArrayLiteralAst);
 use(spp::asts, struct ArrayLiteralRepeatedElementAst);
 use(spp::asts, struct ArrayLiteralExplicitElementsAst);
 use(spp::asts, struct StringLiteralAst);
@@ -399,7 +398,7 @@ public:
   auto ParseLiteralInteger() -> Unique<IntegerLiteralAst>;
   auto ParseLiteralBoolean() -> Unique<BooleanLiteralAst>;
   auto ParseLiteralTuple(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<TupleLiteralAst>;
-  auto ParseLiteralArray(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<ArrayLiteralAst>;
+  auto ParseLiteralArray(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<LiteralAst>;
 
   auto ParseLiteralFloatB10() -> Unique<FloatLiteralAst>;
   auto ParseLiteralIntegerB10() -> Unique<IntegerLiteralAst>;
