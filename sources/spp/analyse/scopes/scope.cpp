@@ -16,6 +16,8 @@ import spp.analyse.utils.packs;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
+import spp.asts.array_literal_explicit_elements_ast;
+import spp.asts.array_literal_repeated_element_ast;
 import spp.asts.ast;
 import spp.asts.binary_expression_ast;
 import spp.asts.boolean_literal_ast;
@@ -70,6 +72,7 @@ import numex.big_int;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, TypeKey);
+use_alias(spp::asts, ArrayLiteralExplicitElementsAst);
 use_alias(spp::asts, Ast);
 use_alias(spp::asts, AstCloneShared);
 use_alias(spp::asts, BinaryExpressionAst);
@@ -791,10 +794,30 @@ auto spp::analyse::scopes::RawCompKey(ExpressionAst const &expr, Scope const &sc
 
   // A tuple value of elements, recursively interning the
   // inner elements.
+  const auto elems_of = [&scope](auto const &elems) {
+    auto out = Vec<CompId>();
+    for (auto const &elem : elems) { out.push_back(InternCompKey(RawCompKey(*elem, scope))); }
+    return out;
+  };
   if (const auto tup = expr.To<TupleLiteralAst>(); tup != nullptr) {
-    auto elems = Vec<CompId>();
-    for (auto const &elem : tup->Elems) { elems.push_back(InternCompKey(RawCompKey(*elem, scope))); }
-    return CompKey::OfTuple(std::move(elems));
+    return CompKey::OfTuple(elems_of(tup->Elems));
+  }
+
+  // An array value of elements, as a tuple's. A repeated one
+  // ("[x; 2_uz]") is the array of its copies once its count is
+  // a value, so "[1_u64; 2_uz]" and "[1_u64, 1_u64]" are one
+  // value; a count that is not ("[x; k]") keeps its spelling.
+  if (const auto arr = expr.To<ArrayLiteralExplicitElementsAst>(); arr != nullptr) {
+    return CompKey::OfArray(elems_of(arr->Elems));
+  }
+
+  if (const auto rep = expr.To<ArrayLiteralRepeatedElementAst>(); rep != nullptr) {
+    const auto size = RawCompKey(*rep->Size, scope);
+    const auto count = size.AsInt() != nullptr ? spp::utils::numbers::ToU64(*size.AsInt()) : Nullopt;
+    if (count.has_value()) {
+      const auto elem = InternCompKey(RawCompKey(*rep->Elem, scope));
+      return CompKey::OfArray(Vec<CompId>(static_cast<std::size_t>(*count), elem));
+    }
   }
 
   // For a parenthesis expression, extract the inner
@@ -1847,14 +1870,19 @@ auto spp::analyse::scopes::Scope::CompAstOf(const CompId id) const -> Unique<Exp
 
     // For a tuple, or a comp pack (an instance binds one to its
     // tuple), convert each element, and then wrap the load inside
-    // a tuple literal ast.
+    // a tuple literal ast; an array's inside an array literal ast
+    // (a repeated one is spelled as its copies).
     case CompKey::Part::Tuple:
-    case CompKey::Part::Pack: {
+    case CompKey::Part::Pack:
+    case CompKey::Part::Array: {
       auto values = Vec<Unique<ExpressionAst>>();
       for (const auto elem : node.Kids) {
         auto value = CompAstOf(elem);
         if (value == nullptr) { return nullptr; }
         values.emplace_back(std::move(value));
+      }
+      if (node.Kind == CompKey::Part::Array) {
+        return MakeUnique<ArrayLiteralExplicitElementsAst>(nullptr, std::move(values), nullptr);
       }
       return MakeUnique<TupleLiteralAst>(nullptr, std::move(values), nullptr);
     }

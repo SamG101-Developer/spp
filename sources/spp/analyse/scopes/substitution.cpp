@@ -259,11 +259,12 @@ auto spp::analyse::scopes::RewriteCompId(const CompId id, GenericSubst const &su
         return bound != nullptr ? bound : id;
       }
 
-      // For a comp pack's list, or a tuple, rewrite each
+      // For a comp pack's list, a tuple or an array, rewrite each
       // element; one bound to a pack's list is spliced in, as
       // a type pack's is ("RewriteTypeId").
       case CompKey::Part::Pack:
-      case CompKey::Part::Tuple: {
+      case CompKey::Part::Tuple:
+      case CompKey::Part::Array: {
         auto elems = Vec<CompId>();
         for (const auto elem : id->Kids) {
           const auto value = RewriteCompId(elem, subst, subst_id);
@@ -274,9 +275,9 @@ auto spp::analyse::scopes::RewriteCompId(const CompId id, GenericSubst const &su
           }
           elems.push_back(value);
         }
-        return InternCompKey(IsPackCompId(id)
-          ? CompKey::OfPack(std::move(elems))
-          : CompKey::OfTuple(std::move(elems)));
+        if (IsPackCompId(id)) { return InternCompKey(CompKey::OfPack(std::move(elems))); }
+        if (id->Kind == CompKey::Part::Array) { return InternCompKey(CompKey::OfArray(std::move(elems))); }
+        return InternCompKey(CompKey::OfTuple(std::move(elems)));
       }
 
       // For the binary operator, rewrite the left- and
