@@ -106,8 +106,7 @@ auto spp::analyse::utils::mem_utils::RaiseIfBadEscapingBorrow(
   // borrow, a borrow a generator yielded) only passes the
   // borrow on, to whatever it is given to ("TransferLoans").
   const auto holds = memory_state::LoansHeldBy(loans, sym);
-  const auto is_borrow = sym.MemInfo->AstBorrowed != nullptr
-    or (sym.Type != nullptr and sym.Type->GetConvention() != nullptr);
+  const auto is_borrow = sym.IsBorrow();
 
   // A borrow binding passed on somewhere other than a call (which holds it only while it runs) - a block's or a
   // branch's result - leaves its loans with nothing tracking where the borrow went: they are live from here on.

@@ -201,6 +201,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeRef {
     return Conv != ConventionTag::MOV;
   }
 
+  /// Whether a value of this type, held this way, is owed: something must consume it before it goes. A borrow
+  /// belongs to whoever it borrows, a "Copy" value leaves the original in place, and a "!" value never exists. No
+  /// type owes nothing.
+  SPP_ATTR_NODISCARD auto Owes() const -> bool;
+
   /// The same type held by value ("Str" for "&Str"), without the
   /// clone a type's own "WithoutConvention" makes.
   SPP_ATTR_NODISCARD auto WithoutConvention() const -> TypeRef {
@@ -562,6 +567,12 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// Whether this has no runtime storage of its own: a "cmp"
   /// constant, a function's mock constant, or a comp generic.
   SPP_ATTR_NODISCARD auto IsCompTime() const -> bool;
+
+  /// Whether this holds a borrow: bound to one ("&val" in a
+  /// pattern, a borrowed value destructured), or declared as one
+  /// ("x: &T"). What it points at belongs to someone else, so it
+  /// owns nothing, and nothing is moved or destroyed through it.
+  SPP_ATTR_NODISCARD auto IsBorrow() const -> bool;
 
   /// What a "use" names, followed through each "use" in turn
   /// ("AliasSymbol"), stopping on one it comes back to: the

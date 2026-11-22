@@ -297,7 +297,7 @@ auto spp::analyse::utils::regions::RegionConsumed(
   // for. If any part is unaccounted for, then nor is the
   // value holding it.
   for (auto const &[step, _, part_type, part_ref, part_scope] : type_members::GetAllParts(type, scope)) {
-    if (part_ref.Symbol == nullptr or part_ref.Symbol->IsCopyable()) { continue; }
+    if (not part_ref.Owes()) { continue; }
     part.Steps.back() = {.Name = step->NameId()};
     if (not RegionConsumed(part, part_ref, *part_scope, moves, unaccounted)) { return false; }
   }

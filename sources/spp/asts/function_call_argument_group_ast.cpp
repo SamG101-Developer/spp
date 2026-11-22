@@ -272,7 +272,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       const auto self_param = target->FnParamGroup->GetSelfParam();
       const auto receiver = arg->Val->InferTypeRef(sm, meta);
       if (self_param != nullptr and self_param->Conv == nullptr and receiver.IsBorrowed()
-        and receiver.Symbol != nullptr and not receiver.Symbol->IsCopyable()) {
+        and receiver.WithoutConvention().Owes()) {
         auto const *where_borrow = sym != nullptr and sym->MemInfo->AstBorrowed != nullptr
           ? sym->MemInfo->AstBorrowed
           : static_cast<Ast const*>(arg->Val.get());

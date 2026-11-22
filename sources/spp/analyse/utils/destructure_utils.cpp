@@ -99,8 +99,7 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
 
   // Destructuring a borrow reads through it. The value behind
   // it belongs to someone else, so it is not consumed here.
-  if (sym->MemInfo->AstBorrowed != nullptr) { return; }
-  if (sym->Type != nullptr and sym->Type->GetConvention() != nullptr) { return; }
+  if (sym->IsBorrow()) { return; }
 
   // The value has to still be there to be taken apart. Each
   // bound part is checked as it is read, but a destructure

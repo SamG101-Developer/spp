@@ -301,8 +301,7 @@ auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
 
   // A borrow does not own what it points at, so the value
   // behind it is not this scope's to destroy.
-  if (sym.MemInfo->AstBorrowed != nullptr) { return; }
-  if (sym.Type->GetConvention() != nullptr) { return; }
+  if (sym.IsBorrow()) { return; }
 
   const auto root = TypeRef::Of(*sym.Type, *sm.CurrentScope);
   for (auto const &move : memory_state::StateOf(*sm.CurrentScope, sym).PartialMoves) {

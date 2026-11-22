@@ -625,6 +625,10 @@ auto spp::analyse::scopes::VariableSymbol::IsGn() const -> bool {
   return Kind == VariableKind::GnCompParam or Kind == VariableKind::GnCompArg;
 }
 
+auto spp::analyse::scopes::VariableSymbol::IsBorrow() const -> bool {
+  return (MemInfo != nullptr and MemInfo->AstBorrowed != nullptr) or (Type != nullptr and Type->GetConvention() != nullptr);
+}
+
 auto spp::analyse::scopes::VariableSymbol::IsCompTime() const -> bool {
   // Everything with no runtime storage of its own: a "cmp"
   // constant, a function's mock constant, and a comp generic.
@@ -1306,6 +1310,10 @@ auto spp::analyse::scopes::TypeRef::SameAs(
   // Two type refs are the same if their ids are the same,
   // and their conventions are the same too.
   return Id != nullptr and Id == that.Id and Conv == that.Conv;
+}
+
+auto spp::analyse::scopes::TypeRef::Owes() const -> bool {
+  return Symbol != nullptr and not IsNever and not IsBorrowed() and not Symbol->IsCopyable();
 }
 
 /// [CHECKED]
