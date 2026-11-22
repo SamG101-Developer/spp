@@ -294,16 +294,11 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   // give away) and that is not "Copy" (copying leaves the
   // original in place).
   const auto cond_ref = Cond->InferTypeRef(sm, meta);
-  const auto cond_sym = cond_ref.Symbol != nullptr
-    and not cond_ref.Symbol->IsCopyable()
-    and not cond_ref.IsBorrowed()
+  const auto cond_sym = cond_ref.Owes()
     ? sm->CurrentScope->FindVarSymbolOutermost(*Cond).first
     : nullptr;
 
-  const auto subject = cond_sym != nullptr
-    and cond_sym->MemInfo->AstBorrowed == nullptr
-    ? cond_sym
-    : nullptr;
+  const auto subject = cond_sym != nullptr and not cond_sym->IsBorrow() ? cond_sym : nullptr;
 
   const auto branches = Branches | genex::views::ptr | genex::to<Vec>();
   auto const &plan = Plan(sm, meta);
