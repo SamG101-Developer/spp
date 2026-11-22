@@ -12,29 +12,33 @@ use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct TypeAst);
 
-/// The checks every kind of expression or type position makes, that belong to no one area: each raises its error
-/// where the check fails.
+/// The checks every kind of expression or type position makes, that belong to
+/// no one area: each raises its error where the check fails.
 namespace spp::analyse::utils::common_errors {
-  /// "expr" can stand where a value is read ("expr_utils::IsPrimaryExprTypeValid"), or an
-  /// "SppInvalidPrimaryExpressionError" at it.
+  /// Ensure a primary expression is a valid type of primary expression; the
+  /// token ".." can only be used in binary expressions, and types can only be
+  /// used if they are zero-types.
   SPP_EXP_FUN auto RequirePrimary(
-    ExpressionAst const &expr, ScopeManager const &sm, expr_utils::PrimaryExpressionOptions &&options = {})
-    -> void;
+    ExpressionAst const &expr, ScopeManager const &sm,
+    expr_utils::PrimaryExpressionOptions &&options = {}) -> void;
 
-  /// "type" is not a borrow ("type_predicates::IsTypeBorrowed", "deep" as there), or an
-  /// "SppSecondClassBorrowViolationError" at "at", showing "shown" as the type and "what" as the position: borrows
-  /// are second class, so a field, element or return type cannot hold one.
+  /// Check that a type is not a borrow type, ie a type with a "&" or "&mut"
+  /// convention applied. This is used to enforce second-class borrow rules in
+  /// the memory and type systems.
   SPP_EXP_FUN auto RequireNotBorrowed(
-    TypeAst const &type, Ast const &at, Ast const &shown, StrView what, ScopeManager const &sm, bool deep = true)
-    -> void;
+    TypeAst const &type, Ast const &at, StrView what, ScopeManager const &sm,
+    bool deep = true) -> void;
 
-  /// "RequireNotBorrowed" showing the checked type itself.
+  /// Another second-class borrow checker for types, but allowing for a separate
+  /// "written" type to be passed in, for error reporting. Called by the above
+  /// function with "shown" set to "type".
   SPP_EXP_FUN auto RequireNotBorrowed(
-    TypeAst const &type, Ast const &at, StrView what, ScopeManager const &sm, bool deep = true)
-    -> void;
+    TypeAst const &type, Ast const &at, Ast const &shown, StrView what,
+    ScopeManager const &sm, bool deep = true) -> void;
 
-  /// "sym" can be lent on mutably by "mutator" (the "&mut" of a call's argument or a "gen"): it is "mut", or holds a
-  /// mutable borrow ("x: &mut S32"), and holds no immutable one; or an "SppInvalidMutationError".
+  /// Check that a symbol can be mutably borrowed, without as mutation failure
+  /// based on the definitions mutability, and without a conflict of borrows,
+  /// enforcing the law of exclusivity.
   SPP_EXP_FUN auto RequireMutablyBorrowable(
     VariableSymbol const &sym, Ast const &mutator, ScopeManager const &sm)
     -> void;
