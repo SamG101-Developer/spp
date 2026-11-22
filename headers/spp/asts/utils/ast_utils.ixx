@@ -113,30 +113,25 @@ namespace spp::asts {
 
   SPP_EXP_FUN auto AstBody(Ast *ast) -> Vec<Ast*>;
 
-  /**
-   * Check if an AST is a runtime member access ("a.b"), that is a @c PostfixExpressionAst whose operator is a
-   * @c PostfixExpressionOperatorRuntimeMemberAccessAst. Code generation uses this to know that an expression can
-   * produce the address of what it names, rather than only a value.
-   * @param[in] ast The AST to check.
-   * @return If the AST is a runtime member access expression.
-   */
+  /// Check if an expression is a postfix expression whose operator is a runtime
+  /// member access. For example, "a.b" is.
   SPP_EXP_FUN auto IsRuntimeMemberAccess(Ast const *ast) -> bool;
 
-  /**
-   * Check if an AST is a static member access ("a::b"), that is a @c PostfixExpressionAst whose operator is a
-   * @c PostfixExpressionOperatorStaticMemberAccessAst. The left-hand side is a type or a namespace.
-   * @param[in] ast The AST to check.
-   * @return If the AST is a static member access expression.
-   */
+  /// Check if an expression is a postfix expression whose operator is a static
+  /// member access. For example, "Type::b" is.
   SPP_EXP_FUN auto IsStaticMemberAccess(Ast const *ast) -> bool;
 
-  /**
-   * Check if an AST is a dereference ("a@"), that is a @c PostfixExpressionAst whose operator is a
-   * @c PostfixExpressionOperatorDerefAst.
-   * @param[in] ast The AST to check.
-   * @return If the AST is a dereference expression.
-   */
+  /// Check if an expression is a postfix expression whose operator is a deref
+  /// operation. For example, "a@" is.
   SPP_EXP_FUN auto IsDeref(Ast const *ast) -> bool;
+
+  /// Check if an expression is a postfix expression whose operator is a
+  /// function call. For example, "a()" is.
+  SPP_EXP_FUN auto IsFuncCall(Ast const *ast) -> bool;
+
+  /// Check if an expression is a postfix expression whose operator is a not
+  /// expression. For example, "a.not" is.
+  SPP_EXP_FUN auto IsNotExpression(Ast const *ast) -> bool;
 
   /**
    * Bind an expression to a fresh local. @code let $uid = <expr>@endcode is appended to the prelude, and the expression
