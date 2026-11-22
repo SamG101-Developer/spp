@@ -48,11 +48,6 @@ namespace spp::analyse::utils::sup_attachment {
     };
   }
 
-  /// Universal generic parameter grabber from "sup" and "sup-ext"
-  /// blocks. The returning type is the same so easy to unify.
-  static auto GetSupGnParamsFromScope(
-    Scope const &sup_scope) -> GenericParameterGroupAst const*;
-
   /// Types in sup-matches are already constrained to the same
   /// base-type, to save on massive amounts of type-matching;
   /// that's the "coarse" check. The refined check includes
