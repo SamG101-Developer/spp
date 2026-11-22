@@ -34,13 +34,14 @@ namespace spp::analyse::utils::comp_generics {
     TypeId owner, StrView name, Scope const *declared_in = nullptr) -> CompId;
 
   /// Whether a comp value needs the "sup" scopes attached before
-  /// it can be typed: it (or, for a pack's tuple, any element)
-  /// is more than a bare literal or name. A literal is typed by
-  /// its suffix and a name by its declaration, from stage 4; an
-  /// operation ("n + 1_uz", the call "n.add(1_uz)") or a
-  /// constant named through a type ("Foo::N") is found through
-  /// the "sup" scopes, attached once stage 5 ends, so it is
-  /// analysed and type-checked only after they are.
+  /// it can be typed: it is more than a bare literal or name. A
+  /// literal is typed by its suffix and a name by its declaration,
+  /// from stage 4; an operation ("n + 1_uz", the call
+  /// "n.add(1_uz)"), a constant named through a type ("Foo::N")
+  /// or a repeated array, whose element must be "Copy"
+  /// ("[n; 2_uz]"), is found through the "sup" scopes, attached
+  /// once stage 5 ends, so it is analysed and type-checked only
+  /// after they are.
   SPP_EXP_FUN auto NeedsSupScopesToType(
     ExpressionAst const &value) -> bool;
 

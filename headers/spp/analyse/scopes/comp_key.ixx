@@ -18,7 +18,7 @@ namespace spp::analyse::scopes {
     /// A large set of possible types of a comp, which might require certain
     /// behaviour and handling.
     enum class Part : std::uint8_t {
-      Value, Param, Pack, Op, Opaque, Member, Tuple
+      Value, Param, Pack, Op, Opaque, Member, Tuple, Array
     };
 
     /// The kind is on the node because the node takes part in the tree itself,
@@ -32,7 +32,7 @@ namespace spp::analyse::scopes {
     /// "Param": the comp parameter's "ParamId"
     std::uint64_t ParamId = 0;
 
-    /// "Pack", "Tuple": the elements; "Op": the two operands. Each is interned
+    /// "Pack", "Tuple", "Array": the elements; "Op": the two operands. Each is interned
     /// with "InternCompKey", as a type key's nested types are, so a node's
     /// equality and hash read one pointer per part rather than walking the
     /// parts.
@@ -43,8 +43,8 @@ namespace spp::analyse::scopes {
     std::uint64_t Type = 0;
 
     /// "Value": the value, an integer, a float or a bool. These are the only 3
-    /// literals that will fill a cmp raw. Todo: future support for arrays?
-    /// Currently they are opaque, but [2] is the same as [1 + 1].
+    /// literals that will fill a cmp raw; an array or a tuple of them is its
+    /// elements ("Array", "Tuple").
     Variant<numex::BigInt, numex::BigDec, bool> Val;
 
     /// Create a comp key part for an integer literal, using its big int
@@ -111,6 +111,15 @@ namespace spp::analyse::scopes {
     static auto OfTuple(Vec<CompKey const*> elems) -> CompKey {
       return CompKey{
         .Kind = Part::Tuple, .Text = {}, .ParamId = 0, .Kids = std::move(elems),
+        .Type = 0, .Val = {}
+      };
+    }
+
+    /// An array value of interned elements, a repeated one ("[x; 2_uz]") as its
+    /// copies.
+    static auto OfArray(Vec<CompKey const*> elems) -> CompKey {
+      return CompKey{
+        .Kind = Part::Array, .Text = {}, .ParamId = 0, .Kids = std::move(elems),
         .Type = 0, .Val = {}
       };
     }
