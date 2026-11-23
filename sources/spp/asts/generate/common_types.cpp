@@ -13,36 +13,36 @@ import spp.asts.type_unary_expression_operator_namespace_ast;
 import genex;
 
 #define MAKE_TYPE(ty) \
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str(ty), nullptr);
+  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str(ty), nullptr);
 
 #define MAKE_TYPE_WITH_GN(ty) \
-    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str(ty), std::move(generics));
+  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str(ty), std::move(generics));
 
 #define ADD_NAMESPACE(ns) \
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str(ns)), nullptr), std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str(ns)), nullptr), std::move(type));
 
 #define ADD_BORROW() \
-    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorBorrowAst>(MakeUnique<ConventionRefAst>(nullptr)), std::move(type));
+  type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorBorrowAst>(MakeUnique<ConventionRefAst>(nullptr)), std::move(type));
 
 #define FINISH_TYPE() \
-    return type;
+  return type;
 
 #define MAKE_GENERICS() \
-    auto generics_list = Vec<Unique<GenericArgumentAst>>();
+  auto generics_list = Vec<Unique<GenericArgumentAst>>();
 
 #define ADD_TYPE_GENERIC(gn) \
-    generics_list.push_back(GenericArgumentAst::NewType(nullptr, gn));
+  generics_list.push_back(GenericArgumentAst::NewType(nullptr, gn));
 
 #define ADD_COMP_GENERIC(gn) \
-    generics_list.push_back(GenericArgumentAst::NewComp(nullptr, gn));
+  generics_list.push_back(GenericArgumentAst::NewComp(nullptr, gn));
 
-#define ADD_ALL_GENERICS()                                                                          \
-    for (auto &&inner_type : inner_types) {                                                         \
-        generics_list.push_back(GenericArgumentAst::NewType(nullptr, std::move(inner_type)));       \
-    }
+#define ADD_ALL_GENERICS()                                                                \
+  for (auto &&inner_type : inner_types) {                                                 \
+    generics_list.push_back(GenericArgumentAst::NewType(nullptr, std::move(inner_type))); \
+  }
 
 #define FINISH_GENERICS() \
-    auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_list), nullptr);
+  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_list), nullptr);
 
 auto spp::asts::generate::common_types::F8(
   std::size_t pos) -> Shared<TypeAst> {
