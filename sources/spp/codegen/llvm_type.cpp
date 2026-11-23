@@ -137,7 +137,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
   // Lower S++ "NonNull[T]" and the nullable "Ptr[T]" to a bare opaque llvm
   // pointer.
-  if (is(*NON_NULL) or is(*PTR)) {
+  if (analyse::utils::type_predicates::IsTypePointer(cls_ref, *scope)) {
     cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
     return;
   }

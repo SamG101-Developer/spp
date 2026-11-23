@@ -58,6 +58,7 @@ namespace spp::analyse::utils::type_predicates {
   SPP_EXP_FUN auto IsTypeArray(TypeRef const &ref, Scope const &scope) -> bool;
   SPP_EXP_FUN auto IsTypeVariant(TypeRef const &ref, Scope const &scope) -> bool;
   SPP_EXP_FUN auto IsTypeFunction(TypeRef const &ref, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypePointer(TypeRef const &ref, Scope const &scope) -> bool;
   SPP_EXP_FUN auto IsTypeCompTimeIndexable(TypeRef const &ref, Scope const &scope) -> bool;
   SPP_EXP_FUN auto IsTypeBool(TypeRef const &ref, Scope const &scope) -> bool;
   SPP_EXP_FUN auto IsTypeVoid(TypeRef const &ref, Scope const &scope) -> bool;

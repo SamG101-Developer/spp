@@ -268,6 +268,16 @@ auto spp::analyse::utils::type_predicates::IsTypeArray(
 }
 
 /// [CHECKED]
+auto spp::analyse::utils::type_predicates::IsTypePointer(
+  TypeRef const &ref, Scope const &scope) -> bool {
+  // Check against the "NonNull" and "Ptr" pointer types, discarding generics.
+  using asts::generate::common_types_precompiled::NON_NULL;
+  using asts::generate::common_types_precompiled::PTR;
+  return ref.KindSymbol() != nullptr and (
+    ref.IsA(*NON_NULL, scope) or ref.IsA(*PTR, scope));
+}
+
+/// [CHECKED]
 auto spp::analyse::utils::type_predicates::IsTypeVariant(
   TypeRef const &ref, Scope const &scope) -> bool {
   // Check against the "Var" variant type, discarding generics.
