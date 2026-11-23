@@ -218,17 +218,16 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
       llvm_rt_elems.emplace_back(llvm_rt_elem);
     }
 
-    // Create the array type. The array type wraps the llvm
-    // element type, and the length is also provided. This
-    // lowers to the llvm special array [T * n] type.
+    // Create the array type. The array type wraps the llvm element type, and
+    // the length is also provided. This lowers to the llvm array [T * n] type.
     const auto llvm_rt_elem_ty = codegen::GetLlvmTypeOf(elem_ref, ctx);
     const auto llvm_rt_arr_ty = llvm::ArrayType::get(
       llvm_rt_elem_ty, llvm_rt_elems.size());
     SPP_ASSERT(llvm_rt_arr_ty != nullptr);
 
-    // If every element came back a constant then so is the
-    // array, and it can be produced as a value rather than
-    // materialised, use the equivalent to the constant path.
+    // If every element came back a constant then so is the array, and it can be
+    // produced as a value rather than materialised, use the equivalent to the
+    // constant path.
     const auto all_elems_constant = genex::all_of(
       llvm_rt_elems, [&](auto const *llvm_rt_elem) {
         return llvm::isa<llvm::Constant>(llvm_rt_elem) and llvm_rt_elem->
@@ -248,79 +247,69 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
         llvm_rt_arr_ty, llvm_ct_elems);
     }
 
-    // Allocate the array into the enclosing function using
-    // the uniform entry alloca function.
+    // Allocate the array into the enclosing function using the uniform entry
+    // alloca function.
     const auto llvm_rt_arr_alloc = codegen::LlvmEntryAlloca(
       llvm_rt_arr_ty, "array.explicit.alloca" + uid, ctx);
 
-    // Finally, place the runtime generated elements in the
-    // array allocation, using the GEP and store commands.
+    // Finally, place the runtime generated elements in the array allocation,
+    // using the GEP and store commands.
     for (auto i = 0uz; i < llvm_rt_elems.size(); ++i) {
-      const auto idx0 = llvm::ConstantInt::get(*ctx->Context,
-                                               llvm::APInt(64, 0));
-      const auto idx1 = llvm::ConstantInt::get(*ctx->Context,
-                                               llvm::APInt(64, i));
+      const auto i0 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, 0));
+      const auto i1 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, i));
       const auto llvm_rt_elem_ptr = ctx->Builder.CreateGEP(
-        llvm_rt_arr_ty, llvm_rt_arr_alloc, {idx0, idx1});
+        llvm_rt_arr_ty, llvm_rt_arr_alloc, {i0, i1});
 
       SPP_ASSERT(llvm_rt_elem_ptr != nullptr);
       ctx->Builder.CreateStore(llvm_rt_elems[i], llvm_rt_elem_ptr);
     }
 
-    // Return the array by value. The "llvm_rt_arr_alloc"
-    // is by pointer on the stack where the array is located.
+    // Return the array by value. The "llvm_rt_arr_alloc" is by pointer on the
+    // stack where the array is located.
     return ctx->Builder.CreateLoad(
       llvm_rt_arr_ty, llvm_rt_arr_alloc, "array.explicit.result" + uid);
   }
 
-  // Comptime array creation. This pathway generated an array
-  // using "constant" values (comptime-known values). Each is
-  // coerced into the element type, as at runtime; a variant
-  // member comes back laid out as the variant in another shape,
-  // which makes the array one too ("BuildAggregate").
+  // Comptime array creation. This pathway generated an array using "constant"
+  // values (comptime-known values). Each is coerced into the element type, as
+  // at runtime; a variant member comes back laid out as the variant in another
+  // shape, which makes the array one too.
   {
     const auto uid = "." + Uid();
     const auto elem_ref = InferTypeRef(sm, meta).Symbol->TypeArgRef("T");
     auto llvm_ct_elems = Vec<Pair<unsigned, llvm::Value*>>{};
     llvm_ct_elems.reserve(Elems.size());
-    for (auto const &[i, spp_elem] : Elems | genex::views::ptr |
-         genex::views::enumerate) {
+    for (
+      auto const &[i, spp_elem] :
+      Elems | genex::views::ptr | genex::views::enumerate) {
       const auto llvm_ct_elem = codegen::CoerceToSlot(
         spp_elem->Stage11_CodeGen(sm, meta, ctx), elem_ref,
-        spp_elem->InferTypeRef(sm, meta), *sm,
-        "array.ct.elem" + uid, ctx);
+        spp_elem->InferTypeRef(sm, meta), *sm, "array.ct.elem" + uid, ctx);
       SPP_ASSERT(llvm::isa<llvm::Constant>(llvm_ct_elem));
       llvm_ct_elems.emplace_back(static_cast<unsigned>(i), llvm_ct_elem);
     }
 
-    // The array type wraps the element type, and the length is
-    // also provided. This lowers to the llvm [T * n] type.
+    // The array type wraps the element type, and the length is also provided.
+    // This lowers to the llvm [T * n] type.
     const auto llvm_ct_arr_ty = llvm::ArrayType::get(
       codegen::GetLlvmTypeOf(elem_ref, ctx), Elems.size());
-    return codegen::BuildAggregate(llvm_ct_arr_ty, llvm_ct_elems,
-                                   "array.ct" + uid, ctx);
+    return codegen::BuildAggregate(
+      llvm_ct_arr_ty, llvm_ct_elems, "array.ct" + uid, ctx);
   }
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Convert the inner elements to compile-time values. One that
-  // has none raises in its own evaluation (E3 for a runtime name,
-  // E77 for an expression with no comp-time form). The elements
-  // are only read: in a "cmp" function's body, writing a value
-  // back would hand it to every later call, and to the runtime
-  // code generated from the body.
+  // Convert the inner elements to compile-time values. One that has none raises
+  // in its own evaluation.
   auto cmp_elems = Vec<Unique<ExpressionAst>>();
   for (auto const &elem : Elems) {
     elem->EvaluateCompTime(sm, meta);
     cmp_elems.emplace_back(std::move(meta->CompTimeResult));
   }
 
-  // Wrap the comp-time array value, in the translated
-  // asts derived from requesting comp-time evaluation. It keeps
-  // the type stage 7 settled on, which is its target's element
-  // type ("[Some(..), None]" is an "[Opt[T]; 2]"), not its first
-  // element's.
+  // Wrap the comp-time array value, in the translated asts derived from
+  // requesting comp-time evaluation. It keeps the type stage 7 settled on.
   auto result = MakeUnique<ArrayLiteralExplicitElementsAst>(
     nullptr, std::move(cmp_elems), nullptr);
   result->_InferredType = _InferredType;
@@ -329,27 +318,27 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::EvaluateCompTime(
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
-  // The type stage 7 settled on; an array not analysed yet has its
-  // type built as it is.
+  // The type stage 7 settled on; an array not analysed yet has its type built
+  // as it is.
   return _InferredType != nullptr ? _InferredType : _BuildType(sm, meta);
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
-  // The array type is built as syntax ("Arr[T, n]", "_BuildType"); resolved where it is read.
+  // The array type is built as syntax ("Arr[T, n]", "_BuildType"); resolved
+  // where it is read.
   const auto type = InferType(sm, meta);
   return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::_BuildType(
-  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
+  ScopeManager *sm, CompilerMetaData *meta) const -> Shared<TypeAst> {
   IMPORT_UTILS;
 
-  // Create a "T" type and "n" size, for the array type. If
-  // a pre-defined array type has been given (ie the assignment
-  // target type), pull the element type from it so a variant
-  // element type is preserved; otherwise use the 0th element's
-  // inferred type.
+  // Create a "T" type and "n" size, for the array type. If a pre-defined array
+  // type has been given (ie the assignment target type), pull the element type
+  // from it so a variant element type is preserved; otherwise use the 0th
+  // element's inferred type.
   auto size_tok = MakeUnique<TokenAst>(
     TokL->PosStart(), lex::SppTokenType::LX_NUMBER,
     std::to_string(Elems.size()));
@@ -364,8 +353,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::_BuildType(
       meta->AssignmentTargetType->LastTypePart()->GnArgGroup->At("T")->TypeVal)
     : Elems[0]->InferType(sm, meta);
 
-  // Create an array type with the inferred element type and
-  // size.
+  // Create an array type with the inferred element type and size.
   auto array_type = generate::common_types::ArrayType(
     PosStart(), std::move(elem_gen), std::move(size_gen));
   array_type->Stage7_AnalyseSemantics(sm, meta);

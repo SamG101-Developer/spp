@@ -60,9 +60,11 @@ spp::asts::ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
     this->TokR, SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
 
-spp::asts::ArrayLiteralRepeatedElementAst::~ArrayLiteralRepeatedElementAst() = default;
+spp::asts::ArrayLiteralRepeatedElementAst::~ArrayLiteralRepeatedElementAst()
+= default;
 
-auto spp::asts::ArrayLiteralRepeatedElementAst::EqualsArrayLiteralRepeatedElement(
+auto
+spp::asts::ArrayLiteralRepeatedElementAst::EqualsArrayLiteralRepeatedElement(
   ArrayLiteralRepeatedElementAst const &other) const -> Ordering {
   // Equality based off the element and size.
   return *Elem == *other.Elem and *Size == *other.Size
@@ -134,14 +136,14 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   const auto elem_type = Elem->InferType(sm, meta);
   const auto elem_type_sym = Elem->InferTypeRef(sm, meta).Symbol;
 
-  // Ensure the element type is copyable, so that is can be
-  // repeated in the array.
+  // Ensure the element type is copyable, so that is can be repeated in the
+  // array.
   RaiseIf<SppNonCopyableTypeError>(
     not elem_type_sym->IsCopyable(),
     ERR_ARGS(*this, *Elem, *elem_type));
 
-  // Ensure the element's type is not a borrow type, as array
-  // elements cannot be borrows.
+  // Ensure the element's type is not a borrow type, as array elements cannot be
+  // borrows.
   common_errors::RequireNotBorrowed(
     *elem_type, *Elem, "repeated array element type", *sm);
 
@@ -153,17 +155,14 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
     return;
   }
 
-  // Anything else is analysed on a copy, in a scope of its own
-  // (see "_SizeScope"), leaving "Size" as written.
-  auto scope_name = analyse::scopes::ScopeBlockName::FromParts("array-size", {}, Size->PosStart());
+  // Anything else is analysed on a copy, in a scope of its own ("_SizeScope"),
+  // leaving "Size" as written.
+  auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
+    "array-size", {}, Size->PosStart());
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
   _SizeScope = sm->CurrentScope;
   _AnalysedSize = AstClone(Size);
 
-  // The size is an expression of its own: what the enclosing one
-  // set up - the "let" type the array is assigned to, the return
-  // type a "ret" resolves overloads against - is not its target,
-  // and a "case" in it would hold its branches to that type.
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
@@ -172,23 +171,21 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   }
   common_errors::RequirePrimary(*_AnalysedSize, *sm);
 
-  // In a template, the size may depend on a generic that has no
-  // value yet ("n + 1_uz", or a "case" reading "n"), so it is not
-  // evaluated: it is kept as written, as a comp generic argument
-  // is, and each instantiation folds its own clone. The type is
-  // analysed here, in the size's scope, with the written size as
-  // its argument.
+  // In a template, the size may depend on a generic that has no value yet
+  // ("n + 1_uz", or a "case" reading "n"), so it is not evaluated, it is kept
+  // as written, as a comp generic argument is, and each instantiation folds its
+  // own clone.
   if (sm->CurrentScope->IsInTemplate()) {
     _ArrayType = ArrayType(TokL->PosStart(), AstCloneShared(elem_type), AstClone(Size));
     _ArrayType->Stage7_AnalyseSemantics(sm, meta);
     sm->MoveOutOfCurrentScope();
     return;
   }
-  sm->MoveOutOfCurrentScope();
 
-  // Otherwise, the size must be a constant: it is folded with its
-  // own walk over the size's scope, as a "cmp" statement's value
-  // is, and becomes the literal it folds to.
+  // Otherwise, the size must be a constant: it is folded with its own walk over
+  // the size's scope, as a "cmp" statement's value is, and becomes the literal
+  // it folds to.
+  sm->MoveOutOfCurrentScope();
   auto tm = sm->NewManagerAt(_SizeScope);
   _AnalysedSize->EvaluateCompTime(&tm, meta);
   RaiseIf<SppCompTimeConstantError>(
@@ -196,7 +193,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
     ERR_ARGS(*_AnalysedSize));
   Size = AstClone(meta->CompTimeResult);
 
-  _ArrayType = ArrayType(TokL->PosStart(), AstCloneShared(elem_type), AstClone(Size));
+  _ArrayType = ArrayType(
+    TokL->PosStart(), AstCloneShared(elem_type), AstClone(Size));
   _ArrayType->Stage7_AnalyseSemantics(sm, meta);
 }
 
@@ -229,34 +227,30 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
 
-  // Get the length that the array will be created for,
-  // from the generic comp arg (always resolved by now).
+  // Get the length that the array will be created for, from the generic comp
+  // arg (always resolved by now).
   const auto n = std::stoull(
     Size->To<IntegerLiteralAst>()->Val->TokenData);
 
-  // Runtime allocation. This pathway generates the given
-  // element once, and then copies the resulting value
-  // into each of the n array slots.
+  // Runtime allocation. This pathway generates the given element once, and then
+  // copies the resulting value into each of the n array slots.
   if (not ctx->InConstantContext) {
-    // Generate the element a single time; the resulting
-    // value is reused (copied) for every slot in the
-    // array below.
+    // Generate the element a single time; the resulting value is reused
+    // (copied) for every slot in the array below.
     const auto llvm_rt_elem = Elem->Stage11_CodeGen(sm, meta, ctx);
     SPP_ASSERT(llvm_rt_elem != nullptr);
     SkipSizeScope(sm);
 
-    // Create the array type. The array type wraps
-    // the llvm determined element type, and the length
-    // is also provided. This lowers to the llvm special
-    // array [T * n] type.
+    // Create the array type. The array type wraps the llvm determined element
+    // type, and the length is also provided. This lowers to the llvm array
+    // [T * n] type.
     const auto llvm_rt_elem_ty = llvm_rt_elem->getType();
     const auto llvm_rt_arr_ty = llvm::ArrayType::get(llvm_rt_elem_ty, n);
     SPP_ASSERT(llvm_rt_arr_ty != nullptr);
 
-    // A constant element repeated is a constant array,
-    // so it can be produced as a value rather than
-    // materialised with no stack slot, per-slot GEP
-    // and store/load.
+    // A constant element repeated is a constant array, so it can be produced as
+    // a value rather than materialised with no stack slot, per-slot GEP and
+    // store/load.
     if (llvm::isa<llvm::Constant>(llvm_rt_elem)) {
       auto llvm_ct_elems = Vec<llvm::Constant*>{};
       llvm_ct_elems.reserve(n);
@@ -264,25 +258,22 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
         const auto llvm_ct_elem = llvm::cast<llvm::Constant>(llvm_rt_elem);
         llvm_ct_elems.emplace_back(llvm_ct_elem);
       }
-      return llvm::ConstantArray::get(
-        llvm_rt_arr_ty, llvm_ct_elems);
+      return llvm::ConstantArray::get(llvm_rt_arr_ty, llvm_ct_elems);
     }
 
-    // Allocate the array into the enclosing function
-    // using the uniform entry alloca function.
+    // Allocate the array into the enclosing function using the uniform entry
+    // alloca function.
     const auto uid = "." + Uid();
     const auto llvm_rt_arr_alloc = codegen::LlvmEntryAlloca(
       llvm_rt_arr_ty, "array.repeated.alloca" + uid, ctx);
 
-    // Finally, copy the single generated element into
-    // every slot of the array allocation, using the
-    // GEP and store commands.
+    // Finally, copy the single generated element into every slot of the array
+    // allocation, using the GEP and store commands.
     for (auto i = 0uz; i < n; ++i) {
-      const auto idx0 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, 0));
-      const auto idx1 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, i));
+      const auto i0 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, 0));
+      const auto i1 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, i));
       const auto llvm_rt_elem_ptr = ctx->Builder.CreateGEP(
-        llvm_rt_arr_ty, llvm_rt_arr_alloc, {idx0, idx1});
-
+        llvm_rt_arr_ty, llvm_rt_arr_alloc, {i0, i1});
       SPP_ASSERT(llvm_rt_elem_ptr != nullptr);
       ctx->Builder.CreateStore(llvm_rt_elem, llvm_rt_elem_ptr);
     }
@@ -291,30 +282,26 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
       llvm_rt_arr_ty, llvm_rt_arr_alloc, "array.repeated.result" + uid);
   }
 
-  // Comptime array creation. This pathway generates
-  // the element once as a "constant" value (comptime-
-  // known), then copies it into every slot.
+  // Comptime array creation. This pathway generates the element once as a
+  // "constant" value (comptime-known), then copies it into every slot.
   {
-    // Generate the element a single time, ensuring
-    // its validity after a constant cast (debug only).
-    // The resulting constant is reused for every slot
-    // in the array below.
+    // Generate the element a single time, ensuring its validity after a
+    // constant cast (debug only). The resulting constant is reused for every
+    // slot in the array below.
     const auto llvm_ct_elem = llvm::cast<llvm::Constant>(
       Elem->Stage11_CodeGen(sm, meta, ctx));
     SPP_ASSERT(llvm_ct_elem != nullptr);
     SkipSizeScope(sm);
 
-    // Create the array type. The array type wraps
-    // the llvm determined element type, and the length
-    // is also provided. This lowers to the llvm special
-    // array [T * n] type.
+    // Create the array type. The array type wraps the llvm determined element
+    // type, and the length is also provided. This lowers to the llvm array
+    // [T * n] type.
     const auto llvm_ct_elem_ty = llvm_ct_elem->getType();
     const auto llvm_ct_arr_ty = llvm::ArrayType::get(llvm_ct_elem_ty, n);
     SPP_ASSERT(llvm_ct_arr_ty != nullptr);
 
-    // Allocate the array into the enclosing function
-    // using the llvm constant array creation, reusing
-    // the same constant for every slot.
+    // Allocate the array into the enclosing function using the llvm constant
+    // array creation, reusing the same constant for every slot.
     auto llvm_ct_elems = Vec<llvm::Constant*>{};
     llvm_ct_elems.reserve(n);
     for (auto i = 0uz; i < n; ++i) { llvm_ct_elems.emplace_back(llvm_ct_elem); }
@@ -327,8 +314,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Convert the inner element to a compile-time value. It is only
-  // read, as an explicit array literal's elements are.
+  // Convert the inner element to a compile-time value. It is only read, as an
+  // explicit array literal's elements are.
   Elem->EvaluateCompTime(sm, meta);
   SkipSizeScope(sm);
 
@@ -341,8 +328,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   using generate::common_types::ArrayType;
 
-  // The type built in stage 7 (see "_ArrayType"). Only a literal
-  // not yet analysed has none, and one is built for it as it is.
+  // The type built in stage 7 (see "_ArrayType"). Only a literal not yet
+  // analysed has none, and one is built for it as it is.
   if (_ArrayType != nullptr) { return _ArrayType; }
   auto array_type = ArrayType(TokL->PosStart(), Elem->InferType(sm, meta), AstClone(Size));
   array_type->Stage7_AnalyseSemantics(sm, meta);
@@ -358,8 +345,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::InferTypeRef(
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
-  // Both the repeated element and the count are expressions;
-  // the count is the one that names a comp parameter.
+  // Both the repeated element and the count are expressions; the count is the
+  // one that names a comp parameter.
   return MakeShared<ArrayLiteralRepeatedElementAst>(
     AstClone(TokL),
     AstClone(Elem->ReadExpr(sub)),
@@ -369,8 +356,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::ReadExpr(
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::IsAllowedInDefault() const -> bool {
-  // Check against the element and size values as they might
-  // carry non-defaultable values (particularly the element).
+  // Check against the element and size values as they might carry non-
+  // defaultable values (particularly the element).
   return
     (Elem == nullptr or Elem->IsAllowedInDefault()) and
     (Size == nullptr or Size->IsAllowedInDefault());

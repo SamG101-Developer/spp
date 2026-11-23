@@ -100,7 +100,7 @@ private:
   /// Build and analyse the type from the elements. Cache the result into the
   /// "_InferredType" field.
   auto _BuildType(
-    ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;
+    ScopeManager *sm, CompilerMetaData *meta) const -> Shared<TypeAst>;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ArrayLiteralExplicitElementsAst)
