@@ -76,4 +76,12 @@ private:
   /// forwarded-to type's; a namespace's own. Stage 7 resolves it
   /// again in its own scope; every later read reuses it.
   auto _Resolve(ScopeManager const *sm) -> VariableSymbol*;
+
+  /// Stage 7 with a type on the left ("T::x"): a method or a
+  /// constant of it, or of the type it forwards to, visible here.
+  auto _AnalyseTypeMember(ScopeManager *sm, CompilerMetaData *meta) -> void;
+
+  /// Stage 7 with a namespace on the left ("ns::x"): a constant or a
+  /// namespace it declares itself, visible here.
+  auto _AnalyseNsMember(ScopeManager *sm, CompilerMetaData *meta) -> void;
 };

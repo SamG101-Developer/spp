@@ -111,104 +111,69 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ToString() const
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Todo: Tidy this up a lot.
+  // The member is looked up here, in the scope the access is
+  // analysed in, and reused from now on ("_Resolve").
+  _MemberScope = nullptr;
+  if (Lhs->To<TypeAst>() != nullptr) { _AnalyseTypeMember(sm, meta); }
+  else { _AnalyseNsMember(sm, meta); }
+}
+
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::_AnalyseTypeMember(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using member_lookup::MemberAccessForm;
 
-  // The member is looked up here, in the scope the access is analysed in, and reused from now on.
-  _MemberScope = nullptr;
+  // The member exists on the type, or on the type it forwards to.
+  const auto member = _Resolve(sm);
+  if (member == nullptr) {
+    member_lookup::RaiseMemberNotFound(
+      *_LhsTypeSymbol, TypeRef::Of(*Lhs->As<TypeAst>(), *sm->CurrentScope), *Name, MemberAccessForm::Static,
+      *sm->CurrentScope);
+  }
 
-  // Handle types on the left-hand-side of a static member access.
-  if (Lhs->To<TypeAst>() != nullptr) {
-    const auto member = _Resolve(sm);
-    // The member exists on the type, or on the type it forwards to. The candidates are the methods of either: a
-    // static access names a method or a constant (Todo: filter to the methods with a static overload).
-    if (member == nullptr) {
-      auto candidates = _LhsTypeSymbol->LinkedScope->GetAllVarSymbols(true, true);
-      const auto lhs_ref = TypeRef::Of(*Lhs->As<TypeAst>(), *sm->CurrentScope);
-      const auto fwd_sups = marker_sups::FindFwdSups(lhs_ref, *sm->CurrentScope);
-      if (auto const *const fwd = marker_sups::FwdTargetOf(fwd_sups.first).Symbol;
-        fwd != nullptr and fwd->LinkedScope != nullptr) {
-        candidates.append_range(fwd->LinkedScope->GetAllVarSymbols(true, true));
-      }
-      member_lookup::RaiseMissingIdentifierAndClosestOptions(
-        *Name, candidates | genex::views::filter([](auto const *sym) { return sym->Kind == VariableKind::FnMock; })
-          | genex::to<Vec>(), {});
-    }
-
-    // A method named as a value: its "$" mock. Use the hook to record information for the resolution and completion
-    // plugin.
-    if (member->Kind == VariableKind::FnMock) {
-      lsp::resolution_index::RecordVariable(*Name, *sm, *meta, member);
-
-      // Enforce visibility, as a "." access does: overloads share one visibility, but a name can be declared in more
-      // than one "sup" block, and the access is fine if any of them is visible. Without this a "!private" static
-      // ("Type::fn") was callable from anywhere.
-      const auto cls_scope = _LhsTypeSymbol->LinkedScope->NonGnScope;
-      const auto fn_scopes_and_syms = member_lookup::ScopesDeclaringVar(*_LhsTypeSymbol->LinkedScope, *Name)
-        | genex::views::filter([](auto const &x) { return x.Symbol->Kind == VariableKind::FnMock; })
-        | genex::to<Vec>();
-      const auto any_visible = genex::any_of(fn_scopes_and_syms, [&](auto const &x) {
-        return visibility_utils::IsTypeMemberVisible(*x.Symbol, *cls_scope, *sm, *meta);
-      });
-      if (not fn_scopes_and_syms.empty() and not any_visible) {
-        visibility_utils::CheckTypeMemberVisibility(*fn_scopes_and_syms.back().Symbol, *Name, *cls_scope, *sm, *meta);
-      }
-      return;
-    }
-
-    // A class attribute belongs to a value of the type rather
-    // than to the type, so it is reached with "." instead.
-    RaiseIf<SppMemberAccessRuntimeOperatorExpectedError>(
-      not member_lookup::MemberReachableBy(*member, MemberAccessForm::Static),
-      ERR_ARGS(*Name, *TokDblColon, "attribute"));
-
-    // Which declaration the access resolves to: the nearest
-    // scope that can reach the name, supers included. Only
-    // the members "::" reaches are in the running, so a class
-    // attribute of the same name neither answers this nor makes
-    // it ambiguous.
-    const auto closest = member_lookup::ClosestMembers(*_LhsTypeSymbol->LinkedScope, *Name, MemberAccessForm::Static);
-
-    // Enforce visibility on the accessed member. Visibility is
-    // read off the non-generic scope, because that is where the
-    // member was written and so where its annotation lives; an
-    // instantiation's copy of a symbol is not the declaration.
-    if (not closest.empty()) {
-      const auto scope = closest[0].Where->NonGnScope;
-      const auto declared_sym = scope->FindVarSymbol(Name.get());
-      visibility_utils::CheckTypeMemberVisibility(
-        declared_sym != nullptr ? *declared_sym : *closest[0].Symbol, *Name,
-        declared_sym != nullptr ? *scope : *closest[0].Where, *sm, *meta);
-
-      // Use the hook to record information for the resolution and
-      // completion plugin.
-      lsp::resolution_index::RecordVariable(
-        *Name, *sm, *meta, declared_sym != nullptr ? declared_sym : closest[0].Symbol);
-    }
-
-    member_lookup::RaiseIfAmbiguous(closest, *Name);
+  // A method named as a value (its "$" mock), visible through any
+  // block declaring it, as a "." access is.
+  if (member->Kind == VariableKind::FnMock) {
+    lsp::resolution_index::RecordVariable(*Name, *sm, *meta, member);
+    ignore = member_lookup::CheckMethodVisible(*_LhsTypeSymbol->LinkedScope, *Name, *sm, *meta);
     return;
   }
 
-  // Otherwise, we are handling a namespace left-hand-side, which must not name a variable or be any other value
-  // ("f()::x", "a.b::x").
+  // A class attribute belongs to a value of the type, so it is
+  // reached with "." instead. Of what "::" reaches (a constant of
+  // the name does not make an attribute ambiguous), the nearest
+  // declaration is the one meant.
+  RaiseIf<SppMemberAccessRuntimeOperatorExpectedError>(
+    not member_lookup::MemberReachableBy(*member, MemberAccessForm::Static),
+    ERR_ARGS(*Name, *TokDblColon, "attribute"));
+  if (auto *const declared = member_lookup::CheckClosestMember(
+    member_lookup::ClosestMembers(*_LhsTypeSymbol->LinkedScope, *Name, MemberAccessForm::Static), *Name, *sm, *meta);
+    declared != nullptr) {
+    lsp::resolution_index::RecordVariable(*Name, *sm, *meta, declared);
+  }
+}
+
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::_AnalyseNsMember(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+
+  // A namespace path, not a variable or any other value ("f()::x",
+  // "a.b::x").
   RaiseIf<SppMemberAccessRuntimeOperatorExpectedError>(
     not IsNsPath(Lhs) or sm->CurrentScope->FindVarSymbol(Lhs->To<IdentifierAst>()) != nullptr,
     ERR_ARGS(*Lhs, *TokDblColon, IsNsPath(Lhs) ? "variable" : "expression"));
-  const auto member = _Resolve(sm);
 
-  // The name is a constant or a namespace of the namespace's own: "ns::x" reaches nothing the namespace's parents
-  // declare, so neither does a suggestion.
+  // A constant or a namespace of the namespace's own: "ns::x"
+  // reaches nothing its parents declare, so neither does a
+  // suggestion.
+  const auto member = _Resolve(sm);
   if (member == nullptr and not _MemberScope->HasNsSymbol(Name.get(), true)) {
     member_lookup::RaiseMissingIdentifierAndClosestOptions(
       *Name, _MemberScope->GetAllVarSymbols(true), _MemberScope->GetAllNsSymbols(true));
   }
 
-  // Enforce visibility on the accessed namespace symbol.
-  // Only for var symbols, not namespace symbols. Use the
-  // hook to record information for the resolution and
-  // completion plugin.
+  // A constant is visible from here; a namespace has no visibility
+  // of its own.
   if (member != nullptr) {
     visibility_utils::CheckModuleMemberVisibility(*member, *Name, *_MemberScope, *sm, *meta);
     lsp::resolution_index::RecordVariable(*Name, *sm, *meta, member);
@@ -233,49 +198,38 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
     }
   }
 
-  // Type case: LHS is a TypeAst — access a cmp constant on the type's scope.
-  if (_LhsTypeSymbol != nullptr) {
-    const auto var_sym = _Resolve(sm);
-
-    // A method named as a value is its "$" mock's constant, the
-    // "{fn, env}" pair; without one there is nothing to load.
-    if (var_sym->Kind == VariableKind::FnMock and var_sym->LlvmInfo->Alloca == nullptr) {
-      return nullptr;
-    }
-
-    // A constant typed by a "sup" block's generic ("cmp n: T")
-    // has no global (only the template is generated), so its
-    // folded value is emitted in place.
-    if (var_sym->LlvmInfo->Alloca == nullptr) {
-      EvaluateCompTime(sm, meta);
-      const auto folded = std::move(meta->CompTimeResult);
-      SPP_ASSERT(folded != nullptr);
-
-      // The value is the template's, written in terms of its block's parameters ("Unit[T]()", "Self()"), which name
-      // nothing here. It is read in the block that declares it for this instance, where they are bound, with "Self"
-      // as the type named.
-      if (_LhsTypeSymbol->InstanceOf != nullptr) {
-        const auto declaring = member_lookup::ScopesDeclaringVar(*_LhsTypeSymbol->LinkedScope, *Name);
-        const auto in = genex::find_if(declaring, [var_sym](auto const &d) { return d.Symbol == var_sym; });
-        auto bindings = GenericSubst();
-        BindSelf(bindings, *_LhsTypeSymbol->FqName(), *sm->CurrentScope);
-        return folded->ReadExpr(ExprSubst::Across(
-          in != declaring.end() ? *in->Where : *_LhsTypeSymbol->LinkedScope, std::move(bindings), *sm->CurrentScope))
-          ->Stage11_CodeGen(sm, meta, ctx);
-      }
-      return folded->Stage11_CodeGen(sm, meta, ctx);
-    }
-    return codegen::LoadGlobalConstant(*var_sym->LlvmInfo, "load.static_type_member" + uid, ctx);
-  }
-
-  // Namespace case: LHS is a namespace identifier — access a cmp constant in
-  // the namespace's scope. A (namespaced) function named as a value, like
-  // "apply(std::debug::breakpoint)" is its mock's constant, as a method's is
-  // above.
+  // A constant with a global is loaded from it; a method (or a
+  // namespaced function) named as a value is its "$" mock's
+  // constant, the "{fn, env}" pair, and without one there is
+  // nothing to load.
   const auto var_sym = _Resolve(sm);
-  if (var_sym->Kind == VariableKind::FnMock and var_sym->LlvmInfo->Alloca == nullptr) { return nullptr; }
-  SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
-  return codegen::LoadGlobalConstant(*var_sym->LlvmInfo, "load.static_ns_member" + uid, ctx);
+  if (var_sym->LlvmInfo->Alloca != nullptr) {
+    return codegen::LoadGlobalConstant(
+      *var_sym->LlvmInfo, _LhsTypeSymbol != nullptr ? "load.static_type_member" + uid : "load.static_ns_member" + uid,
+      ctx);
+  }
+  if (var_sym->Kind == VariableKind::FnMock) { return nullptr; }
+
+  // Only a type's constant typed by a "sup" block's generic ("cmp
+  // n: T") has no global (only the template is generated), so its
+  // folded value is emitted in place.
+  SPP_ASSERT(_LhsTypeSymbol != nullptr);
+  EvaluateCompTime(sm, meta);
+  const auto folded = std::move(meta->CompTimeResult);
+  SPP_ASSERT(folded != nullptr);
+
+  // The value is the template's, written in terms of its block's
+  // parameters ("Unit[T]()", "Self()"), which name nothing here. It
+  // is read in the block that declares it for this instance, where
+  // they are bound, with "Self" as the type named.
+  if (_LhsTypeSymbol->InstanceOf == nullptr) { return folded->Stage11_CodeGen(sm, meta, ctx); }
+  const auto declaring = member_lookup::ScopesDeclaringVar(*_LhsTypeSymbol->LinkedScope, *Name);
+  const auto in = genex::find_if(declaring, [var_sym](auto const &d) { return d.Symbol == var_sym; });
+  auto bindings = GenericSubst();
+  BindSelf(bindings, *_LhsTypeSymbol->FqName(), *sm->CurrentScope);
+  return folded->ReadExpr(ExprSubst::Across(
+    in != declaring.end() ? *in->Where : *_LhsTypeSymbol->LinkedScope, std::move(bindings), *sm->CurrentScope))
+    ->Stage11_CodeGen(sm, meta, ctx);
 }
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::EvaluateCompTime(
