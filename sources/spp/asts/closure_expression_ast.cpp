@@ -13,7 +13,6 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
 import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.fn_values;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_join;
@@ -108,6 +107,7 @@ auto spp::asts::ClosureExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Body));
   c->_TrueRetType = _TrueRetType;
   c->_MockType = _MockType;
+  c->_OwnedAtEnd = _OwnedAtEnd;
   return c;
 }
 
@@ -203,12 +203,6 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
       meta->EnclosingFnRetType = ReturnType;
       meta->EnclosingFnSourceRetType = written_ret;
     }
-
-    // A "ret" or "?" in the body leaves the closure rather
-    // than the function the closure is written in, so a
-    // closure written inside a deferred expression is past
-    // the point that restriction applies to.
-    meta->WithinDeferTok = nullptr;
 
     // A closure that is defined inside of a loop cannot touch
     // the loop with "exit"/"skip" as it's not actually running
@@ -309,15 +303,14 @@ auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
 
     // Check the memory of the body of the closure. A "ret" inside
     // it leaves the closure, not the function the closure is written
-    // in, so the linearity walk stops at the closure's own scope.
+    // in, so the drops it collects stop at the closure's own scope.
     sm->MoveToNextScope();
     Body->Stage8_CheckMemory(sm, meta);
 
-    // A body that falls off its end discharges its parameters there,
-    // as a function's does.
+    // A body that falls off its end drops what its parameters still
+    // own there, as a function's does.
     if (not Body->Diverges(sm, meta)) {
-      linear_utils::CheckScopeExit(
-        *outer_scope, *Body, "Closure end", *sm, meta);
+      _OwnedAtEnd = drop_utils::EndRegion(*outer_scope, *Body, *sm, meta);
     }
 
     // Leave both closure scopes reading as Stage 7 left them. They
@@ -446,6 +439,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     sm->CurrentScope->AstNode = this;
     _LlvmFn = MakeShared<codegen::LlvmFnWrapper>(llvm_fn);
     meta->EnclosingFnScope = sm->CurrentScope;
+    meta->TemporaryBase = codegen::TemporaryDepth(ctx);
     meta->EnclosingFnRetType = _TrueRetType;
     meta->EnclosingFnSourceRetType = Source._OriginalRetType;
     meta->EnclosingFnFlavour = Tok.get();
@@ -474,6 +468,8 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
       // the way a borrowed argument is for a by-value parameter.
       // A closure never returns a borrow (second class), so a
       // borrowed body is always one of these.
+      // The parameters still owned are dropped once the body's value is made, before it is returned.
+      codegen::EmitOwnedDrops(*outer_scope, _OwnedAtEnd, this, sm, meta, ctx);
       if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
         const auto body_ref = Body->InferTypeRef(sm, meta);
         if (body_val != nullptr and body_ref.IsBorrowed() and not llvm_ret_ty->isVoidTy()) {

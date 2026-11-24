@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.closure_expression_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
@@ -127,4 +128,8 @@ private:
   /// The LLVM function representing the closure. Generated in
   /// stage 11, and used to call the closure when it is invoked.
   Shared<codegen::LlvmFnWrapper> _LlvmFn;
+
+  /// What the closure's own scope (its parameters) still owns as
+  /// the body runs off its end, dropped there ("OwnedIn").
+  Vec<analyse::utils::drop_utils::OwnedValue> _OwnedAtEnd;
 };
