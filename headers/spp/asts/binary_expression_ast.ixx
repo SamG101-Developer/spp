@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.binary_expression_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast_kind;
 import spp.asts.expression_ast;
 import spp.codegen.llvm_ctx;
@@ -10,6 +11,7 @@ import llvm;
 import std;
 
 use_common(BinaryExpressionAst);
+use(spp::analyse::utils::memory_state, struct ScopeSnapshot);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct IdentifierAst);
@@ -105,6 +107,20 @@ private:
   /// to materialize "f()". A fold's tuple operand is held the
   /// same way: ".. + f()" reads each element off one "f()".
   Vec<Unique<LetStatementInitializedAst>> _ChainTemps;
+
+  /// A logical operator's right operand runs on one path only, and
+  /// the short circuit is the other: where they meet, what one holds
+  /// and the other does not is dropped on the path still holding it
+  /// ("flag and take(x)" drops "x" where "flag" is false).
+  Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnShortCircuit;
+  Vec<analyse::utils::drop_utils::OwnedValue> _DropsAfterRhs;
+
+  /// Stage 8 for a logical operator: join the state the left operand
+  /// left ("short_circuit") with the right operand's, filling the two
+  /// drop lists above.
+  auto _JoinShortCircuit(
+    analyse::utils::memory_state::ScopeSnapshot const &short_circuit, ScopeManager &sm,
+    CompilerMetaData *meta) -> void;
 
   /// Check whether a logical operator has been analysed - the
   /// mirror of checking if "_MappedFn" is not nullptr.

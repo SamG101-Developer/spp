@@ -101,6 +101,8 @@ auto spp::asts::BinaryExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Rhs));
   ast->_MappedFn = _MappedFn;
   ast->_ChainTemps = AstCloneVec(_ChainTemps);
+  ast->_DropsOnShortCircuit = _DropsOnShortCircuit;
+  ast->_DropsAfterRhs = _DropsAfterRhs;
   ast->_OpenPack = AstClone(_OpenPack);
   ast->_OpenPackMoves = _OpenPackMoves;
   ast->Source = Source;
@@ -316,11 +318,15 @@ auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
   // to. Both operands are checked as at worst, they both
   // evaluate, so must both be valid. Maintains consistency
   // in all code.
+  // The right operand runs only when the left does not decide the
+  // answer, so the two paths are joined after it.
   if (IsLogicalOperator()) {
     Lhs->Stage8_CheckMemory(sm, meta);
     mem_utils::ValidateSymbolMemory(*Lhs, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
+    const auto short_circuit = memory_state::SnapshotFlow(*sm->CurrentScope);
     Rhs->Stage8_CheckMemory(sm, meta);
     mem_utils::ValidateSymbolMemory(*Rhs, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
+    _JoinShortCircuit(short_circuit, *sm, meta);
     return;
   }
 
@@ -338,6 +344,39 @@ auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
 
   // Forward the memory checking to the mapped function.
   _MappedFn->Stage8_CheckMemory(sm, meta);
+}
+
+auto spp::asts::BinaryExpressionAst::_JoinShortCircuit(
+  analyse::utils::memory_state::ScopeSnapshot const &short_circuit, ScopeManager &sm,
+  CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+  _DropsOnShortCircuit.clear();
+  _DropsAfterRhs.clear();
+  auto const *const flow = memory_state::FlowOf(*sm.CurrentScope);
+  if (flow == nullptr) { return; }
+
+  // The values of this block and the ones around it may be held on
+  // one path and not the other.
+  auto owners = drop_utils::OwnersAround(*sm.CurrentScope, meta);
+  for (auto const *const owner : sm.CurrentScope->GetOwners()) { owners.emplace(owner, sm.CurrentScope); }
+
+  const auto after_rhs = memory_state::SnapshotFlow(*sm.CurrentScope);
+  const auto syms = flow->States | genex::views::keys | genex::to<Vec>();
+  for (auto const *const sym : syms) {
+    const auto on_short = memory_state::StateIn(short_circuit, *sym);
+    const auto on_rhs = memory_state::StateIn(after_rhs, *sym);
+    if (memory_state::SameShape(on_short, on_rhs)) { continue; }
+    auto joined = memory_state::JoinAll({{on_short, Lhs.get()}, {on_rhs, Rhs.get()}}, *sym, *sm.CurrentScope);
+    if (auto value = drop_utils::OwnedOnJoinPath(*sym, joined, on_short, owners, *Lhs, sm, meta)) {
+      _DropsOnShortCircuit.emplace_back(std::move(*value));
+    }
+    if (auto value = drop_utils::OwnedOnJoinPath(*sym, joined, on_rhs, owners, *Rhs, sm, meta)) {
+      _DropsAfterRhs.emplace_back(std::move(*value));
+    }
+    memory_state::StateOf(*sm.CurrentScope, *sym) = std::move(joined);
+  }
+  drop_utils::SortNewestFirst(_DropsOnShortCircuit);
+  drop_utils::SortNewestFirst(_DropsAfterRhs);
 }
 
 auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
@@ -379,13 +418,24 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   const auto join_bb = llvm::BasicBlock::Create(
     *ctx->Context, "logical.join" + uid, func);
 
-  // Taken from here rather than from before the operand was
-  // generated, because generating it may have left the builder
-  // in a block of its own making, like from a "case" on the left
-  // of an "and" expression.
-  const auto lhs_end_bb = ctx->Builder.GetInsertBlock();
+  // The short-circuit edge drops what only the right operand would
+  // have taken ("_DropsOnShortCircuit"), in a block of its own. The
+  // edge into the join is taken from where the builder is, as the
+  // left operand may have left it in a block of its own making (a
+  // "case" on the left of an "and").
+  auto short_end_bb = ctx->Builder.GetInsertBlock();
+  auto short_bb = join_bb;
+  if (not _DropsOnShortCircuit.empty()) {
+    short_bb = llvm::BasicBlock::Create(*ctx->Context, "logical.short" + uid, func);
+  }
   ctx->Builder.CreateCondBr(
-    llvm_lhs, is_and ? rhs_bb : join_bb, is_and ? join_bb : rhs_bb);
+    llvm_lhs, is_and ? rhs_bb : short_bb, is_and ? short_bb : rhs_bb);
+  if (short_bb != join_bb) {
+    ctx->Builder.SetInsertPoint(short_bb);
+    codegen::EmitOuterDrops(_DropsOnShortCircuit, *this, sm, meta, ctx);
+    short_end_bb = ctx->Builder.GetInsertBlock();
+    ctx->Builder.CreateBr(join_bb);
+  }
 
   // Do the right-hand-side codegen (doesn't execute the LLVM,
   // just creates it), and hook it into the short-circuiting
@@ -399,6 +449,7 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   SPP_ASSERT(llvm_rhs->getType()->isIntegerTy(1));
   codegen::EmitTemporaryDrops(temporaries, sm, meta, ctx);
   codegen::PopTemporaries(temporaries, ctx);
+  codegen::EmitOuterDrops(_DropsAfterRhs, *this, sm, meta, ctx);
   const auto rhs_end_bb = ctx->Builder.GetInsertBlock();
   ctx->Builder.CreateBr(join_bb);
 
@@ -407,7 +458,7 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   // other edge carries whatever the right operand evaluated to.
   ctx->Builder.SetInsertPoint(join_bb);
   const auto llvm_res = ctx->Builder.CreatePHI(llvm_bool_ty, 2, "logical" + uid);
-  llvm_res->addIncoming(llvm::ConstantInt::getBool(*ctx->Context, not is_and), lhs_end_bb);
+  llvm_res->addIncoming(llvm::ConstantInt::getBool(*ctx->Context, not is_and), short_end_bb);
   llvm_res->addIncoming(llvm_rhs, rhs_end_bb);
   return llvm_res;
 }
