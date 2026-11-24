@@ -5,6 +5,7 @@ export module spp.asts.assignment_statement_ast;
 import spp.asts.ast_kind;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.interner;
 import spp.utils.types;
 import llvm;
 import std;
@@ -58,4 +59,13 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
   /// move the resolved right-side values into the left-side symbols.
   auto EvaluateCompTime(
     ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+private:
+  /// Per target, the value written over is dropped first when one is
+  /// still owned there: the parts already moved out of it (none for a
+  /// whole value), or no entry for nothing to drop.
+  Vec<Opt<Vec<Vec<spp::utils::InternedId>>>> _DropsOld;
+
+  /// Whether target "i" drops the value it held before the store.
+  SPP_ATTR_NODISCARD auto DropsOldAt(std::size_t i) const -> bool;
 };
