@@ -83,26 +83,22 @@ auto spp::asts::PatternGuardAst::Stage8_CheckMemory(
   //
   IMPORT_UTILS;
 
-  // Check the memory of the expression. A guard may read and
-  // borrow, but not move: it runs before its branch is chosen,
-  // so a move it makes would also have happened on the path
-  // into the next branch when it answers false. Every symbol
-  // the body's flow holds is compared, not only the ones
-  // visible here: a shadowed one can still be moved.
+  // A guard may move a value: it is moved on every path past the
+  // branch too, the "case" dropping it where the guard never ran
+  // ("case_utils::CarryGuardMoves"). Not a binding of the branch's
+  // patterns, or of the "case" condition's "is": until the branch
+  // is taken it is still a part of the subject, which every later
+  // branch matches against whole. A borrow binding takes nothing.
   const auto before = memory_state::SnapshotFlow(*sm->CurrentScope);
   Expr->Stage8_CheckMemory(sm, meta);
   mem_utils::ValidateSymbolMemory(*Expr, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
-  const auto check = [&](VariableSymbol const &sym) {
+  auto bindings = sm->CurrentScope->GetOwners();
+  if (sm->CurrentScope->Parent != nullptr) { bindings.append_range(sm->CurrentScope->Parent->GetOwners()); }
+  for (auto const *const sym : bindings) {
     RaiseIf<SppPatternGuardMovesValueError>(
-      memory_state::StateIn(before, sym).AstMoved == nullptr
-      and memory_state::StateOf(*sm->CurrentScope, sym).AstMoved != nullptr and sym.Name != nullptr,
-      ERR_ARGS(*Expr, *sym.Name));
-  };
-  if (const auto flow = memory_state::FlowOf(*sm->CurrentScope); flow != nullptr) {
-    for (auto const &[sym, _] : flow->States) { check(*sym); }
-  }
-  else {
-    for (auto const &[sym, _] : before.Symbols) { check(*sym); }
+      not sym->IsBorrow() and memory_state::StateIn(before, *sym).AstMoved == nullptr
+      and memory_state::StateOf(*sm->CurrentScope, *sym).AstMoved != nullptr and sym->Name != nullptr,
+      ERR_ARGS(*Expr, *sym->Name));
   }
 }
 
