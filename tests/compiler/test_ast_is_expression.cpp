@@ -226,3 +226,46 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     let b = p.b
   }
 )");
+
+// A chain of "and"s nests to the right, so an "is" binding of a value made on the right of one "and" is read by the
+// operands after it while that value is still held.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  IsExpressionAst,
+  test_valid_is_binding_of_a_temporary_read_further_along_an_and_chain, R"(
+  fun mk() -> Opt[Str] { ret Some(val=Str::from("x")) }
+
+  fun f(flag: Bool) -> Void {
+    let b = flag and mk() is Some(val as y) and y.len() > 0_uz
+  }
+)");
+
+// The value an "is" on the right of a loop condition's "and" makes is held exactly where the "and" is true, so the body
+// reads the binding; it is dropped where the right operand answers false, and at each iteration's end.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  IsExpressionAst,
+  test_valid_is_binding_of_a_temporary_on_the_right_of_and_read_in_a_loop_body, R"(
+  fun mk() -> Opt[Str] { ret Some(val=Str::from("x")) }
+
+  fun f() -> Void {
+    let mut i = 0_uz
+    loop i < 3_uz and mk() is Some(val as y) {
+      i = i + y.len()
+    }
+  }
+)");
+
+// The same for a boolean "case": held in its first branch only.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  IsExpressionAst,
+  test_valid_is_binding_of_a_temporary_on_the_right_of_and_read_in_a_case_branch, R"(
+  fun mk() -> Opt[Str] { ret Some(val=Str::from("x")) }
+
+  fun f(flag: Bool) -> USize {
+    case flag and mk() is Some(val as y) {
+      ret y.len()
+    }
+    else {
+      ret 0_uz
+    }
+  }
+)");

@@ -44,7 +44,10 @@ std_vcs() {
     fi
     if [[ ! -d "${WORK}/vcs/std" ]]; then
         if [[ -n "${STD_DIR}" && "${STD_BRANCH}" == master && -d "${FIXTURE}/vcs/std" ]]; then
+            # The gtest fixture's copy may be behind master, which a build
+            # would fast-forward to, refused over the uncommitted diff.
             mkdir -p "${WORK}/vcs" && cp -r "${FIXTURE}/vcs/std" "${WORK}/vcs/std"
+            git -C "${WORK}/vcs/std" pull -q --ff-only origin "${STD_BRANCH}" >&2
         else
             git clone -q --branch "${STD_BRANCH}" "${STD_GIT}" "${WORK}/vcs/std" >&2
         fi

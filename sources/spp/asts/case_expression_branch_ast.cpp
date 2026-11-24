@@ -81,6 +81,7 @@ auto spp::asts::CaseExpressionBranchAst::Clone() const -> Unique<Ast> {
   cloned->_DropsAtEnd = _DropsAtEnd;
   cloned->_DropsOnNoMatch = _DropsOnNoMatch;
   cloned->_DropsOnGuardFalse = _DropsOnGuardFalse;
+  cloned->_GuardTemporariesOnFalse = _GuardTemporariesOnFalse;
   cloned->_KeepsTemporary = _KeepsTemporary;
   return cloned;
 }
@@ -148,9 +149,16 @@ auto spp::asts::CaseExpressionBranchAst::Stage8_CheckMemory(
   for (auto const &p : Patterns) { p->Stage8_CheckMemory(sm, meta); }
   _StateBeforeGuard = nullptr;
   _StateAfterGuard = nullptr;
+  _GuardTemporariesOnFalse.clear();
   if (Guard) {
+    // The guard's temporaries live on into the body (its "is"
+    // bindings view them), so where it answers false, what they
+    // hold is dropped on that edge.
     _StateBeforeGuard = MakeShared<memory_state::ScopeSnapshot>(memory_state::SnapshotFlow(*sm->CurrentScope));
+    const auto guard = drop_utils::TemporaryRegion(*sm->CurrentScope);
+    BinaryExpressionAst::MarkCondition(*Guard->Expr);
     Guard->Stage8_CheckMemory(sm, meta);
+    _GuardTemporariesOnFalse = guard.Held(*Guard, *sm, meta, BinaryExpressionAst::HeldWhenTrue(*Guard->Expr));
     _StateAfterGuard = MakeShared<memory_state::ScopeSnapshot>(memory_state::SnapshotFlow(*sm->CurrentScope));
   }
   case_utils::ApplySubjectOnMatch(*sm, *meta);
@@ -205,14 +213,14 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
       *ctx->Context, "case.branch.guard" + uid, func);
     const auto no_match_bb = _EdgeToNext(_DropsOnNoMatch, "case.branch.no_match" + uid, next_bb, sm, meta, ctx);
     ctx->Builder.CreateCondBr(cond, guard_bb, no_match_bb);
-    // The temporaries the guard makes exist only where it ran: they
-    // are dropped at its end, before either edge, its value being a
-    // "Bool" that borrows none of them.
+    // The unnamed temporaries the guard makes exist only where it
+    // ran: they are dropped at its end, before either edge, its value
+    // being a "Bool" that borrows none of them. Its "$" ones live on
+    // into the body, and are dropped on the false edge.
     ctx->Builder.SetInsertPoint(guard_bb);
     const auto guard_temporaries = codegen::TemporaryDepth(ctx);
     const auto guard_cond = Guard->Stage11_CodeGen(sm, meta, ctx);
-    codegen::EmitTemporaryDrops(guard_temporaries, sm, meta, ctx);
-    codegen::PopTemporaries(guard_temporaries, ctx);
+    codegen::EndTemporaryRegion(guard_temporaries, *sm->CurrentScope, {}, Guard.get(), sm, meta, ctx);
     const auto guard_end_bb = ctx->Builder.GetInsertBlock();
     const auto false_bb = _EdgeToNext(_DropsOnGuardFalse, "case.branch.guard_false" + uid, next_bb, sm, meta, ctx);
     ctx->Builder.SetInsertPoint(guard_end_bb);
@@ -403,6 +411,8 @@ auto spp::asts::CaseExpressionBranchAst::SetGuardEdgeDrops(
   Vec<analyse::utils::drop_utils::OwnedValue> on_guard_false) -> void {
   _DropsOnNoMatch = std::move(on_no_match);
   _DropsOnGuardFalse = std::move(on_guard_false);
+  _DropsOnGuardFalse.append_range(_GuardTemporariesOnFalse);
+  analyse::utils::drop_utils::SortNewestFirst(_DropsOnGuardFalse);
 }
 
 auto spp::asts::CaseExpressionBranchAst::StateBeforeGuard() const

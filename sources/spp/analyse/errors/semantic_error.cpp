@@ -1491,12 +1491,11 @@ spp::analyse::errors::SppCfgInvalidValueError::SppCfgInvalidValueError(
 spp::analyse::errors::SppDiscardedValueError::SppDiscardedValueError(
   Ast const &expr, const StrView type_name) {
   AddHeader(95, "Discarded Value Error");
-  AddErrExact(&expr, "Expression of type " + INLINE_INFO(type_name) + " produces a value nothing takes");
+  AddErrExact(&expr, "Expression of type " + INLINE_INFO(type_name) + " produces a value that must be used");
   AddFooter(
-    "An expression in statement position produces a value that nothing consumes; only " + INLINE_NOTE("Void")
-    + " and " + INLINE_NOTE("Never") + " may be discarded.",
-    "Bind the value with " + INLINE_HELP("let") + ", return it with " + INLINE_HELP("ret") + ", or remove the "
-    "expression.");
+    "A value of a " + INLINE_NOTE("!must_use") + " type, or of a variant that may hold one, cannot be discarded: "
+    "any other value nothing takes is dropped.",
+    "Bind the value with " + INLINE_HELP("let") + ", return it with " + INLINE_HELP("ret") + ", or handle it.");
 }
 
 spp::analyse::errors::SppFeatureNotYetSupportedError::SppFeatureNotYetSupportedError(

@@ -30,7 +30,6 @@ use(spp::asts::meta, struct CompilerMetaDataState);
 use(spp::asts::meta, struct CompTimeCallArgs);
 use(spp::asts::meta, struct LlvmLoopInfo);
 use(spp::asts::meta, struct IsBindingsScope);
-use(spp::asts::meta, struct DisplacedByIsBinding);
 use(spp::asts::meta, struct MetaGuard);
 use(spp::codegen, struct LlvmCtx);
 
@@ -186,31 +185,16 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// calls that leave it out, so it cannot name a parameter.
   Scope const *ParameterDefaultScope = nullptr;
 
-  /// Every binding an "is" has introduced into its enclosing
-  /// scope, in order. An "is" binding only exists where the match
-  /// is known to have succeeded - on the right of an "and", in the
-  /// branch it conditions - so the users of "is" move the ones
-  /// they no longer cover into "ExpiredIsBindings". Not restored
-  /// by "MetaGuard": it carries bindings up to the "case", "and"
-  /// or block reading them, each slicing off what was added after
-  /// the length it noted. A function body bounds it instead
-  /// ("IsBindingsScope").
-  Vec<VariableSymbol*> AddedIsBindings;
-
   /// "is" bindings no longer in force: an identifier resolving to
-  /// one is reported as unknown. They stay in their scope, as
-  /// later stages still find them by name for the code that could
-  /// use them. Carried up and bounded as "AddedIsBindings" is.
+  /// one is reported as unknown. An "is" binding only exists where
+  /// the match is known to have succeeded (on the right of an
+  /// "and", in the branch it conditions), so its statement's end,
+  /// an "or" and a "case"'s other branches add it here
+  /// ("Scope::IsBindingsSince"). They stay in their scope, as later
+  /// stages still find them by name for the code that could use
+  /// them. Not restored by "MetaGuard": a function body bounds it
+  /// ("IsBindingsScope").
   Vec<VariableSymbol*> ExpiredIsBindings;
-
-  /// What the "is" bindings of the statement being walked took the
-  /// name of, in their own scope, in order. A block puts each back
-  /// at the end of the statement ("let x = h(); let b = o is
-  /// Some(val as x)": "x" is "h()" again on the next line). Filled
-  /// in every walk, unlike the two above; not restored by
-  /// "MetaGuard", and bounded by the block slicing off what was
-  /// added after the length it noted.
-  Vec<DisplacedByIsBinding> DisplacedByIsBindings;
 
   /// The actual "current scope" of the program, which has been
   /// hidden by the isolated closure scope being set to the
@@ -488,20 +472,10 @@ private:
   bool _Heavy;
 };
 
-/// A binding of a scope an "is" binding took the name of, until
-/// the end of the statement the "is" is in.
-SPP_EXP_CLS struct spp::asts::meta::DisplacedByIsBinding {
-  Scope *In = nullptr;
-  Shared<VariableSymbol> Binding;
-  Shared<VariableSymbol> Displaced;
-};
-
-/// Bounds the "is" binding lists ("AddedIsBindings",
-/// "ExpiredIsBindings", "DisplacedByIsBindings") to a function
-/// body: no "is" binding outlives the function it is written in.
-/// Each is cut back to its length at construction when this is
-/// destroyed - on an error too, so a body abandoned midway leaves
-/// nothing behind.
+/// Bounds "ExpiredIsBindings" to a function body: no "is" binding
+/// outlives the function it is written in. It is cut back to its
+/// length at construction when this is destroyed - on an error too,
+/// so a body abandoned midway leaves nothing behind.
 SPP_EXP_CLS struct spp::asts::meta::IsBindingsScope {
   explicit IsBindingsScope(CompilerMetaData *meta);
   ~IsBindingsScope();
@@ -511,7 +485,5 @@ SPP_EXP_CLS struct spp::asts::meta::IsBindingsScope {
 
 private:
   CompilerMetaData *_Meta;
-  std::size_t _Added;
   std::size_t _Expired;
-  std::size_t _Displaced;
 };

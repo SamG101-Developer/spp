@@ -20,6 +20,7 @@ import spp.analyse.utils.pattern_solver;
 import spp.analyse.utils.type_join;
 import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
+import spp.asts.binary_expression_ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.case_pattern_variant_ast;
@@ -108,6 +109,13 @@ auto spp::asts::CaseExpressionAst::NewNonPatternMatch(
   return out;
 }
 
+auto spp::asts::CaseExpressionAst::_TestsConditionDirectly() const -> bool {
+  return not Branches.empty()
+    and Branches[0]->Op == nullptr
+    and not Branches[0]->Patterns.empty()
+    and Branches[0]->Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
+}
+
 auto spp::asts::CaseExpressionAst::PosStart() const -> std::size_t {
   // Use the "case" token.
   return TokCase->PosStart();
@@ -152,7 +160,7 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), nullptr);
   Ast::Stage2_GenTopLvlScopes(sm, meta);
 
-  const auto cond_bindings_before = meta->AddedIsBindings.size();
+  const auto cond_declared_before = sm->CurrentScope->Declarations.size();
 
   // The condition is never what the "case" is assigned to, so it
   // does not see that target: a lowered "is" as the condition has
@@ -179,14 +187,9 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
     TypeRef::Of(*_SubjectType, *sm->CurrentScope),
     Cond->PosStart(), *sm);
 
-  // Without "of", the condition is what the first branch
-  // tests directly (against "true", with no operator), so it
-  // has to be a boolean. "TokOf" is filled in either way, so
-  // the form is told apart by that first branch.
-  const auto tests_condition_directly = not Branches.empty()
-    and Branches[0]->Op == nullptr
-    and not Branches[0]->Patterns.empty()
-    and Branches[0]->Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
+  // Without "of", the condition is tested directly, so it has to be
+  // a boolean.
+  const auto tests_condition_directly = _TestsConditionDirectly();
 
   if (tests_condition_directly and not LoweredFromIsExpr
     and not type_predicates::IsTypeBool(Cond->InferTypeRef(sm, meta), *sm->CurrentScope)) {
@@ -196,12 +199,9 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
 
   // What an "is" in the condition binds only holds in the branch
   // taken when it matched - the first, for the form without "of".
-  auto cond_bindings = Vec<VariableSymbol*>();
-  if (tests_condition_directly) {
-    for (auto i = cond_bindings_before; i < meta->AddedIsBindings.size(); ++i) {
-      cond_bindings.emplace_back(meta->AddedIsBindings[i]);
-    }
-  }
+  const auto cond_bindings = tests_condition_directly
+    ? sm->CurrentScope->IsBindingsSince(cond_declared_before)
+    : Vec<VariableSymbol*>();
 
   // What each branch drops at its end. A lowered "is" hands its
   // pattern's bindings on to the statement it is in instead.
@@ -299,7 +299,10 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   // of the symbols in the branches.
   sm->MoveToNextScope();
 
-  // Check the memory state of the condition.
+  // Check the memory state of the condition. Tested directly, its
+  // true edge is the first branch.
+  const auto condition = drop_utils::TemporaryRegion(*sm->CurrentScope);
+  if (_TestsConditionDirectly()) { BinaryExpressionAst::MarkCondition(*Cond); }
   Cond->Stage8_CheckMemory(sm, meta);
   mem_utils::ValidateSymbolMemory(
     *Cond, *Cond, *sm, meta,
@@ -338,7 +341,8 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
     // An "is" never takes its subject on a match: its bindings are
     // views of it, which the subject's owner keeps owning.
     _DropsOnFallThrough = case_utils::ValidateInconsistentMemory(
-      this, branches, coverage, subject != nullptr and not LoweredFromIsExpr ? &plan.Edges : nullptr, sm, meta);
+      this, branches, coverage, subject != nullptr and not LoweredFromIsExpr ? &plan.Edges : nullptr,
+      condition.Declared(), BinaryExpressionAst::HeldWhenTrue(*Cond), sm, meta);
   }
 
   // Move out of the case expression scope.

@@ -28,6 +28,6 @@ grep -rl 'Op->To<' sources/spp | xargs grep -L 'import spp.asts.postfix_expressi
 ```
 
 The next run (45382815297) failed on the `SPP_MOD_BEGIN` case instead: `inner_scope_expression_ast.cpp`'s static
-helpers `RestoreDisplacedByIs` (`in->FindVarSymbol`, a `Scope`) and `OwnLetName` (`let->Var->To<..>()`, a
+helpers `RestoreDisplacedByIs` (since removed; `in->FindVarSymbol`, a `Scope`) and `OwnLetName` (`let->Var->To<..>()`, a
 `LocalVariableAst`) had neither module imported. The grep cannot see that shape: check by hand every helper defined
 above `SPP_MOD_BEGIN` that changed, listing each type it reaches through.

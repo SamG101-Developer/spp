@@ -75,10 +75,14 @@ namespace spp::analyse::utils::case_utils {
   /// of an enclosing scope held on only some paths is dropped on
   /// each path still holding it: each branch is given its own
   /// ("AddDropsAtJoin"), and what the path falling through every
-  /// branch drops is returned.
+  /// branch drops is returned. The temporaries the condition made
+  /// ("condition_temporaries", "drop_utils::TemporaryRegion") are
+  /// held on every path out, each dropping what it still holds, but
+  /// those held only where a boolean condition is true
+  /// ("held_in_first_branch") are held in its first branch alone.
   SPP_EXP_FUN auto ValidateInconsistentMemory(
     Ast *parent, Vec<CaseExpressionBranchAst*> const &branches,
-    CaseCoverage const &coverage,
-    SubjectEdges const *subject_edges, ScopeManager *sm,
-    CompilerMetaData *meta) -> Vec<drop_utils::OwnedValue>;
+    CaseCoverage const &coverage, SubjectEdges const *subject_edges,
+    Vec<VariableSymbol*> const &condition_temporaries, Vec<VariableSymbol*> const &held_in_first_branch,
+    ScopeManager *sm, CompilerMetaData *meta) -> Vec<drop_utils::OwnedValue>;
 }

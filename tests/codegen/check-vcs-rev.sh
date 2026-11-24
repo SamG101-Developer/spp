@@ -17,11 +17,12 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" "$@"
 
 # Two commits of today's std on top of the clone, so the older pin builds with
 # this compiler whatever std's history holds. The checkout's tree is copied
-# over the clone whole, as a clone drops STD_DIR's uncommitted changes (new
-# files and binaries included).
+# over the emptied clone whole, as a clone drops STD_DIR's uncommitted changes
+# (new, deleted and binary files included).
 readonly REMOTE="${WORK}/remotes/std"
 STD_CHECKOUT="$(std_vcs)/std"
 git clone -q "${STD_CHECKOUT}" "${REMOTE}"
+git -C "${REMOTE}" rm -rqf .
 tar -C "${STD_CHECKOUT}" --exclude=.git -cf - . | tar -C "${REMOTE}" -xf -
 git -C "${REMOTE}" add -A
 git_commit() { git -C "${REMOTE}" -c user.name=check -c user.email=check@localhost commit -q --allow-empty "$@"; }

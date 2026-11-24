@@ -639,6 +639,55 @@ fun is_temporary_subject() -> Void {
     std::console::println("after moving is")
 }
 
+fun is_on_the_right(flag: Bool) -> Void {
+    let b = flag and mk_opt(740_u64) is Some(val as y)
+    std::console::println("after and")
+    let c = flag or mk_opt(741_u64) is Some(val as z)
+    std::console::println("after or")
+}
+
+fun is_on_the_right_read_further_on(flag: Bool) -> Void {
+    let b = flag and mk_opt(760_u64) is Some(val as y) and y.n > 0_u64
+    std::console::println("after the chain")
+}
+
+fun guard_temporary(k: U64) -> Void {
+    case Some(val=k) of {
+        is Some(val as n) and mk_opt(n) is Some(val as y) and y.n > 770_u64 {
+            std::console::println("guard true")
+        }
+        else {
+            std::console::println("guard false")
+        }
+    }
+}
+
+fun is_on_the_right_read_in_the_body(stop_at: U64) -> Void {
+    let mut i = 0_u64
+    loop i < 3_u64 and mk_opt(780_u64 + i) is Some(val as y) and y.n != stop_at {
+        i = i + 1_u64
+        std::console::println("body")
+    }
+    std::console::println("after loop")
+}
+
+fun is_on_the_right_read_in_a_case_branch(flag: Bool, n: U64) -> Void {
+    case flag and mk_opt(n) is Some(val as y) and y.n > 790_u64 {
+        std::console::println("case true")
+    }
+    else {
+        std::console::println("case false")
+    }
+}
+
+fun is_on_the_right_in_a_loop() -> Void {
+    let mut i = 0_u64
+    loop i < 2_u64 and mk_opt(750_u64 + i) is Some(val as y) {
+        i = i + 1_u64
+    }
+    std::console::println("after loop")
+}
+
 cls Guarded2 { !public a: Noisy }
 
 sup Guarded2 ext std::ops::drop::Drop {
@@ -794,6 +843,22 @@ fun main() -> Void {
     is_moves_binding(None)
     std::console::println("is over a temporary")
     is_temporary_subject()
+    std::console::println("is over a temporary, right of and/or")
+    is_on_the_right(false)
+    is_on_the_right(true)
+    is_on_the_right_in_a_loop()
+    std::console::println("is right of and, read further along the chain")
+    is_on_the_right_read_further_on(false)
+    is_on_the_right_read_further_on(true)
+    std::console::println("is right of a condition's and, read in the body")
+    is_on_the_right_read_in_the_body(999_u64)
+    is_on_the_right_read_in_the_body(781_u64)
+    is_on_the_right_read_in_a_case_branch(false, 791_u64)
+    is_on_the_right_read_in_a_case_branch(true, 790_u64)
+    is_on_the_right_read_in_a_case_branch(true, 792_u64)
+    std::console::println("is in a guard, its temporary on each edge")
+    guard_temporary(770_u64)
+    guard_temporary(771_u64)
     std::console::println("field of a destructible temporary, borrowed")
     borrowed_field_of_temporary()
     std::console::println("case over a temporary, shape test")
@@ -945,6 +1010,42 @@ dropped 720
 after is
 dropped 721
 after moving is
+is over a temporary, right of and/or
+after and
+dropped 741
+after or
+dropped 740
+after and
+after or
+dropped 750
+dropped 751
+after loop
+is right of and, read further along the chain
+after the chain
+dropped 760
+after the chain
+is right of a condition's and, read in the body
+body
+dropped 780
+body
+dropped 781
+body
+dropped 782
+after loop
+body
+dropped 780
+dropped 781
+after loop
+case false
+dropped 790
+case false
+case true
+dropped 792
+is in a guard, its temporary on each edge
+dropped 770
+guard false
+guard true
+dropped 771
 field of a destructible temporary, borrowed
 Guarded2.drop
 dropped 730

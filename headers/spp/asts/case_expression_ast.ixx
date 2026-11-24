@@ -119,4 +119,9 @@ private:
   /// The "case" is over a temporary that falling through every
   /// branch keeps, so it is dropped on that path.
   bool _KeepsTemporaryOnFallThrough = false;
+
+  /// Without "of", the condition is what the first branch tests
+  /// directly (against "true", with no operator). "TokOf" is filled
+  /// in either way, so the form is told apart by that first branch.
+  SPP_ATTR_NODISCARD auto _TestsConditionDirectly() const -> bool;
 };

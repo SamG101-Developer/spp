@@ -16,6 +16,7 @@ import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_join;
 import spp.analyse.utils.type_predicates;
+import spp.asts.binary_expression_ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
@@ -218,17 +219,25 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
   // end (the body's end here, a "skip" where it is). A temporary
   // the condition made is not: the condition consumes it, or the
   // loop ends with it.
+  // The condition's temporaries live through the body (its "is"
+  // bindings view them), so they end with the iteration; when the
+  // condition ends the loop instead, what it left them holding is
+  // dropped there (none of what a logical operator's right operand
+  // made, ended there: "flag and next() is Some(v)").
+  auto held_at_cond_end = Vec<drop_utils::OwnedValue>();
   const auto run_iteration = [&](ScopeManager &walk) {
     flow.Loops[frame_at].SkipStates.clear();
     flow.Loops[frame_at].ExitStates.clear();
     flow.Loops[frame_at].ExitStmts.clear();
     drop_utils::ForgetIterationBindings(*walk.CurrentScope);
+    const auto iteration = drop_utils::TemporaryRegion(*walk.CurrentScope);
+    BinaryExpressionAst::MarkCondition(*Cond);
     Cond->Stage8_CheckMemory(&walk, meta);
+    held_at_cond_end = iteration.Held(*TokLoop, walk, meta, BinaryExpressionAst::HeldWhenTrue(*Cond));
     Body->Stage8_CheckMemory(&walk, meta);
     if (not Body->Diverges(&walk, meta)) {
       auto const &end = Body->TokR != nullptr ? static_cast<Ast const&>(*Body->TokR) : static_cast<Ast const&>(*Body);
-      _IterationDrops = drop_utils::EndStatementTemporaries(
-        *walk.CurrentScope, walk.CurrentScope->GetOwners(), 0, end, walk, meta);
+      _IterationDrops = iteration.End(end, walk, meta);
     }
   };
 
@@ -332,6 +341,14 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
     memory_state::LoansOf(*sm->CurrentScope) = std::move(loans);
   }
 
+  // What the condition held only where it was true is not held on the
+  // path where it ended the loop.
+  if (cond_can_end) {
+    for (auto *const sym : BinaryExpressionAst::HeldWhenTrue(*Cond)) {
+      memory_state::StateOf(*sm->CurrentScope, *sym).MovedBy(*TokLoop);
+    }
+  }
+
   // Check the else block if it exists.
   if (ElseBlock != nullptr) {
     ElseBlock->Stage8_CheckMemory(sm, meta);
@@ -361,26 +378,12 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
   // paths out is dropped on each path still holding it, at its end:
   // the condition's (index 0, when it can end the loop) or an
   // "exit"'s.
+  // Every path's state, joined. An "exit" released what the scopes
+  // it left held, on its own edge.
   const auto owners = drop_utils::OwnersAround(*sm->CurrentScope, meta);
-  auto path_drops = Vec<Vec<drop_utils::OwnedValue>>(paths.size());
-  for (auto *const sym : outer_syms) {
-    const auto state_on = [&](auto const &path) -> MemoryState {
-      if (path.second == nullptr) { return memory_state::StateOf(*sm->CurrentScope, *sym); }
-      return memory_state::StateIn(*path.second, *sym);
-    };
-
-    // Every path's state, joined. An "exit" released what the
-    // scopes it left held, on its own edge.
-    auto states = Vec<Pair<MemoryState, Ast*>>();
-    for (auto const &path : paths) { states.emplace_back(state_on(path), const_cast<Ast*>(path.first)); }
-    auto joined = memory_state::JoinAll(std::move(states), *sym, *sm->CurrentScope);
-    for (auto i = 0uz; i < paths.size(); ++i) {
-      if (auto value = drop_utils::OwnedOnJoinPath(*sym, joined, state_on(paths[i]), owners, *paths[i].first, *sm, meta)) {
-        path_drops[i].emplace_back(std::move(*value));
-      }
-    }
-    memory_state::StateOf(*sm->CurrentScope, *sym) = std::move(joined);
-  }
+  auto join_paths = Vec<drop_utils::JoinPath>();
+  for (auto const &[end, state] : paths) { join_paths.push_back({state, const_cast<Ast*>(end), end}); }
+  auto path_drops = drop_utils::JoinPaths(outer_syms, join_paths, owners, *sm, meta);
   // The value that ends with the loop is dropped on every way out, whatever else
   // each path holds, and is gone after it: the loans it holds end here.
   auto *const ends_with_loop = EndsWithLoop != nullptr ? sm->CurrentScope->FindVarSymbol(EndsWithLoop.get()) : nullptr;
@@ -403,15 +406,10 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
   const auto first_exit = cond_can_end ? 1uz : 0uz;
   _DropsOnCondEnd = cond_can_end ? std::move(path_drops[0]) : Vec<drop_utils::OwnedValue>();
 
-  // The condition that ended the loop made its temporaries afresh and
-  // matched no "is": its temporaries (not its bindings) still hold
-  // what it made, a failed match's value included.
-  if (cond_can_end) {
-    drop_utils::ForgetIterationBindings(*sm->CurrentScope);
-    _DropsOnCondEnd.append_range(drop_utils::EndStatementTemporaries(
-      *sm->CurrentScope, sm->CurrentScope->GetOwners(), 0, *TokLoop, *sm,
-      meta));
-  }
+  // The condition that ended the loop matched no "is": its
+  // temporaries (not its bindings) still hold what it left them, a
+  // failed match's value included.
+  if (cond_can_end) { _DropsOnCondEnd.append_range(std::move(held_at_cond_end)); }
   if (first_exit + frame.ExitStmts.size() != paths.size()) {
     Ice(*this, *sm->CurrentScope, "a loop's exit states and exit statements are out of step");
   }
@@ -507,8 +505,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
     ctx->Builder.SetInsertPoint(loop_cond_bb);
     const auto cond_temporaries = codegen::TemporaryDepth(ctx);
     const auto llvm_cond = Cond->Stage11_CodeGen(sm, meta, ctx);
-    codegen::EmitTemporaryDrops(cond_temporaries, sm, meta, ctx);
-    codegen::PopTemporaries(cond_temporaries, ctx);
+    codegen::EndTemporaryRegion(cond_temporaries, *sm->CurrentScope, {}, Cond.get(), sm, meta, ctx);
     const auto cond_end_bb = ctx->Builder.GetInsertBlock();
     ctx->Builder.CreateCondBr(llvm_cond, loop_body_bb, loop_else_bb);
 

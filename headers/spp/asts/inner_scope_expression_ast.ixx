@@ -87,8 +87,8 @@ protected:
   Vec<analyse::utils::drop_utils::OwnedValue> _OwnedAtEnd;
 
   /// What the "$" temporaries each member made still own at its end,
-  /// dropped there ("drop_utils::EndStatementTemporaries"), one entry
-  /// per member.
+  /// dropped there ("drop_utils::TemporaryRegion"), one entry per
+  /// member.
   Vec<Vec<analyse::utils::drop_utils::OwnedValue>> _StatementDrops;
 
   /// Per member, whether its value is a temporary dropped once made.

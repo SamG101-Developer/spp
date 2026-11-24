@@ -112,10 +112,7 @@ auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
     for (auto const &x : destructure_syms) {
       _Exposed.emplace_back(x->SharedFromThis<VariableSymbol>());
       sm->CurrentScope->RecordLetBinding(_Exposed.back());
-      if (x->Kind == VariableKind::Local or x->Kind == VariableKind::FlowNarrowing) {
-        x->ExpiresWithStatement = true;
-        meta->AddedIsBindings.emplace_back(x);
-      }
+      if (x->Kind == VariableKind::Local or x->Kind == VariableKind::FlowNarrowing) { x->ExpiresWithStatement = true; }
       if (x->Kind != VariableKind::Local and x->Kind != VariableKind::Temporary) { continue; }
 
       // A binding is a view of the part of the subject it names, which
@@ -129,28 +126,21 @@ auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
       x->ViewRoot = subject_root;
       x->Kind = VariableKind::FlowNarrowing;
     }
-    _DeclareExposed(*sm, meta);
+    _DeclareExposed(*sm);
   }
 }
 
 auto spp::asts::IsExpressionAst::_DeclareExposed(
-  ScopeManager &sm, CompilerMetaData *meta) const -> void {
+  ScopeManager &sm) const -> void {
   // Bulk declare whatever is in the "exposed" list, in every
   // walk. A pattern's binding taking a name this scope already
-  // holds notes the holder, which its block puts back at the
-  // end of the statement.
+  // holds notes the holder, which the statement's end puts back
+  // ("Scope::EndStatement"); a name held further out (a parameter,
+  // the subject a flow-typed "o" narrows) reads outwards again.
   for (auto const &x : _Exposed) {
-    // What the name means outside the statement: this scope's
-    // binding of it, else one further out (a parameter, the subject
-    // a flow-typed "o" narrows), put back into this scope there.
-    auto *held = sm.CurrentScope->FindVarSymbol(x->Name.get(), true);
-    if (held == nullptr and sm.CurrentScope->Parent != nullptr) {
-      held = sm.CurrentScope->Parent->FindVarSymbol(x->Name.get());
-    }
-    if (x->ExpiresWithStatement and held != nullptr and held != x.get()) {
-      meta->DisplacedByIsBindings.push_back({
-        .In = sm.CurrentScope, .Binding = x,
-        .Displaced = held->SharedFromThis<VariableSymbol>()});
+    auto *const held = sm.CurrentScope->FindVarSymbol(x->Name.get(), true);
+    if (x->ExpiresWithStatement and held != x.get()) {
+      x->Displaced = held != nullptr ? held->SharedFromThis<VariableSymbol>() : nullptr;
     }
     sm.CurrentScope->DeclareLetBinding(x);
   }
@@ -163,7 +153,7 @@ auto spp::asts::IsExpressionAst::Stage8_CheckMemory(
   // named before the "is", not the one it narrows.
   if (_SubjectLet != nullptr) { _SubjectLet->Stage8_CheckMemory(sm, meta); }
   _MappedFn->Stage8_CheckMemory(sm, meta);
-  _DeclareExposed(*sm, meta);
+  _DeclareExposed(*sm);
 }
 
 auto spp::asts::IsExpressionAst::Stage11_CodeGen(
@@ -171,7 +161,7 @@ auto spp::asts::IsExpressionAst::Stage11_CodeGen(
   // As moving to the next scope clears ast-generated bindings
   // in that scope, we need to redeclare them for them for
   // narrowing analysis and codegen.
-  _DeclareExposed(*sm, meta);
+  _DeclareExposed(*sm);
 
   // If the lhs was an identifier, the "is" causes it to get
   // flow typed, so we need to promote the original "alloca"
@@ -198,7 +188,7 @@ auto spp::asts::IsExpressionAst::EvaluateCompTime(
   // what it binds, as stage 8 does.
   if (_SubjectLet != nullptr) { _SubjectLet->EvaluateCompTime(sm, meta); }
   _MappedFn->EvaluateCompTime(sm, meta);
-  _DeclareExposed(*sm, meta);
+  _DeclareExposed(*sm);
 }
 
 auto spp::asts::IsExpressionAst::InferTypeRef(

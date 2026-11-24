@@ -235,15 +235,11 @@ spp::asts::meta::MetaGuard::~MetaGuard() {
 spp::asts::meta::IsBindingsScope::IsBindingsScope(
   CompilerMetaData *const meta) :
   _Meta(meta),
-  _Added(meta->AddedIsBindings.size()),
-  _Expired(meta->ExpiredIsBindings.size()),
-  _Displaced(meta->DisplacedByIsBindings.size()) {
+  _Expired(meta->ExpiredIsBindings.size()) {
 }
 
 spp::asts::meta::IsBindingsScope::~IsBindingsScope() {
-  _Meta->AddedIsBindings.resize(_Added);
   _Meta->ExpiredIsBindings.resize(_Expired);
-  _Meta->DisplacedByIsBindings.resize(_Displaced);
 }
 
 SPP_MOD_END

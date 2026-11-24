@@ -24,10 +24,12 @@ binding declared in the scope. Until 2026-10-10 that was patched per-ast (`_Prev
   scope from Stage 7, initialized, so every `ret` or `?` before `let (a, b) = mk()` raised E94 "Return reached with
   `$_dst_$N` still holding it" (under affine ownership it would drop an uninitialised slot instead).
 - An `is` binding (`VariableSymbol::ExpiresWithStatement`) lasts to the end of its statement only. When it takes a
-  name already held, in this scope or further out (a parameter, the subject a flow-typed name narrows),
-  `IsExpressionAst::_DeclareExposed` logs the holder in `meta->DisplacedByIsBindings` in every walk, and
-  `InnerScopeExpressionAst` puts it back after each member (`RestoreDisplacedByIs`: a holder of this scope is added
-  back; for one further out the binding is removed, so the name reads outward and the scope adopts no owner). An `is`
+  name already held, `IsExpressionAst::_DeclareExposed` notes this scope's holder on the binding
+  (`VariableSymbol::Displaced`) in every walk, and `InnerScopeExpressionAst` ends each member with
+  `Scope::EndStatement`, which reads the `is` bindings the statement declared off `Scope::Declarations` and puts each
+  holder back, latest first; a name held further out (a parameter, the subject a flow-typed name narrows) has the
+  binding removed, so it reads outward and the scope adopts no owner. Stage 7 also marks them expired
+  (`meta->ExpiredIsBindings`), as an `or` and a `case`'s later branches do (`Scope::IsBindingsSince`). An `is`
   binding owns nothing (a view, see [[affine-ownership]]), so a statement's end drops none. `RevealLetBindings` and
   `_Binding` pass `is` bindings over for a name that has another binding. Before 2026-11-22 the `let` stayed displaced: it could not be named
   afterwards (E26), and its value was never checked at scope end.

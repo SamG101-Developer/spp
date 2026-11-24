@@ -314,35 +314,21 @@ auto spp::analyse::utils::case_utils::CarryGuardMoves(
   // what the guard itself changed is carried: what checking the
   // patterns did stays in the branch.
   auto const &before_guard = *branch.StateBeforeGuard();
-  auto on_no_match = Vec<drop_utils::OwnedValue>();
-  auto on_guard_false = Vec<drop_utils::OwnedValue>();
-  for (auto *const sym : syms) {
-    if (memory_state::SameShape(memory_state::StateIn(before_guard, *sym), memory_state::StateIn(after_guard, *sym))) {
-      continue;
-    }
-    const auto no_match = memory_state::StateIn(before, *sym);
+  const auto changed = syms | genex::views::filter([&](auto const *sym) {
     const auto guard_false = memory_state::StateIn(after_guard, *sym);
-    auto joined = memory_state::JoinAll(
-      {{no_match, &branch}, {guard_false, branch.Guard.get()}}, *sym, *sm->CurrentScope);
-    if (auto value = drop_utils::OwnedOnJoinPath(*sym, joined, no_match, owners, branch, *sm, meta)) {
-      on_no_match.emplace_back(std::move(*value));
-    }
-    if (auto value = drop_utils::OwnedOnJoinPath(*sym, joined, guard_false, owners, *branch.Guard, *sm, meta)) {
-      on_guard_false.emplace_back(std::move(*value));
-    }
-    memory_state::StateOf(*sm->CurrentScope, *sym) = std::move(joined);
-  }
-  drop_utils::SortNewestFirst(on_no_match);
-  drop_utils::SortNewestFirst(on_guard_false);
-  branch.SetGuardEdgeDrops(std::move(on_no_match), std::move(on_guard_false));
+    return not memory_state::SameShape(memory_state::StateIn(before_guard, *sym), guard_false);
+  }) | genex::to<Vec>();
+  auto drops = drop_utils::JoinPaths(
+    changed, {{&before, &branch, &branch}, {&after_guard, branch.Guard.get(), branch.Guard.get()}}, owners, *sm, meta);
+  branch.SetGuardEdgeDrops(std::move(drops[0]), std::move(drops[1]));
   return memory_state::SnapshotSymbols(syms, *sm->CurrentScope);
 }
 
 auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
   Ast *parent, Vec<CaseExpressionBranchAst*> const &branches,
-  CaseCoverage const &coverage,
-  SubjectEdges const *subject_edges, ScopeManager *sm,
-  CompilerMetaData *meta) -> Vec<drop_utils::OwnedValue> {
+  CaseCoverage const &coverage, SubjectEdges const *subject_edges,
+  Vec<VariableSymbol*> const &condition_temporaries, Vec<VariableSymbol*> const &held_in_first_branch,
+  ScopeManager *sm, CompilerMetaData *meta) -> Vec<drop_utils::OwnedValue> {
   // The symbols whose states are joined: those visible here,
   // and (inside a body) every one its flow has touched, so a
   // symbol hidden by a shadowing "let" is joined too. The
@@ -363,6 +349,9 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
       }
     }
   }
+  for (auto *const sym : condition_temporaries) {
+    if (var_syms_seen.insert(sym).second) { var_syms.emplace_back(sym); }
+  }
 
   // The state each branch starts from, and the path that falls
   // through every branch, where there is one: the state before
@@ -380,6 +369,13 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
     branch->Stage8_CheckMemory(sm, meta);
     paths.emplace_back(branch, memory_state::SnapshotSymbols(var_syms, *sm->CurrentScope));
     memory_state::RestoreSnapshot(pre_analysis);
+
+    // Past the first branch, a boolean condition answered false, so
+    // what it held only where it was true is not held.
+    if (i == 0 and not held_in_first_branch.empty()) {
+      for (auto *const sym : held_in_first_branch) { memory_state::StateOf(*sm->CurrentScope, *sym).MovedBy(*parent); }
+      pre_analysis = memory_state::SnapshotSymbols(var_syms, *sm->CurrentScope);
+    }
     if (auto const *const after_guard = branch->StateAfterGuard(); after_guard != nullptr) {
       pre_analysis = CarryGuardMoves(*branch, pre_analysis, *after_guard, var_syms, owners, sm, meta);
     }
@@ -436,51 +432,39 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
     ? paths.at(static_cast<std::size_t>(genex::iterators::distance(branches.begin(), non_terminating_branch))).second
     : paths.back().second;
 
-  // What each path out drops at its end (the branch's, or the
-  // "case"'s for falling through).
-  auto path_drops = Map<CaseExpressionBranchAst const*, Vec<drop_utils::OwnedValue>>();
-  const auto drop_on_each_path = [&](auto &&owned_on) {
-    for (auto const &[branch_or_null, path] : paths) {
-      if (not leaves(branch_or_null)) { continue; }
-      auto const &end = branch_or_null != nullptr ? static_cast<Ast const&>(*branch_or_null) : *parent;
-      if (auto value = owned_on(path, end)) { path_drops[branch_or_null].emplace_back(std::move(*value)); }
-    }
-  };
-
   // The state after the "case" is every path's state out of it,
-  // joined. A value of a scope around the "case" held on only some
-  // of them is dropped on each path still holding it, so after the
-  // join it is held on none. A branch's own symbols exist only in
-  // that branch.
-  for (auto sym : var_syms) {
-    auto states = Vec<Pair<memory_state::MemoryState, Ast*>>();
-    states.emplace_back(memory_state::StateIn(first_path, *sym), first_branch);
-    for (auto const &[branch_or_null, path] : paths) {
-      if (leaves(branch_or_null)) { states.emplace_back(memory_state::StateIn(path, *sym), path_of(branch_or_null)); }
-    }
-    auto joined = memory_state::JoinAll(std::move(states), *sym, *sm->CurrentScope);
-    drop_on_each_path([&](memory_state::ScopeSnapshot const &path, Ast const &end) {
-      return drop_utils::OwnedOnJoinPath(*sym, joined, memory_state::StateIn(path, *sym), owners, end, *sm, meta);
-    });
-    memory_state::StateOf(*sm->CurrentScope, *sym) = std::move(joined);
+  // joined, each path dropping at its end (the branch's, or the
+  // "case"'s for falling through) what of a scope around the "case"
+  // it holds and another does not. A branch's own symbols exist only
+  // in that branch.
+  auto leaving_paths = Vec<Pair<CaseExpressionBranchAst*, memory_state::ScopeSnapshot const*>>();
+  auto join_paths = Vec<drop_utils::JoinPath>();
+  for (auto const &[branch_or_null, path] : paths) {
+    if (not leaves(branch_or_null)) { continue; }
+    auto const *const end = branch_or_null != nullptr ? static_cast<Ast const*>(branch_or_null) : parent;
+    leaving_paths.emplace_back(branch_or_null, &path);
+    join_paths.push_back({&path, path_of(branch_or_null), end});
   }
+  auto path_drops = drop_utils::JoinPaths(
+    var_syms, join_paths, owners, *sm, meta, drop_utils::JoinPath{&first_path, first_branch, first_branch});
 
-  // The temporaries the condition made in the "case"'s own scope
-  // ("a < f() < b") are held on every path out, and nothing after
-  // the "case" names them: each path drops what it still holds.
-  for (auto *const sym : sm->CurrentScope->GetOwners()) {
-    if (sym->Kind != VariableKind::Temporary or sym->ExpiresWithStatement) { continue; }
-    drop_on_each_path([&](memory_state::ScopeSnapshot const &path, Ast const &end) {
-      return drop_utils::OwnedOnPath(*sym, memory_state::StateIn(path, *sym), *sm->CurrentScope, end, *sm, meta);
-    });
+  // The temporaries the condition made ("a < f() < b") are held on
+  // every path out, and nothing after the "case" names them: each
+  // path drops what it still holds.
+  for (auto *const sym : condition_temporaries) {
+    for (auto i = 0uz; i < join_paths.size(); ++i) {
+      const auto state = memory_state::StateIn(*join_paths[i].State, *sym);
+      if (auto value = drop_utils::OwnedOnPath(*sym, state, *sm->CurrentScope, *join_paths[i].End, *sm, meta)) {
+        path_drops[i].emplace_back(std::move(*value));
+      }
+    }
   }
-  for (auto *const branch : branches) {
-    auto drops = std::move(path_drops[branch]);
-    drop_utils::SortNewestFirst(drops);
-    branch->AddDropsAtJoin(std::move(drops));
+  auto fall_through_drops = Vec<drop_utils::OwnedValue>();
+  for (auto i = 0uz; i < leaving_paths.size(); ++i) {
+    drop_utils::SortNewestFirst(path_drops[i]);
+    if (leaving_paths[i].first == nullptr) { fall_through_drops = std::move(path_drops[i]); }
+    else { leaving_paths[i].first->AddDropsAtJoin(std::move(path_drops[i])); }
   }
-  auto fall_through_drops = std::move(path_drops[nullptr]);
-  drop_utils::SortNewestFirst(fall_through_drops);
 
   // The loans held after the "case", likewise.
   auto &loans = memory_state::LoansOf(*sm->CurrentScope);

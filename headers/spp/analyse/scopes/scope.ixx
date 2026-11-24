@@ -152,6 +152,12 @@ public:
   /// still here, so it is still an owner ("GetOwners").
   Vec<VariableSymbol*> Reached;
 
+  /// Every binding the walk now in this scope has declared, each time
+  /// it did, in order (a loop's later pass declares its bindings
+  /// again): a stretch of it is what one part of the walk declared
+  /// ("drop_utils::TemporaryRegion", "EndStatement").
+  Vec<VariableSymbol*> Declarations;
+
   /// Whether this scope's super scopes have been attached: they
   /// are attached once. Not carried by a copy, as a clone is a
   /// scope of its own.
@@ -275,6 +281,18 @@ public:
   /// Put a recorded binding under its name, where the walk reaches its declaration, and note it as reached
   /// ("Reached").
   auto DeclareLetBinding(Shared<VariableSymbol> const &sym) -> void;
+
+  /// The "is" bindings ("VariableSymbol::ExpiresWithStatement")
+  /// declared here since "from" in "Declarations", each once.
+  SPP_ATTR_NODISCARD auto IsBindingsSince(std::size_t from) const -> Vec<VariableSymbol*>;
+
+  /// The end of a statement that began at "from" in "Declarations":
+  /// each "is" binding declared here since gives its name back to the
+  /// binding it displaced ("VariableSymbol::Displaced"), or to the
+  /// scopes further out, the latest first, so a name taken twice
+  /// ends with its first holder. Returns those bindings, no longer
+  /// in force.
+  auto EndStatement(std::size_t from) -> Vec<VariableSymbol*>;
 
   /// Take every recorded "let" binding out of the table, for a
   /// walk entering the scope: each "let" declares its own again

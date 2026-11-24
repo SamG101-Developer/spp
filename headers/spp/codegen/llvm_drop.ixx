@@ -98,6 +98,14 @@ namespace spp::codegen {
   SPP_EXP_FUN auto PopTemporaries(
     std::size_t to, LlvmCtx *ctx) -> void;
 
+  /// The end of a temporary region ("drop_utils::TemporaryRegion"):
+  /// the temporaries held from "from" on are dropped and no longer
+  /// held, then the hidden "$" ones of "scope" the analysis ended
+  /// there ("named"). "at" is where, for an internal error.
+  SPP_EXP_FUN auto EndTemporaryRegion(
+    std::size_t from, Scope const &scope, Vec<analyse::utils::drop_utils::OwnedValue> const &named,
+    asts::Ast const *at, ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> void;
+
   /// Destroy the coroutine's frame at a suspension, into the current block:
   /// drop the statement's temporaries, then leave every scope out to the
   /// coroutine's own, each dropping what it still owns ("owned", one entry per

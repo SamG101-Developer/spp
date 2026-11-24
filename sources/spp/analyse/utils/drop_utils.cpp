@@ -67,6 +67,15 @@ namespace spp::analyse::utils::drop_utils {
   static auto IsOwnedIn(
     VariableSymbol const &sym, memory_state::MemoryState const &state, ScopeManager const &sm) -> bool;
 
+  /// Where paths meet, what the path whose state of "sym" is "path"
+  /// still holds of it, for that path to drop at its end: none unless
+  /// "sym" is one of "owners" and the paths disagree about it
+  /// ("joined" holds it on only some). "at" is where, for an error.
+  static auto OwnedOnJoinPath(
+    VariableSymbol const &sym, memory_state::MemoryState const &joined, memory_state::MemoryState const &path,
+    Map<VariableSymbol const*, Scope const*> const &owners, Ast const &at,
+    ScopeManager &sm, CompilerMetaData *meta) -> Opt<OwnedValue>;
+
 
   /// Raise if a partial move out of "sym" (in "state") stranded a
   /// value with a destructor of its own: taking something from
@@ -519,20 +528,66 @@ auto spp::analyse::utils::drop_utils::ReleaseOwnedLoans(
   for (auto const *const sym : scope.GetOwners()) { memory_state::ReleaseLoans(loans, *sym); }
 }
 
-auto spp::analyse::utils::drop_utils::EndStatementTemporaries(
-  Scope const &scope, Vec<VariableSymbol*> const &bindings, const std::size_t from, Ast const &end,
-  ScopeManager &sm, CompilerMetaData *meta, IdentifierAst const *const own_let) -> Vec<OwnedValue> {
-  auto owned = Vec<OwnedValue>();
-  for (auto i = from; i < bindings.size(); ++i) {
-    auto &sym = *bindings[i];
-    if (sym.Kind != VariableKind::Temporary or (own_let != nullptr and sym.Name->NameId() == own_let->NameId())) {
-      continue;
+auto spp::analyse::utils::drop_utils::JoinPaths(
+  Vec<VariableSymbol*> const &syms, Vec<JoinPath> const &paths,
+  Map<VariableSymbol const*, Scope const*> const &owners, ScopeManager &sm, CompilerMetaData *meta,
+  Opt<JoinPath> const &carried) -> Vec<Vec<OwnedValue>> {
+  auto drops = Vec<Vec<OwnedValue>>(paths.size());
+  for (auto *const sym : syms) {
+    const auto state_on = [&](JoinPath const &path) {
+      return path.State == nullptr
+        ? memory_state::StateOf(*sm.CurrentScope, *sym)
+        : memory_state::StateIn(*path.State, *sym);
+    };
+    auto on_paths = paths | genex::views::transform(state_on) | genex::to<Vec>();
+    auto states = Vec<Pair<memory_state::MemoryState, Ast*>>();
+    if (carried.has_value()) { states.emplace_back(state_on(*carried), carried->At); }
+    for (auto i = 0uz; i < paths.size(); ++i) { states.emplace_back(on_paths[i], paths[i].At); }
+    auto joined = memory_state::JoinAll(std::move(states), *sym, *sm.CurrentScope);
+    for (auto i = 0uz; i < paths.size(); ++i) {
+      if (auto value = OwnedOnJoinPath(*sym, joined, on_paths[i], owners, *paths[i].End, sm, meta)) {
+        drops[i].emplace_back(std::move(*value));
+      }
     }
+    memory_state::StateOf(*sm.CurrentScope, *sym) = std::move(joined);
+  }
+  for (auto &path_drops : drops) { SortNewestFirst(path_drops); }
+  return drops;
+}
+
+SPP_MOD_BEGIN
+spp::analyse::utils::drop_utils::TemporaryRegion::TemporaryRegion(
+  Scope const &scope) :
+  _Scope(&scope),
+  _From(scope.Declarations.size()) {
+}
+
+auto spp::analyse::utils::drop_utils::TemporaryRegion::Whole(
+  Scope const &scope) -> TemporaryRegion {
+  auto region = TemporaryRegion(scope);
+  region._From = 0;
+  return region;
+}
+
+auto spp::analyse::utils::drop_utils::TemporaryRegion::Declared() const -> Vec<VariableSymbol*> {
+  auto declared = Vec<VariableSymbol*>();
+  for (auto *const sym : _Scope->Declarations | genex::views::drop(_From)) {
+    if (sym->Kind == VariableKind::Temporary and not genex::contains(declared, sym)) { declared.emplace_back(sym); }
+  }
+  return declared;
+}
+
+auto spp::analyse::utils::drop_utils::TemporaryRegion::End(
+  Ast const &end, ScopeManager &sm, CompilerMetaData *meta, IdentifierAst const *const own_let) const
+  -> Vec<OwnedValue> {
+  auto owned = Vec<OwnedValue>();
+  for (auto *const sym : Declared()) {
+    if (own_let != nullptr and sym->Name->NameId() == own_let->NameId()) { continue; }
 
     // Dropped here, the temporary is gone: the scope's end does not
     // drop it again (one a destructure took apart is still owned).
-    auto &state = memory_state::StateOf(*sm.CurrentScope, sym);
-    if (auto value = OwnedOnPath(sym, state, scope, end, sm, meta)) {
+    auto &state = memory_state::StateOf(*sm.CurrentScope, *sym);
+    if (auto value = OwnedOnPath(*sym, state, *_Scope, end, sm, meta)) {
       owned.emplace_back(std::move(*value));
       state.MovedBy(end);
     }
@@ -540,6 +595,21 @@ auto spp::analyse::utils::drop_utils::EndStatementTemporaries(
   SortNewestFirst(owned);
   return owned;
 }
+
+auto spp::analyse::utils::drop_utils::TemporaryRegion::Held(
+  Ast const &end, ScopeManager &sm, CompilerMetaData *meta, Vec<VariableSymbol*> const &except) const
+  -> Vec<OwnedValue> {
+  auto owned = Vec<OwnedValue>();
+  for (auto *const sym : Declared()) {
+    if (genex::contains(except, sym)) { continue; }
+    if (auto value = OwnedOnPath(*sym, memory_state::StateOf(*sm.CurrentScope, *sym), *_Scope, end, sm, meta)) {
+      owned.emplace_back(std::move(*value));
+    }
+  }
+  SortNewestFirst(owned);
+  return owned;
+}
+SPP_MOD_END
 
 auto spp::analyse::utils::drop_utils::ForgetIterationBindings(
   Scope const &loop_scope) -> void {
@@ -599,7 +669,7 @@ auto spp::analyse::utils::drop_utils::OwnedUpToLoop(
       loops_seen += 1;
       if (loops_seen > num_exits) {
         if (has_skip) {
-          iteration = EndStatementTemporaries(*scope, scope->GetOwners(), 0, exit_point, sm, meta);
+          iteration = TemporaryRegion::Whole(*scope).End(exit_point, sm, meta);
         }
         break;
       }

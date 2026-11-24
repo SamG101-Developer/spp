@@ -805,8 +805,9 @@ auto spp::analyse::scopes::RawCompKey(ExpressionAst const &expr, Scope const &sc
   // An array value of elements, as a tuple's. A repeated one
   // ("[x; 2_uz]") is the array of its copies once its count is
   // a value, so "[1_u64; 2_uz]" and "[1_u64, 1_u64]" are one
-  // value; a count that is not ("[x; k]"), or is too large to
-  // write out as a key ("kMaxExpandedRepeat"), keeps its spelling.
+  // value; a count that is not ("[x; k]"), is too large to write
+  // out as a key ("kMaxExpandedRepeat"), or is 0 (no elements to
+  // rebuild the literal from, "CompAstOf"), keeps its spelling.
   if (const auto arr = expr.To<ArrayLiteralExplicitElementsAst>(); arr != nullptr) {
     return CompKey::OfArray(elems_of(arr->Elems));
   }
@@ -815,7 +816,7 @@ auto spp::analyse::scopes::RawCompKey(ExpressionAst const &expr, Scope const &sc
     const auto size = RawCompKey(*rep->Size, scope);
     const auto count = size.AsInt() != nullptr ? spp::utils::numbers::ToU64(*size.AsInt()) : Nullopt;
     constexpr auto kMaxExpandedRepeat = 4096uz;
-    if (count.has_value() and *count <= kMaxExpandedRepeat) {
+    if (count.has_value() and *count > 0 and *count <= kMaxExpandedRepeat) {
       const auto elem = InternCompKey(RawCompKey(*rep->Elem, scope));
       return CompKey::OfArray(Vec<CompId>(static_cast<std::size_t>(*count), elem));
     }
@@ -1183,6 +1184,27 @@ auto spp::analyse::scopes::Scope::DeclareLetBinding(Shared<VariableSymbol> const
   // A loop's second pass declares the same binding again.
   AddVarSymbol(sym);
   if (not genex::contains(Reached, sym.get())) { Reached.emplace_back(sym.get()); }
+  Declarations.emplace_back(sym.get());
+}
+
+auto spp::analyse::scopes::Scope::IsBindingsSince(
+  const std::size_t from) const -> Vec<VariableSymbol*> {
+  auto bindings = Vec<VariableSymbol*>();
+  for (auto *const sym : Declarations | genex::views::drop(std::min(from, Declarations.size()))) {
+    if (sym->ExpiresWithStatement and not genex::contains(bindings, sym)) { bindings.emplace_back(sym); }
+  }
+  return bindings;
+}
+
+auto spp::analyse::scopes::Scope::EndStatement(
+  const std::size_t from) -> Vec<VariableSymbol*> {
+  auto bindings = IsBindingsSince(from);
+  for (auto *const binding : bindings | genex::views::reverse) {
+    if (FindVarSymbol(binding->Name.get(), true) != binding) { continue; }
+    if (binding->Displaced != nullptr) { AddVarSymbol(binding->Displaced); }
+    else { ignore = InternalTable.VarTable.Rem(binding->Name.get()); }
+  }
+  return bindings;
 }
 
 /// [CHECKED]
@@ -1190,6 +1212,7 @@ auto spp::analyse::scopes::Scope::HideLetBindings() -> void {
   // Earlier shadows have already been replaced, so remove the
   // instance from this symbol table that remains.
   Reached.clear();
+  Declarations.clear();
   for (auto const &sym : LetBindings) {
     if (InternalTable.VarTable.Find(sym->Name.get()) == sym.get()) {
       InternalTable.VarTable.Rem(sym->Name.get());

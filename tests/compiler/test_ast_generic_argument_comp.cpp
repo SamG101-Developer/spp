@@ -638,3 +638,14 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     let a = A[[0_u8; 18446744073709551615_uz]]()
   }
 )");
+
+// An empty repeated array keeps its spelling as a key: there is no element to rebuild an explicit literal from.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericArgumentComp,
+  test_valid_repeated_array_argument_of_no_elements, R"(
+  fun f[T, cmp xs: Arr[T, 0_uz]]() -> Void { }
+
+  fun g() -> Void {
+    f[xs=[0_s32; 0_uz]]()
+  }
+)");

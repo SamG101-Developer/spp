@@ -123,6 +123,10 @@ private:
   Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnNoMatch;
   Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnGuardFalse;
 
+  /// What the guard's temporaries hold where it answers false, for
+  /// that edge to drop with the rest ("SetGuardEdgeDrops").
+  Vec<analyse::utils::drop_utils::OwnedValue> _GuardTemporariesOnFalse;
+
   /// See "StateAfterGuard". Not carried by "Clone": read only by the
   /// "case" analysing this branch, straight after.
   Shared<analyse::utils::memory_state::ScopeSnapshot> _StateBeforeGuard;

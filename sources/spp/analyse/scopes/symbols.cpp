@@ -450,6 +450,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
   Pack(that.Pack),
   IsMutable(that.IsMutable),
   ExpiresWithStatement(that.ExpiresWithStatement),
+  Displaced(that.Displaced),
   AliasSymbol(that.AliasSymbol),
   NarrowsSymbol(that.NarrowsSymbol),
   ViewRoot(that.ViewRoot),

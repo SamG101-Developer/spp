@@ -445,6 +445,12 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// outside a walk means that one, not this.
   bool ExpiresWithStatement = false;
 
+  /// For an "is" binding, the binding of its name its scope held
+  /// when the walk now declared it, put back at the end of its
+  /// statement ("Scope::EndStatement"): none for a name its scope
+  /// did not hold, which then reads outwards again.
+  Shared<VariableSymbol> Displaced;
+
   /// For a "use" import, the symbol it names (its target). This
   /// is nullptr for anything not imported, and for an import
   /// before stage 3 - whose kind is "Import" until then.

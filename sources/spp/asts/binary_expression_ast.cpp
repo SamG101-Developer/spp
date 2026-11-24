@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
@@ -103,6 +104,9 @@ auto spp::asts::BinaryExpressionAst::Clone() const -> Unique<Ast> {
   ast->_ChainTemps = AstCloneVec(_ChainTemps);
   ast->_DropsOnShortCircuit = _DropsOnShortCircuit;
   ast->_DropsAfterRhs = _DropsAfterRhs;
+  ast->_DropsRhsTemporaries = _DropsRhsTemporaries;
+  ast->_IsCondition = _IsCondition;
+  ast->_HeldWhenTrue = _HeldWhenTrue;
   ast->_OpenPack = AstClone(_OpenPack);
   ast->_OpenPackMoves = _OpenPackMoves;
   ast->Source = Source;
@@ -272,15 +276,15 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
     // in, like "not", for short-circuiting. Both operands must
     // be "Bool", again like "not".
     if (IsLogicalOperator()) {
+      _NestChainRight();
+
       // What an "is" on the left binds holds on the right of an
       // "and" (the match succeeded), but not of an "or" - the right
       // only runs when it failed.
-      const auto bound_before = meta->AddedIsBindings.size();
+      const auto declared_before = sm->CurrentScope->Declarations.size();
       Lhs->Stage7_AnalyseSemantics(sm, meta);
       if (TokOp->TokenType == lex::SppTokenType::KW_OR) {
-        for (auto i = bound_before; i < meta->AddedIsBindings.size(); ++i) {
-          meta->ExpiredIsBindings.emplace_back(meta->AddedIsBindings[i]);
-        }
+        meta->ExpiredIsBindings.append_range(sm->CurrentScope->IsBindingsSince(declared_before));
       }
       Rhs->Stage7_AnalyseSemantics(sm, meta);
 
@@ -307,6 +311,33 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
   }
 }
 
+auto spp::asts::BinaryExpressionAst::MarkCondition(
+  ExpressionAst &cond) -> void {
+  if (auto *const binary = cond.To<BinaryExpressionAst>(); binary != nullptr) { binary->_IsCondition = true; }
+}
+
+auto spp::asts::BinaryExpressionAst::HeldWhenTrue(
+  ExpressionAst const &cond) -> Vec<analyse::scopes::VariableSymbol*> {
+  auto const *const binary = cond.To<BinaryExpressionAst>();
+  return binary != nullptr ? binary->_HeldWhenTrue : Vec<analyse::scopes::VariableSymbol*>();
+}
+
+auto spp::asts::BinaryExpressionAst::_NestChainRight() -> void {
+  // "(a and b) and c" is "a and (b and c)": the same answer, each
+  // operand run or skipped alike. Nested to the right, "c" runs on
+  // "b"'s path, where what "b" made is still held: the "$is" its
+  // "is" bindings view lives to the end of the operand it is made
+  // in ("_DropsRhsTemporaries"), and "c" can read them.
+  while (true) {
+    auto *const inner = Lhs->To<BinaryExpressionAst>();
+    if (inner == nullptr or inner->TokOp->TokenType != TokOp->TokenType) { return; }
+    auto rhs = MakeUnique<BinaryExpressionAst>(std::move(inner->Rhs), std::move(TokOp), std::move(Rhs));
+    TokOp = std::move(inner->TokOp);
+    Lhs = std::move(inner->Lhs);
+    Rhs = std::move(rhs);
+  }
+}
+
 auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
@@ -323,10 +354,31 @@ auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
   if (IsLogicalOperator()) {
     Lhs->Stage8_CheckMemory(sm, meta);
     mem_utils::ValidateSymbolMemory(*Lhs, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
+    // An "and" held where it is true is so through its right
+    // operand: in "a and (b and c)", "b and c" is true just where
+    // the whole is (given "a").
+    const auto held_when_true = _IsCondition and TokOp->TokenType == lex::SppTokenType::KW_AND;
+    if (held_when_true) { MarkCondition(*Rhs); }
+
     const auto short_circuit = memory_state::SnapshotFlow(*sm->CurrentScope);
+    const auto rhs_region = drop_utils::TemporaryRegion(*sm->CurrentScope);
     Rhs->Stage8_CheckMemory(sm, meta);
     mem_utils::ValidateSymbolMemory(*Rhs, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
-    _JoinShortCircuit(short_circuit, *sm, meta);
+
+    // A temporary the right operand declared was never made on the
+    // short-circuit path, so the join never sees it. It ends with the
+    // right operand, or, held where the "and" is true, is dropped only
+    // where the right operand answers false (but not what a nested
+    // "and" there already dropped where it answered false).
+    _HeldWhenTrue.clear();
+    if (held_when_true) {
+      _HeldWhenTrue = rhs_region.Declared();
+      _DropsRhsTemporaries = rhs_region.Held(*Rhs, *sm, meta, HeldWhenTrue(*Rhs));
+    }
+    else {
+      _DropsRhsTemporaries = rhs_region.End(*Rhs, *sm, meta);
+    }
+    _JoinShortCircuit(short_circuit, rhs_region.Declared(), *sm, meta);
     return;
   }
 
@@ -347,8 +399,8 @@ auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
 }
 
 auto spp::asts::BinaryExpressionAst::_JoinShortCircuit(
-  analyse::utils::memory_state::ScopeSnapshot const &short_circuit, ScopeManager &sm,
-  CompilerMetaData *meta) -> void {
+  analyse::utils::memory_state::ScopeSnapshot const &short_circuit,
+  Vec<analyse::scopes::VariableSymbol*> const &rhs_temporaries, ScopeManager &sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   _DropsOnShortCircuit.clear();
   _DropsAfterRhs.clear();
@@ -356,27 +408,21 @@ auto spp::asts::BinaryExpressionAst::_JoinShortCircuit(
   if (flow == nullptr) { return; }
 
   // The values of this block and the ones around it may be held on
-  // one path and not the other.
+  // one path and not the other; only those the right operand changed
+  // are joined.
   auto owners = drop_utils::OwnersAround(*sm.CurrentScope, meta);
   for (auto const *const owner : sm.CurrentScope->GetOwners()) { owners.emplace(owner, sm.CurrentScope); }
-
-  const auto after_rhs = memory_state::SnapshotFlow(*sm.CurrentScope);
-  const auto syms = flow->States | genex::views::keys | genex::to<Vec>();
-  for (auto const *const sym : syms) {
+  auto syms = Vec<analyse::scopes::VariableSymbol*>();
+  for (auto const *const sym : flow->States | genex::views::keys) {
+    const auto on_rhs = memory_state::StateOf(*sm.CurrentScope, *sym);
     const auto on_short = memory_state::StateIn(short_circuit, *sym);
-    const auto on_rhs = memory_state::StateIn(after_rhs, *sym);
-    if (memory_state::SameShape(on_short, on_rhs)) { continue; }
-    auto joined = memory_state::JoinAll({{on_short, Lhs.get()}, {on_rhs, Rhs.get()}}, *sym, *sm.CurrentScope);
-    if (auto value = drop_utils::OwnedOnJoinPath(*sym, joined, on_short, owners, *Lhs, sm, meta)) {
-      _DropsOnShortCircuit.emplace_back(std::move(*value));
-    }
-    if (auto value = drop_utils::OwnedOnJoinPath(*sym, joined, on_rhs, owners, *Rhs, sm, meta)) {
-      _DropsAfterRhs.emplace_back(std::move(*value));
-    }
-    memory_state::StateOf(*sm.CurrentScope, *sym) = std::move(joined);
+    if (genex::contains(rhs_temporaries, sym) or memory_state::SameShape(on_short, on_rhs)) { continue; }
+    syms.emplace_back(const_cast<analyse::scopes::VariableSymbol*>(sym));
   }
-  drop_utils::SortNewestFirst(_DropsOnShortCircuit);
-  drop_utils::SortNewestFirst(_DropsAfterRhs);
+  auto drops = drop_utils::JoinPaths(
+    syms, {{&short_circuit, Lhs.get(), Lhs.get()}, {nullptr, Rhs.get(), Rhs.get()}}, owners, sm, meta);
+  _DropsOnShortCircuit = std::move(drops[0]);
+  _DropsAfterRhs = std::move(drops[1]);
 }
 
 auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
@@ -447,8 +493,23 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   const auto temporaries = codegen::TemporaryDepth(ctx);
   const auto llvm_rhs = Rhs->Stage11_CodeGen(sm, meta, ctx);
   SPP_ASSERT(llvm_rhs->getType()->isIntegerTy(1));
-  codegen::EmitTemporaryDrops(temporaries, sm, meta, ctx);
-  codegen::PopTemporaries(temporaries, ctx);
+  if (_HeldWhenTrue.empty()) {
+    codegen::EndTemporaryRegion(temporaries, *sm->CurrentScope, _DropsRhsTemporaries, Rhs.get(), sm, meta, ctx);
+  }
+  else {
+    // Held where the "and" is true: dropped on the right operand's
+    // false edge only.
+    codegen::EndTemporaryRegion(temporaries, *sm->CurrentScope, {}, Rhs.get(), sm, meta, ctx);
+    if (not _DropsRhsTemporaries.empty() and not ctx->Builder.GetInsertBlock()->hasTerminator()) {
+      const auto false_bb = llvm::BasicBlock::Create(*ctx->Context, "logical.rhs_false" + uid, func);
+      const auto done_bb = llvm::BasicBlock::Create(*ctx->Context, "logical.rhs_done" + uid, func);
+      ctx->Builder.CreateCondBr(llvm_rhs, done_bb, false_bb);
+      ctx->Builder.SetInsertPoint(false_bb);
+      codegen::EmitOwnedDrops(*sm->CurrentScope, _DropsRhsTemporaries, Rhs.get(), sm, meta, ctx);
+      ctx->Builder.CreateBr(done_bb);
+      ctx->Builder.SetInsertPoint(done_bb);
+    }
+  }
   codegen::EmitOuterDrops(_DropsAfterRhs, *this, sm, meta, ctx);
   const auto rhs_end_bb = ctx->Builder.GetInsertBlock();
   ctx->Builder.CreateBr(join_bb);

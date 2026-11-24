@@ -21,12 +21,12 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
 | `ret` / `?` (a lowered `ret`), `exit` / `skip` | `OwnedUpToFn`, `OwnedUpToLoop` | `_OwnedAtExit` |
 | Generator frame destroyed at a `gen`, or before its first resume | `OwnedAtSuspend` | `_OwnedAtSuspend`, `_OwnedAtStart` |
 | A lowered `GenOnce`'s by-value `gen` (its return) | the same list, passed to `EmitReturn` | `_OwnedAtSuspend` |
-| Paths meeting that disagree (`case` branches and fall-through, loop exits) | `OwnedOnJoinPath` per path | `_DropsAtEnd` (a branch's, `AddDropsAtJoin`), `_DropsAfterExit` (an `exit`'s, `SetDropsAtJoin`), `_DropsOnFallThrough`, `_DropsOnCondEnd` |
-| A guard's moves, on the edges passing its branch over (no match, guard false) | `case_utils::CarryGuardMoves` | `_DropsOnNoMatch`, `_DropsOnGuardFalse` |
-| A logical operator's right operand vs its short circuit | `OwnedOnJoinPath` per path | `BinaryExpressionAst::_DropsOnShortCircuit`, `_DropsAfterRhs` |
+| Paths meeting that disagree (`case` branches and fall-through, loop exits) | `drop_utils::JoinPaths` | `_DropsAtEnd` (a branch's, `AddDropsAtJoin`), `_DropsAfterExit` (an `exit`'s, `SetDropsAtJoin`), `_DropsOnFallThrough`, `_DropsOnCondEnd` |
+| A guard's moves, on the edges passing its branch over (no match, guard false); its `$` temporaries on the false edge | `case_utils::CarryGuardMoves` (`JoinPaths`), `TemporaryRegion::Held` | `_DropsOnNoMatch`, `_DropsOnGuardFalse` |
+| A logical operator's right operand vs its short circuit | `JoinPaths` | `BinaryExpressionAst::_DropsOnShortCircuit`, `_DropsAfterRhs` |
 | Overwrite (`x = v`, `p.a = v`, through `&mut`, `x@ = v`) | `OwnedOnPath`, `OwnedBeforeWrite` | `AssignmentStatementAst::_DropsOld` |
 | Temporary borrowed, read a part off, or `case`d over without being taken | `IsTemporary` sets a flag | pending list, `codegen::PushTemporary` |
-| A lowering's hidden `$` temporary (`$cmp`, `$spread`, `$fold`, `$_dst_`, `$is`) at its statement's end | `EndStatementTemporaries` | `_StatementDrops`, `_IterationDrops`, `_DropsOnCondEnd`, a `case`'s paths |
+| A lowering's hidden `$` temporary (`$cmp`, `$spread`, `$fold`, `$_dst_`, `$is`) at the end of its region | `drop_utils::TemporaryRegion` | `_StatementDrops`, `_DropsRhsTemporaries`, `_IterationDrops`, `_DropsOnCondEnd`, a `case`'s paths |
 | Discarded temporary (a statement's value) | `expr_utils::DiscardValue` | `_DropsDiscarded` |
 | A call fold's hoisted temporaries no call took | `OwnedOnPath`, then marked moved | `_FoldDrops` |
 
@@ -40,10 +40,14 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
   `ret` everything since `meta->TemporaryBase` (set per function, coroutine, closure), an `exit` / `skip` since
   `LlvmLoopInfo::TemporaryDepth`, and a loop condition what it pushed once its value is made (each evaluation). A
   `case` over a temporary pushes it only inside branches that keep it.
-- **Hidden `$` temporaries** (`VariableKind::Temporary`) end with the statement that made them, as `is` bindings do,
-  except a statement that is itself the `let $x = ..` a lowering reads in the statements after it (`OwnLetName`). A
-  loop condition's end every iteration, and on the path where the condition ends the loop; a `case` condition's are
-  dropped on every path out.
+- **Hidden `$` temporaries** (`VariableKind::Temporary`) end with the region that declared them
+  (`drop_utils::TemporaryRegion`, opened on a scope before the code is checked; it reads its stretch of
+  `Scope::Declarations`, which logs every declaration, a loop's later passes included). The regions: a statement
+  (except one that is itself the `let $x = ..` a lowering reads after it, `OwnLetName`), a logical operator's right
+  operand, a loop's condition and body (`Held` where the condition ends the loop, `End` at the body's end; a `skip`
+  uses `TemporaryRegion::Whole`), a guard (on into the body; `Held` on the false edge), and a `case` condition (each
+  path out). In code generation, `codegen::EndTemporaryRegion` drops the unnamed pending temporaries and these
+  together. Paths meet through one helper, `drop_utils::JoinPaths`.
 - **A pattern guard may move** an outer value (2026-11-24): the move holds on every path past its branch, so the no-match
   edge (where the guard never ran) drops it, and later branches see it held on none (E8). E114 is left only for a guard
   moving the branch's own non-borrow bindings, which are still parts of the subject.
@@ -56,7 +60,17 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
   name an `is` binding shadowed, from this scope or further out, is put back after the statement.
   `case o is P { .. }` is not this: it is rewritten to `case o of { is P { .. } }`, whose bindings own as any branch's.
 - **A logical operator's right operand is a path of its own:** a move in it (`flag and take(x)`) is joined with the
-  short circuit, which drops what it still holds.
+  short circuit, which drops what it still holds. A hidden temporary it declares (`flag and mk() is Some(..)`'s `$is`)
+  is ended at the operand's end and left out of the join, as the short circuit never made it. A chain of one operator
+  nests to the right (`BinaryExpressionAst::_NestChainRight`: `a and b and c` as `a and (b and c)`), so `c` reads
+  what `b` binds while `b`'s value is held.
+- **An `and` as a condition** (a loop's, a guard's, a boolean `case`'s: `BinaryExpressionAst::MarkCondition`, passed
+  down a right-nested chain) keeps its right operand's temporaries held where it answers true, so the body reads
+  their `is` bindings (`loop i < n and next() is Some(v) { v }`). It drops them where the right operand answers false
+  (a `logical.rhs_false` block), so after it they are held exactly where it is true (`HeldWhenTrue`). The consumer ends
+  them on the true edge (the iteration's end, the branch's end, an `exit`/`skip`/`ret`) and treats them as gone on the
+  false one: the loop's condition end and `else` (`Held(.., except)`), the guard-false edge, a boolean `case`'s later
+  branches and fall-through (`ValidateInconsistentMemory`'s `held_in_first_branch`).
 - **A field read off a temporary** (`mk().a`) is moved out of it, the rest dropped as the statement ends; borrowed
   (`f(&mk().a)`, a `&self` receiver) or discarded, nothing is moved and the temporary is dropped whole
   (`ReadByBorrow`, `drop_utils::FieldReadOffTemporary`).

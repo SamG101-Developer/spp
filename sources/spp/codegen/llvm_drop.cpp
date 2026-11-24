@@ -326,3 +326,17 @@ auto spp::codegen::PopTemporaries(
   -> void {
   if (ctx->Pending->Held.size() > to) { ctx->Pending->Held.resize(to); }
 }
+
+auto spp::codegen::EndTemporaryRegion(
+  const std::size_t from,
+  analyse::scopes::Scope const &scope,
+  Vec<analyse::utils::drop_utils::OwnedValue> const &named,
+  asts::Ast const *const at,
+  analyse::scopes::ScopeManager *const sm,
+  asts::meta::CompilerMetaData *const meta,
+  LlvmCtx *const ctx)
+  -> void {
+  EmitTemporaryDrops(from, sm, meta, ctx);
+  PopTemporaries(from, ctx);
+  EmitOwnedDrops(scope, named, at, sm, meta, ctx);
+}

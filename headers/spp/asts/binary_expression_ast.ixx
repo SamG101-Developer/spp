@@ -20,6 +20,7 @@ use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct VariableSymbol);
 
 /// A binary expression between 2 operators, either a normal
 /// "+", "*" etc, or a compound assignment operator like "+=".
@@ -47,6 +48,21 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
   /// which have some special behaviour - no function mapping,
   /// direct LLVM intrinsics, for short-circuiting.
   SPP_ATTR_NODISCARD auto IsLogicalOperator() const -> bool;
+
+  /// Called by a loop, a guard or a boolean "case" on its condition
+  /// before checking it, whose true edge leads into a body. An "and"
+  /// there keeps what its right operand's temporaries hold where it
+  /// answers true, for the body to read its "is" bindings through,
+  /// and drops it where the right operand answers false: after it,
+  /// they are held exactly where it is true ("HeldWhenTrue").
+  /// Anywhere else they end with the right operand.
+  static auto MarkCondition(ExpressionAst &cond) -> void;
+
+  /// The temporaries held where the condition "cond" answers true,
+  /// for its consumer to end on that edge and pass over on the other
+  /// (none unless it is an "and" marked a condition).
+  SPP_ATTR_NODISCARD static auto HeldWhenTrue(
+    ExpressionAst const &cond) -> Vec<analyse::scopes::VariableSymbol*>;
 
   /// The two operands to the binary expression, left-hand-side
   /// and right-hand-side, held until their owning pointers
@@ -115,12 +131,25 @@ private:
   Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnShortCircuit;
   Vec<analyse::utils::drop_utils::OwnedValue> _DropsAfterRhs;
 
+  /// The hidden temporaries the right operand declares ("$is" for an
+  /// "is" subject that is no place) exist only on its path: they are
+  /// dropped at its end, and the join never sees them. As a condition
+  /// ("MarkCondition"), they are dropped only where it answers false,
+  /// and held on where it answers true ("_HeldWhenTrue").
+  Vec<analyse::utils::drop_utils::OwnedValue> _DropsRhsTemporaries;
+  bool _IsCondition = false;
+  Vec<analyse::scopes::VariableSymbol*> _HeldWhenTrue;
+
+  /// Nest a chain of one logical operator to the right ("a and b and
+  /// c" as "a and (b and c)").
+  auto _NestChainRight() -> void;
+
   /// Stage 8 for a logical operator: join the state the left operand
   /// left ("short_circuit") with the right operand's, filling the two
   /// drop lists above.
   auto _JoinShortCircuit(
-    analyse::utils::memory_state::ScopeSnapshot const &short_circuit, ScopeManager &sm,
-    CompilerMetaData *meta) -> void;
+    analyse::utils::memory_state::ScopeSnapshot const &short_circuit,
+    Vec<analyse::scopes::VariableSymbol*> const &rhs_temporaries, ScopeManager &sm, CompilerMetaData *meta) -> void;
 
   /// Check whether a logical operator has been analysed - the
   /// mirror of checking if "_MappedFn" is not nullptr.

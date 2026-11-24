@@ -12,6 +12,7 @@ use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::analyse::utils::memory_state, struct MemoryState);
+use(spp::analyse::utils::memory_state, struct ScopeSnapshot);
 use(spp::analyse::utils::regions, struct PlaceStep);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
@@ -66,15 +67,6 @@ namespace spp::analyse::utils::drop_utils {
   SPP_EXP_FUN auto OwnersAround(
     Scope const &scope, CompilerMetaData const *meta) -> Map<VariableSymbol const*, Scope const*>;
 
-  /// Where paths meet, what the path whose state of "sym" is "path"
-  /// still holds of it, for that path to drop at its end: none unless
-  /// "sym" is one of "owners" and the paths disagree about it
-  /// ("joined" holds it on only some). "at" is where, for an error.
-  SPP_EXP_FUN auto OwnedOnJoinPath(
-    VariableSymbol const &sym, MemoryState const &joined, MemoryState const &path,
-    Map<VariableSymbol const*, Scope const*> const &owners, Ast const &at,
-    ScopeManager &sm, CompilerMetaData *meta) -> Opt<OwnedValue>;
-
   /// The part at "steps" taken out of a value of type "root" (by "move")
   /// leaves a hole in every value the path runs through, the root
   /// included: E106 if one of them has its own "drop", which could not
@@ -105,18 +97,65 @@ namespace spp::analyse::utils::drop_utils {
   SPP_EXP_FUN auto ReleaseOwnedLoans(
     Scope const &scope) -> void;
 
-  /// The end of a statement, for the "$" temporaries a lowering
-  /// made inside it ("VariableKind::Temporary") among "bindings" of
-  /// "scope", from "from" on: nothing can name one after it, so what
-  /// it still owns is dropped there, and it is gone. A statement that
-  /// is itself the "let" of a temporary ("own_let", a lowering's
-  /// "let $x = .." read by the statements after it) does not end that
-  /// one. An "is" binding owns nothing (it is a view of its subject's
-  /// part), so a statement's end drops none.
-  SPP_EXP_FUN auto EndStatementTemporaries(
-    Scope const &scope, Vec<VariableSymbol*> const &bindings, std::size_t from, Ast const &end,
-    ScopeManager &sm, CompilerMetaData *meta,
-    IdentifierAst const *own_let = nullptr) -> Vec<OwnedValue>;
+  /// One of the paths meeting at a join: its state ("nullptr" for
+  /// the state now), what names it in an error, and where it ends,
+  /// for what it drops there.
+  SPP_EXP_CLS struct JoinPath {
+    memory_state::ScopeSnapshot const *State;
+    Ast *At;
+    Ast const *End;
+  };
+
+  /// Where "paths" meet: each of "syms" takes their states joined,
+  /// and a value of one of "owners" ("OwnersAround") held on only
+  /// some of them is dropped at the end of each path still holding
+  /// it, so after the join it is held on none. "carried", where
+  /// given, is joined in first as the path whose state is carried
+  /// on, and drops nothing. What each path drops, by its index,
+  /// newest first.
+  SPP_EXP_FUN auto JoinPaths(
+    Vec<VariableSymbol*> const &syms, Vec<JoinPath> const &paths,
+    Map<VariableSymbol const*, Scope const*> const &owners, ScopeManager &sm, CompilerMetaData *meta,
+    Opt<JoinPath> const &carried = Nullopt) -> Vec<Vec<OwnedValue>>;
+
+  /// A stretch of code whose hidden temporaries (the "$" lets a
+  /// lowering makes: "$is", "$cmp", "$fold", ...) end together at
+  /// its end: a statement, a logical operator's right operand, a
+  /// loop's condition and body. Nothing can name one after it, so
+  /// what each still owns is dropped there. Opened on the scope the
+  /// stretch declares them in, before it is checked.
+  SPP_EXP_CLS struct TemporaryRegion {
+    explicit TemporaryRegion(Scope const &scope);
+
+    /// Every temporary "scope" has declared (a loop's, whose
+    /// iteration a "skip" ends).
+    static auto Whole(Scope const &scope) -> TemporaryRegion;
+
+    /// The temporaries declared in it so far, oldest first.
+    SPP_ATTR_NODISCARD auto Declared() const -> Vec<VariableSymbol*>;
+
+    /// End them at "end": what they still own, newest first, for
+    /// code generation to drop there, after which they are gone. A
+    /// statement that is itself a temporary's "let" ("own_let", a
+    /// lowering's "let $x = .." read by the statements after it)
+    /// does not end that one.
+    auto End(
+      Ast const &end, ScopeManager &sm, CompilerMetaData *meta,
+      IdentifierAst const *own_let = nullptr) const -> Vec<OwnedValue>;
+
+    /// What they still own, without ending them: for a way out of
+    /// the stretch part way through (a loop's condition ending it).
+    /// Those in "except" are passed over: held only where a
+    /// condition is true ("BinaryExpressionAst::HeldWhenTrue"), they
+    /// are not held on its false edge.
+    SPP_ATTR_NODISCARD auto Held(
+      Ast const &end, ScopeManager &sm, CompilerMetaData *meta,
+      Vec<VariableSymbol*> const &except = {}) const -> Vec<OwnedValue>;
+
+  private:
+    Scope const *_Scope;
+    std::size_t _From;
+  };
 
   /// A loop's iteration starts afresh for the bindings its own
   /// scope declares (its condition's "is" bindings): their states

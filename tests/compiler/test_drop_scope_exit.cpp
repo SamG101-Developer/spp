@@ -349,7 +349,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 // An "is" binding does not outlive its statement, so it hides a binding of the same name only within it: the block
-// puts the hidden one back as the statement ends ("DisplacedByIsBindings"), and it is dropped at its scope's end.
+// puts the hidden one back as the statement ends ("Scope::EndStatement"), and it is dropped at its scope's end.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropScopeExit,
   test_valid_live_local_hidden_by_a_same_named_is_binding, R"(

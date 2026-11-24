@@ -46,12 +46,6 @@ use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
 namespace spp::asts {
-  /// Put back what the "is" bindings of a statement took the name
-  /// of ("DisplacedByIsBindings", from "from" on), as the statement
-  /// ends.
-  static auto RestoreDisplacedByIs(
-    CompilerMetaData *meta, std::size_t from) -> void;
-
   /// The name a member that is a "let" of one name declares: a
   /// lowering's "let $x = .." is read by the members after it, so
   /// its own statement does not end it.
@@ -59,24 +53,6 @@ namespace spp::asts {
 
   /// A member that drops nothing at its end.
   static const auto NoDrops = Vec<analyse::utils::drop_utils::OwnedValue>();
-}
-
-auto spp::asts::RestoreDisplacedByIs(
-  CompilerMetaData *const meta, const std::size_t from) -> void {
-  // Latest first, so a name taken twice ends with its first holder.
-  auto &displaced = meta->DisplacedByIsBindings;
-  for (auto i = displaced.size(); i > from; --i) {
-    auto const &[in, binding, held] = displaced[i - 1];
-    if (in->FindVarSymbol(binding->Name.get(), true) != binding.get()) { continue; }
-
-    // A binding of this scope's is put back; for one further out (a
-    // parameter, a subject a flow-typed name narrowed), the "is"
-    // binding is taken out, so the name reads outwards again, rather
-    // than this scope adopting the value as an owner of its own.
-    if (held->ScopeDefinedIn == in) { in->AddVarSymbol(held); }
-    else { ignore = in->InternalTable.VarTable.Rem(binding->Name.get()); }
-  }
-  displaced.resize(from);
 }
 
 auto spp::asts::OwnLetName(
@@ -165,13 +141,9 @@ auto spp::asts::InnerScopeExpressionAst::Stage7_AnalyseSemantics(
     // What an "is" in this statement bound does not outlive the
     // statement ("let b = o is Some(val)" leaves no "val").
     // Whatever such a binding took the name of has it back.
-    const auto bound_before = meta->AddedIsBindings.size();
-    const auto displaced_before = meta->DisplacedByIsBindings.size();
+    const auto declared_before = sm->CurrentScope->Declarations.size();
     const auto expire_is_bindings = [&] {
-      for (auto j = bound_before; j < meta->AddedIsBindings.size(); ++j) {
-        meta->ExpiredIsBindings.emplace_back(meta->AddedIsBindings[j]);
-      }
-      RestoreDisplacedByIs(meta, displaced_before);
+      meta->ExpiredIsBindings.append_range(sm->CurrentScope->EndStatement(declared_before));
     };
 
     if (i + 1 < Members.size() or DiscardsFinalMember()) { expr_utils::MarkValueDiscarded(*x); }
@@ -218,19 +190,16 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
-
-  // Check the memory of each member. An "is" binding is over at
-  // the end of its statement, so what it still owns is dropped
-  // then, and a name it took is put back.
+  // Check the memory of each member. The hidden temporaries a
+  // statement made end with it, and a name an "is" binding took
+  // is put back.
   _StatementDrops.assign(Members.size(), {});
   for (auto const &[i, m] : Members | genex::views::ptr | genex::views::enumerate) {
-    const auto displaced_before = meta->DisplacedByIsBindings.size();
-    const auto reached_before = sm->CurrentScope->Reached.size();
+    const auto declared_before = sm->CurrentScope->Declarations.size();
+    const auto statement = drop_utils::TemporaryRegion(*sm->CurrentScope);
     m->Stage8_CheckMemory(sm, meta);
-    _StatementDrops[i] = drop_utils::EndStatementTemporaries(
-      *sm->CurrentScope, sm->CurrentScope->Reached, reached_before, *m, *sm, meta,
-      OwnLetName(*m));
-    RestoreDisplacedByIs(meta, displaced_before);
+    _StatementDrops[i] = statement.End(*m, *sm, meta, OwnLetName(*m));
+    ignore = sm->CurrentScope->EndStatement(declared_before);
   }
 
   // The final statement is the scope's value, so unless nothing
@@ -293,14 +262,12 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   for (auto const &[i, m] : this->Members | genex::views::ptr | genex::views::enumerate) {
     // Each member at its own line, for the debug info.
     codegen::SetDebugLocation(*ctx, m->PosStart());
-    const auto displaced_before = meta->DisplacedByIsBindings.size();
+    const auto declared_before = sm->CurrentScope->Declarations.size();
     auto const &statement_drops = i < _StatementDrops.size() ? _StatementDrops[i] : NoDrops;
     const auto temporaries = codegen::TemporaryDepth(ctx);
     const auto end_statement = [&] {
-      codegen::EmitTemporaryDrops(temporaries, sm, meta, ctx);
-      codegen::PopTemporaries(temporaries, ctx);
-      codegen::EmitOwnedDrops(*sm->CurrentScope, statement_drops, m, sm, meta, ctx);
-      RestoreDisplacedByIs(meta, displaced_before);
+      codegen::EndTemporaryRegion(temporaries, *sm->CurrentScope, statement_drops, m, sm, meta, ctx);
+      ignore = sm->CurrentScope->EndStatement(declared_before);
     };
     const auto drop_discarded = [&](llvm::Value *val) {
       if (val == nullptr or i >= _DropsDiscarded.size() or not _DropsDiscarded[i]) { return val; }
@@ -353,9 +320,9 @@ auto spp::asts::InnerScopeExpressionAst::EvaluateCompTime(
   // Comptime resolve each member of the inner scope.
   sm->MoveToNextScope();
   for (auto const &m : this->Members) {
-    const auto displaced_before = meta->DisplacedByIsBindings.size();
+    const auto declared_before = sm->CurrentScope->Declarations.size();
     m->EvaluateCompTime(sm, meta);
-    RestoreDisplacedByIs(meta, displaced_before);
+    ignore = sm->CurrentScope->EndStatement(declared_before);
     if (meta->CompTimeReturned) { break; }
   }
 

@@ -719,6 +719,62 @@ def hint_cases() -> None:
 # -- Run time only ----------------------------------------------------------------------------------------------------
 
 
+def transmute_cases() -> None:
+    # "transmute" is std's own ("!package"): reached through the array methods that take an array apart with it, each
+    # reinterpreting it as two arrays ("ArrParts"), then a one-element array as its element. The element types differ in
+    # size and alignment, so a wrong size check or an over-aligned load shows.
+    covers("std.mem.ops.transmute")
+    prog = "runtime-transmute"
+    for t in ("U8", "S32", "S64", "U128"):
+        e = [int_lit(t, v) for v in (1, 2, 3, 4, 5)]
+        whole = ", ".join(f"hide({x})" for x in e)
+        CASES.append(
+            Case(
+                prog,
+                f"pop_front Arr[{t}, 5]",
+                t,
+                None,
+                [
+                    f"let (head, rest) = [{whole}].pop_front()",
+                    f"case rest[0_uz]@ != {e[1]} or rest[3_uz]@ != {e[4]} "
+                    f'{{ bad = bad + note("pop_front Arr[{t}, 5]: rest") }}',
+                ],
+                "head",
+                1,
+            )
+        )
+        CASES.append(
+            Case(
+                prog,
+                f"pop_back Arr[{t}, 5]",
+                t,
+                None,
+                [
+                    f"let (init, last) = [{whole}].pop_back()",
+                    f"case init[0_uz]@ != {e[0]} or init[3_uz]@ != {e[3]} "
+                    f'{{ bad = bad + note("pop_back Arr[{t}, 5]: init") }}',
+                ],
+                "last",
+                5,
+            )
+        )
+        CASES.append(
+            Case(
+                prog,
+                f"split_at[2] Arr[{t}, 5]",
+                t,
+                None,
+                [
+                    f"let (l, r) = [{whole}].split_at[2_uz]()",
+                    f"case l[0_uz]@ != {e[0]} or l[1_uz]@ != {e[1]} or r[2_uz]@ != {e[4]} "
+                    f'{{ bad = bad + note("split_at[2] Arr[{t}, 5]: parts") }}',
+                ],
+                "r[0_uz]@",
+                3,
+            )
+        )
+
+
 def runtime_int_cases() -> None:
     prog = "runtime-int"
     for t in ("S8", "S32", "S64", "S128", "U8", "U32", "U64", "U128"):
@@ -1494,7 +1550,6 @@ EXCLUDED: dict[str, str] = {
     "std.mem.ops.drop": "destruction",
     "std.mem.ops.swap": "moves",
     "std.mem.ops.replace": "moves",
-    "std.mem.ops.transmute": "moves, reinterpreted",
     "std.mem.ops.mem_copy": "byte copies",
     "std.mem.ops.mem_set": "byte fills",
     "std.mem.ops.size_of_val": "the run-time form of size_of",
@@ -1584,6 +1639,7 @@ def emit(builtins: str, std_src: str, out: str) -> None:
     runtime_int_cases()
     runtime_float_cases()
     atomic_cases()
+    transmute_cases()
 
     # Every intrinsic in the registry is checked here, or excluded with a reason. One std does not declare cannot be
     # called, so it is noted, and its cases dropped.
