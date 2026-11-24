@@ -15,7 +15,6 @@ import spp.analyse.utils.annotation_utils;
 import spp.analyse.utils.common_errors;
 import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.fn_signatures;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.self_type;
@@ -667,7 +666,7 @@ auto spp::asts::FunctionPrototypeAst::Stage8_CheckMemory(
 
   // Check the memory for the parameter group and implementation.
   // "EnclosingFnScope" is set here as well as in stage
-  // 7, because the early-exit linearity check needs to know
+  // 7, because the early-exit drop collection needs to know
   // where to stop walking outwards.
   {
     const auto _meta_guard = MetaGuard(meta, true);
@@ -706,8 +705,8 @@ auto spp::asts::FunctionPrototypeAst::_CheckBodyMemory(
   // parameters, so there is nothing to hold to the rule.
   if (BuiltinAnnotation == nullptr and FfiAnnotation == nullptr and AbstractAnnotation == nullptr
     and not Impl->Diverges(sm, meta)) {
-    linear_utils::CheckScopeExit(
-      *sm->CurrentScope, *Impl, "Function end", *sm, meta);
+    _OwnedAtEnd = drop_utils::EndRegion(
+      *sm->CurrentScope, *Impl, *sm, meta);
   }
 }
 
@@ -979,6 +978,7 @@ auto spp::asts::FunctionPrototypeAst::_CloneStateInto(
   ast.InlineAnnotation = InlineAnnotation;
   ast.Visibility = Visibility;
   ast._LlvmFn = _LlvmFn;
+  ast._OwnedAtEnd = _OwnedAtEnd;
   for (auto const &a : ast.Annotations) { a->SetAstCtx(&ast); }
 }
 

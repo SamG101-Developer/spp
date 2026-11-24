@@ -4,6 +4,7 @@ module;
 export module spp.asts.function_prototype_ast;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.annotation_utils;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast;
 import spp.asts.ast_kind;
 import spp.asts.module_member_ast;
@@ -37,6 +38,7 @@ use(spp::codegen, class Abi);
 /// This is further inherited into the subroutine and coroutine
 /// prototypes, which add additional analysis checks.
 SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FunctionPrototypeAst);
 
   /// Optional "!abstract_method" annotation, marking the
@@ -376,6 +378,10 @@ protected:
 
   Unique<analyse::utils::annotation_utils::AnnotationInfo> _AnnotationInfo;
 
+  /// What the function's own scope (its parameters) still owns as
+  /// the body runs off its end, dropped there ("OwnedIn").
+  Vec<analyse::utils::drop_utils::OwnedValue> _OwnedAtEnd;
+
   inline static Vec<Pair<FunctionPrototypeAst*, bool>> _PendingDefaults = {};
 
   SPP_ATTR_NODISCARD auto _DeduceMockClsType() const -> Pair<Shared<TypeAst>, Str>;
@@ -413,3 +419,5 @@ protected:
   auto _CodeGenGnSubstitutions(
     ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> void;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionPrototypeAst)
