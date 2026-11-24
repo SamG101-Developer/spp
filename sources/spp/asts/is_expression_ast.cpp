@@ -94,25 +94,37 @@ auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
   // Add the destructure symbols to the current scope. This
   // includes the lhs symbol if it's been flow typed. They are
   // recorded as the scope's bindings, as a "let"'s are, so
-  // a later walk only finds them from this "is" onwards.
+  // a later walk only finds them from this "is" onwards. A
+  // pattern's binding lasts to the end of the statement.
   _Exposed.clear();
   if (AstAs<InnerScopeAst<Unique<Ast>>>(sm->CurrentScope->AstNode) == nullptr) {
     const auto destructure_syms = sm->CurrentScope->Children[n]->Children[0]->GetAllVarSymbols(true, true);
     for (auto const &x : destructure_syms) {
       _Exposed.emplace_back(x->SharedFromThis<VariableSymbol>());
       sm->CurrentScope->RecordLetBinding(_Exposed.back());
-      sm->CurrentScope->AddVarSymbol(_Exposed.back());
-      if (x->Kind == VariableKind::Local) { meta->AddedIsBindings.emplace_back(x); }
+      if (x->Kind == VariableKind::Local) {
+        x->ExpiresWithStatement = true;
+        meta->AddedIsBindings.emplace_back(x);
+      }
     }
+    _DeclareExposed(*sm, meta);
   }
 }
 
 auto spp::asts::IsExpressionAst::_DeclareExposed(
-  ScopeManager &sm) const -> void {
-  // Bulk declare whatever is in the "exposed" list. Used in
-  // stages 8, 9 and 11, and expose the bindings.
+  ScopeManager &sm, CompilerMetaData *meta) const -> void {
+  // Bulk declare whatever is in the "exposed" list, in every
+  // walk. A pattern's binding taking a name this scope already
+  // holds notes the holder, which its block puts back at the
+  // end of the statement.
   for (auto const &x : _Exposed) {
-    sm.CurrentScope->AddVarSymbol(x);
+    auto *const held = sm.CurrentScope->FindVarSymbol(x->Name.get(), true);
+    if (x->ExpiresWithStatement and held != nullptr and held != x.get()) {
+      meta->DisplacedByIsBindings.push_back({
+        .In = sm.CurrentScope, .Binding = x,
+        .Displaced = held->SharedFromThis<VariableSymbol>()});
+    }
+    sm.CurrentScope->DeclareLetBinding(x);
   }
 }
 
@@ -122,7 +134,7 @@ auto spp::asts::IsExpressionAst::Stage8_CheckMemory(
   // expose what it binds: the subject it tests is the one
   // named before the "is", not the one it narrows.
   _MappedFn->Stage8_CheckMemory(sm, meta);
-  _DeclareExposed(*sm);
+  _DeclareExposed(*sm, meta);
 }
 
 auto spp::asts::IsExpressionAst::Stage11_CodeGen(
@@ -130,7 +142,7 @@ auto spp::asts::IsExpressionAst::Stage11_CodeGen(
   // As moving to the next scope clears ast-generated bindings
   // in that scope, we need to redeclare them for them for
   // narrowing analysis and codegen.
-  _DeclareExposed(*sm);
+  _DeclareExposed(*sm, meta);
 
   // If the lhs was an identifier, the "is" causes it to get
   // flow typed, so we need to promote the original "alloca"
@@ -155,7 +167,7 @@ auto spp::asts::IsExpressionAst::EvaluateCompTime(
   // Forward the resolution to the mapped function, then expose
   // what it binds, as stage 8 does.
   _MappedFn->EvaluateCompTime(sm, meta);
-  _DeclareExposed(*sm);
+  _DeclareExposed(*sm, meta);
 }
 
 auto spp::asts::IsExpressionAst::InferTypeRef(

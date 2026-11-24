@@ -66,6 +66,8 @@ private:
   Vec<Shared<VariableSymbol>> _Exposed;
 
   /// Put the exposed bindings under their names in the current
-  /// scope.
-  auto _DeclareExposed(ScopeManager &sm) const -> void;
+  /// scope, noting what a pattern's binding takes the name of
+  /// ("DisplacedByIsBindings"), for its block to put back at the
+  /// end of the statement.
+  auto _DeclareExposed(ScopeManager &sm, CompilerMetaData *meta) const -> void;
 };

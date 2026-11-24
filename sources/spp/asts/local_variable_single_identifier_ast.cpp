@@ -8,7 +8,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.borrows;
-import spp.analyse.utils.linear_utils;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.regions;
@@ -131,7 +131,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
   // of the name the scope declared last (shadowing issues).
   _Symbol = sym;
   sm->CurrentScope->RecordLetBinding(sym);
-  sm->CurrentScope->AddVarSymbol(std::move(sym));
+  sm->CurrentScope->DeclareLetBinding(sym);
 }
 
 auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
@@ -158,13 +158,6 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   mem_utils::ValidateSymbolMemory(
     *meta->LetStatementValue, *this, *sm, meta,
     {.CheckMove = not borrows, .CheckMoveFromBorrowedCtx = not borrows, .MarkMoves = not borrows});
-
-  // A binding shadowed in its own scope can never be named again, so its value has to have been consumed by now - the
-  // value just checked may be what consumed it ("let x = f(x)").
-  const auto sym_name = Alias != nullptr ? Alias->Name.get() : Name.get();
-  if (auto const *const shadowed = sm->CurrentScope->FindVarSymbol(sym_name, true); shadowed != nullptr) {
-    linear_utils::CheckOverwrite(*shadowed, *this, "Shadowing binding", *sm);
-  }
 
   // A holder moved in whole by name hands its loans to this binding (a borrow a generator yielded, moved on). Found
   // before this binding is declared, which may shadow it.
@@ -308,7 +301,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::_Binding(
   ScopeManager const *sm) const -> VariableSymbol* {
   // A clone walked over its original's scope has no symbol of its own, and its binding is hidden until declared: it is
   // the one its original recorded there, the first of its name not already visible (the next, for a "let" shadowing
-  // another of its name in the same scope).
+  // another of its name in the same scope). An "is" binding of the name is no "let"'s, so it is passed over.
   if (_Symbol != nullptr) { return _Symbol.get(); }
   auto const &scope = *sm->CurrentScope;
   auto const *const name = Alias != nullptr ? Alias->Name.get() : Name.get();
@@ -316,7 +309,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::_Binding(
   auto past_visible = visible == nullptr;
   for (auto const &recorded : scope.LetBindings) {
     if (recorded->Name->NameId() != name->NameId()) { continue; }
-    if (past_visible) { return recorded.get(); }
+    if (past_visible and not recorded->ExpiresWithStatement) { return recorded.get(); }
     past_visible = recorded.get() == visible;
   }
   return _Own(sm);
@@ -327,7 +320,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::_Declare(
   // Put this binding back under its name, from here on in the scope.
   auto *const sym = _Binding(sm);
   if (sym != nullptr) {
-    sm->CurrentScope->AddVarSymbol(sym->SharedFromThis<VariableSymbol>());
+    sm->CurrentScope->DeclareLetBinding(sym->SharedFromThis<VariableSymbol>());
   }
   return sym;
 }
@@ -336,8 +329,9 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Narrow(
   Shared<VariableSymbol> const &flow, Scope &scope) -> void {
   // The scope's record follows, so entering it hides the narrowed symbol, as it did the original.
   for (auto &recorded : scope.LetBindings) { if (recorded == _Symbol) { recorded = flow; } }
+  for (auto &reached : scope.Reached) { if (reached == _Symbol.get()) { reached = flow.get(); } }
   _Symbol = flow;
-  scope.AddVarSymbol(flow);
+  scope.DeclareLetBinding(flow);
 }
 
 auto spp::asts::LocalVariableSingleIdentifierAst::ExtractNames() const
