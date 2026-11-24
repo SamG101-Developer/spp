@@ -46,11 +46,6 @@ namespace spp::analyse::utils::mem_utils {
     VariableSymbol const &sym, Ast const &value_ast, Ast const &move_ast, const bool moves_value,
     SymbolMemoryOptions const &options, ScopeManager const &sm) -> void;
 
-  /// Specialized move check involving deferred values, as
-  /// we have a special error. No value used in the analysis
-  /// of the expression being deferred, can be uninitialised.
-  static auto RaiseIfMovedDeferred(
-    VariableSymbol const &sym, Scope const *scope) -> void;
 
   /// Raise if "sym" was initialized, moved, partially moved,
   /// or holding an escaping borrow on only some of the paths
@@ -125,20 +120,6 @@ auto spp::analyse::utils::mem_utils::RaiseIfBadEscapingBorrow(
   if (options.CheckEscapingBorrowMove and moves_value and not is_borrow
     and genex::any_of(holds, [](auto const *loan) { return not loan->Yielded; })) {
     Raise<errors::SppMovingEscapingBorrowedMemoryError>(ERR_ARGS(*sym.Name, move_ast));
-  }
-}
-
-/// [CHECKED]
-auto spp::analyse::utils::mem_utils::RaiseIfMovedDeferred(
-  VariableSymbol const &sym, Scope const *scope) -> void {
-  // Get the where location, and if it is present, then
-  // the value has been moved. In the defer context, throw.
-  const auto where_moved = memory_state::StateOf(*scope, sym).AstMoved;
-  auto const *const flow = memory_state::FlowOf(*scope);
-  if (where_moved and flow != nullptr and flow->Deferring.has_value()) {
-    auto const &exit = *flow->Deferring;
-    Raise<errors::SppDeferConsumesMovedValueError>(
-      ERR_ARGS(*exit.Stmt, *where_moved, *exit.ExitPoint, sym.Name->Val, exit.ExitWhat));
   }
 }
 
@@ -229,7 +210,6 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   // deferred values being moved, general moves, escaping
   // borrows being moved.
   RaiseIfInconsistent(*var_sym, value_ast, options, sm.CurrentScope);
-  RaiseIfMovedDeferred(*var_sym, sm.CurrentScope);
   RaiseIfMoved(*var_sym, value_ast, sm.CurrentScope);
   RaiseIfBadEscapingBorrow(*var_sym, value_ast, move_ast, moves_value, options, sm);
 
@@ -308,9 +288,14 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
 /// [CHECKED]
 auto spp::analyse::utils::mem_utils::RaiseIfMoved(
   VariableSymbol const &sym, Ast const &use, Scope const *scope) -> void {
-  // Get the state of the symbol, and get where is was
-  // moved (by ast). If it is not moved, return.
+  // Held on only some of the paths that met is not held either.
   auto const &state = memory_state::StateOf(*scope, sym);
+  const auto maybe = state.MaybeInit;
+  RaiseIf<errors::SppInconsistentlyInitializedMemoryUseError>(
+    maybe.has_value(),
+    ERR_ARGS(use, *maybe->First, *maybe->Other, "initialized"));
+
+  // Get where it was moved (by ast). If it is not moved, return.
   const auto where_moved = state.AstMoved;
   if (where_moved == nullptr) { return; }
 
@@ -318,7 +303,8 @@ auto spp::analyse::utils::mem_utils::RaiseIfMoved(
   // being moved), and raise an error with the original
   // initialisation location, and the move location.
   const auto where_init = state.AstInitializationOrigin;
-  Raise<errors::SppUninitializedMemoryUseError>(ERR_ARGS(use, *where_init, *where_moved));
+  Raise<errors::SppUninitializedMemoryUseError>(
+    ERR_ARGS(use, *where_init, *where_moved));
 }
 
 /// [CHECKED]
