@@ -607,7 +607,7 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           .Required = false,
           .Default = true,
           .Help = "Stop the program, naming the function, when an exception from foreign code unwinds into s++, "
-          "rather than letting it skip the s++ frames' defers and linear values on its way to a C++ handler. "
+          "rather than letting it skip the s++ frames' defers and drops on its way to a C++ handler. "
           "Unwind-table data only. m68k fails the build until this is turned off: LLVM writes its unwind "
           "tables' personality and LSDA pointers as absolute addresses, which a position-independent "
           "executable cannot hold."
