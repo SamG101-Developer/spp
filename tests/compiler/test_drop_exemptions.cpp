@@ -68,20 +68,23 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   }
 )");
 
-// Being zero-sized is a statement about layout, not about what an assignment means, so it no longer implies "Copy" -
-// a marker type is moved, and dropped at its scope's end.
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+// Being zero-sized is a statement about layout, not about what an assignment means, so it does not imply "Copy": a
+// marker type is moved, so a second use of it is a use after move.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestDropExemptions,
-  test_valid_zero_type_is_not_copy, R"(
+  test_invalid_zero_type_is_not_copy,
+  SppUninitializedMemoryUseError, R"(
   !zero_type
   cls Marker { }
 
   fun f() -> Void {
     let m = Marker
+    let a = m
+    let b = m
   }
 )");
 
-// A variant is copyable exactly when every alternative it can hold is.
+// A variant is copyable exactly when every alternative it can hold is: used twice, it is copied both times.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropExemptions,
   test_valid_variant_of_copyable_alternatives_is_copy, R"(
@@ -91,17 +94,24 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   sup B ext Copy { }
   type AB = A or B
 
-  fun f(x: AB) -> Void { }
+  fun f(x: AB) -> Void {
+    let a = x
+    let b = x
+  }
 )");
 
-// ...and is not copyable when one of them is not, so it is moved, and dropped at its scope's end.
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+// ...and is not copyable when one of them is not, so it is moved, and a second use is a use after move.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestDropExemptions,
-  test_valid_variant_with_a_non_copyable_alternative, R"(
+  test_invalid_variant_with_a_non_copyable_alternative,
+  SppUninitializedMemoryUseError, R"(
   cls A { }
   cls B { }
   sup A ext Copy { }
   type AB = A or B
 
-  fun f(x: AB) -> Void { }
+  fun f(x: AB) -> Void {
+    let a = x
+    let b = x
+  }
 )");

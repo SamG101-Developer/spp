@@ -359,11 +359,14 @@ auto spp::analyse::utils::drop_utils::RaiseIfPathStrandsDestructor(
 
 auto spp::analyse::utils::drop_utils::IsOwnedIn(
   VariableSymbol const &sym, memory_state::MemoryState const &state, ScopeManager const &sm) -> bool {
-  // Only a local owns a value it has to answer for. A generic or a constant has no runtime existence, a
-  // flow-narrowing symbol is a view of another symbol's value (which owns it), and a capture belongs
-  // to the closure's environment, which is read again on every call - it is the closure value that owns it. A "$"
-  // temporary a desugaring made is a local like any other.
-  if (sym.Kind != VariableKind::Local and sym.Kind != VariableKind::Temporary) { return false; }
+  // Only a local owns a value it has to answer for. A generic or a constant has no runtime existence, and a
+  // flow-narrowing symbol is a view of another symbol's value (which owns it). A "$" temporary a desugaring made is a
+  // local like any other. So is a capture taken by value, in the closure's body: such a closure is a "FunMov", so a
+  // call consumes it, and its body owns what it captured as a function's owns its parameters, dropping what it did
+  // not move out (the caller then only frees the environment). A borrowed capture owns nothing ("IsBorrow" below).
+  if (sym.Kind != VariableKind::Local and sym.Kind != VariableKind::Temporary and sym.Kind != VariableKind::Capture) {
+    return false;
+  }
 
   // A closed pack holds nothing itself: its elements are parameters of their own, each answering for its value.
   // An open one holds what its elements are: nothing owned when each is copied ("..xs: S32", "..xs: Ts" with

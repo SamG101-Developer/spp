@@ -210,9 +210,16 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
     // evaluating it unconditionally.
     const auto guard_bb = llvm::BasicBlock::Create(
       *ctx->Context, "case.branch.guard" + uid, func);
-    ctx->Builder.CreateCondBr(cond, guard_bb, _EdgeToNext(_DropsOnNoMatch, "case.branch.no_match" + uid, next_bb, sm, meta, ctx));
+    const auto no_match_bb = _EdgeToNext(_DropsOnNoMatch, "case.branch.no_match" + uid, next_bb, sm, meta, ctx);
+    ctx->Builder.CreateCondBr(cond, guard_bb, no_match_bb);
+    // The temporaries the guard makes exist only where it ran: they
+    // are dropped at its end, before either edge, its value being a
+    // "Bool" that borrows none of them.
     ctx->Builder.SetInsertPoint(guard_bb);
+    const auto guard_temporaries = codegen::TemporaryDepth(ctx);
     const auto guard_cond = Guard->Stage11_CodeGen(sm, meta, ctx);
+    codegen::EmitTemporaryDrops(guard_temporaries, sm, meta, ctx);
+    codegen::PopTemporaries(guard_temporaries, ctx);
     const auto guard_end_bb = ctx->Builder.GetInsertBlock();
     const auto false_bb = _EdgeToNext(_DropsOnGuardFalse, "case.branch.guard_false" + uid, next_bb, sm, meta, ctx);
     ctx->Builder.SetInsertPoint(guard_end_bb);
@@ -406,11 +413,13 @@ auto spp::asts::CaseExpressionBranchAst::SetGuardEdgeDrops(
   _DropsOnGuardFalse = std::move(on_guard_false);
 }
 
-auto spp::asts::CaseExpressionBranchAst::StateBeforeGuard() const -> analyse::utils::memory_state::ScopeSnapshot const* {
+auto spp::asts::CaseExpressionBranchAst::StateBeforeGuard() const
+  -> analyse::utils::memory_state::ScopeSnapshot const* {
   return _StateBeforeGuard.get();
 }
 
-auto spp::asts::CaseExpressionBranchAst::StateAfterGuard() const -> analyse::utils::memory_state::ScopeSnapshot const* {
+auto spp::asts::CaseExpressionBranchAst::StateAfterGuard() const
+  -> analyse::utils::memory_state::ScopeSnapshot const* {
   return _StateAfterGuard.get();
 }
 

@@ -169,18 +169,15 @@ auto spp::codegen::EmitDrop(
     }
 
     // An array is one value repeated, so its elements are reached by indexing into it; a tuple's and a struct's
-    // are separate fields. The S++ layout re-orders a struct's fields to minimize padding, so a declaration index
-    // has to be mapped through to wherever the field actually ended up.
-    const auto index = static_cast<std::uint32_t>(part.Index);
+    // are separate fields, found through the layout's index map: the S++ layout re-orders a struct's fields to
+    // minimise padding, and a tuple's leaves out its valueless ("Void") elements.
     const auto part_ptr = is_arr
       ? ctx->Builder.CreateGEP(
-        elem_ty, ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
+        elem_ty, ptr,
+        {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, static_cast<std::uint32_t>(part.Index))},
         "drop.elem" + uid + "." + part.Step->Val)
-      : is_indexable
-        ? ctx->Builder.CreateStructGEP(elem_ty, ptr, index, "drop.elem" + uid + "." + part.Step->Val)
-        : ctx->Builder.CreateStructGEP(
-          elem_ty, ptr, GetPhysicalFieldIndex(*type_sym.LlvmInfo, part.Index),
-          "drop.field" + uid + "." + part.Step->Val);
+      : ctx->Builder.CreateStructGEP(
+        elem_ty, ptr, GetPhysicalFieldIndex(*type_sym.LlvmInfo, part.Index), "drop.field" + uid + "." + part.Step->Val);
     EmitDrop(part.Ref, part_ptr, sm, meta, ctx, part_moved);
   }
 }

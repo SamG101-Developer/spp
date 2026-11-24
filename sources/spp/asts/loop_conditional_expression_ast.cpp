@@ -133,7 +133,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     // code generation already treats it.
     meta->ClearAssignmentTarget();
 
-    if (not Body->Members.empty()) { expr_utils::MarkValueDiscarded(*Body->FinalMember()); }
+    expr_utils::MarkValueDiscarded(*Body);
     Body->Stage7_AnalyseSemantics(sm, meta);
   }
 

@@ -439,7 +439,8 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     sm->CurrentScope->AstNode = this;
     _LlvmFn = MakeShared<codegen::LlvmFnWrapper>(llvm_fn);
     meta->EnclosingFnScope = sm->CurrentScope;
-    meta->TemporaryBase = codegen::TemporaryDepth(ctx);
+    const auto closure_temporaries = codegen::TemporaryDepth(ctx);
+    meta->TemporaryBase = closure_temporaries;
     meta->EnclosingFnRetType = _TrueRetType;
     meta->EnclosingFnSourceRetType = Source._OriginalRetType;
     meta->EnclosingFnFlavour = Tok.get();
@@ -462,31 +463,38 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
       auto body_val = Body->Stage11_CodeGen(sm, meta, ctx);
 
       // Terminate the closure function with a return of the body's
-      // value (closures return their body implicitly). A borrow
-      // returned as the value it points at - a copyable capture
-      // like "|caps &a| -> S32 { a }" - is read through first,
-      // the way a borrowed argument is for a by-value parameter.
-      // A closure never returns a borrow (second class), so a
-      // borrowed body is always one of these.
-      // The parameters still owned are dropped once the body's value is made, before it is returned.
-      codegen::EmitOwnedDrops(*outer_scope, _OwnedAtEnd, this, sm, meta, ctx);
+      // value (closures return their body implicitly), as a "ret"
+      // returns one: the value is made first, while everything it
+      // reads is alive. A borrow returned as the value it points
+      // at - a copyable capture like "|caps &a| -> S32 { a }", or
+      // "|v: Vec[S32]| -> S32 { v[0_uz] }" - is read through, the
+      // way a borrowed argument is for a by-value parameter (a
+      // closure never returns a borrow: second class). Then what
+      // the body still holds is dropped: an expression body's
+      // temporaries (a block drops its own), then the parameters
+      // and captures still owned.
       if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
         const auto body_ref = Body->InferTypeRef(sm, meta);
         if (body_val != nullptr and body_ref.IsBorrowed() and not llvm_ret_ty->isVoidTy()) {
           body_val = ctx->Builder.CreateLoad(llvm_ret_ty, body_val, "closure.ret.copy" + uid);
         }
 
-        // The body's value is returned as a "ret" would return it,
-        // so it is coerced the same way: a member into a variant
-        // return type, and a named function into a function type.
+        // Coerced as a "ret" coerces: a member into a variant return
+        // type, and a named function into a function type.
         if (body_val != nullptr and not llvm_ret_ty->isVoidTy() and _TrueRetType != nullptr) {
           const auto ret_ref = TypeRef::Of(*_TrueRetType, *sm->CurrentScope);
           body_val = codegen::CoerceToSlot(body_val, ret_ref, body_ref, *sm, "closure.ret.variant" + uid, ctx);
         }
+        codegen::EmitTemporaryDrops(closure_temporaries, sm, meta, ctx);
+        codegen::EmitOwnedDrops(*outer_scope, _OwnedAtEnd, this, sm, meta, ctx);
         if (llvm_ret_ty->isVoidTy()) { ctx->Builder.CreateRetVoid(); }
         else if (body_val != nullptr) { ctx->Builder.CreateRet(body_val); }
         else { ctx->Builder.CreateUnreachable(); }
       }
+
+      // The closure's temporaries belong to its own function: none is
+      // left for the statement the closure is written in.
+      codegen::PopTemporaries(closure_temporaries, ctx);
 
       // Leave both closure scopes reading as Stage 7 left them
       // (see Stage 8).
