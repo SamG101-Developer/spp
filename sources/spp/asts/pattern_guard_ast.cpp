@@ -17,6 +17,7 @@ import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
@@ -94,11 +95,20 @@ auto spp::asts::PatternGuardAst::Stage8_CheckMemory(
   mem_utils::ValidateSymbolMemory(*Expr, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
   auto bindings = sm->CurrentScope->GetOwners();
   if (sm->CurrentScope->Parent != nullptr) { bindings.append_range(sm->CurrentScope->Parent->GetOwners()); }
-  for (auto const *const sym : bindings) {
+  for (const auto sym : bindings) {
     RaiseIf<SppPatternGuardMovesValueError>(
       not sym->IsBorrow() and memory_state::StateIn(before, *sym).AstMoved == nullptr
       and memory_state::StateOf(*sm->CurrentScope, *sym).AstMoved != nullptr and sym->Name != nullptr,
       ERR_ARGS(*Expr, *sym->Name));
+  }
+
+  // Nor the subject itself, or any part of it: a comparison
+  // pattern after this branch reads it without a check of its own.
+  if (const auto subject = meta->CaseSubject; subject != nullptr and subject->Name != nullptr) {
+    RaiseIf<SppPatternGuardMovesValueError>(
+      not memory_state::SameShape(
+        memory_state::StateIn(before, *subject), memory_state::StateOf(*sm->CurrentScope, *subject)),
+      ERR_ARGS(*Expr, *subject->Name));
   }
 }
 

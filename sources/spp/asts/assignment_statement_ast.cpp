@@ -192,13 +192,16 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
     return sm->CurrentScope->FindVarSymbolOutermost(*x);
   }) | genex::to<Vec>();
 
+  // Every value is read before any target is written, as code
+  // generation does: in "a, b = b, a" the second value reads the
+  // "a" the statement started with, so it is moved there, and no
+  // old value it took is dropped by the write over "a".
   _DropsOld.assign(Lhs.size(), Nullopt);
-  for (auto const &[i, lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(
-         genex::views::iota(0uz, Lhs.size()), Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms)) {
+  auto &loans = memory_state::LoansOf(*sm->CurrentScope);
+  const auto targets = genex::views::zip(
+    genex::views::iota(0uz, Lhs.size()), Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms);
+  for (auto const &[i, lhs_expr, rhs_expr, lhs_sym_and_scope] : targets) {
     auto const &[lhs_sym, _] = lhs_sym_and_scope;
-    const auto lhs_state = [&]() -> memory_state::MemoryState& {
-      return memory_state::StateOf(*sm->CurrentScope, *lhs_sym);
-    };
 
     // Partially validate the memory of the right-hand-side
     // expression, if it is an attribute being set. Don't mark
@@ -209,10 +212,8 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
       {.CheckMove = regions::IsAttr(lhs_expr, sm), .CheckPartialMove = false, .MarkMoves = false});
 
     // When we assign a replacement value, we need to release
-    // the loans that were present on the symbol. Get the loans
-    // in the scope, and remove them by comparing the holder
-    // symbol.
-    auto &loans = memory_state::LoansOf(*sm->CurrentScope);
+    // the loans that were present on the symbol, by comparing
+    // the holder symbol.
     if (lhs_expr->To<IdentifierAst>() != nullptr and lhs_sym != nullptr) {
       loans |= genex::actions::remove_if([&](auto const &loan) {
         return loan.Holder == lhs_sym and not loan.Yielded;
@@ -240,6 +241,14 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
     // than refusing the move on sight.
     mem_utils::ValidateSymbolMemory(
       *rhs_expr, *TokAssign, *sm, meta, {.CheckEscapingBorrowMove = false});
+  }
+
+  // Then each target is written.
+  for (auto const &[i, lhs_expr, rhs_expr, lhs_sym_and_scope] : targets) {
+    auto const &[lhs_sym, _] = lhs_sym_and_scope;
+    const auto lhs_state = [&]() -> memory_state::MemoryState& {
+      return memory_state::StateOf(*sm->CurrentScope, *lhs_sym);
+    };
 
     // Writing over a value that a live coroutine, future or
     // iterator borrows changes what that borrow points at, just
@@ -335,7 +344,9 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
       const auto _meta_guard = MetaGuard(meta);
       meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
       meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
-      if (Lhs[i]->To<IdentifierAst>() != nullptr and not DropsOldAt(i)) {
+      // Built straight into the target's slot only when it is the one
+      // target: with more, a later value may still read that target.
+      if (Lhs.size() == 1 and Lhs[i]->To<IdentifierAst>() != nullptr and not DropsOldAt(i)) {
         meta->LlvmAssignmentTarget = sm->CurrentScope->FindVarSymbol(
           Lhs[i]->To<IdentifierAst>())->LlvmInfo->Alloca;
       }

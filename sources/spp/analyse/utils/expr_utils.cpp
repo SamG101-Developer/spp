@@ -149,8 +149,9 @@ auto spp::analyse::utils::expr_utils::MarkValueDiscarded(
     case_expr->ValueDiscarded = true;
     return;
   }
-  if (auto const *const block = member.To<InnerScopeExpressionAst>(); block != nullptr and not block->Members.empty()) {
-    MarkValueDiscarded(*block->FinalMember());
+  if (auto *const block = member.To<InnerScopeExpressionAst>(); block != nullptr) {
+    block->ValueDiscarded = true;
+    if (not block->Members.empty()) { MarkValueDiscarded(*block->FinalMember()); }
   }
 }
 

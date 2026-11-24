@@ -31,6 +31,12 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
   /// The "}" token that ends the inner scope.
   Unique<TokenAst> TokR;
 
+  /// Set when nothing takes this block's value (a statement, a
+  /// statement "case"'s branch body: "expr_utils::MarkValueDiscarded").
+  /// Its final member is then not moved out at its end: a place
+  /// written as a statement takes nothing from it.
+  bool ValueDiscarded = false;
+
   static auto NewEmpty() -> Unique<InnerScopeExpressionAst>;
 
   InnerScopeExpressionAst(

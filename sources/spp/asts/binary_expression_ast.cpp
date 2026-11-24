@@ -33,6 +33,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_drop;
 import spp.lex.tokens;
 import spp.utils.functions;
 import spp.utils.ice;
@@ -389,9 +390,15 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   // Do the right-hand-side codegen (doesn't execute the LLVM,
   // just creates it), and hook it into the short-circuiting
   // mechanism.
+  // The temporaries the right operand makes exist only on its
+  // path, not the short-circuit one: they are dropped at its end,
+  // its value being a "Bool" that borrows none of them.
   ctx->Builder.SetInsertPoint(rhs_bb);
+  const auto temporaries = codegen::TemporaryDepth(ctx);
   const auto llvm_rhs = Rhs->Stage11_CodeGen(sm, meta, ctx);
   SPP_ASSERT(llvm_rhs->getType()->isIntegerTy(1));
+  codegen::EmitTemporaryDrops(temporaries, sm, meta, ctx);
+  codegen::PopTemporaries(temporaries, ctx);
   const auto rhs_end_bb = ctx->Builder.GetInsertBlock();
   ctx->Builder.CreateBr(join_bb);
 

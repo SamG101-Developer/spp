@@ -120,6 +120,7 @@ auto spp::asts::InnerScopeExpressionAst::Clone() const -> Unique<Ast> {
   i->_OwnedAtEnd = _OwnedAtEnd;
   i->_StatementDrops = _StatementDrops;
   i->_DropsDiscarded = _DropsDiscarded;
+  i->ValueDiscarded = ValueDiscarded;
   return i;
 }
 
@@ -233,7 +234,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
   // never recorded the move of "x", which then read as a value
   // still owned at the closing brace even though it had just
   // been returned.
-  if (not Members.empty() and not DiscardsFinalMember()) {
+  if (not Members.empty() and not DiscardsFinalMember() and not ValueDiscarded) {
     if (const auto expr_member = FinalMember()->template To<ExpressionAst>(); expr_member != nullptr) {
       const auto move = meta->AssignmentTarget != nullptr
         ? static_cast<Ast const*>(meta->AssignmentTarget.get())

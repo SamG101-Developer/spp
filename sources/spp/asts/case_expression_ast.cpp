@@ -212,9 +212,7 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
   // Analyse each branch of the case expression. Nothing takes
   // a branch's value when nothing takes the "case"'s.
   for (auto const &branch : Branches) {
-    if (ValueDiscarded and not branch->Body->Members.empty()) {
-      expr_utils::MarkValueDiscarded(*branch->Body->FinalMember());
-    }
+    if (ValueDiscarded) { expr_utils::MarkValueDiscarded(*branch->Body); }
   }
   for (auto const &branch : Branches) {
     const auto expired_before = meta->ExpiredIsBindings.size();
