@@ -50,7 +50,6 @@ use(spp::analyse::errors, struct SppVariableArrayDestructureArraySizeMismatchErr
 use(spp::analyse::errors, struct SppVariableTupleDestructureTupleTypeMismatchError);
 use(spp::analyse::errors, struct SppVariableTupleDestructureTupleSizeMismatchError);
 use(spp::analyse::errors, struct SppVariableObjectDestructureWithBoundRestPatternError);
-use(spp::analyse::errors, struct SppDestructureSkipsOwnedPartError);
 use(spp::analyse::errors, struct SppPartialMoveOfDestructibleValueError);
 use(spp::analyse::errors, struct SppExpressionNotBooleanError);
 use(spp::analyse::errors, struct SppExpressionNotGeneratorError);
@@ -83,6 +82,7 @@ use(spp::analyse::errors, struct SppDivisionByZeroError);
 use(spp::analyse::errors, struct SppShiftAmountOutOfBoundsError);
 use(spp::analyse::errors, struct SppSuperimpositionDoubleExtensionError);
 use(spp::analyse::errors, struct SppSuperimpositionSelfExtensionError);
+use(spp::analyse::errors, struct SppSuperimpositionCopyAndDropError);
 use(spp::analyse::errors, struct SppSuperimpositionExternalMarkerExtensionError);
 use(spp::analyse::errors, struct SppSuperimpositionExtensionMethodInvalidError);
 use(spp::analyse::errors, struct SppSuperimpositionExtensionNonVirtualMethodOverriddenError);
@@ -98,6 +98,7 @@ use(spp::analyse::errors, struct SppNonCopyableTypeError);
 use(spp::analyse::errors, struct SppGenericParameterConflictError);
 use(spp::analyse::errors, struct SppGenericParameterNotInferredError);
 use(spp::analyse::errors, struct SppDestructureGenericAmbiguousError);
+use(spp::analyse::errors, struct SppStaticCallReceiverAmbiguousError);
 use(spp::analyse::errors, struct SppGenericArgumentTooManyError);
 use(spp::analyse::errors, struct SppMissingMainFunctionError);
 use(spp::analyse::errors, struct SppInvalidVoidValueError);
@@ -124,9 +125,7 @@ use(spp::analyse::errors, struct SppCharLiteralOutOfBoundsError);
 use(spp::analyse::errors, struct SppCharLiteralLengthError);
 use(spp::analyse::errors, struct SppDefaultValueNamesParameterError);
 use(spp::analyse::errors, struct SppPatternGuardMovesValueError);
-use(spp::analyse::errors, struct SppLinearValueNotConsumedError);
 use(spp::analyse::errors, struct SppDiscardedValueError);
-use(spp::analyse::errors, struct SppLinearValueSkippedInDestructureError);
 use(spp::analyse::errors, struct SppLoopMissingElseError);
 use(spp::analyse::errors, struct SppCfgUnknownKeyError);
 use(spp::analyse::errors, struct SppCfgInvalidValueError);
@@ -137,9 +136,6 @@ use(spp::analyse::errors, struct SppPackNotValueError);
 use(spp::analyse::errors, struct SppPackNotTypeError);
 use(spp::analyse::errors, struct SppSpreadInFoldError);
 use(spp::analyse::errors, struct SppFoldLengthMismatchError);
-use(spp::analyse::errors, struct SppDeferTerminatesError);
-use(spp::analyse::errors, struct SppDeferInCompTimeFunctionError);
-use(spp::analyse::errors, struct SppDeferConsumesMovedValueError);
 use(spp::analyse::errors, struct SppFeatureNotYetSupportedError);
 
 use(spp::analyse::errors, enum class NotYetSupportedFeature);
@@ -436,11 +432,6 @@ SPP_EXP_CLS struct spp::analyse::errors::SppVariableObjectDestructureWithBoundRe
   explicit SppVariableObjectDestructureWithBoundRestPatternError(Ast const &var, Ast const &rest_pattern);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppDestructureSkipsOwnedPartError final : SemanticError {
-  explicit SppDestructureSkipsOwnedPartError(
-    Ast const &destructure, Ast const &value, StrView part);
-};
-
 SPP_EXP_CLS struct spp::analyse::errors::SppPartialMoveOfDestructibleValueError final : SemanticError {
   explicit SppPartialMoveOfDestructibleValueError(
     Ast const &exit_point, Ast const &move, Ast const &destructor, StrView type_name);
@@ -572,6 +563,11 @@ SPP_EXP_CLS struct spp::analyse::errors::SppSuperimpositionSelfExtensionError fi
     Ast const &second_extension);
 };
 
+/// A "Copy" type superimposing "Drop": every copy would run the destructor on what they all share.
+SPP_EXP_CLS struct spp::analyse::errors::SppSuperimpositionCopyAndDropError final : SemanticError {
+  explicit SppSuperimpositionCopyAndDropError(Ast const &type, Ast const &marker);
+};
+
 SPP_EXP_CLS struct spp::analyse::errors::SppSuperimpositionExternalMarkerExtensionError final : SemanticError {
   explicit SppSuperimpositionExternalMarkerExtensionError(Ast const &type,
     Ast const &marker);
@@ -646,6 +642,12 @@ SPP_EXP_CLS struct spp::analyse::errors::SppGenericParameterNotInferredError fin
 SPP_EXP_CLS struct spp::analyse::errors::SppDestructureGenericAmbiguousError final : SemanticError {
   explicit SppDestructureGenericAmbiguousError(Ast const &use, Ast const &subject_ty, Ast const &first,
     Ast const &second);
+};
+
+/// A static call on a generic class without its arguments ("Vec::f(..)"), whose arguments fit more than one of the
+/// class's blocks declaring the method, each standing for a different type ("first" and "second" are two of them).
+SPP_EXP_CLS struct spp::analyse::errors::SppStaticCallReceiverAmbiguousError final : SemanticError {
+  explicit SppStaticCallReceiverAmbiguousError(Ast const &receiver, Ast const &first, Ast const &second);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericArgumentTooManyError final : SemanticError {
@@ -760,55 +762,12 @@ SPP_EXP_CLS struct spp::analyse::errors::SppPatternGuardMovesValueError final : 
   explicit SppPatternGuardMovesValueError(Ast const &guard, Ast const &symbol_definition);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppLinearValueNotConsumedError final : SemanticError {
-  explicit SppLinearValueNotConsumedError(
-    Ast const &symbol_definition, Ast const &exit_point,
-    StrView symbol_name, StrView type_name, StrView exit_what);
-
-  /// A linear temporary the expression making it never
-  /// consumes: "use" is where it is left with no owner.
-  explicit SppLinearValueNotConsumedError(
-    Ast const &temporary, Ast const &use, StrView type_name,
-    StrView use_what);
-
-  /// A write over a value reached through a borrow,
-  /// which cannot be moved out first, so the write
-  /// would drop it.
-  explicit SppLinearValueNotConsumedError(
-    Ast const &write, StrView type_name);
-
-  /// The same write, in a copy of a method made for
-  /// "call" (an inherited default method, a generic
-  /// one), whose template could not tell what it would
-  /// drop: the call is what chose the type.
-  explicit SppLinearValueNotConsumedError(
-    Ast const &write, Ast const &call, StrView type_name);
-};
-
 SPP_EXP_CLS struct spp::analyse::errors::SppDiscardedValueError final : SemanticError {
   explicit SppDiscardedValueError(Ast const &expr, StrView type_name);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppDeferTerminatesError final : SemanticError {
-  explicit SppDeferTerminatesError(Ast const &tok_defer, Ast const &expr);
-};
-
 SPP_EXP_CLS struct spp::analyse::errors::SppFeatureNotYetSupportedError final : SemanticError {
   explicit SppFeatureNotYetSupportedError(NotYetSupportedFeature feature, Ast const &context, Ast const &site);
-};
-
-SPP_EXP_CLS struct spp::analyse::errors::SppDeferConsumesMovedValueError final : SemanticError {
-  explicit SppDeferConsumesMovedValueError(Ast const &deferred, Ast const &consumed_at, Ast const &exit_point,
-    StrView symbol_name, StrView exit_what);
-};
-
-SPP_EXP_CLS struct spp::analyse::errors::SppDeferInCompTimeFunctionError final : SemanticError {
-  explicit SppDeferInCompTimeFunctionError(Ast const &tok_defer);
-};
-
-SPP_EXP_CLS struct spp::analyse::errors::SppLinearValueSkippedInDestructureError final : SemanticError {
-  explicit SppLinearValueSkippedInDestructureError(Ast const &skip, Ast const &destructure,
-    StrView attr_name, StrView type_name);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppLoopMissingElseError final : SemanticError {

@@ -677,16 +677,6 @@ spp::analyse::errors::SppVariableObjectDestructureWithBoundRestPatternError::Spp
     "Remove the bound rest pattern from the destructure.");
 }
 
-spp::analyse::errors::SppDestructureSkipsOwnedPartError::SppDestructureSkipsOwnedPartError(
-  Ast const &destructure, Ast const &value, const StrView part) {
-  AddHeader(105, "Destructure Skips Owned Part Error");
-  AddCtxForErr(&value, "Value taken apart here");
-  AddErr(&destructure, "" + INLINE_INFO(part) + " is left with no owner");
-  AddFooter(
-    "A destructure cannot drop fields in the background.",
-    "Bind " + INLINE_HELP(part) + " and use it, or bind it and drop it explicitly.");
-}
-
 spp::analyse::errors::SppPartialMoveOfDestructibleValueError::SppPartialMoveOfDestructibleValueError(
   Ast const &exit_point, Ast const &move, Ast const &destructor, const StrView type_name) {
   AddHeader(106, "Partial Move Of Destructible Value Error");
@@ -1017,6 +1007,17 @@ spp::analyse::errors::SppSuperimpositionSelfExtensionError::SppSuperimpositionSe
     "Remove the self-extension or use a normal " + INLINE_HELP("sup") + " block.");
 }
 
+spp::analyse::errors::SppSuperimpositionCopyAndDropError::SppSuperimpositionCopyAndDropError(
+  Ast const &type, Ast const &marker) {
+  AddHeader(131, "Superimposition Copy And Drop Error");
+  AddCtxForErr(&type, "Copyable type here");
+  AddErr(&marker, "Destructor superimposed here");
+  AddFooter(
+    "Copying a value leaves the original in place, so each copy holds what the original holds; a destructor would "
+    "release it once for every copy, and a copyable value is never dropped, so it would never run at all.",
+    "Remove the \"Copy\" superimposition and move the value instead, or release what it holds without a destructor.");
+}
+
 spp::analyse::errors::SppSuperimpositionExternalMarkerExtensionError::SppSuperimpositionExternalMarkerExtensionError(
   Ast const &type, Ast const &marker) {
   AddHeader(111, "Superimposition External Marker Extension Error");
@@ -1172,6 +1173,16 @@ spp::analyse::errors::SppDestructureGenericAmbiguousError::SppDestructureGeneric
   AddFooter(
     "The subject holds more than one member this pattern can name, including " + INLINE_NOTE(TypeForMessage(first)) +
     " and " + INLINE_NOTE(TypeForMessage(second)) + ".",
+    "Write the generic arguments that pick one, for example " + INLINE_HELP(TypeForMessage(first)) + ".");
+}
+
+spp::analyse::errors::SppStaticCallReceiverAmbiguousError::SppStaticCallReceiverAmbiguousError(
+  Ast const &receiver, Ast const &first, Ast const &second) {
+  AddHeader(130, "Static Call Receiver Ambiguous Error");
+  AddErr(&receiver, "Generic arguments ambiguous here, as the call's arguments fit more than one of its blocks");
+  AddFooter(
+    "The call's arguments fit the method in more than one block of this class, including for " +
+    INLINE_NOTE(TypeForMessage(first)) + " and " + INLINE_NOTE(TypeForMessage(second)) + ".",
     "Write the generic arguments that pick one, for example " + INLINE_HELP(TypeForMessage(first)) + ".");
 }
 
@@ -1427,55 +1438,9 @@ spp::analyse::errors::SppPatternGuardMovesValueError::SppPatternGuardMovesValueE
   AddCtxForErr(&symbol_definition, "Value introduced here");
   AddErr(&guard, "Value moved by this pattern guard");
   AddFooter(
-    "A pattern guard runs before its branch is chosen, so when it answers false the next branch runs with whatever "
-    "the guard moved already gone.",
-    "Borrow the value in the guard, or move it inside the branch body instead.");
-}
-
-spp::analyse::errors::SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
-  Ast const &symbol_definition, Ast const &exit_point, const StrView symbol_name, const StrView type_name,
-  const StrView exit_what) {
-  AddHeader(94, "Linear Value Not Consumed Error");
-  AddCtxForErr(&symbol_definition, "Value of type " + INLINE_INFO(type_name) + " introduced here");
-  AddErr(&exit_point, Str(exit_what) + " reached with " + INLINE_INFO(symbol_name) + " still holding it");
-  AddFooter(
-    "A value of a non-" + INLINE_NOTE("Copy") + " type must be used exactly once, so no symbol can still own one "
-    "when its scope ends.",
-    "Move " + INLINE_HELP(symbol_name) + " into a consuming function, return it, or take it apart with "
-    + INLINE_HELP("let " + Str(type_name) + "(..) = " + Str(symbol_name)) + ".");
-}
-
-spp::analyse::errors::SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
-  Ast const &temporary, Ast const &use, const StrView type_name, const StrView use_what) {
-  AddHeader(94, "Linear Value Not Consumed Error");
-  AddCtxForErr(&temporary, "Temporary of type " + INLINE_INFO(type_name) + " made here");
-  AddErr(&use, Str(use_what));
-  AddFooter(
-    "A temporary of a non-" + INLINE_NOTE("Copy") + " type has nothing to hold it once its expression is done, so "
-    "that expression must consume it.",
-    "Bind it with " + INLINE_HELP("let") + " and consume it after, or pass it by value.");
-}
-
-spp::analyse::errors::SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
-  Ast const &write, const StrView type_name) {
-  AddHeader(94, "Linear Value Not Consumed Error");
-  AddErr(&write, "Writes over a value of type " + INLINE_INFO(type_name) + " through a borrow, dropping it");
-  AddFooter(
-    "A value reached through a borrow belongs to whoever is borrowed from, and cannot be moved out first, so writing "
-    "over it would drop the old one.",
-    "Exchange it with " + INLINE_HELP("std::mem::ops::replace") + ", which hands the old value back to consume.");
-}
-
-spp::analyse::errors::SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
-  Ast const &write, Ast const &call, const StrView type_name) {
-  AddHeader(94, "Linear Value Not Consumed Error");
-  AddCtxForErr(&write, "Writes over a value of type " + INLINE_INFO(type_name) + " through a borrow, dropping it");
-  AddErr(&call, "Calls a method that, for " + INLINE_INFO(type_name) + ", drops the value it writes over");
-  AddFooter(
-    "A value reached through a borrow belongs to whoever is borrowed from, and cannot be moved out first, so writing "
-    "over it would drop the old one. The method was written for any type, and this call chose one that owns something.",
-    "Override the method for " + INLINE_HELP(type_name) + " so that it exchanges the value with " +
-    INLINE_HELP("std::mem::ops::replace") + ", which hands the old value back to consume.");
+    "A pattern's binding is still a part of the \"case\" subject until its branch is taken, and the next branch "
+    "matches the subject whole when the guard answers false.",
+    "Borrow the binding in the guard, or move it inside the branch body instead.");
 }
 
 spp::analyse::errors::SppCaseBranchUnreachableError::SppCaseBranchUnreachableError(
@@ -1534,27 +1499,6 @@ spp::analyse::errors::SppDiscardedValueError::SppDiscardedValueError(
     "expression.");
 }
 
-spp::analyse::errors::SppLinearValueSkippedInDestructureError::SppLinearValueSkippedInDestructureError(
-  Ast const &skip, Ast const &destructure, const StrView attr_name, const StrView type_name) {
-  AddHeader(96, "Linear Value Skipped In Destructure Error");
-  AddCtxForErr(&destructure, "Destructure of " + INLINE_INFO(destructure.ToString()) + " here");
-  AddErr(&skip, "Skip covers " + INLINE_INFO(attr_name) + " of non-Copy type " + INLINE_INFO(type_name));
-  AddFooter(
-    "A destructure consumes the whole value, so an attribute a skip covers is discarded rather than used.",
-    "Bind " + INLINE_HELP(attr_name) + " explicitly in the destructure instead of skipping it.");
-}
-
-spp::analyse::errors::SppDeferTerminatesError::SppDeferTerminatesError(
-  Ast const &tok_defer, Ast const &expr) {
-  AddHeader(97, "Defer Terminates Error");
-  AddCtxForErr(&tok_defer, "Deferred here");
-  AddErrExact(&expr, "Expression leaves the scope rather than running in it");
-  AddFooter(
-    "A deferred expression runs because its scope is being left, so it cannot leave that scope itself.",
-    "Remove the " + INLINE_HELP("ret") + ", " + INLINE_HELP("exit") + ", " + INLINE_HELP("skip") + " or "
-    + INLINE_HELP("?") + " from the deferred expression; handle the failure where the value is still in hand.");
-}
-
 spp::analyse::errors::SppFeatureNotYetSupportedError::SppFeatureNotYetSupportedError(
   const NotYetSupportedFeature feature, Ast const &context, Ast const &site) {
   auto const &text = NotYetSupportedTexts().at(feature);
@@ -1562,31 +1506,6 @@ spp::analyse::errors::SppFeatureNotYetSupportedError::SppFeatureNotYetSupportedE
   AddCtxForErr(&context, Str(text.Ctx));
   AddErrExact(&site, Str(text.Site));
   AddFooter(Str(text.Note), Str(text.Help));
-}
-
-spp::analyse::errors::SppDeferConsumesMovedValueError::SppDeferConsumesMovedValueError(
-  Ast const &deferred, Ast const &consumed_at, Ast const &exit_point, const StrView symbol_name,
-  const StrView exit_what) {
-  AddHeader(99, "Defer Consumes Moved Value Error");
-  AddCtxForErr(&consumed_at, INLINE_INFO(symbol_name) + " consumed here");
-  AddCtxForErr(&deferred, "Deferred here, so it runs at every exit of this scope");
-  AddErrExact(
-    &exit_point, Str(exit_what) + " reached here with " + INLINE_INFO(symbol_name) + " already consumed");
-  AddFooter(
-    "A deferred expression is not conditional - it is emitted at every exit,\n\t"
-    "with nothing at runtime to record that one path already consumed the\n\t"
-    "value - so this one would use it after it is gone.",
-    "Discharge " + INLINE_HELP(symbol_name) + " in each branch that does\n\t"
-    "not already consume it, rather than deferring it for all of them.");
-}
-
-spp::analyse::errors::SppDeferInCompTimeFunctionError::SppDeferInCompTimeFunctionError(
-  Ast const &tok_defer) {
-  AddHeader(98, "Defer In Compile-Time Function Error");
-  AddErr(&tok_defer, "Deferred here, inside a function evaluated at compile time");
-  AddFooter(
-    "Compile-time evaluation has no scope exit to run a deferred expression at.",
-    "Run the expression where it is needed instead of deferring it, or make the function a runtime one.");
 }
 
 spp::analyse::errors::SppGenOnceFinishesWithoutYieldingError::SppGenOnceFinishesWithoutYieldingError(
