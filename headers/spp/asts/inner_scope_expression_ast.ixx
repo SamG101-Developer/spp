@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.inner_scope_expression_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast;
 import spp.asts.ast_kind;
 import spp.asts.inner_scope_ast;
@@ -69,4 +70,20 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
   SPP_ATTR_NODISCARD auto FinalMember() const -> Ast*;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+
+  /// Member "i" makes a temporary whose value goes nowhere: it is
+  /// dropped once made ("expr_utils::DiscardValue").
+  auto SetDropsDiscarded(std::size_t i) -> void;
+
+protected:
+  /// What this scope still owns at its closing brace, dropped there
+  /// after what it deferred ("OwnedIn").
+  Vec<analyse::utils::drop_utils::OwnedValue> _OwnedAtEnd;
+
+  /// What each member's "is" bindings still own at its end, dropped
+  /// there ("drop_utils::EndStatementBindings"), one entry per member.
+  Vec<Vec<analyse::utils::drop_utils::OwnedValue>> _StatementDrops;
+
+  /// Per member, whether its value is a temporary dropped once made.
+  Vec<bool> _DropsDiscarded;
 };
