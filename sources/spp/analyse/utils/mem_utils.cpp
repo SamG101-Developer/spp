@@ -259,10 +259,9 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     Raise<errors::SppMoveFromBorrowedMemoryError>(ERR_ARGS(value_ast, *where_borrow, *where_borrow));
   }
 
-  // A narrowed view of a value is that value: consuming
-  // "x" inside "case x is Some[T](..)" discharges what
-  // "x" named, not merely the branch-local symbol standing
-  // for it. Walked up the chain, since a pattern can narrow
+  // A narrowed view of a value is that value: moving "x"
+  // inside "case x is Some[T](..)" moves what "x" named,
+  // not merely the branch-local symbol standing for it. Walked up the chain, since a pattern can narrow
   // what an enclosing pattern already narrowed.
   const auto mark_chain = [](const auto sym, auto &&mark) {
     for (auto *s = sym; s != nullptr; s = s->NarrowsSymbol.get()) { mark(s); }

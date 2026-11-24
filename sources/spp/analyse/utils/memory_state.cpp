@@ -240,7 +240,7 @@ auto spp::analyse::utils::memory_state::SnapshotFlow(
 auto spp::analyse::utils::memory_state::RestoreSnapshot(
   ScopeSnapshot const &snapshot) -> void {
   // Inside a body every symbol state and loan goes back
-  // (not the walk's loop and "defer" bookkeeping); outside
+  // (not the walk's loop bookkeeping); outside
   // one, each symbol's own state.
   if (snapshot.In != nullptr) {
     snapshot.In->States = snapshot.States;
