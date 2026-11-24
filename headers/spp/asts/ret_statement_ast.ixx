@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.ret_statement_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast_kind;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
@@ -48,13 +49,18 @@ SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
   /// deferred. "site" is where an error is reported. Shared by
   /// "ret" and by a "gen" in a lowered "GenOnce", which reads as
   /// a return; "expr" is only read, so either can be generated
-  /// again.
+  /// again. Each scope left drops what "owned" lists for it.
   static auto EmitReturn(
     ExpressionAst *expr, Shared<TypeAst> const &ret_type, Ast const &site, ScopeManager *sm,
-    CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value*;
+    CompilerMetaData *meta, codegen::LlvmCtx *ctx,
+    analyse::utils::drop_utils::OwnedScopes const &owned = {}) -> llvm::Value*;
 
   SPP_ATTR_NODISCARD auto Diverges(ScopeManager *sm, CompilerMetaData *meta) -> bool override;
 
 private:
   Shared<TypeAst> _RetType;
+
+  /// What each scope the "ret" leaves still owns there, innermost
+  /// first ("drop_utils::OwnedUpToFn").
+  analyse::utils::drop_utils::OwnedScopes _OwnedAtExit;
 };
