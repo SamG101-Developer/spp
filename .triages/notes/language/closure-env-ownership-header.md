@@ -1,7 +1,7 @@
 ---
 name: closure-env-ownership-header
 description: "A closure's environment header is {i8 owns, ptr drop_captures} (N5.5a); allocate/index/free/drop only via the llvm_fn helpers; sppc reads the same header"
-updated: 2026-11-10
+updated: 2026-11-24
 ---
 
 A closure's environment is `{i8 owns, ptr drop_captures, captures...}` (N1.5 added `owns`, N5.5a on 2026-10-24 added
@@ -10,7 +10,8 @@ captures); a capture-less closure has a null env. `drop_captures` is `<closure>.
 `ClosureExpressionAst::_BuildDropCaptures` when a by-value capture needs dropping (null otherwise), KCFI-stamped with
 `StampCfiClosureEnvDrop` (`spp.codegen.llvm_cfi`). The rest lives in `spp.codegen.llvm_fn`: `ClosureEnvType`, `EmitNewClosureEnv(env_ty,
 on_heap, drop_captures, ...)`, `ClosureEnvCaptureIndex(i)` (= i + 2), `EmitReleaseClosureEnv` (frees only non-null and
-owned: a consumed `FunMov` call, whose body consumed the captures) and `EmitDropClosureEnv` (calls `drop_captures`,
+owned: after a `FunMov` call, whose body dropped what it captured by value and did not move out, as a function drops
+its parameters: `drop_utils::IsOwnedIn` counts a by-value capture as owned in the body, since 2026-11-24) and `EmitDropClosureEnv` (calls `drop_captures`,
 then releases: `FunMov::drop`).
 
 **sppc:** `headers/sppc/closure.h` mirrors the header as `sppc_closure_env`, and `_sppc_closure_discard` drops and

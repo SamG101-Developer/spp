@@ -17,7 +17,7 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
 
 | Drop point | Recorded by | On |
 |---|---|---|
-| Scope end (block, function / closure parameters, branch bindings) | `drop_utils::EndRegion` → `OwnedIn` | `_OwnedAtEnd` |
+| Scope end (block, function / closure parameters, a closure's by-value captures, branch bindings) | `drop_utils::EndRegion` → `OwnedIn` | `_OwnedAtEnd` |
 | `ret` / `?` (a lowered `ret`), `exit` / `skip` | `OwnedUpToFn`, `OwnedUpToLoop` | `_OwnedAtExit` |
 | Generator frame destroyed at a `gen`, or before its first resume | `OwnedAtSuspend` | `_OwnedAtSuspend`, `_OwnedAtStart` |
 | A lowered `GenOnce`'s by-value `gen` (its return) | the same list, passed to `EmitReturn` | `_OwnedAtSuspend` |
