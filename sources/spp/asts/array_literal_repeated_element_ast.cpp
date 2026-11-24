@@ -227,89 +227,33 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
 
-  // Get the length that the array will be created for, from the generic comp
-  // arg (always resolved by now).
-  const auto n = std::stoull(
-    Size->To<IntegerLiteralAst>()->Val->TokenData);
+  // The length, from the generic comp arg (always resolved by now), and the
+  // element, generated once and repeated into every slot. The array lowers to
+  // the llvm "[T x n]" type.
+  const auto n = std::stoull(Size->To<IntegerLiteralAst>()->Val->TokenData);
+  const auto llvm_elem = Elem->Stage11_CodeGen(sm, meta, ctx);
+  SPP_ASSERT(llvm_elem != nullptr);
+  SkipSizeScope(sm);
+  const auto llvm_arr_ty = llvm::ArrayType::get(llvm_elem->getType(), n);
 
-  // Runtime allocation. This pathway generates the given element once, and then
-  // copies the resulting value into each of the n array slots.
-  if (not ctx->InConstantContext) {
-    // Generate the element a single time; the resulting value is reused
-    // (copied) for every slot in the array below.
-    const auto llvm_rt_elem = Elem->Stage11_CodeGen(sm, meta, ctx);
-    SPP_ASSERT(llvm_rt_elem != nullptr);
-    SkipSizeScope(sm);
-
-    // Create the array type. The array type wraps the llvm determined element
-    // type, and the length is also provided. This lowers to the llvm array
-    // [T * n] type.
-    const auto llvm_rt_elem_ty = llvm_rt_elem->getType();
-    const auto llvm_rt_arr_ty = llvm::ArrayType::get(llvm_rt_elem_ty, n);
-    SPP_ASSERT(llvm_rt_arr_ty != nullptr);
-
-    // A constant element repeated is a constant array, so it can be produced as
-    // a value rather than materialised with no stack slot, per-slot GEP and
-    // store/load.
-    if (llvm::isa<llvm::Constant>(llvm_rt_elem)) {
-      auto llvm_ct_elems = Vec<llvm::Constant*>{};
-      llvm_ct_elems.reserve(n);
-      for (auto i = 0uz; i < n; ++i) {
-        const auto llvm_ct_elem = llvm::cast<llvm::Constant>(llvm_rt_elem);
-        llvm_ct_elems.emplace_back(llvm_ct_elem);
-      }
-      return llvm::ConstantArray::get(llvm_rt_arr_ty, llvm_ct_elems);
-    }
-
-    // Allocate the array into the enclosing function using the uniform entry
-    // alloca function.
-    const auto uid = "." + Uid();
-    const auto llvm_rt_arr_alloc = codegen::LlvmEntryAlloca(
-      llvm_rt_arr_ty, "array.repeated.alloca" + uid, ctx);
-
-    // Finally, copy the single generated element into every slot of the array
-    // allocation, using the GEP and store commands.
-    for (auto i = 0uz; i < n; ++i) {
-      const auto i0 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, 0));
-      const auto i1 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, i));
-      const auto llvm_rt_elem_ptr = ctx->Builder.CreateGEP(
-        llvm_rt_arr_ty, llvm_rt_arr_alloc, {i0, i1});
-      SPP_ASSERT(llvm_rt_elem_ptr != nullptr);
-      ctx->Builder.CreateStore(llvm_rt_elem, llvm_rt_elem_ptr);
-    }
-
-    return ctx->Builder.CreateLoad(
-      llvm_rt_arr_ty, llvm_rt_arr_alloc, "array.repeated.result" + uid);
+  // A constant element repeated is a constant array (always, in a constant
+  // context), produced as a value: no stack slot, per-slot GEP and store, or
+  // load.
+  if (const auto llvm_const = llvm::dyn_cast<llvm::Constant>(llvm_elem); llvm_const != nullptr) {
+    return llvm::ConstantArray::get(llvm_arr_ty, Vec<llvm::Constant*>(n, llvm_const));
   }
+  SPP_ASSERT(not ctx->InConstantContext);
 
-  // Comptime array creation. This pathway generates the element once as a
-  // "constant" value (comptime-known), then copies it into every slot.
-  {
-    // Generate the element a single time, ensuring its validity after a
-    // constant cast (debug only). The resulting constant is reused for every
-    // slot in the array below.
-    const auto llvm_ct_elem = llvm::cast<llvm::Constant>(
-      Elem->Stage11_CodeGen(sm, meta, ctx));
-    SPP_ASSERT(llvm_ct_elem != nullptr);
-    SkipSizeScope(sm);
-
-    // Create the array type. The array type wraps the llvm determined element
-    // type, and the length is also provided. This lowers to the llvm array
-    // [T * n] type.
-    const auto llvm_ct_elem_ty = llvm_ct_elem->getType();
-    const auto llvm_ct_arr_ty = llvm::ArrayType::get(llvm_ct_elem_ty, n);
-    SPP_ASSERT(llvm_ct_arr_ty != nullptr);
-
-    // Allocate the array into the enclosing function using the llvm constant
-    // array creation, reusing the same constant for every slot.
-    auto llvm_ct_elems = Vec<llvm::Constant*>{};
-    llvm_ct_elems.reserve(n);
-    for (auto i = 0uz; i < n; ++i) { llvm_ct_elems.emplace_back(llvm_ct_elem); }
-
-    const auto arr_alloc = llvm::ConstantArray::get(
-      llvm_ct_arr_ty, llvm_ct_elems);
-    return arr_alloc;
+  // Otherwise the array is built in a stack slot of the enclosing function,
+  // the element stored into every slot, and loaded back out.
+  const auto uid = "." + Uid();
+  const auto llvm_arr_alloc = codegen::LlvmEntryAlloca(llvm_arr_ty, "array.repeated.alloca" + uid, ctx);
+  const auto i0 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, 0));
+  for (auto i = 0uz; i < n; ++i) {
+    const auto i1 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, i));
+    ctx->Builder.CreateStore(llvm_elem, ctx->Builder.CreateGEP(llvm_arr_ty, llvm_arr_alloc, {i0, i1}));
   }
+  return ctx->Builder.CreateLoad(llvm_arr_ty, llvm_arr_alloc, "array.repeated.result" + uid);
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::EvaluateCompTime(

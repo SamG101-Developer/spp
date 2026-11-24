@@ -198,104 +198,46 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
 
-  // Runtime allocation. This pathway generates each element and then uses
-  // alloca into the entry block of the function. If every element itself is
-  // constant then it can use constant array to optimise away the GEPs.
-  if (not ctx->InConstantContext) {
-    // Collect the llvm generated versions of the elements, ensuring the
-    // validity of each element (debug only). Each is coerced into the array's
-    // element type, as any slot is (variant and function-value).
-    const auto uid = "." + Uid();
-    const auto elem_ref = InferTypeRef(sm, meta).Symbol->TypeArgRef("T");
-    auto llvm_rt_elems = Vec<llvm::Value*>{};
-    llvm_rt_elems.reserve(Elems.size());
-    for (auto const &spp_elem : Elems) {
-      auto llvm_rt_elem = spp_elem->Stage11_CodeGen(sm, meta, ctx);
-      llvm_rt_elem = codegen::CoerceToSlot(
-        llvm_rt_elem, elem_ref, spp_elem->InferTypeRef(sm, meta), *sm,
-        "array.explicit.elem" + uid, ctx);
-      SPP_ASSERT(llvm_rt_elem != nullptr);
-      llvm_rt_elems.emplace_back(llvm_rt_elem);
-    }
-
-    // Create the array type. The array type wraps the llvm element type, and
-    // the length is also provided. This lowers to the llvm array [T * n] type.
-    const auto llvm_rt_elem_ty = codegen::GetLlvmTypeOf(elem_ref, ctx);
-    const auto llvm_rt_arr_ty = llvm::ArrayType::get(
-      llvm_rt_elem_ty, llvm_rt_elems.size());
-    SPP_ASSERT(llvm_rt_arr_ty != nullptr);
-
-    // If every element came back a constant then so is the array, and it can be
-    // produced as a value rather than materialised, use the equivalent to the
-    // constant path.
-    const auto all_elems_constant = genex::all_of(
-      llvm_rt_elems, [&](auto const *llvm_rt_elem) {
-        return llvm::isa<llvm::Constant>(llvm_rt_elem) and llvm_rt_elem->
-          getType() == llvm_rt_elem_ty;
-      });
-
-    if (all_elems_constant) {
-      auto llvm_ct_elems = Vec<llvm::Constant*>{};
-      llvm_ct_elems.reserve(llvm_rt_elems.size());
-      for (auto *llvm_rt_elem : llvm_rt_elems) {
-        const auto llvm_ct_elem = llvm::cast<llvm::Constant>(
-          llvm_rt_elem);
-        SPP_ASSERT(llvm_ct_elem != nullptr);
-        llvm_ct_elems.emplace_back(llvm_ct_elem);
-      }
-      return llvm::ConstantArray::get(
-        llvm_rt_arr_ty, llvm_ct_elems);
-    }
-
-    // Allocate the array into the enclosing function using the uniform entry
-    // alloca function.
-    const auto llvm_rt_arr_alloc = codegen::LlvmEntryAlloca(
-      llvm_rt_arr_ty, "array.explicit.alloca" + uid, ctx);
-
-    // Finally, place the runtime generated elements in the array allocation,
-    // using the GEP and store commands.
-    for (auto i = 0uz; i < llvm_rt_elems.size(); ++i) {
-      const auto i0 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, 0));
-      const auto i1 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, i));
-      const auto llvm_rt_elem_ptr = ctx->Builder.CreateGEP(
-        llvm_rt_arr_ty, llvm_rt_arr_alloc, {i0, i1});
-
-      SPP_ASSERT(llvm_rt_elem_ptr != nullptr);
-      ctx->Builder.CreateStore(llvm_rt_elems[i], llvm_rt_elem_ptr);
-    }
-
-    // Return the array by value. The "llvm_rt_arr_alloc" is by pointer on the
-    // stack where the array is located.
-    return ctx->Builder.CreateLoad(
-      llvm_rt_arr_ty, llvm_rt_arr_alloc, "array.explicit.result" + uid);
+  // Each element is generated, then coerced into the array's element type,
+  // as any slot is (variant and function-value). The array lowers to the
+  // llvm "[T x n]" type.
+  const auto uid = "." + Uid();
+  const auto elem_ref = InferTypeRef(sm, meta).Symbol->TypeArgRef("T");
+  const auto llvm_elem_ty = codegen::GetLlvmTypeOf(elem_ref, ctx);
+  const auto llvm_arr_ty = llvm::ArrayType::get(llvm_elem_ty, Elems.size());
+  auto llvm_elems = Vec<Pair<unsigned, llvm::Value*>>{};
+  llvm_elems.reserve(Elems.size());
+  for (auto i = 0uz; i < Elems.size(); ++i) {
+    const auto llvm_elem = codegen::CoerceToSlot(
+      Elems[i]->Stage11_CodeGen(sm, meta, ctx), elem_ref, Elems[i]->InferTypeRef(sm, meta), *sm,
+      "array.explicit.elem" + uid, ctx);
+    SPP_ASSERT(llvm_elem != nullptr);
+    llvm_elems.emplace_back(static_cast<unsigned>(i), llvm_elem);
   }
 
-  // Comptime array creation. This pathway generated an array using "constant"
-  // values (comptime-known values). Each is coerced into the element type, as
-  // at runtime; a variant member comes back laid out as the variant in another
-  // shape, which makes the array one too.
-  {
-    const auto uid = "." + Uid();
-    const auto elem_ref = InferTypeRef(sm, meta).Symbol->TypeArgRef("T");
-    auto llvm_ct_elems = Vec<Pair<unsigned, llvm::Value*>>{};
-    llvm_ct_elems.reserve(Elems.size());
-    for (
-      auto const &[i, spp_elem] :
-      Elems | genex::views::ptr | genex::views::enumerate) {
-      const auto llvm_ct_elem = codegen::CoerceToSlot(
-        spp_elem->Stage11_CodeGen(sm, meta, ctx), elem_ref,
-        spp_elem->InferTypeRef(sm, meta), *sm, "array.ct.elem" + uid, ctx);
-      SPP_ASSERT(llvm::isa<llvm::Constant>(llvm_ct_elem));
-      llvm_ct_elems.emplace_back(static_cast<unsigned>(i), llvm_ct_elem);
-    }
-
-    // The array type wraps the element type, and the length is also provided.
-    // This lowers to the llvm [T * n] type.
-    const auto llvm_ct_arr_ty = llvm::ArrayType::get(
-      codegen::GetLlvmTypeOf(elem_ref, ctx), Elems.size());
-    return codegen::BuildAggregate(
-      llvm_ct_arr_ty, llvm_ct_elems, "array.ct" + uid, ctx);
+  // A constant array, in a constant context, or when every element came back
+  // a constant of the element type: produced as a value, with no stack slot,
+  // per-element GEP and store, or load. In a constant context a variant
+  // member may come back laid out as the variant in another shape, which
+  // makes the array one too ("BuildAggregate").
+  const auto all_constant = genex::all_of(llvm_elems, [&](auto const &elem) {
+    return llvm::isa<llvm::Constant>(elem.second) and elem.second->getType() == llvm_elem_ty;
+  });
+  if (llvm_elems.empty()) { return llvm::ConstantArray::get(llvm_arr_ty, {}); }
+  if (ctx->InConstantContext or all_constant) {
+    SPP_ASSERT(genex::all_of(llvm_elems, [](auto const &elem) { return llvm::isa<llvm::Constant>(elem.second); }));
+    return codegen::BuildAggregate(llvm_arr_ty, llvm_elems, "array.explicit.const" + uid, ctx);
   }
+
+  // Otherwise the array is built in a stack slot of the enclosing function,
+  // each element stored, and loaded back out.
+  const auto llvm_arr_alloc = codegen::LlvmEntryAlloca(llvm_arr_ty, "array.explicit.alloca" + uid, ctx);
+  const auto i0 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, 0));
+  for (auto const &[i, llvm_elem] : llvm_elems) {
+    const auto i1 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, i));
+    ctx->Builder.CreateStore(llvm_elem, ctx->Builder.CreateGEP(llvm_arr_ty, llvm_arr_alloc, {i0, i1}));
+  }
+  return ctx->Builder.CreateLoad(llvm_arr_ty, llvm_arr_alloc, "array.explicit.result" + uid);
 }
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::EvaluateCompTime(
