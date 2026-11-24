@@ -1,7 +1,7 @@
 ---
 name: spp-same-scope-shadowing
 description: "How a name means the right binding after Stage 7: lets declare at their position in every walk (M2, 2026-10-10)"
-updated: 2026-11-23
+updated: 2026-11-24
 ---
 
 A scope's symbol table holds one symbol per name (`Add` replaces), so after Stage 7 a name belongs to the *last*
@@ -24,10 +24,12 @@ binding declared in the scope. Until 2026-10-10 that was patched per-ast (`_Prev
   scope from Stage 7, initialized, so every `ret` or `?` before `let (a, b) = mk()` raised E94 "Return reached with
   `$_dst_$N` still holding it" (under affine ownership it would drop an uninitialised slot instead).
 - An `is` binding (`VariableSymbol::ExpiresWithStatement`) lasts to the end of its statement only. When it takes a
-  name the scope already holds, `IsExpressionAst::_DeclareExposed` logs the holder in `meta->DisplacedByIsBindings`
-  in every walk, and `InnerScopeExpressionAst` puts it back after each member (`RestoreDisplacedByIs`; Stage 8 first
-  records what the statement's `is` bindings still own for its end to drop, `drop_utils::EndStatementBindings`). `RevealLetBindings` and `_Binding` pass `is` bindings over
-  for a name that has another binding. Before 2026-11-22 the `let` stayed displaced: it could not be named
+  name already held, in this scope or further out (a parameter, the subject a flow-typed name narrows),
+  `IsExpressionAst::_DeclareExposed` logs the holder in `meta->DisplacedByIsBindings` in every walk, and
+  `InnerScopeExpressionAst` puts it back after each member (`RestoreDisplacedByIs`: a holder of this scope is added
+  back; for one further out the binding is removed, so the name reads outward and the scope adopts no owner). An `is`
+  binding owns nothing (a view, see [[affine-ownership]]), so a statement's end drops none. `RevealLetBindings` and
+  `_Binding` pass `is` bindings over for a name that has another binding. Before 2026-11-22 the `let` stayed displaced: it could not be named
   afterwards (E26), and its value was never checked at scope end.
 - A displaced binding is still an owner. `Scope::Reached` lists the recorded bindings the walk has declared
   (cleared by `HideLetBindings`, filled by `RevealLetBindings`); every recorded binding goes into the table through

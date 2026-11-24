@@ -1,7 +1,7 @@
 ---
 name: static-call-receiver-inference
 description: "Vec::from(&[1, 2]) infers Vec[S32]: the callee defers a bare template receiver, the call solves each block's method, writes the receiver and re-analyses"
-updated: 2026-11-19
+updated: 2026-11-24
 ---
 
 A static call on a generic class written without its arguments (`Vec::from(&[1_s32, 2_s32])`,
@@ -31,6 +31,9 @@ A static call on a generic class written without its arguments (`Vec::from(&[1_s
 candidates. Inferring first and then resolving normally keeps one resolution path.
 
 **How to apply:**
+- A solved receiver may name the enclosing function's own generics (`Vec::from(&[x])` in `fun f[U](x: U)`, whose
+  body is analysed with `U` open); only one still naming the block's own parameters is skipped (2026-11-24: it used
+  `IsConcreteTypeId`, which made every call inside a generic body E72).
 - Not reached yet: partly written receivers (`Two[S32]::f`), `ext`-inherited methods (a Todo at
   `InferTemplateReceiver`), and blanket blocks.
 - Tests: `TestGenericInference_StaticCall.*`. See [[generic-inference-engine-shape]],

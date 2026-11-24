@@ -15,15 +15,17 @@
 # shellcheck source=tests/codegen/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" "$@"
 
-# Two commits of today's std on top of the clone (with STD_DIR's uncommitted
-# changes, which a clone drops), so the older pin builds with this compiler
-# whatever std's history holds.
+# Two commits of today's std on top of the clone, so the older pin builds with
+# this compiler whatever std's history holds. The checkout's tree is copied
+# over the clone whole, as a clone drops STD_DIR's uncommitted changes (new
+# files and binaries included).
 readonly REMOTE="${WORK}/remotes/std"
 STD_CHECKOUT="$(std_vcs)/std"
 git clone -q "${STD_CHECKOUT}" "${REMOTE}"
-git -C "${STD_CHECKOUT}" diff HEAD | git -C "${REMOTE}" apply --allow-empty -
+tar -C "${STD_CHECKOUT}" --exclude=.git -cf - . | tar -C "${REMOTE}" -xf -
+git -C "${REMOTE}" add -A
 git_commit() { git -C "${REMOTE}" -c user.name=check -c user.email=check@localhost commit -q --allow-empty "$@"; }
-git_commit -am "today's std"
+git_commit -m "today's std"
 OLDER="$(git -C "${REMOTE}" rev-parse HEAD)"
 git_commit -m "a newer commit"
 NEWEST="$(git -C "${REMOTE}" rev-parse HEAD)"

@@ -1,7 +1,7 @@
 ---
 name: analyse-utils-module-map
 description: "Where analyse::utils functions live: the 2026-09-28 reorg (old module → new module), the 2026-10-16 regrouping (fn_signatures, control_flow folded, twins moved), common_errors (2026-10-25)"
-updated: 2026-11-23
+updated: 2026-11-24
 ---
 
 On 2026-09-28, Phase 1 of `.triages/docs_closed/analyse-utils-reorg.md` moved and renamed modules with no logic change. The doc's
@@ -17,9 +17,10 @@ cmp_utils→comp_time_intrinsics, mem_info_utils→memory_state, bin_utils→ope
 - instantiation_queue went into monomorphization, as `EnqueueInstantiation`/`PopInstantiation`/`ClearInstantiations`.
 - assignment_utils went into regions (IsIdentifier/IsAttr/IsDeref).
 
-**Promoted from anon to exported:** `monomorphization::PotentiallyGenerateGnSubstitutedPrototype`,
-`regions::DescendToPart`/`RegionConsumed` and `drop_utils::CheckDestructorStillReachable`, because their callers
-now live in other modules.
+**Promoted from anon to exported:** `monomorphization::PotentiallyGenerateGnSubstitutedPrototype` and
+`regions::DescendToPart`/`RegionConsumed`, because their callers now live in other modules.
+(`drop_utils::CheckDestructorStillReachable` was too, and is file-local again since the affine work; its walk is the
+exported `drop_utils::RaiseIfPathStrandsDestructor`, which temporaries share.)
 
 **Phase 2 shared helpers (same day), to use rather than hand-roll:**
 - `type_members::SuperClassTypes` / `SuperClsNames`: a type's class sups.
