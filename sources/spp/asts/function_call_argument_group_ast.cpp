@@ -16,6 +16,7 @@ import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.order_utils;
 import spp.analyse.utils.regions;
+import spp.analyse.utils.type_predicates;
 import spp.asts.closure_expression_ast;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.closure_expression_capture_group_ast;
@@ -95,6 +96,14 @@ auto spp::asts::FunctionCallArgumentGroupAst::ToString() const -> Str {
   SPP_STRING_EXTEND(Args, ", ");
   SPP_STRING_APPEND_RAW(")");
   SPP_STRING_END;
+}
+
+auto spp::asts::FunctionCallArgumentGroupAst::IsVoidArg(
+  FunctionCallArgumentAst const &arg, ScopeManager *sm,
+  CompilerMetaData *meta) -> bool {
+  IMPORT_UTILS;
+  return type_predicates::IsTypeVoid(
+    arg.Val->InferTypeRef(sm, meta), *sm->CurrentScope);
 }
 
 auto spp::asts::FunctionCallArgumentGroupAst::GetAllArgs() const -> Vec<FunctionCallArgumentAst*> {
@@ -272,7 +281,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       const auto self_param = target->FnParamGroup->GetSelfParam();
       const auto receiver = arg->Val->InferTypeRef(sm, meta);
       if (self_param != nullptr and self_param->Conv == nullptr and receiver.IsBorrowed()
-        and receiver.WithoutConvention().Owes()) {
+        and receiver.WithoutConvention().IsMoveOnly()) {
         auto const *where_borrow = sym != nullptr and sym->MemInfo->AstBorrowed != nullptr
           ? sym->MemInfo->AstBorrowed
           : static_cast<Ast const*>(arg->Val.get());

@@ -55,6 +55,13 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : Ast {
 
   SPP_ATTR_NODISCARD auto GetKeywordArgs() const -> Vec<FunctionCallArgumentKeywordAst*>;
 
+  /// Whether "arg"'s value is of type "Void": a value of type "Void" is no
+  /// value, so an argument of it is no argument ("IsVoidParam" for the
+  /// parameter side). It is still evaluated, for what it does.
+  SPP_ATTR_NODISCARD static auto IsVoidArg(
+    FunctionCallArgumentAst const &arg, ScopeManager *sm,
+    CompilerMetaData *meta) -> bool;
+
   auto Stage7_AnalyseSemantics(
     ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
