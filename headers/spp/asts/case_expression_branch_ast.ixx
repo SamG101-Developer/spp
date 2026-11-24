@@ -67,13 +67,10 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
   /// is in it: the tests its patterns make are read from there.
   auto UsePlan(MatchPlan const *plan, std::size_t index) -> void;
 
-  /// What this branch must have consumed by its end, set by its
-  /// "case": its patterns' bindings ("patterns"), and the "is"
-  /// bindings of the "case" condition ("condition"), which hold
-  /// in the first branch of "case o is P(..) { .. }" only. Neither
-  /// for a lowered "is", whose bindings are handed on to the
-  /// statement it is in.
-  auto SetDropsBindings(bool patterns, bool condition) -> void;
+  /// Whether this branch drops its patterns' bindings at its end,
+  /// set by its "case": not for a lowered "is", whose bindings are
+  /// views of its subject, handed on to the statement it is in.
+  auto SetDropsBindings(bool patterns) -> void;
 
   /// Add what the "case"'s join drops on this branch's path to
   /// "_DropsAtEnd" ("case_utils::ValidateInconsistentMemory").
@@ -115,7 +112,6 @@ private:
 
   /// See "SetDropsBindings". Not carried by "Clone": a copy's "case" sets them again.
   bool _DropsPatternBindings = false;
-  bool _DropsConditionBindings = false;
 
   /// What is dropped at the body's end: what the branch's bindings
   /// (and the condition's, "_DropsConditionBindings") still own, then

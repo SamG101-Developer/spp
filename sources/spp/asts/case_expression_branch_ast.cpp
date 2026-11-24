@@ -157,19 +157,12 @@ auto spp::asts::CaseExpressionBranchAst::Stage8_CheckMemory(
   Body->Stage8_CheckMemory(sm, meta);
 
   // The bindings end with the branch, so what they still own is
-  // dropped at its end, unless it never gets there. Those of an
-  // "is" condition are filed in the "case" scope.
+  // dropped at its end, unless it never gets there. (An "is" in the
+  // "case" condition binds views of its subject, owning nothing.)
   _DropsAtEnd.clear();
-  if ((_DropsPatternBindings or _DropsConditionBindings) and not Body->Diverges(sm, meta)) {
+  if (_DropsPatternBindings and not Body->Diverges(sm, meta)) {
     auto const &end = Body->TokR != nullptr ? static_cast<Ast const&>(*Body->TokR) : static_cast<Ast const&>(*this);
-    if (_DropsPatternBindings) {
-      _DropsAtEnd = drop_utils::EndRegion(*sm->CurrentScope, end, *sm, meta);
-    }
-    if (_DropsConditionBindings) {
-      auto const &case_scope = *sm->CurrentScope->Parent;
-      _DropsAtEnd.append_range(drop_utils::EndStatementBindings(
-        case_scope, case_scope.GetOwners(), 0, end, drop_utils::StatementEnds::kIsBindings, *sm, meta));
-    }
+    _DropsAtEnd = drop_utils::EndRegion(*sm->CurrentScope, end, *sm, meta);
   }
 
   // The pattern's bindings end with the branch, and so do
@@ -347,9 +340,8 @@ auto spp::asts::CaseExpressionBranchAst::UsePlan(
 }
 
 auto spp::asts::CaseExpressionBranchAst::SetDropsBindings(
-  const bool patterns, const bool condition) -> void {
+  const bool patterns) -> void {
   _DropsPatternBindings = patterns;
-  _DropsConditionBindings = condition;
 }
 
 auto spp::asts::CaseExpressionBranchAst::InferType(
