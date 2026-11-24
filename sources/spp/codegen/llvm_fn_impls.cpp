@@ -8,7 +8,6 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.drop_utils;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.asts.ast_kind;
@@ -1374,7 +1373,7 @@ auto spp::codegen::fn_impls::SimpleCoroIter(
   // each element is moved out of it in place into the yield slot, one "gen" per element, unrolled over the
   // compile-time length.
   using asts::generate::common_types_precompiled::SELF_VAR;
-  using analyse::utils::linear_utils::OwnedValue;
+  using analyse::utils::drop_utils::OwnedValue;
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto self_ptr = self_sym->LlvmInfo->Alloca;
   const auto arr_ty = llvm::cast<llvm::ArrayType>(
@@ -1736,7 +1735,6 @@ auto spp::codegen::fn_impls::SimpleCoroArrayFwd(
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "array.fwd.self" + uid);
 
   const auto arr_type_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
-  const auto arr_type_sym = arr_type_ref.Symbol;
   const auto arr_llvm_type = llvm::cast<llvm::ArrayType>(GetLlvmTypeOf(arr_type_ref, ctx));
 
   const auto data = ctx->Builder.CreateConstInBoundsGEP2_64(
@@ -2159,7 +2157,6 @@ auto spp::codegen::fn_impls::StdGeneratorDrop(
   const auto self_param = proto->FnParamGroup->GetSelfParam();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(self_param->ExtractName().get());
   const auto self_ty_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
-  const auto self_ty_sym = self_ty_ref.Symbol;
   EmitDrop(self_ty_ref, self_sym->LlvmInfo->Alloca, sm, meta, ctx);
   ctx->Builder.CreateRetVoid();
 }
@@ -2373,7 +2370,6 @@ auto spp::codegen::fn_impls::StdVolRead(
   const auto self_ptr = ctx->Builder.CreateLoad(
     ptr_ty, self_sym->LlvmInfo->Alloca, "vol.read.self" + uid);
   const auto self_ty_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
-  const auto self_ty_sym = self_ty_ref.Symbol;
   const auto self_ty = GetLlvmTypeOf(self_ty_ref, ctx);
 
   // Get the "value" alloca and load the value from it. The
@@ -2398,7 +2394,6 @@ auto spp::codegen::fn_impls::StdVolWrite(
   const auto self_ptr = ctx->Builder.CreateLoad(
     ptr_ty, self_sym->LlvmInfo->Alloca, "vol.read.self" + uid);
   const auto self_ty_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
-  const auto self_ty_sym = self_ty_ref.Symbol;
   const auto self_ty = GetLlvmTypeOf(self_ty_ref, ctx);
 
   // Get the llvm representation of the value being written
