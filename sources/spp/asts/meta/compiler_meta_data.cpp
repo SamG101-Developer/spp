@@ -21,6 +21,9 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   CompTimeResult = nullptr;
   LlvmGenerator = nullptr;
   LlvmGeneratorState = nullptr;
+  TemporaryBase = 0;
+  LlvmCaseTemporary = nullptr;
+  LlvmCaseTemporaryType = nullptr;
 }
 
 auto spp::asts::meta::CompilerMetaData::ResetContext() -> void {
@@ -63,6 +66,7 @@ auto spp::asts::meta::CompilerMetaData::ResetContext() -> void {
   AllowAbstractType = false;
   AllowBorrowedTypeArgs = false;
   AllowPackWhole = false;
+  AllowNamespaceName = false;
   CompTimeCallSite = nullptr;
   ParameterDefaultScope = nullptr;
 }
@@ -107,7 +111,6 @@ auto spp::asts::meta::CompilerMetaData::Save(const bool heavy) -> void {
   s.CaseSubject = CaseSubject;
   s.CaseSubjectOnMatch = CaseSubjectOnMatch;
   s.InCompTimeValue = InCompTimeValue;
-  s.WithinDeferTok = WithinDeferTok;
   s.OverriddenScopeForClosure = OverriddenScopeForClosure;
   if (heavy) {
     s.EnclosingFnScope = EnclosingFnScope;
@@ -146,10 +149,14 @@ auto spp::asts::meta::CompilerMetaData::Save(const bool heavy) -> void {
   s.AllowAbstractType = AllowAbstractType;
   s.AllowBorrowedTypeArgs = AllowBorrowedTypeArgs;
   s.AllowPackWhole = AllowPackWhole;
+  s.AllowNamespaceName = AllowNamespaceName;
   s.CompTimeCallSite = CompTimeCallSite;
   s.ParameterDefaultScope = ParameterDefaultScope;
   s.LlvmGenerator = LlvmGenerator;
   s.LlvmGeneratorState = LlvmGeneratorState;
+  s.TemporaryBase = TemporaryBase;
+  s.LlvmCaseTemporary = LlvmCaseTemporary;
+  s.LlvmCaseTemporaryType = LlvmCaseTemporaryType;
 }
 
 auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
@@ -168,7 +175,6 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   CaseSubject = state.CaseSubject;
   CaseSubjectOnMatch = state.CaseSubjectOnMatch;
   InCompTimeValue = state.InCompTimeValue;
-  WithinDeferTok = state.WithinDeferTok;
   if (heavy) {
     EnclosingFnScope = state.EnclosingFnScope;
     EnclosingFnFlavour = state.EnclosingFnFlavour;
@@ -204,10 +210,14 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   AllowAbstractType = state.AllowAbstractType;
   AllowBorrowedTypeArgs = state.AllowBorrowedTypeArgs;
   AllowPackWhole = state.AllowPackWhole;
+  AllowNamespaceName = state.AllowNamespaceName;
   CompTimeCallSite = state.CompTimeCallSite;
   ParameterDefaultScope = state.ParameterDefaultScope;
   LlvmGenerator = state.LlvmGenerator;
   LlvmGeneratorState = state.LlvmGeneratorState;
+  TemporaryBase = state.TemporaryBase;
+  LlvmCaseTemporary = state.LlvmCaseTemporary;
+  LlvmCaseTemporaryType = std::move(state.LlvmCaseTemporaryType);
 }
 
 spp::asts::meta::MetaGuard::MetaGuard(
@@ -218,17 +228,6 @@ spp::asts::meta::MetaGuard::MetaGuard(
   _Meta->Save(_Heavy);
 }
 
-spp::asts::meta::AllowPackWholeGuard::AllowPackWholeGuard(
-  CompilerMetaData *meta, const bool allow) :
-  _Meta(meta),
-  _Outer(meta->AllowPackWhole) {
-  _Meta->AllowPackWhole = allow;
-}
-
-spp::asts::meta::AllowPackWholeGuard::~AllowPackWholeGuard() {
-  _Meta->AllowPackWhole = _Outer;
-}
-
 spp::asts::meta::MetaGuard::~MetaGuard() {
   _Meta->Restore(_Heavy);
 }
@@ -237,12 +236,14 @@ spp::asts::meta::IsBindingsScope::IsBindingsScope(
   CompilerMetaData *const meta) :
   _Meta(meta),
   _Added(meta->AddedIsBindings.size()),
-  _Expired(meta->ExpiredIsBindings.size()) {
+  _Expired(meta->ExpiredIsBindings.size()),
+  _Displaced(meta->DisplacedByIsBindings.size()) {
 }
 
 spp::asts::meta::IsBindingsScope::~IsBindingsScope() {
   _Meta->AddedIsBindings.resize(_Added);
   _Meta->ExpiredIsBindings.resize(_Expired);
+  _Meta->DisplacedByIsBindings.resize(_Displaced);
 }
 
 SPP_MOD_END
