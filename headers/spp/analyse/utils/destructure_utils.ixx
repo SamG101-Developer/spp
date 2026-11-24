@@ -65,11 +65,10 @@ namespace spp::analyse::utils::destructure_utils {
     ScopeManager *sm, CompilerMetaData *meta) -> void;
 
   /// Stage 8 for a destructure: check the hidden temporary, the flow-typing
-  /// "let" if there is one, and each expanded binding, then consume what was
-  /// taken apart - the temporary if there is one, otherwise the source value.
+  /// "let" if there is one, and each expanded binding, then take apart the
+  /// temporary if there is one, otherwise the source value.
   SPP_EXP_FUN auto DestructureStage8(
     LocalVariableAst const &destructure,
-    Vec<Unique<LocalVariableAst>> const &elems,
     Vec<Unique<LetStatementInitializedAst>> const &new_asts,
     Shared<IdentifierAst> const &tmp_name, LetStatementInitializedAst *cond_let,
     bool from_case_pattern, ScopeManager &sm, CompilerMetaData *meta) -> void;

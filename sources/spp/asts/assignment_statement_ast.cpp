@@ -304,7 +304,7 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
           *(state.AstInitialization != nullptr ? state.AstInitialization : state.AstMoved), "immutable sym"));
 
       if (auto old = drop_utils::OwnedOnPath(*lhs_sym, lhs_state(), *sm->CurrentScope, *this, *sm, meta)) {
-        _DropsOld[i] = std::move(old->Moved);
+        _DropsOld[i] = std::move(*old);
       }
       lhs_state().InitializedBy(*this);
     }
@@ -410,7 +410,8 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
     SPP_ASSERT(llvm_lhs_locs[i] != nullptr and llvm_rhs_vals[i] != nullptr);
     if (DropsOldAt(i)) {
       codegen::EmitDrop(
-        Lhs[i]->InferTypeRef(sm, meta).WithoutConvention(), llvm_lhs_locs[i], sm, meta, ctx, *_DropsOld[i]);
+        Lhs[i]->InferTypeRef(sm, meta).WithoutConvention(), llvm_lhs_locs[i], sm, meta, ctx, _DropsOld[i]->Moved,
+        _DropsOld[i]->TakenApart);
     }
     ctx->Builder.CreateStore(llvm_rhs_vals[i], llvm_lhs_locs[i]);
 

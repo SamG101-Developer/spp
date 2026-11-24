@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.assignment_statement_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast_kind;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
@@ -64,7 +65,7 @@ private:
   /// Per target, the value written over is dropped first when one is
   /// still owned there: the parts already moved out of it (none for a
   /// whole value), or no entry for nothing to drop.
-  Vec<Opt<Vec<Vec<spp::utils::InternedId>>>> _DropsOld;
+  Vec<Opt<analyse::utils::drop_utils::OwnedValue>> _DropsOld;
 
   /// Whether target "i" drops the value it held before the store.
   SPP_ATTR_NODISCARD auto DropsOldAt(std::size_t i) const -> bool;

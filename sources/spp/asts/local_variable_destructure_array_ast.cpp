@@ -110,7 +110,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage8_CheckMemory(
   // Use shared helper.
   IMPORT_UTILS;
   destructure_utils::DestructureStage8(
-    *this, Elems, _NewAsts, _TmpName, nullptr, _FromCasePattern, *sm, meta);
+    *this, _NewAsts, _TmpName, nullptr, _FromCasePattern, *sm, meta);
 }
 
 auto spp::asts::LocalVariableDestructureArrayAst::Stage11_CodeGen(

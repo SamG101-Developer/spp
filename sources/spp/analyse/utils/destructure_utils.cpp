@@ -49,11 +49,12 @@ use_alias(spp::codegen, LlvmCtx);
 
 namespace spp::analyse::utils::destructure_utils {
   /// The value a destructure names ("let Self(fd) = self") taken
-  /// apart ("mem_utils::TakeApart"): binding every owned part moves
-  /// it whole, so nothing is left to drop, not even through the
-  /// type's own "drop" (how a type's method disarms it).
+  /// apart ("mem_utils::TakeApart"): its type's own "drop" never runs
+  /// (how a type's method disarms it), binding every owned part moves
+  /// it whole, and what the bindings skipped its owner drops field by
+  /// field.
   static auto ConsumeDestructureSource(
-    Ast const &owner, bool from_case_pattern, bool accounts_for_parts,
+    Ast const &owner, bool from_case_pattern,
     ScopeManager &sm, CompilerMetaData const *meta) -> void;
 
   /// Run uniform stage 8 memory analysis on the destructure
@@ -79,7 +80,7 @@ namespace spp::analyse::utils::destructure_utils {
 }
 
 auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
-  Ast const &owner, const bool from_case_pattern, const bool accounts_for_parts,
+  Ast const &owner, const bool from_case_pattern,
   ScopeManager &sm, CompilerMetaData const *meta) -> void {
   // A case pattern only answers for the parts of a subject its
   // "case" can take ("meta->CaseSubject"); the "case" itself takes
@@ -115,7 +116,7 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
     and regions::PlaceOf(*val, *sm.CurrentScope) == regions::PlaceOf(*meta->CaseCondition, *sm.CurrentScope)) {
     return;
   }
-  mem_utils::TakeApart(*sym, *val, owner, accounts_for_parts, sm);
+  mem_utils::TakeApart(*sym, *val, owner, true, sm);
 }
 
 auto spp::analyse::utils::destructure_utils::DestructureTempStage8(
@@ -249,7 +250,7 @@ auto spp::analyse::utils::destructure_utils::DestructureEvaluateCompTime(
 }
 
 auto spp::analyse::utils::destructure_utils::DestructureStage8(
-  LocalVariableAst const &destructure, Vec<Unique<LocalVariableAst>> const &elems,
+  LocalVariableAst const &destructure,
   Vec<Unique<LetStatementInitializedAst>> const &new_asts, Shared<IdentifierAst> const &tmp_name,
   LetStatementInitializedAst *const cond_let, const bool from_case_pattern, ScopeManager &sm,
   CompilerMetaData *meta) -> void {
@@ -265,27 +266,19 @@ auto spp::analyse::utils::destructure_utils::DestructureStage8(
   // whole value moved once they are done.
   for (auto const &x : new_asts) { x->Stage8_CheckMemory(&sm, meta); }
 
-  // A pattern that takes something apart has to account for
-  // every owned part of what it took; one that only tests
-  // the shape, or that binds the rest into a name of its own,
-  // has nothing left over to answer for. A case pattern binding
-  // nothing by move is a test of the shape, and takes nothing;
-  // a "let" always takes its value.
-  const auto accounts_for_parts = destructure.BindsByMove()
-    and not genex::any_of(elems, [](auto const &elem) { return elem->TakesRest(); });
-
   // A value made on the spot ("let P(a, ..) = mk()") is held by
   // the hidden temporary, taken apart as a named value is: what the
   // bindings skipped stays with it, and it drops that where its
-  // scope ends.
+  // scope ends. A case pattern binding nothing by move is a test of
+  // the shape, and takes nothing; a "let" always takes its value.
   if (tmp_name != nullptr) {
     auto const *const tmp_sym = sm.CurrentScope->FindVarSymbol(tmp_name.get());
     if (tmp_sym == nullptr) { Ice(*tmp_name, *sm.CurrentScope, "destructure temporary has no symbol"); }
-    mem_utils::TakeApart(*tmp_sym, *tmp_name, *tmp_name, accounts_for_parts, sm);
+    mem_utils::TakeApart(*tmp_sym, *tmp_name, *tmp_name, true, sm);
     return;
   }
   if (from_case_pattern and not destructure.BindsByMove()) { return; }
-  ConsumeDestructureSource(destructure, from_case_pattern, accounts_for_parts, sm, meta);
+  ConsumeDestructureSource(destructure, from_case_pattern, sm, meta);
 }
 
 auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(

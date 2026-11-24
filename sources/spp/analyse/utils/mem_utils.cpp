@@ -286,12 +286,13 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
 
 auto spp::analyse::utils::mem_utils::TakeApart(
   VariableSymbol const &sym, Ast const &place, Ast const &by,
-  const bool check_parts, ScopeManager const &sm) -> void {
-  if (check_parts) {
-    const auto region = regions::PlaceOf(place, *sm.CurrentScope);
-    if (region.has_value() and not regions::FirstUnaccountedPart(sym, *region, sm).empty()) { return; }
-  }
+  const bool disarms, ScopeManager const &sm) -> void {
   auto &state = memory_state::StateOf(*sm.CurrentScope, sym);
+  const auto region = regions::PlaceOf(place, *sm.CurrentScope);
+  if (region.has_value() and not regions::FirstUnaccountedPart(sym, *region, sm).empty()) {
+    if (disarms) { state.TakenApartAt(regions::PlaceAtOf(place, *sm.CurrentScope)); }
+    return;
+  }
   if (place.To<IdentifierAst>() != nullptr) { state.MovedBy(by); }
   else { state.PartMovedBy(regions::PlaceAtOf(place, *sm.CurrentScope)); }
 }

@@ -41,13 +41,15 @@ namespace spp::codegen {
   /// their drop functions or fields recursively, etc. A value some of whose
   /// parts were moved out (only an abandoned generator frame holds one) passes
   /// their paths in "moved", field names outermost first, and only what is left
-  /// is destroyed, part by part. Without "own_drop", the type's own
-  /// destructor is not run, only its fields dropped: "self" at the end of
-  /// that destructor.
+  /// is destroyed, part by part. At each place in "taken_apart" (paths
+  /// the same way, the empty path being the value itself) the type's own
+  /// destructor is not run, only its fields dropped: what a destructure
+  /// took apart, and "self" at the end of that destructor.
   SPP_EXP_FUN auto EmitDrop(
     TypeRef const &type, llvm::Value *ptr, ScopeManager *sm,
     CompilerMetaData *meta, LlvmCtx *ctx,
-    Vec<Vec<utils::InternedId>> const &moved = {}, bool own_drop = true) -> void;
+    Vec<Vec<utils::InternedId>> const &moved = {},
+    Vec<Vec<utils::InternedId>> const &taken_apart = {}) -> void;
 
   /// Leave every scope from the current one out to "into", the scope control
   /// lands in, each dropping what it still owns: "owned" holds one entry per

@@ -116,10 +116,11 @@ auto spp::analyse::utils::memory_state::MemoryState::InitializedBy(
   AstMoved = nullptr;
   Given = true;
 
-  // A fresh value: nothing is taken out of it, on any path.
+  // A fresh value: nothing is taken out of it, or apart, on any path.
   MaybeInit = Nullopt;
   PartialMoves.clear();
   MaybePartialMoves.clear();
+  TakenApart.clear();
 }
 
 auto spp::analyse::utils::memory_state::MemoryState::MovedBy(
@@ -129,11 +130,12 @@ auto spp::analyse::utils::memory_state::MemoryState::MovedBy(
   AstMoved = &ast;
   AstInitialization = nullptr;
 
-  // Clear the partial moves, the "maybe init" and the "maybe
-  // partial moves" too.
+  // Clear the partial moves, the "maybe init", the "maybe
+  // partial moves" and what was taken apart too.
   PartialMoves.clear();
   MaybeInit = Nullopt;
   MaybePartialMoves.clear();
+  TakenApart.clear();
 }
 
 auto spp::analyse::utils::memory_state::MemoryState::PartMovedBy(
@@ -148,6 +150,12 @@ auto spp::analyse::utils::memory_state::MemoryState::PartMovedBy(
     return regions::Relate(*part.Of, *maybe.Part.Of) == regions::MemRegionRelation::Contains;
   });
   PartialMoves.emplace_back(part);
+}
+
+auto spp::analyse::utils::memory_state::MemoryState::TakenApartAt(
+  regions::PlaceAt const &place) -> void {
+  if (not place.Of.has_value()) { Ice(*place.Site, "a destructure took apart no place"); }
+  if (genex::none_of(TakenApart, [&](auto const &x) { return *x.Of == *place.Of; })) { TakenApart.emplace_back(place); }
 }
 
 /// [CHECKED]
@@ -172,6 +180,13 @@ auto spp::analyse::utils::memory_state::MemoryState::RemovePartialMoves(
   PartialMoves |= genex::actions::remove_if(is_written);
   MaybePartialMoves |= genex::actions::remove_if(
     [&](auto const &maybe) { return is_written(maybe.Part); });
+
+  // A part written over whole is a fresh value: nothing in it is
+  // taken apart any more.
+  TakenApart |= genex::actions::remove_if([&](auto const &place) {
+    return written.has_value()
+      and (*place.Of == *written or regions::Relate(*written, *place.Of) == regions::MemRegionRelation::Contains);
+  });
 }
 
 spp::analyse::utils::memory_state::BodyFlow::BodyFlow(
@@ -287,6 +302,16 @@ auto spp::analyse::utils::memory_state::Join(
     return true;
   });
 
+  // Taken apart on one path and not the other, the value's own
+  // "drop" may or may not run: the paths disagree, so each path
+  // drops what it holds before they meet.
+  const auto apart_key = [](auto const &list) {
+    auto out = list | genex::views::transform([](auto const &x) { return *x.Of; }) | genex::to<Vec>();
+    genex::actions::sort(out);
+    return out;
+  };
+  if (apart_key(into.TakenApart) != apart_key(other.TakenApart)) { into.MaybeInit = here; }
+
   // An immutable given its value on any path cannot be given
   // another. The "given" is the initial initialisation so
   // from one path at least.
@@ -316,7 +341,8 @@ auto spp::analyse::utils::memory_state::SameShape(
     and (lhs.AstMoved == nullptr) == (rhs.AstMoved == nullptr)
     and lhs.MaybeInit.has_value() == rhs.MaybeInit.has_value()
     and parts(lhs.PartialMoves, self) == parts(rhs.PartialMoves, self)
-    and parts(lhs.MaybePartialMoves, maybe_part) == parts(rhs.MaybePartialMoves, maybe_part);
+    and parts(lhs.MaybePartialMoves, maybe_part) == parts(rhs.MaybePartialMoves, maybe_part)
+    and parts(lhs.TakenApart, self) == parts(rhs.TakenApart, self);
 }
 
 /// [CHECKED]

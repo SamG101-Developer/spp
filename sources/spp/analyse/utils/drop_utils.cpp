@@ -70,6 +70,12 @@ namespace spp::analyse::utils::drop_utils {
   /// inside a value leaves that value unable to be destroyed. Every
   /// place a move reached through is asked, not only "sym":
   /// "o.inner.val" strands "o.inner" even when "o" has no "drop".
+  /// The places in "taken_apart" at or under "prefix" (field-name
+  /// steps), as paths from it: the empty path is "prefix" itself.
+  static auto TakenApartPathsUnder(
+    Vec<regions::PlaceAt> const &taken_apart, Vec<regions::PlaceStep> const &prefix)
+    -> Vec<Vec<spp::utils::InternedId>>;
+
   static auto CheckDestructorStillReachable(
     VariableSymbol const &sym, memory_state::MemoryState const &state, Ast const &exit_point,
     ScopeManager &sm, CompilerMetaData *meta) -> void;
@@ -331,14 +337,29 @@ auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
   if (sym.IsBorrow()) { return; }
 
   const auto root = TypeRef::Of(*sym.Type, *sm.CurrentScope);
+  const auto taken_apart = TakenApartPathsUnder(state.TakenApart, {});
   for (auto const &move : state.PartialMoves) {
-    RaiseIfPathStrandsDestructor(root, move.Of->Steps, *move.Site, exit_point, sm, meta);
+    RaiseIfPathStrandsDestructor(root, move.Of->Steps, *move.Site, exit_point, sm, meta, taken_apart);
   }
+}
+
+auto spp::analyse::utils::drop_utils::TakenApartPathsUnder(
+  Vec<regions::PlaceAt> const &taken_apart, Vec<regions::PlaceStep> const &prefix)
+  -> Vec<Vec<spp::utils::InternedId>> {
+  auto paths = Vec<Vec<spp::utils::InternedId>>();
+  for (auto const &place : taken_apart) {
+    auto const &steps = place.Of->Steps;
+    if (steps.size() < prefix.size() or not std::equal(prefix.begin(), prefix.end(), steps.begin())) { continue; }
+    auto &path = paths.emplace_back();
+    for (auto i = prefix.size(); i < steps.size(); ++i) { path.emplace_back(steps[i].Name); }
+  }
+  return paths;
 }
 
 auto spp::analyse::utils::drop_utils::RaiseIfPathStrandsDestructor(
   TypeRef const &root, Vec<regions::PlaceStep> const &steps, Ast const &move,
-  Ast const &exit_point, ScopeManager &sm, CompilerMetaData *meta) -> void {
+  Ast const &exit_point, ScopeManager &sm, CompilerMetaData *meta,
+  Vec<Vec<spp::utils::InternedId>> const &taken_apart) -> void {
   // Each value the path reaches *through* is asked in turn: the root first, then one step further in for each name
   // the path passes on its way. The place it lands on is not one of them - taking a whole field out hands that
   // field's destructor to whoever received it, and only taking something from inside a value strands the value's
@@ -347,6 +368,12 @@ auto spp::analyse::utils::drop_utils::RaiseIfPathStrandsDestructor(
   for (auto i = 0uz; i < steps.size(); ++i) {
     const auto [part_ref, part_scope] = regions::DescendToPart(root, *sm.CurrentScope, steps, i);
     if (part_ref.Symbol == nullptr or part_scope == nullptr) { break; }
+    const auto apart = genex::any_of(taken_apart, [&](auto const &path) {
+      return path.size() == i and std::equal(path.begin(), path.end(), steps.begin(), [](auto id, auto const &step) {
+        return id == step.Name;
+      });
+    });
+    if (apart) { continue; }
     const auto destructor = FindDropOverload(*part_ref.Symbol, sm, meta);
     if (destructor == nullptr) { continue; }
 
@@ -419,19 +446,20 @@ auto spp::analyse::utils::drop_utils::OwnedOnPath(
   auto moved = MovedPathsUnder(state.PartialMoves, {});
   if (not moved.has_value()) { return Nullopt; }
 
-  // "self" left at the end of its own type's "drop" is taken apart field by field, not destroyed through that "drop"
-  // again, so a part moved out of it strands nothing.
+  // What a destructure took apart is dropped field by field, its type's own "drop" not run, and so is "self" left at
+  // the end of its own type's "drop" (running that "drop" again would recurse): a part moved out of either strands
+  // nothing. Any other value's own "drop" cannot be run on what is left of it with a part missing (E106).
   const auto ref = sym.TypeRefIn(owner_scope);
-  const auto structural = IsSelfInItsOwnDrop(sym, ref, sm, meta);
-
-  // Otherwise a part's own "drop" cannot be run on what is left of a value with a part missing (E106).
-  if (not structural) { CheckDestructorStillReachable(sym, state, at, sm, meta); }
+  auto taken_apart = TakenApartPathsUnder(state.TakenApart, {});
+  if (IsSelfInItsOwnDrop(sym, ref, sm, meta)) { taken_apart.emplace_back(); }
+  else { CheckDestructorStillReachable(sym, state, at, sm, meta); }
 
   // Nothing written calls this drop, so its destructor may never have been instantiated, and destroying it without
   // one would go field by field: a "Vec" frees its buffer without dropping the elements in it.
   EnsureDropInstantiated(ref, sm, meta);
   return OwnedValue{
-    .Name = sym.Name, .Moved = std::move(*moved), .DeclaredAt = sym.Name->PosStart(), .Structural = structural};
+    .Name = sym.Name, .Moved = std::move(*moved), .DeclaredAt = sym.Name->PosStart(),
+    .TakenApart = std::move(taken_apart)};
 }
 
 auto spp::analyse::utils::drop_utils::EndRegion(
@@ -502,8 +530,13 @@ auto spp::analyse::utils::drop_utils::EndStatementBindings(
       ? is_binding or temporary
       : ends == StatementEnds::kIsBindings ? is_binding : temporary;
     if (not ended) { continue; }
-    if (auto value = OwnedOnPath(*bindings[i], memory_state::StateOf(*sm.CurrentScope, *bindings[i]), scope, end, sm, meta)) {
+    auto &state = memory_state::StateOf(*sm.CurrentScope, *bindings[i]);
+    if (auto value = OwnedOnPath(*bindings[i], state, scope, end, sm, meta)) {
       owned.emplace_back(std::move(*value));
+
+      // A temporary dropped here is gone: the scope's end does not
+      // drop it again (one a destructure took apart is still owned).
+      if (temporary) { state.MovedBy(end); }
     }
   }
   SortNewestFirst(owned);
@@ -586,7 +619,7 @@ auto spp::analyse::utils::drop_utils::OwnedUpToLoop(
 
 auto spp::analyse::utils::drop_utils::OwnedBeforeWrite(
   VariableSymbol const *sym, ExpressionAst &target, ScopeManager &sm,
-  CompilerMetaData *meta) -> Opt<Vec<Vec<spp::utils::InternedId>>> {
+  CompilerMetaData *meta) -> Opt<OwnedValue> {
   // A "Copy" value is never dropped.
   const auto ref = target.InferTypeRef(&sm, meta).WithoutConvention();
   if (not ref.IsMoveOnly()) { return Nullopt; }
@@ -603,7 +636,7 @@ auto spp::analyse::utils::drop_utils::OwnedBeforeWrite(
   // borrowed from, and nothing can have been taken out of it: it is there, whole.
   if (sym == nullptr or sym->IsBorrow()) {
     EnsureDropInstantiated(ref, sm, meta);
-    return Vec<Vec<spp::utils::InternedId>>();
+    return OwnedValue{};
   }
 
   // Of a value this scope owns, only a part still standing is dropped, less what was taken out of it.
@@ -613,9 +646,11 @@ auto spp::analyse::utils::drop_utils::OwnedBeforeWrite(
   const auto place = regions::PlaceOf(target, *sm.CurrentScope);
   if (not place.has_value()) { return Nullopt; }
   if (regions::RegionConsumed(*place, ref, *sm.CurrentScope, state.PartialMoves)) { return Nullopt; }
+  // What a destructure took apart in it is dropped field by field.
   auto moved = MovedPathsUnder(state.PartialMoves, place->Steps);
-  if (moved.has_value()) { EnsureDropInstantiated(ref, sm, meta); }
-  return moved;
+  if (not moved.has_value()) { return Nullopt; }
+  EnsureDropInstantiated(ref, sm, meta);
+  return OwnedValue{.Moved = std::move(*moved), .TakenApart = TakenApartPathsUnder(state.TakenApart, place->Steps)};
 }
 
 auto spp::analyse::utils::drop_utils::IsTemporary(

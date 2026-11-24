@@ -35,9 +35,12 @@ namespace spp::analyse::utils::drop_utils {
     Vec<Vec<spp::utils::InternedId>> Moved;
     Opt<std::size_t> DeclaredAt;
 
-    /// "self" at the end of its own type's "drop": only its fields
-    /// are dropped, as running the destructor again would recurse.
-    bool Structural = false;
+    /// The places in it whose type's own "drop" does not run, so only
+    /// their fields are dropped, as paths of field names (the empty
+    /// path is the value itself): what a destructure took apart, and
+    /// "self" at the end of its own type's "drop", where running the
+    /// destructor again would recurse.
+    Vec<Vec<spp::utils::InternedId>> TakenApart;
   };
 
   /// What a way out of several scopes drops: one entry per scope
@@ -74,11 +77,14 @@ namespace spp::analyse::utils::drop_utils {
   /// The part at "steps" taken out of a value of type "root" (by "move")
   /// leaves a hole in every value the path runs through, the root
   /// included: E106 if one of them has its own "drop", which could not
-  /// run on what is left. The part the path ends on hands its own
-  /// "drop" to whoever took it. "exit_point" is where the rest ends.
+  /// run on what is left, unless it was taken apart ("taken_apart",
+  /// field-name paths), so its "drop" does not run. The part the path
+  /// ends on hands its own "drop" to whoever took it. "exit_point" is
+  /// where the rest ends.
   SPP_EXP_FUN auto RaiseIfPathStrandsDestructor(
     TypeRef const &root, Vec<regions::PlaceStep> const &steps, Ast const &move,
-    Ast const &exit_point, ScopeManager &sm, CompilerMetaData *meta) -> void;
+    Ast const &exit_point, ScopeManager &sm, CompilerMetaData *meta,
+    Vec<Vec<spp::utils::InternedId>> const &taken_apart = {}) -> void;
 
   /// Sort a path's drops newest first, by where each is declared.
   SPP_EXP_FUN auto SortNewestFirst(
@@ -149,12 +155,13 @@ namespace spp::analyse::utils::drop_utils {
 
   /// Writing a new value over "target" (a part of "sym": "p.a",
   /// "self.a" through "&mut self", or what "x@" points at) drops
-  /// the value there first, if one is owned: the parts already
-  /// moved out of it, or none for one not owned (a "Copy" one, one
-  /// taken, or held on only some paths).
+  /// the value there first, if one is owned: what is left of it (the
+  /// parts moved out, and the places in it taken apart), or none for
+  /// one not owned (a "Copy" one, one taken, or held on only some
+  /// paths).
   SPP_EXP_FUN auto OwnedBeforeWrite(
     VariableSymbol const *sym, ExpressionAst &target, ScopeManager &sm,
-    CompilerMetaData *meta) -> Opt<Vec<Vec<spp::utils::InternedId>>>;
+    CompilerMetaData *meta) -> Opt<OwnedValue>;
 
   /// Find the "drop" method superimposed over the type via
   /// the "std::ops::drop::Drop" type (either directly or via

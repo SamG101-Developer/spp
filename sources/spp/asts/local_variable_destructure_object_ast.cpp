@@ -251,7 +251,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   destructure_utils::DestructureStage8(
-    *this, Elems, _NewAsts, _TmpName, _CondLet.get(), _FromCasePattern, *sm, meta);
+    *this, _NewAsts, _TmpName, _CondLet.get(), _FromCasePattern, *sm, meta);
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage11_CodeGen(

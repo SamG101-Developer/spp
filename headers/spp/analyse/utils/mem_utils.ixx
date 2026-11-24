@@ -47,12 +47,15 @@ namespace spp::analyse::utils::mem_utils {
 
   /// "place" (a place of "sym": the whole of it, or one part) taken
   /// apart by the bindings of a destructure or a pattern written at
-  /// "by": moved, whole or as that part. With "check_parts", a part no
-  /// binding took leaves it as the bindings did, partly moved, for its
-  /// owner to drop the rest (a type's own "drop" cannot run then: E106).
+  /// "by". Bound part by part, every owned part taken, it is moved,
+  /// whole or as that part. Otherwise the parts the bindings skipped
+  /// stay with it, partly moved, for its owner to drop: a destructure
+  /// ("disarms") marks it taken apart, so its own "drop" never runs
+  /// and the rest is dropped field by field; a "case" subject's match
+  /// leaves it as the patterns did.
   SPP_EXP_FUN auto TakeApart(
     VariableSymbol const &sym, Ast const &place, Ast const &by,
-    bool check_parts, ScopeManager const &sm) -> void;
+    bool disarms, ScopeManager const &sm) -> void;
 
   /// Raise if the value "sym" holds has already been moved out, or is
   /// held on only some of the paths that met (E8), reported against

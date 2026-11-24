@@ -501,5 +501,5 @@ auto spp::analyse::utils::case_utils::ApplySubjectOnMatch(
   // partly moved for its owner to drop the rest of.
   if (meta.CaseSubject == nullptr or meta.CaseCondition == nullptr) { return; }
   if (meta.CaseSubjectOnMatch != SubjectOnMatch::kTake) { return; }
-  mem_utils::TakeApart(*meta.CaseSubject, *meta.CaseCondition, *meta.CaseCondition, true, sm);
+  mem_utils::TakeApart(*meta.CaseSubject, *meta.CaseCondition, *meta.CaseCondition, false, sm);
 }

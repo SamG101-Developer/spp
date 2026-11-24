@@ -121,6 +121,12 @@ SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryState {
   /// to include the "part" and the path disagreement data.
   Vec<MaybeMovedPart> MaybePartialMoves;
 
+  /// The places a destructure took apart ("let P(a, ..) = x": "x"):
+  /// the type's own "drop" never runs on one, and whatever owned
+  /// parts the patterns skipped are dropped field by field by the
+  /// value's owner.
+  Vec<regions::PlaceAt> TakenApart;
+
   /// A value has been given to the symbol, on some path, once
   /// or more, since it was declared (an immutable one cannot
   /// be given more than once), whether or not it still holds
@@ -145,6 +151,9 @@ SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryState {
   /// Record "part" taken off the value on this path (a partial
   /// move); any maybe-taken part inside it is settled.
   auto PartMovedBy(regions::PlaceAt const &part) -> void;
+
+  /// Record "place" taken apart by a destructure ("TakenApart").
+  auto TakenApartAt(regions::PlaceAt const &place) -> void;
 
   /// Remove a specific partial move from the partial move list.
   /// This is used when part of the object is re-assigned. Once the

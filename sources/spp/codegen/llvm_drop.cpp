@@ -34,7 +34,7 @@ auto spp::codegen::EmitDrop(
   asts::meta::CompilerMetaData *meta,
   LlvmCtx *ctx,
   Vec<Vec<spp::utils::InternedId>> const &moved,
-  const bool own_drop)
+  Vec<Vec<spp::utils::InternedId>> const &taken_apart)
   -> void {
   //
   using analyse::utils::drop_utils::FindDropOverload;
@@ -81,7 +81,9 @@ auto spp::codegen::EmitDrop(
   }
 
   // The type's own destructor runs before its attributes
-  // are destroyed, because it is still free to read them.
+  // are destroyed, because it is still free to read them -
+  // unless the value was taken apart.
+  const auto own_drop = genex::none_of(taken_apart, [](auto const &path) { return path.empty(); });
   if (const auto drop_proto = own_drop ? FindDropOverload(type_sym, *sm, meta) : nullptr; drop_proto != nullptr) {
     if (not moved.empty()) { spp::Ice("a value with its own destructor is destroyed with a part missing"); }
 
@@ -162,11 +164,16 @@ auto spp::codegen::EmitDrop(
     if (part.Ref.Symbol == &type_sym or part.Ref.Symbol == bare_sym) { continue; }
     if (not NeedsDrop(part.Ref, *sm, meta)) { continue; }
 
-    // What was moved out of this part, as paths from it.
-    auto part_moved = Vec<Vec<spp::utils::InternedId>>();
-    for (auto const &path : moved) {
-      if (path.front() == part.Step->NameId()) { part_moved.emplace_back(path.begin() + 1, path.end()); }
-    }
+    // What was moved out of this part, and taken apart in it, as paths from it.
+    const auto under_part = [&](Vec<Vec<spp::utils::InternedId>> const &paths) {
+      auto out = Vec<Vec<spp::utils::InternedId>>();
+      for (auto const &path : paths) {
+        if (path.empty() or path.front() != part.Step->NameId()) { continue; }
+        out.emplace_back(path.begin() + 1, path.end());
+      }
+      return out;
+    };
+    const auto part_moved = under_part(moved);
 
     // An array is one value repeated, so its elements are reached by indexing into it; a tuple's and a struct's
     // are separate fields, found through the layout's index map: the S++ layout re-orders a struct's fields to
@@ -178,7 +185,7 @@ auto spp::codegen::EmitDrop(
         "drop.elem" + uid + "." + part.Step->Val)
       : ctx->Builder.CreateStructGEP(
         elem_ty, ptr, GetPhysicalFieldIndex(*type_sym.LlvmInfo, part.Index), "drop.field" + uid + "." + part.Step->Val);
-    EmitDrop(part.Ref, part_ptr, sm, meta, ctx, part_moved);
+    EmitDrop(part.Ref, part_ptr, sm, meta, ctx, part_moved, under_part(taken_apart));
   }
 }
 
@@ -232,7 +239,7 @@ auto spp::codegen::EmitOwnedDrops(
       if (at == nullptr) { spp::Ice("a value owned where its lifetime ends has no storage to drop"); }
       Ice(*at, *sm->CurrentScope, "a value owned where its lifetime ends has no storage to drop");
     }
-    EmitDrop(sym->TypeRefIn(scope), sym->LlvmInfo->Alloca, sm, meta, ctx, value.Moved, not value.Structural);
+    EmitDrop(sym->TypeRefIn(scope), sym->LlvmInfo->Alloca, sm, meta, ctx, value.Moved, value.TakenApart);
   }
 }
 
@@ -275,7 +282,7 @@ auto spp::codegen::EmitOuterDrops(
     if (sym == nullptr or scope == nullptr or sym->LlvmInfo->Alloca == nullptr) {
       Ice(at, *sm->CurrentScope, "a value a join drops has no storage to drop");
     }
-    EmitDrop(sym->TypeRefIn(*scope), sym->LlvmInfo->Alloca, sm, meta, ctx, value.Moved, not value.Structural);
+    EmitDrop(sym->TypeRefIn(*scope), sym->LlvmInfo->Alloca, sm, meta, ctx, value.Moved, value.TakenApart);
   }
 }
 
