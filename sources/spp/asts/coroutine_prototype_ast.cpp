@@ -10,7 +10,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
-import spp.analyse.utils.linear_utils;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
@@ -32,7 +32,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_debug;
-import spp.codegen.llvm_defer;
+import spp.codegen.llvm_drop;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_target;
@@ -145,7 +145,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage8_AfterParams(
   // Calling a coroutine stores its parameters and parks before the body runs (generators are lazy), so a generator
   // dropped unresumed is destroyed here, owning every parameter it took by value.
   IMPORT_UTILS;
-  _OwnedAtStart = linear_utils::OwnedAtSuspend(*this, *sm, meta);
+  _OwnedAtStart = drop_utils::OwnedAtSuspend(*this, *sm, meta);
 }
 
 auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
@@ -403,9 +403,9 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     meta->EnclosingFnSourceRetType = ReturnType;
     meta->ClosureRetJoin = nullptr;
     meta->EnclosingFnScope = sm->CurrentScope;
+    meta->TemporaryBase = codegen::TemporaryDepth(ctx);
 
     ctx->Builder.SetInsertPoint(initial_destroy_bb);
-    codegen::EnterDeferScope(*sm->CurrentScope, ctx);
     codegen::EmitSuspendDestroy(_OwnedAtStart, *this, sm, meta, ctx);
     ctx->Builder.SetInsertPoint(body_start_bb);
 
@@ -428,6 +428,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     // instead would leave the consumer asking a destroyed frame
     // whether it was finished. "ret" must set the current block as
     // as the final block.
+    codegen::EmitOwnedDrops(*sm->CurrentScope, _OwnedAtEnd, this, sm, meta, ctx);
     if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
       ctx->Builder.CreateBr(final_bb);
     }
@@ -527,13 +528,14 @@ auto spp::asts::CoroutinePrototypeAst::GenOnceLowered() const -> SubroutineProto
 auto spp::asts::CoroutinePrototypeAst::_LowerGenOnce() -> void {
   if (not _IsOnce or _GenOnceLowered != nullptr) { return; }
 
-  // Todo: A body that defers anything is miscompiled here. A deferred expression is meant to run after the yield -
-  //  a lock defers releasing its guard so the lock is still held while the caller holds the borrow - but once the
-  //  "gen" reads as the return, everything the scope deferred runs on the way out of it, so the release happens
-  //  before the caller ever sees the value. Declining to lower such a body is not the answer on its own: nothing at
-  //  a call site resumes an unlowered "GenOnce", reads its yield slot, or destroys its frame, so the caller is handed
-  //  a raw handle typed as the value. Fixing this means implementing that path, and binding the frame to the caller's
-  //  scope so the deferred release runs when it ends. "std::threading" avoids the shape entirely - see "MutexGuard".
+  // Todo: A body that holds a guard across its "gen" is miscompiled here. The guard is meant to be dropped after the
+  //  caller is done with the yielded value - an unlocking guard keeps the lock held while the caller holds the borrow -
+  //  but once the "gen" reads as the return, everything the scope owns is dropped on the way out of it, so the
+  //  release happens before the caller ever sees the value. Declining to lower such a body is not the answer on its
+  //  own: nothing at a call site resumes an unlowered "GenOnce", reads its yield slot, or destroys its frame, so the
+  //  caller is handed a raw handle typed as the value. Fixing this means implementing that path, and binding the frame
+  //  to the caller's scope so the guard is dropped when it ends. "std::threading" avoids the shape entirely - see the
+  //  closure-scoped locks ("with_lock").
 
   // The signature is this coroutine's with the generator return
   // type replaced by what it yields; the body is taken over
