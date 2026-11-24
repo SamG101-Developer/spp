@@ -5,6 +5,9 @@ module spp.analyse.scopes.type_key;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.comp_generics;
+import spp.asts.class_prototype_ast;
+import spp.asts.generic_parameter_ast;
+import spp.asts.generic_parameter_group_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
@@ -503,7 +506,28 @@ auto spp::analyse::scopes::WithoutVoidFnArgs(
     const auto args_id = spp::analyse::scopes::MapArgsId(head.Args, without_void_elems, same_comp);
     return args_id != head.Args ? spp::analyse::scopes::InstanceIdOfArgs(*tup, args_id) : type;
   };
-  return spp::analyse::scopes::MapArgsId(args, without_void, same_comp);
+
+  // Only the "Args" argument (the first parameter, by its "ParamId", or the
+  // first positional): a tuple "Out" keeps its "Void"s, as the value the
+  // function returns does.
+  if (tmpl.Type == nullptr or tmpl.Type->GnParamGroup == nullptr) { return args; }
+  const auto params = tmpl.Type->GnParamGroup->GetAllParams();
+  if (params.empty()) { return args; }
+  const auto args_param = params.front()->ParamId();
+  auto key = TypeKey();
+  auto changed = false;
+  for (auto const &arg : spp::analyse::scopes::ArgsOf(args)) {
+    key.Push(arg.Named ? TypeKey::Tag::Arg : TypeKey::Tag::Pos, arg.Slot);
+    if (arg.CompVal != nullptr) {
+      key.PushCompPart(arg.CompVal);
+      continue;
+    }
+    const auto is_args = arg.Named ? arg.Slot == args_param : arg.Slot == 0;
+    const auto value = is_args ? without_void(arg.TypeVal) : arg.TypeVal;
+    changed = changed or value != arg.TypeVal;
+    key.PushTypePart(value);
+  }
+  return changed ? spp::analyse::scopes::InternTypeKey(std::move(key)) : args;
 }
 
 auto spp::analyse::scopes::InstanceIdOfArgs(
