@@ -1,13 +1,15 @@
 ---
 name: clang-cl-std-apply-mangling-crash
 description: "clang-cl 23.1.5 segfaults mangling std::apply mid-template-instantiation (comp_key.ixx, lsp/diagnostic.cpp); not caused by the apply re-export; reproducers + BMIs in the buildlog artifact"
-updated: 2026-11-18
+updated: 2026-11-24
 ---
 
 clang-cl 23.1.5 (MSVC STL 14.51, `import std`) crashes with 0xC0000005. The stack ends in "LLVM IR generation of
 declaration 'std::apply'" / "Mangling declaration 'std::apply'" (`tuple:1248`), while it is doing something unrelated:
 instantiating `Variant<numex::BigInt, …>`'s destructor in `comp_key.ixx:56`, or a `genex::views::transform` pipeline
 in `lsp/diagnostic.cpp:320`. clang on Linux and macOS (Itanium mangling) does not crash. Still the same crash, in the same place, on clang-cl 23.1.6 (CMake 4.5.0-rc3, MSVC STL 14.51.36231; 2026-11-18): the CMake `import std` fix (upstream-watch U14) got the lane to compile, and this is what stops it now. Removing `SPP_EXP_FUN using std::apply;` from `types.ixx` was tried (2026-11-08, then restored) and did not help: `comp_key.ixx` still crashes (a run that stopped at `diagnostic.cpp` first had not compiled it). genex's `bind_back` calls `std::apply` too. No upstream report matched.
+
+Still the same crash with MSVC STL 14.52.37025 (run 45315079822, 2026-11-24).
 
 **Why:** the clang-cl lane is advisory; fixing it means a reduced reproducer for LLVM, not more source workarounds.
 

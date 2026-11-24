@@ -28,6 +28,7 @@ import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.parenthesised_expression_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_index_ast;
 import spp.asts.spread_expression_ast;

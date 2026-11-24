@@ -12,6 +12,7 @@ import spp.analyse.utils.type_resolution;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_unary_expression_operator_ast;
 import spp.asts.type_unary_expression_operator_borrow_ast;

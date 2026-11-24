@@ -58,6 +58,7 @@ import spp.asts.literal_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.statement_ast;
