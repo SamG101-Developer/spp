@@ -27,19 +27,26 @@ import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.loop_conditional_expression_ast;
 import spp.asts.string_literal_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 import spp.utils.ice;
+import spp.utils.interner;
 import genex;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts, Ast);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, LoopConditionalExpressionAst);
 use_alias(spp::asts, FunctionCallArgumentAst);
 use_alias(spp::asts, FunctionPrototypeAst);
 use_alias(spp::asts, GenericArgumentAst);
@@ -49,6 +56,37 @@ use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::drop_utils {
   using overload_resolution::FnOverload;
+
+  /// Whether "sym" still owns a value nothing has taken, on some
+  /// path at least, in "state" (one path's state of it): an owned
+  /// local (or "$" temporary) of a move-only type, initialised, and
+  /// not taken apart whole.
+  static auto IsOwnedIn(
+    VariableSymbol const &sym, memory_state::MemoryState const &state, ScopeManager const &sm) -> bool;
+
+
+  /// Raise if a partial move out of "sym" (in "state") stranded a
+  /// value with a destructor of its own: taking something from
+  /// inside a value leaves that value unable to be destroyed. Every
+  /// place a move reached through is asked, not only "sym":
+  /// "o.inner.val" strands "o.inner" even when "o" has no "drop".
+  static auto CheckDestructorStillReachable(
+    VariableSymbol const &sym, memory_state::MemoryState const &state, Ast const &exit_point,
+    ScopeManager &sm, CompilerMetaData *meta) -> void;
+
+  /// Whether "sym" is "self" in its own type's "drop", whose end
+  /// drops what is left of it field by field.
+  static auto IsSelfInItsOwnDrop(
+    VariableSymbol const &sym, TypeRef const &ref, ScopeManager &sm, CompilerMetaData *meta) -> bool;
+
+  /// The parts "moves" took from inside the place "prefix" leads to
+  /// (an empty one: the whole value), each as the field names walked
+  /// from there. None when one went through a method's result (an
+  /// opaque step), which names no field: what it came out of is not
+  /// dropped at all. Todo: drop the rest of it.
+  static auto MovedPathsUnder(
+    Vec<regions::PlaceAt> const &moves, Vec<regions::PlaceStep> const &prefix)
+    -> Opt<Vec<Vec<spp::utils::InternedId>>>;
 
   /// Find an overload for a types destructor, rather than
   /// just the prototype; instantiating it needs the block
@@ -281,22 +319,11 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
   walk(walk, type);
 }
 
-/**
- * Raise if @p sym holds a value with a destructor that can no longer be run, because a part of it has been moved
- * out and nothing put one back. Asked of every place a recorded move reached through, not only of @p sym itself:
- * @c {o.inner.val} leaves @c {o.inner} unable to be destroyed even when @c {o} has no destructor of its own. Only
- * a type with a @c drop of its own has anything to lose here: everything else is destroyed field by field, which
- * a partial move has already done for the parts it took.
- * @param sym The symbol being checked.
- * @param exit_point The ast to report the error against.
- * @param sm The scope manager, positioned where the symbol's type resolves from.
- * @param meta Associated metadata, for resolving the destructor overload.
- */
 auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
-  VariableSymbol const &sym, Ast const &exit_point,
+  VariableSymbol const &sym, memory_state::MemoryState const &state, Ast const &exit_point,
   ScopeManager &sm, CompilerMetaData *meta) -> void {
   // Nothing taken out of it is nothing to put back.
-  if (memory_state::StateOf(*sm.CurrentScope, sym).PartialMoves.empty()) { return; }
+  if (state.PartialMoves.empty()) { return; }
   if (sym.Type == nullptr) { Ice(exit_point, *sm.CurrentScope, "partly moved variable has no type"); }
 
   // A borrow does not own what it points at, so the value
@@ -304,7 +331,7 @@ auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
   if (sym.IsBorrow()) { return; }
 
   const auto root = TypeRef::Of(*sym.Type, *sm.CurrentScope);
-  for (auto const &move : memory_state::StateOf(*sm.CurrentScope, sym).PartialMoves) {
+  for (auto const &move : state.PartialMoves) {
     // A move leaves a hole in every place it reached *through*, so each of those is asked in turn: the symbol's
     // own type first, then one step further in for each name the path passes on its way. The place the move
     // landed on is not one of them - taking a whole field out hands that field's destructor to whoever received
@@ -326,4 +353,308 @@ auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
         ERR_ARGS(exit_point, *move.Site, *destructor->Name, StrView(owner_name)));
     }
   }
+}
+
+auto spp::analyse::utils::drop_utils::IsOwnedIn(
+  VariableSymbol const &sym, memory_state::MemoryState const &state, ScopeManager const &sm) -> bool {
+  // Only a local owns a value it has to answer for. A generic or a constant has no runtime existence, a
+  // flow-narrowing symbol is a view of another symbol's value (which owns it), and a capture belongs
+  // to the closure's environment, which is read again on every call - it is the closure value that owns it. A "$"
+  // temporary a desugaring made is a local like any other.
+  if (sym.Kind != VariableKind::Local and sym.Kind != VariableKind::Temporary) { return false; }
+
+  // A closed pack holds nothing itself: its elements are parameters of their own, each answering for its value.
+  // An open one holds what its elements are: nothing owned when each is copied ("..xs: S32", "..xs: Ts" with
+  // "Ts: Copy"), whatever its tuple of unknown length says.
+  if (sym.Pack.has_value() and not sym.Pack->Open) { return false; }
+  if (sym.Pack.has_value()) {
+    const auto element = sm.CurrentScope->FindTypeSymbol(
+      sym.Pack->Element->WithoutConvention().get());
+    if (element != nullptr and element->IsCopyable()) { return false; }
+  }
+  if (sym.Type == nullptr or sym.MemInfo == nullptr) {
+    Ice(*sym.Name, *sm.CurrentScope, "local variable has no type");
+  }
+
+  // A borrow points at a value that belongs to someone else; a copyable value is never owned by one place, as
+  // copying leaves the original in place; and a "!" value never exists, the code binding it cannot finish.
+  if (sym.IsBorrow()) { return false; }
+  const auto type = TypeRef::Of(*sym.Type, *sm.CurrentScope);
+  if (not type.IsMoveOnly()) { return false; }
+
+
+  // Taken on some of the paths that met and not on others, whole or in part: a path that did not take a part
+  // still owns it. The witnesses kept are the first path's, so the value can read as taken while another path
+  // still owns it.
+  const auto owned_on_some_path = state.MaybeInit.has_value() or not state.MaybePartialMoves.empty();
+
+  // The value already left, whole.
+  if (state.AstInitialization == nullptr and not owned_on_some_path) { return false; }
+
+  // A holder of loans (a "&mut"-capturing closure, a borrowing generator or future) is owned like any other value:
+  // it owns its environment or frame. It cannot be moved away, but a drop ends it and its loans together.
+
+  // Taking every non-copyable part off a value leaves nothing to own. A destructure is the usual way that happens,
+  // and a case pattern's destructure only ever records the parts it bound, never the value itself, so the parts are
+  // all there is to go on.
+  if (state.PartialMoves.empty() or owned_on_some_path) { return true; }
+  return not regions::RegionConsumed(
+    regions::Place{.Root = const_cast<VariableSymbol*>(&sym), .Steps = {}}, type, *sm.CurrentScope,
+    state.PartialMoves);
+}
+
+auto spp::analyse::utils::drop_utils::OwnedOnPath(
+  VariableSymbol const &sym, memory_state::MemoryState const &state, Scope const &owner_scope,
+  Ast const &at, ScopeManager &sm, CompilerMetaData *meta) -> Opt<OwnedValue> {
+  if (not IsOwnedIn(sym, state, sm)) { return Nullopt; }
+
+  // Held on only some of the paths that met before this one: each path that still held it dropped it before they met.
+  if (state.MaybeInit.has_value() or not state.MaybePartialMoves.empty()) { return Nullopt; }
+
+  auto moved = MovedPathsUnder(state.PartialMoves, {});
+  if (not moved.has_value()) { return Nullopt; }
+
+  // "self" left at the end of its own type's "drop" is taken apart field by field, not destroyed through that "drop"
+  // again, so a part moved out of it strands nothing.
+  const auto ref = sym.TypeRefIn(owner_scope);
+  const auto structural = IsSelfInItsOwnDrop(sym, ref, sm, meta);
+
+  // Otherwise a part's own "drop" cannot be run on what is left of a value with a part missing (E106).
+  if (not structural) { CheckDestructorStillReachable(sym, state, at, sm, meta); }
+
+  // Nothing written calls this drop, so its destructor may never have been instantiated, and destroying it without
+  // one would go field by field: a "Vec" frees its buffer without dropping the elements in it.
+  EnsureDropInstantiated(ref, sm, meta);
+  return OwnedValue{
+    .Name = sym.Name, .Moved = std::move(*moved), .DeclaredAt = sym.Name->PosStart(), .Structural = structural};
+}
+
+auto spp::analyse::utils::drop_utils::EndRegion(
+  Scope const &scope, Ast const &at, ScopeManager &sm,
+  CompilerMetaData *meta) -> Vec<OwnedValue> {
+  auto owned = Vec<OwnedValue>();
+  for (auto *const sym : scope.GetOwners()) {
+    // A part taken from inside a value with its own "drop" strands it (E106), even when the part was all it owned:
+    // only a whole destructure in the type's own methods takes such a value apart.
+    if (sym->Type != nullptr and not IsSelfInItsOwnDrop(*sym, sym->TypeRefIn(scope), sm, meta)) {
+      CheckDestructorStillReachable(*sym, memory_state::StateOf(*sm.CurrentScope, *sym), at, sm, meta);
+    }
+    if (auto value = OwnedOnPath(*sym, memory_state::StateOf(*sm.CurrentScope, *sym), scope, at, sm, meta)) {
+      owned.emplace_back(std::move(*value));
+    }
+  }
+  SortNewestFirst(owned);
+  return owned;
+}
+
+auto spp::analyse::utils::drop_utils::SortNewestFirst(
+  Vec<OwnedValue> &owned) -> void {
+  // As a type drops its fields: by where each is declared, a table having no order of its own.
+  genex::actions::sort(owned, std::greater{}, [](auto const &value) { return value.DeclaredAt.value_or(0uz); });
+}
+
+auto spp::analyse::utils::drop_utils::OwnersAround(
+  Scope const &scope, CompilerMetaData const *meta) -> Map<VariableSymbol const*, Scope const*> {
+  auto owners = Map<VariableSymbol const*, Scope const*>();
+  if (meta == nullptr or meta->EnclosingFnScope == nullptr or &scope == meta->EnclosingFnScope) { return owners; }
+  for (auto const *s = scope.Parent; s != nullptr; s = s->Parent) {
+    for (auto *const sym : s->GetOwners()) { owners.emplace(sym, s); }
+    if (s == meta->EnclosingFnScope) { break; }
+  }
+  return owners;
+}
+
+auto spp::analyse::utils::drop_utils::OwnedOnJoinPath(
+  VariableSymbol const &sym, memory_state::MemoryState const &joined, memory_state::MemoryState const &path,
+  Map<VariableSymbol const*, Scope const*> const &owners, Ast const &at,
+  ScopeManager &sm, CompilerMetaData *meta) -> Opt<OwnedValue> {
+  if (not joined.MaybeInit.has_value() and joined.MaybePartialMoves.empty()) { return Nullopt; }
+  const auto owner = owners.find(&sym);
+  if (owner == owners.end()) { return Nullopt; }
+  return OwnedOnPath(sym, path, *owner->second, at, sm, meta);
+}
+
+auto spp::analyse::utils::drop_utils::ReleaseOwnedLoans(
+  Scope const &scope) -> void {
+  // What matters is where the holder was declared, not where
+  // the borrow was made: a handle declared further out carries
+  // its borrow on past this scope.
+  auto &loans = memory_state::LoansOf(scope);
+  for (auto const *const sym : scope.GetOwners()) { memory_state::ReleaseLoans(loans, *sym); }
+}
+
+auto spp::analyse::utils::drop_utils::EndStatementBindings(
+  Scope const &scope, Vec<VariableSymbol*> const &bindings, const std::size_t from, Ast const &end,
+  const StatementEnds ends, ScopeManager &sm, CompilerMetaData *meta,
+  IdentifierAst const *const own_let) -> Vec<OwnedValue> {
+  auto owned = Vec<OwnedValue>();
+  for (auto i = from; i < bindings.size(); ++i) {
+    auto const &sym = *bindings[i];
+    const auto is_binding = sym.ExpiresWithStatement;
+    const auto temporary = not is_binding and sym.Kind == VariableKind::Temporary
+      and (own_let == nullptr or sym.Name->NameId() != own_let->NameId());
+    const auto ended = ends == StatementEnds::kBoth
+      ? is_binding or temporary
+      : ends == StatementEnds::kIsBindings ? is_binding : temporary;
+    if (not ended) { continue; }
+    if (auto value = OwnedOnPath(*bindings[i], memory_state::StateOf(*sm.CurrentScope, *bindings[i]), scope, end, sm, meta)) {
+      owned.emplace_back(std::move(*value));
+    }
+  }
+  SortNewestFirst(owned);
+  return owned;
+}
+
+auto spp::analyse::utils::drop_utils::ForgetIterationBindings(
+  Scope const &loop_scope) -> void {
+  // A state no longer in the flow is read from the symbol again,
+  // as Stage 7 left it: as the first iteration reads it.
+  auto *const flow = memory_state::FlowOf(loop_scope);
+  if (flow == nullptr) { return; }
+  for (auto const &sym : loop_scope.LetBindings) { flow->States.erase(sym.get()); }
+}
+
+auto spp::analyse::utils::drop_utils::OwnedUpToFn(
+  Ast const &exit_point,
+  ScopeManager &sm, CompilerMetaData *meta) -> OwnedScopes {
+  // Outside a function there is nothing to drop: a module-level
+  // constant outlives every scope that reads it. Every scope out
+  // to the function's is left: an exit out of more loops than
+  // there are.
+  if (meta->EnclosingFnScope == nullptr) { return {}; }
+  auto iteration = Vec<OwnedValue>();
+  return OwnedUpToLoop(exit_point, std::numeric_limits<std::size_t>::max(), false, sm, meta, iteration);
+}
+
+auto spp::analyse::utils::drop_utils::OwnedAtSuspend(
+  Ast const &suspend_point, ScopeManager &sm,
+  CompilerMetaData *meta) -> OwnedScopes {
+  // Destroying the frame ends every borrow there is: what holds one in the frame goes with it, and the caller gave up
+  // whatever was lent out to it (a yield) before the frame could be destroyed. Otherwise it leaves every scope out to
+  // the coroutine's as a "ret" would, on a state put back afterwards: the path goes on past the suspension untouched.
+  const auto saved = memory_state::SnapshotFlow(*sm.CurrentScope);
+  memory_state::LoansOf(*sm.CurrentScope).clear();
+  auto owned = OwnedUpToFn(suspend_point, sm, meta);
+  memory_state::RestoreSnapshot(saved);
+  return owned;
+}
+
+auto spp::analyse::utils::drop_utils::OwnedUpToLoop(
+  Ast const &exit_point, const std::size_t num_exits,
+  const bool has_skip, ScopeManager &sm, CompilerMetaData *meta,
+  Vec<OwnedValue> &iteration) -> OwnedScopes {
+  // Walked on a copy of the state, put back afterwards: stage 8
+  // walks statements in order rather than following branches.
+  auto loops_seen = 0uz;
+  auto owned = OwnedScopes();
+  const auto saved = memory_state::SnapshotFlow(*sm.CurrentScope);
+
+  for (auto const *scope = sm.CurrentScope; scope != nullptr; scope = scope->Parent) {
+    // An iterable loop is rewritten into a conditional one
+    // before this stage, so matching the conditional form
+    // covers both.
+    const auto is_loop = scope->AstNode != nullptr
+      and asts::AstAs<LoopConditionalExpressionAst>(scope->AstNode) != nullptr;
+
+    if (is_loop) {
+      // The loop after the ones being exited is the one a
+      // trailing "skip" continues, so its own scope survives
+      // this statement, but the iteration it is in ends.
+      loops_seen += 1;
+      if (loops_seen > num_exits) {
+        if (has_skip) {
+          iteration = EndStatementBindings(
+            *scope, scope->GetOwners(), 0, exit_point, StatementEnds::kBoth, sm, meta);
+        }
+        break;
+      }
+    }
+
+    owned.emplace_back(EndRegion(*scope, exit_point, sm, meta));
+    if (is_loop and loops_seen == num_exits and not has_skip) { break; }
+    if (scope == meta->EnclosingFnScope) { break; }
+  }
+
+  memory_state::RestoreSnapshot(saved);
+  return owned;
+}
+
+auto spp::analyse::utils::drop_utils::OwnedBeforeWrite(
+  VariableSymbol const *sym, ExpressionAst &target, ScopeManager &sm,
+  CompilerMetaData *meta) -> Opt<Vec<Vec<spp::utils::InternedId>>> {
+  // A "Copy" value is never dropped.
+  const auto ref = target.InferTypeRef(&sm, meta).WithoutConvention();
+  if (not ref.IsMoveOnly()) { return Nullopt; }
+
+  // An abstract type ("Self" in a default method: "self@ = source.clone()" in "Clone::clone_from") says nothing about
+  // what is dropped until a class is chosen; each class that inherits the method gets a copy with "Self" pinned, which
+  // is checked here like any other body.
+  auto const *const ref_scope = ref.Symbol->LinkedScope;
+  if (ref_scope != nullptr and not type_members::GetUnimplementedAbstractMethods(*ref_scope).empty()) {
+    return Nullopt;
+  }
+
+  // Through a borrow ("self.a = .." with "&mut self", "x@ = .."), the value written over belongs to whoever is
+  // borrowed from, and nothing can have been taken out of it: it is there, whole.
+  if (sym == nullptr or sym->IsBorrow()) {
+    EnsureDropInstantiated(ref, sm, meta);
+    return Vec<Vec<spp::utils::InternedId>>();
+  }
+
+  // Of a value this scope owns, only a part still standing is dropped, less what was taken out of it.
+  auto const &state = memory_state::StateOf(*sm.CurrentScope, *sym);
+  if (sym->Kind != scopes::VariableKind::Local or state.AstInitialization == nullptr) { return Nullopt; }
+  if (state.MaybeInit.has_value() or not state.MaybePartialMoves.empty()) { return Nullopt; }
+  const auto place = regions::PlaceOf(target, *sm.CurrentScope);
+  if (not place.has_value()) { return Nullopt; }
+  if (regions::RegionConsumed(*place, ref, *sm.CurrentScope, state.PartialMoves)) { return Nullopt; }
+  auto moved = MovedPathsUnder(state.PartialMoves, place->Steps);
+  if (moved.has_value()) { EnsureDropInstantiated(ref, sm, meta); }
+  return moved;
+}
+
+auto spp::analyse::utils::drop_utils::IsTemporary(
+  ExpressionAst &expr, ScopeManager &sm,
+  CompilerMetaData *meta) -> bool {
+  // A value naming a place belongs to that place; a borrow
+  // belongs to whatever it borrows; a value made at compile
+  // time never exists at run time.
+  // A call is never a place for this: "PlaceOf" derives a method call on a place from its receiver ("v.clone()" is
+  // "v", one opaque step in), which is what a borrow the call hands back is reached through. An owned result is a
+  // new value all the same, and only the borrow test below lets the call's result go.
+  if (meta != nullptr and meta->InCompTimeValue) { return false; }
+  const auto is_call = asts::IsFuncCall(&expr);
+  if (not is_call and regions::PlaceOf(expr, *sm.CurrentScope).has_value()) { return false; }
+  const auto ref = expr.InferTypeRef(&sm, meta);
+  if (not ref.IsMoveOnly()) { return false; }
+
+  // Dropped where nothing written calls its "drop", so it is instantiated here.
+  EnsureDropInstantiated(ref, sm, meta);
+  return true;
+}
+
+auto spp::analyse::utils::drop_utils::MovedPathsUnder(
+  Vec<regions::PlaceAt> const &moves, Vec<regions::PlaceStep> const &prefix)
+  -> Opt<Vec<Vec<spp::utils::InternedId>>> {
+  auto moved = Vec<Vec<spp::utils::InternedId>>();
+  for (auto const &move : moves) {
+    auto const &steps = move.Of->Steps;
+    if (steps.size() <= prefix.size() and not prefix.empty()) { continue; }
+    if (not std::equal(prefix.begin(), prefix.end(), steps.begin())) { continue; }
+    auto &path = moved.emplace_back();
+    for (auto i = prefix.size(); i < steps.size(); ++i) {
+      if (steps[i].Opaque) { return Nullopt; }
+      path.emplace_back(steps[i].Name);
+    }
+  }
+  return moved;
+}
+
+auto spp::analyse::utils::drop_utils::IsSelfInItsOwnDrop(
+  VariableSymbol const &sym, TypeRef const &ref, ScopeManager &sm, CompilerMetaData *meta) -> bool {
+  if (meta == nullptr or meta->EnclosingFnScope == nullptr or sym.Name->Val != "self" or ref.Symbol == nullptr) {
+    return false;
+  }
+  auto const *const fn = asts::AstAs<FunctionPrototypeAst>(meta->EnclosingFnScope->AstNode);
+  return fn != nullptr and fn->Name->Val == "drop" and FindDropOverload(*ref.Symbol, sm, meta) != nullptr;
 }
