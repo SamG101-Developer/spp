@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.loop_control_flow_statement_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast_kind;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
@@ -58,11 +59,26 @@ SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+  /// See "_DropsAfterExit" (an "exit"'s, set by its loop's join).
+  auto SetDropsAtJoin(Vec<analyse::utils::drop_utils::OwnedValue> drops) -> void;
+
 private:
   /// Whether the exited value is "!", found when it is analysed.
   /// Kept rather than asked for again during code generation,
   /// where a re-inference was intermittently crashing.
   bool _ExprIsNever = false;
+
+  /// What each scope the jump leaves still owns there, innermost
+  /// first ("drop_utils::OwnedUpToLoop").
+  analyse::utils::drop_utils::OwnedScopes _OwnedAtExit;
+
+  /// Dropped once the scopes are left ("_OwnedAtExit"): for an
+  /// "exit", what its path holds of values around the loop it leaves
+  /// that another path out does not (the loop's join,
+  /// "SetDropsAtJoin"); for a "skip", what the iteration it ends
+  /// still holds in the loop's own scope (its condition's "is"
+  /// bindings and temporaries).
+  Vec<analyse::utils::drop_utils::OwnedValue> _DropsAfterExit;
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 };

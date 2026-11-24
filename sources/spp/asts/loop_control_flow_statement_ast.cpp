@@ -9,8 +9,8 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
@@ -25,7 +25,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coerce;
-import spp.codegen.llvm_defer;
+import spp.codegen.llvm_drop;
 import spp.lex.tokens;
 import genex;
 import llvm;
@@ -65,6 +65,8 @@ auto spp::asts::LoopControlFlowStatementAst::Clone() const -> Unique<Ast> {
     AstClone(TokSkip),
     AstClone(Expr));
   p->_ExprIsNever = _ExprIsNever;
+  p->_OwnedAtExit = _OwnedAtExit;
+  p->_DropsAfterExit = _DropsAfterExit;
   return p;
 }
 
@@ -126,6 +128,8 @@ auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
 
 auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // An "exit"'s are set by its loop's join, after this.
+  _DropsAfterExit.clear();
   //
   IMPORT_UTILS;
   auto &loops = memory_state::FlowOf(*sm->CurrentScope)->Loops;
@@ -141,9 +145,7 @@ auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
     for (auto scope = sm->CurrentScope; scope != nullptr; scope = scope->Parent) {
       const auto is_loop = AstAs<LoopConditionalExpressionAst>(scope->AstNode) != nullptr;
       if (is_loop and ++loops_seen == n) { break; }
-      for (const auto sym : scope->GetAllVarSymbols(true)) {
-        memory_state::ReleaseLoans(memory_state::LoansOf(*scope), *sym);
-      }
+      drop_utils::ReleaseOwnedLoans(*scope);
     }
     auto state = memory_state::SnapshotFlow(*sm->CurrentScope);
     memory_state::RestoreSnapshot(saved);
@@ -175,6 +177,7 @@ auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
   if (TokSkip == nullptr and not TokSeqExit.empty() and TokSeqExit.size() <= loops.size()) {
     loops[loops.size() - TokSeqExit.size()].ExitStates.emplace_back(
       TokSeqExit.back().get(), state_leaving_to(TokSeqExit.size()));
+    loops[loops.size() - TokSeqExit.size()].ExitStmts.emplace_back(this);
   }
 
   // Like a "ret", this leaves several scopes at once, so their
@@ -183,9 +186,8 @@ auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
   const auto exit_point = TokSeqExit.empty()
     ? static_cast<Ast const*>(TokSkip.get())
     : static_cast<Ast const*>(TokSeqExit.back().get());
-  linear_utils::CheckLiveUpToLoop(
-    *exit_point, TokSeqExit.empty() ? "Loop skip" : "Loop exit",
-    TokSeqExit.size(), TokSkip != nullptr, *sm, meta);
+  _OwnedAtExit = drop_utils::OwnedUpToLoop(
+    *exit_point, TokSeqExit.size(), TokSkip != nullptr, *sm, meta, _DropsAfterExit);
 }
 
 auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
@@ -223,8 +225,11 @@ auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
   // loop's own scope, and an "exit" leaves it too. This happens
   // before the phi edge is recorded, so the incoming block is
   // whatever it left the builder inserting into.
+  codegen::EmitTemporaryDrops(target.TemporaryDepth, sm, meta, ctx);
   codegen::EmitScopeExit(
-      has_skip ? target.LoopScope : target.LoopScope->Parent, sm, meta, ctx);
+      has_skip ? target.LoopScope : target.LoopScope->Parent, sm, meta, ctx, _OwnedAtExit);
+
+  codegen::EmitOuterDrops(_DropsAfterExit, *this, sm, meta, ctx);
 
   // A "skip" starts the next iteration at the condition check.
   // It never has a value, so no phi node is involved.
@@ -271,6 +276,11 @@ auto spp::asts::LoopControlFlowStatementAst::InferTypeRef(
   return Expr != nullptr
     ? Expr->InferTypeRef(sm, meta)
     : TypeRef::Of(*VOID, *sm->CurrentScope);
+}
+
+auto spp::asts::LoopControlFlowStatementAst::SetDropsAtJoin(
+  Vec<analyse::utils::drop_utils::OwnedValue> drops) -> void {
+  _DropsAfterExit = std::move(drops);
 }
 
 SPP_MOD_END
