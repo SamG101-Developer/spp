@@ -268,3 +268,27 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     ret t.0
   }
 )");
+
+// The left side's type is spelled in the error: a call's is a fresh one, held until the error is built ("ERR_ARGS").
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstPostfixExpressionOperatorRuntimeMemberAccessAst,
+  test_invalid_index_into_a_call_result_that_is_no_tuple,
+  SppMemberAccessNonIndexableError, R"(
+  fun mk() -> S32 { ret 1 }
+
+  fun f() -> Void {
+    let x = mk().0
+  }
+)");
+
+// A namespace may name only the left of a member access itself, not something inside it.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstPostfixExpressionOperatorRuntimeMemberAccessAst,
+  test_invalid_namespace_as_an_argument_inside_a_member_access,
+  SppIdentifierUnknownError, R"(
+  fun foo(x: S32) -> S32 { ret x }
+
+  fun f() -> Void {
+    let y = foo(std).x
+  }
+)");

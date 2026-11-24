@@ -45,3 +45,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     let b = std::intrinsics::bit_cast[U8](e)
   }
 )");
+
+// "transmute" reinterprets bytes with no size check a program could see, so only std calls it ("!package").
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestBitCast,
+  test_invalid_transmute_called_from_outside_std,
+  SppAccessViolationError, R"(
+  fun f() -> Void {
+    let x = std::mem::ops::transmute[B=U32](1_s32)
+  }
+)");

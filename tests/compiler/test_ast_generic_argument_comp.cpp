@@ -626,3 +626,15 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     let x: A[[1_u64, 2_u64]] = A[[2_u64, 1_u64]]()
   }
 )");
+
+// A repeated array too long to write out as a key is keyed by its spelling: an error, not an abort.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestGenericArgumentComp,
+  test_invalid_repeated_array_argument_too_long_to_expand,
+  SppTypeMismatchError, R"(
+  cls A[cmp n: [U8; 3_uz]] { }
+
+  fun f() -> Void {
+    let a = A[[0_u8; 18446744073709551615_uz]]()
+  }
+)");

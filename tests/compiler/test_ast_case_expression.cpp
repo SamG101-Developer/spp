@@ -1284,3 +1284,20 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     ret case c { Some(val=1_s32) } else { None }
   }
 )");
+
+// A guard moving part of a binding takes a part of the subject, as moving the whole binding would.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_move_of_part_of_a_binding_in_pattern_guard,
+  SppPatternGuardMovesValueError, R"(
+  cls GuardInner { !public s: Str }
+
+  fun take(s: Str) -> Bool { ret false }
+
+  fun f(o: Opt[GuardInner]) -> Void {
+    case o of {
+      is Some(val as v) and take(v.s) { }
+      else { }
+    }
+  }
+)");

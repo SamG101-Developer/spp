@@ -140,3 +140,17 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
   }
 )");
+
+// The right operand of "and" runs on one path only: a value it moves is held on the short-circuit path.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstMemoryTerminatingBranches,
+  test_invalid_use_after_a_move_in_the_right_operand_of_and,
+  SppInconsistentlyInitializedMemoryUseError, R"(
+  fun take(x: Str) -> Bool { ret true }
+
+  fun f(flag: Bool) -> Void {
+    let x = Str::from("x")
+    let b = flag and take(x)
+    let y = x
+  }
+)");

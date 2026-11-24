@@ -180,3 +180,49 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     ret case o is Some[S32](val) and val > 1 { val } else { 0 }
   }
 )");
+
+// An "is" binding is a view of the part of its subject it names: the subject keeps owning it, and after the statement
+// the names it shadowed (a parameter, the subject itself) are put back.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  IsExpressionAst,
+  test_valid_is_binding_names_are_put_back_after_the_statement, R"(
+  fun look(o: &Opt[Str]) -> Void { }
+
+  fun f(o: Opt[Str], s: Str) -> Void {
+    let b = o is Some(val as s)
+    look(&o)
+    let t = s
+  }
+)");
+
+// Moving a binding moves that part of the subject, on the path where the binding was matched.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  IsExpressionAst,
+  test_invalid_use_of_the_subject_after_moving_its_binding,
+  SppInconsistentlyInitializedMemoryUseError, R"(
+  fun take(x: Str) -> Bool { ret true }
+
+  fun look(o: &Opt[Str]) -> Void { }
+
+  fun f(o: Opt[Str]) -> Void {
+    let b = o is Some(val as y) and take(y)
+    look(&o)
+  }
+)");
+
+// Through a struct pattern, only the field bound is moved: the rest stays the subject's.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  IsExpressionAst,
+  test_valid_moving_a_binding_moves_only_its_field, R"(
+  cls IsPair {
+    !public a: Str
+    !public b: Str
+  }
+
+  fun take(x: Str) -> Bool { ret true }
+
+  fun f(p: IsPair) -> Void {
+    let c = p is IsPair(a as y, ..) and take(y)
+    let b = p.b
+  }
+)");

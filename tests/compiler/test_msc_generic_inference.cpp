@@ -895,3 +895,16 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     let f = Vec::from
   }
 )");
+
+// Inside a generic body the receiver may name the body's own generic ("Vec[U]"): only the block's are to be solved.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_StaticCall,
+  test_valid_receiver_inferred_inside_a_generic_body, R"(
+  fun f[U: Copy](x: U) -> Void {
+    let v = Vec::from(&[x])
+  }
+
+  fun g() -> Void {
+    f(1_s32)
+  }
+)");
