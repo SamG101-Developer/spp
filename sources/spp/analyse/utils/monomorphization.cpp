@@ -140,7 +140,7 @@ namespace spp::analyse::utils::monomorphization {
    * - A variadic parameter declares one element but binds the tuple the call collected its trailing arguments into.
    * - A parameter bound to a callable keeps the interface its generic's constraint promised ("IndirectFnType"): a
    *   "FunMut" satisfies "FunMov" while also being callable through a borrow, so reading the substituted type would
-   *   make this body consume the value here and borrow it in the next instantiation, which linear ownership cannot
+   *   make this body consume the value here and borrow it in the next instantiation, which ownership checking cannot
    *   account for. The constraint lives on the template's generic parameter, which nothing in the instantiation
    *   refers to any more.
    * A destructuring parameter binds each name to a part of its type, which its scope read already, so is left.
