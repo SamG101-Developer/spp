@@ -76,8 +76,8 @@ auto spp::asts::FunctionCallArgumentAst::Stage7_AnalyseSemantics(
   const auto _target_guard = WithoutCallersTarget(meta);
   const auto pos = To<FunctionCallArgumentPositionalAst>();
   const auto spreads = pos != nullptr and pos->TokUnpack != nullptr;
-  const auto _pack_guard = AllowPackWholeGuard(
-    meta, (spreads or meta->AllowPackWhole) and Val->To<IdentifierAst>() != nullptr);
+  const auto _pack_guard = spp::utils::functions::ScopedAssign(
+    meta->AllowPackWhole, (spreads or meta->AllowPackWhole) and Val->To<IdentifierAst>() != nullptr);
   Val->Stage7_AnalyseSemantics(sm, meta);
   common_errors::RequirePrimary(*Val, *sm);
 }
