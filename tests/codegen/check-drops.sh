@@ -529,6 +529,50 @@ fun short_circuit(flag: Bool, n: U64) -> Void {
     std::console::println("after and")
 }
 
+fun nothing() -> Void { }
+
+fun guard_temporary(o: Opt[U64]) -> Void {
+    case o of {
+        is Some(val) and holds(&Noisy(n=val)) { std::console::println("matched") }
+        else { std::console::println("else") }
+    }
+}
+
+fun closure_temporary() -> Void {
+    let f = |x: U64| holds(&Noisy(n=x))
+    let b = f(520_u64)
+    std::console::println("after call")
+}
+
+fun call_mov[F: FunMov[(), Void]](f: F) -> Void {
+    f()
+    std::console::println("after call")
+}
+
+fun closure_captures() -> Void {
+    let x = Noisy(n=530_u64)
+    call_mov(|caps x| -> Void { std::console::println("in closure") })
+    let y = Noisy(n=531_u64)
+    let g = |caps y| -> Void { std::console::println("in local closure") }
+    g()
+    std::console::println("after local call")
+}
+
+fun void_tuple() -> Void {
+    let t = (nothing(), Noisy(n=540_u64))
+    std::console::println("built")
+}
+
+fun loop_trailing_place() -> Void {
+    let mut i = 0_u64
+    loop i < 2_u64 {
+        let s = Noisy(n=550_u64 + i)
+        i += 1_u64
+        s
+    }
+    std::console::println("after loop")
+}
+
 fun reassign_partial() -> Void {
     let mut p = Pair2(a=Noisy(n=480_u64), b=Noisy(n=481_u64))
     let a = p.a
@@ -628,6 +672,18 @@ fun main() -> Void {
     short_circuit(false, 471_u64)
     std::console::println("reassign a partly moved value")
     reassign_partial()
+    std::console::println("guard temporary, guard runs")
+    guard_temporary(Some(val=510_u64))
+    std::console::println("guard temporary, no match")
+    guard_temporary(None)
+    std::console::println("closure temporary")
+    closure_temporary()
+    std::console::println("closure captures")
+    closure_captures()
+    std::console::println("tuple holding a void")
+    void_tuple()
+    std::console::println("loop body ending on a place")
+    loop_trailing_place()
     std::console::println("loop exit")
     loop_exit()
     std::console::println("loop condition ends")
@@ -712,6 +768,28 @@ reassigned
 dropped 480
 dropped 483
 dropped 482
+guard temporary, guard runs
+dropped 510
+matched
+guard temporary, no match
+else
+closure temporary
+dropped 520
+after call
+closure captures
+in closure
+dropped 530
+after call
+in local closure
+dropped 531
+after local call
+tuple holding a void
+built
+dropped 540
+loop body ending on a place
+dropped 550
+dropped 551
+after loop
 loop exit
 dropped 390
 after loop

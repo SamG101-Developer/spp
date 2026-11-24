@@ -50,9 +50,16 @@ std_vcs() {
         fi
         # Master stays checked out, so each build's pull of it is a no-op; the
         # local tree's difference from it rides on top, uncommitted.
+        # A failed apply removes the checkout, so every later project fails
+        # too rather than building against plain master ("exit" only leaves
+        # the "$(std_vcs)" subshell).
         if [[ -n "${STD_DIR}" ]]; then
             git -C "${STD_DIR}" diff "$(git -C "${WORK}/vcs/std" rev-parse HEAD)" \
-                | git -C "${WORK}/vcs/std" apply - >&2 || { echo "STD_DIR: the diff did not apply" >&2; exit 1; }
+                | git -C "${WORK}/vcs/std" apply --allow-empty - >&2 || {
+                echo "STD_DIR: the diff did not apply" >&2
+                rm -rf "${WORK}/vcs/std"
+                exit 1
+            }
         fi
     fi
     echo "${WORK}/vcs"
