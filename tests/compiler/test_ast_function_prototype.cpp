@@ -165,7 +165,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionPrototypeAst,
     test_valid_one_parameter, R"(
     fun f[T](a: T) -> Void {
-        std::mem::ops::drop(a)
     }
 )");
 

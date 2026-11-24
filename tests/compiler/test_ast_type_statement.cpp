@@ -43,7 +43,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type MyBool = Bool
 
     fun f(a: MyString, b: MyBool) -> Void {
-        std::mem::ops::drop(a)
     }
     fun g() -> Void { f(Str::from("hello"), true) }
 )");
@@ -57,7 +56,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
         let x: (MyString, MyBool)
         x = (Str::from("hello"), true)
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -66,7 +64,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_type_statement_variant, R"(
     type SomeType = Str or Bool
     fun f(a: SomeType) -> Void {
-        std::mem::ops::drop(a)
     }
     fun g() -> Void { f(Str::from("hello")) }
 )");
@@ -92,8 +89,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f[T](mut a: MyVec[T], replacement: T) -> Void {
         # let mut x = a.take_head()
         # x = replacement
-        std::mem::ops::drop(replacement)
-        std::mem::ops::drop(a)
     }
 
     fun g() -> Void {
@@ -108,7 +103,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         type MyVec[T] = Vec[T]
         let x = MyVec[Str]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -116,7 +110,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestTypeStatementAst,
   test_valid_type_statement_nested_generic_alias, R"(
-    fun f[T](a: Opt[T]) -> Void { std::mem::ops::drop(a) }
+    fun f[T](a: Opt[T]) -> Void { }
     fun g() -> Void {
         let x = Some(val=123)
         f(x)
@@ -129,7 +123,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type MyVec[T] = Vec[T]
 
     fun f[T](a: MyVec[T]) -> Void {
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -139,7 +132,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type HeapArr[T, cmp n: USize] = Single[Arr[T, n]]
 
     fun f(a: HeapArr[Bool, 4_uz]) -> Void {
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -149,7 +141,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type CopyBox[T: Copy] = Single[T]
 
     fun f(a: CopyBox[Bool]) -> Void {
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -216,7 +207,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type MyString = Str
 
     fun f(a: MyString) -> Void {
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -265,7 +255,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let b: Id[Bool] = true
         let v: Id[Vec[S32]] = Vec[S32]::new()
-        std::mem::ops::drop(v)
     }
 )");
 

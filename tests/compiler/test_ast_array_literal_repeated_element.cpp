@@ -104,10 +104,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = [false; case true { 2_uz } else { 3_uz }]
         case true {
             let q = p
-            drop(q)
         }
         else {
-            drop(p)
         }
     }
 )");

@@ -27,7 +27,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Direct,
   test_valid_infer_same_param_consistent, R"(
     fun f[T](a: T, b: T) -> T {
-        std::mem::ops::drop(b)
         ret a
     }
 
@@ -45,7 +44,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Nested,
   test_valid_infer_from_nested_generic_type, R"(
     fun f[T](a: Vec[T]) -> T {
-        std::mem::ops::drop(a)
         ret T()
     }
 
@@ -104,7 +102,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Optional,
   test_valid_infer_optional_default_applied, R"(
     fun f[T, U = Bool](a: T) -> U {
-        std::mem::ops::drop(a)
         ret U()
     }
 
@@ -118,7 +115,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Optional,
   test_valid_infer_optional_default_override, R"(
     fun f[T, U = Bool](a: T) -> U {
-        std::mem::ops::drop(a)
         ret U()
     }
 
@@ -126,7 +122,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = f[U=Str](123)
         std::mem::ops::drop(x)
         x = Str::from("hello")
-        drop(x)
     }
 )");
 
@@ -134,7 +129,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Mixed,
   test_valid_infer_mixed_explicit_and_inferred, R"(
     fun f[T, U](a: U) -> Void {
-        std::mem::ops::drop(a)
     }
 
     fun g() -> Void {
@@ -151,7 +145,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x = Box(val=123)
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -279,7 +272,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_MultiNested,
   test_valid_infer_deeply_nested_generic, R"(
     fun f[T](a: Vec[Vec[T]]) -> T {
-        std::mem::ops::drop(a)
         ret T()
     }
 
@@ -293,7 +285,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_MultiNested,
   test_valid_infer_nested_generic_inside_tuple, R"(
     fun f[T, U](a: (Vec[T], U)) -> (T, U) {
-        std::mem::ops::drop(a)
         ret (T(), U())
     }
 
@@ -308,7 +299,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_MultiNested,
   test_valid_infer_same_param_across_different_nesting_depths, R"(
     fun f[T](a: T, b: Vec[T]) -> T {
-        std::mem::ops::drop(b)
         ret a
     }
 
@@ -327,7 +317,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup Concrete ext Other[MyUType] { }
 
     fun f[U, T: Other[U]](x: T) -> U {
-        std::mem::ops::drop(x)
         ret U()
     }
 
@@ -335,7 +324,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = f(Concrete())
         std::mem::ops::drop(x)
         x = MyUType()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -343,7 +331,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Constraint,
   test_valid_infer_generic_from_constraint_functional, R"(
     fun f[U, F: FunRef[(), U]](f: F) -> U {
-        std::mem::ops::drop(f)
         ret U()
     }
 
@@ -364,7 +351,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = Container[S32]()
         std::mem::ops::drop(x.a)
         x.a = Vec[S32]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -372,7 +358,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_CrossApplication,
   test_valid_cross_application_in_function_inference, R"(
     fun f[T, U = Vec[T]](a: T) -> U {
-        std::mem::ops::drop(a)
         ret U()
     }
 
@@ -380,7 +365,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = f(123)
         std::mem::ops::drop(x)
         x = Vec[S32]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -404,7 +388,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Variant,
   test_valid_infer_from_optional_argument, R"(
     fun f[T](a: Opt[T]) -> T {
-        std::mem::ops::drop(a)
         ret T()
     }
 
@@ -433,7 +416,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(v: Vec[S32]) -> Void {
         let mut x = f(&v)
         x = 123
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -451,7 +433,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Variadic,
   test_valid_infer_type_from_variadic_function_parameter, R"(
     fun f[T](..a: T) -> Void {
-        std::mem::ops::drop(..a)
     }
 
     fun g() -> Void {
@@ -491,7 +472,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let d = Derived()
         d.speak_gen[S32]()
-        std::mem::ops::drop(d)
     }
 )");
 
@@ -509,7 +489,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(o: Opt[S32]) -> Void {
         let m = o.map(|x: S32| { x })
-        std::mem::ops::drop(m)
     }
 )");
 
@@ -628,7 +607,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let a = MapBox(v=1)
         let b = a.map(|x: S32| x == 1)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -644,7 +622,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let v = f(1_s32)
         let w: Vec[S32] = v
-        std::mem::ops::drop(w)
     }
 )");
 
@@ -670,7 +647,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls P[..Ts] { }
 
     fun take[..Ts](p: P[Ts]) -> Void {
-        std::mem::ops::drop(p)
     }
 
     fun fwd[..Us](p: P[Us]) -> Void {
@@ -706,7 +682,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls P[..Ts] { }
 
     fun head[F, ..R](p: P[F, R]) -> Void {
-        std::mem::ops::drop(p)
     }
 
     fun g() -> Void {
@@ -749,7 +724,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Variant,
   test_valid_infer_a_variant_pack_parameter, R"(
-    fun strip[..Rest](x: Bool or Rest) -> Void { std::mem::ops::drop(x) }
+    fun strip[..Rest](x: Bool or Rest) -> Void { }
     fun g() -> Void {
         let v: S32 or Bool = 1_s32
         strip(v)
@@ -759,7 +734,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Variant,
   test_valid_infer_a_variant_pack_parameter_of_two, R"(
-    fun strip[..Rest](x: Bool or Rest) -> Void { std::mem::ops::drop(x) }
+    fun strip[..Rest](x: Bool or Rest) -> Void { }
     fun g() -> Void {
         let v: S32 or Bool or Str = true
         strip(v)
@@ -770,7 +745,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Variant,
   test_valid_explicit_variant_pack_argument, R"(
-    fun f[..Rest](x: Bool or Rest) -> Void { std::mem::ops::drop(x) }
+    fun f[..Rest](x: Bool or Rest) -> Void { }
     fun g() -> Void {
         f[S32, Str](true)
         f[S32, Str](5_s32)
@@ -785,7 +760,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun mk[T: std::clone::Clone](v: &View[T]) -> Vec[T] { ret Vec[T]::from(v) }
     fun g() -> Void {
         let v: Vec[S32] = mk(&[1_s32, 2_s32])
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -796,7 +770,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let a = Vec[S32]::from(&[1_s32])
         let b: Vec[S32] = mk(&a)
-        std::mem::ops::drop(a, b)
     }
 )");
 
@@ -818,5 +791,107 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun see[T](v: &View[T]) -> Void { }
     fun g() -> Void {
         see([1_s32, 2_s32])
+    }
+)");
+
+// A static call's receiver written without its arguments ("Vec" in "Vec::from(..)") is inferred from the call's
+// arguments: each block of the class declaring the method is a candidate ("InferTemplateReceiver").
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_StaticCall,
+  test_valid_receiver_inferred_from_the_arguments, R"(
+    fun g() -> Void {
+        loop i in std::range::Range::between(0_uz, 3_uz) { let j: USize = i }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_StaticCall,
+  test_valid_receiver_inferred_through_a_forwarded_argument_with_its_defaults, R"(
+    fun g() -> Void {
+        let v: Vec[S32] = Vec::from(&[1_s32, 2_s32])
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_StaticCall,
+  test_valid_receiver_written_is_unchanged, R"(
+    fun g() -> Void {
+        let v = Vec[S32]::from(&[1_s32, 2_s32])
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_StaticCall,
+  test_valid_arguments_pick_the_block, R"(
+    cls A[T] { }
+    sup A[S32] { !public fun make(x: S32) -> A[S32] { ret A[S32]() } }
+    sup A[Bool] { !public fun make(x: Bool) -> A[Bool] { ret A[Bool]() } }
+    fun g() -> Void {
+        let a: A[Bool] = A::make(true)
+        let b: A[S32] = A::make(1_s32)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_StaticCall,
+  test_valid_method_generics_inferred_beside_the_receiver, R"(
+    cls Box[T] { !public v: T }
+    sup [T] Box[T] { !public fun pair[U](v: T, u: U) -> (Box[T], U) { ret (Box(v=v), u) } }
+    fun g() -> Void {
+        let (b, u) = Box::pair(1_s32, true)
+        let x: Box[S32] = b
+        let y: Bool = u
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_StaticCall,
+  test_valid_receiver_inferred_beside_a_closure_argument, R"(
+    cls Box[T] { !public v: T }
+    sup [T] Box[T] { !public fun mapped[F: FunRef[(T,), T]](v: T, f: F) -> Box[T] { ret Box(v=f(v)) } }
+    fun g() -> Void {
+        let b: Box[S32] = Box::mapped(1_s32, |x: S32| x)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestGenericInference_StaticCall,
+  test_invalid_receiver_ambiguous_over_two_blocks,
+  SppStaticCallReceiverAmbiguousError, R"(
+    cls A[T] { }
+    sup A[S32] { !public fun make(x: S32) -> A[S32] { ret A[S32]() } }
+    sup A[Bool] { !public fun make(x: S32) -> A[Bool] { ret A[Bool]() } }
+    fun g() -> Void {
+        let a = A::make(1_s32)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestGenericInference_StaticCall,
+  test_invalid_receiver_not_inferred_without_arguments,
+  SppGenericParameterNotInferredError, R"(
+    fun g() -> Void {
+        let v = Vec::new()
+    }
+)");
+
+// The block's constraints filter it: "Vec::from" is in "sup [T: Clone] Vec[T]", which no argument here meets.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestGenericInference_StaticCall,
+  test_invalid_receiver_not_inferred_where_the_constraints_fail,
+  SppGenericParameterNotInferredError, R"(
+    cls H { }
+    fun g() -> Void {
+        let a = [H(), H()]
+        let v = Vec::from(&a)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestGenericInference_StaticCall,
+  test_invalid_receiver_of_a_method_value_not_inferred,
+  SppGenericParameterNotInferredError, R"(
+    fun g() -> Void {
+        let f = Vec::from
     }
 )");

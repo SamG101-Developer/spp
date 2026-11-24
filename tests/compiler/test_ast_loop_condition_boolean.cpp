@@ -99,9 +99,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    LoopConditionBooleanAst,
-    test_invalid_value_loop_statement_discarded,
-    SppDiscardedValueError, R"(
+  LoopConditionBooleanAst,
+  test_invalid_value_loop_statement_without_else,
+  SppLoopMissingElseError, R"(
     fun f() -> Void {
         let mut i = 0_u32
         loop i < 10_u32 {

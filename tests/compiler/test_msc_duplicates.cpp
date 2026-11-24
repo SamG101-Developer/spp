@@ -352,7 +352,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let obj = A()
         let x = obj.a
-        std::mem::ops::drop(obj)
     }
 )");
 

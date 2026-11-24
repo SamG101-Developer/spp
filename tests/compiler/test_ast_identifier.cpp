@@ -36,7 +36,45 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         fun f(self) -> Void {
             let x = self
-            std::mem::ops::drop(x)
         }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    IdentifierAst,
+    test_invalid_namespace_as_a_value,
+    SppIdentifierUnknownError, R"(
+    fun f() -> Void {
+        let x = std
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    IdentifierAst,
+    test_invalid_namespace_as_an_object_argument,
+    SppIdentifierUnknownError, R"(
+    cls P { !public std: U32 }
+
+    fun f() -> Void {
+        let p = P(std)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    IdentifierAst,
+    test_invalid_uncaptured_name_matching_a_namespace_in_a_closure,
+    SppIdentifierUnknownError, R"(
+    cls P { !public std: U32 }
+
+    fun f(std: U32) -> Void {
+        let c = || P(std)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    IdentifierAst,
+    test_valid_namespace_as_a_static_member_access_lhs, R"(
+    fun f() -> Void {
+        let v = std::vector::Vec[U8]()
     }
 )");

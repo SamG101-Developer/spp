@@ -66,7 +66,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x: MyType::X
         x = Str::from("hello world")
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -91,7 +90,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x: MyType3::X::Y::Z
         x = Str::from("hello world")
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -163,7 +161,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x: MyType::X
         x = Str::from("hello world")
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -197,7 +194,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let b = Box(v=1)
         let v: Vec[Box[S32]] = b.m()
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -209,7 +205,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         type Mine = Vec[A]
         !public fun m(&self) -> Void {
             let x: Mine = Vec[A]()
-            std::mem::ops::drop(x)
         }
     }
 )");

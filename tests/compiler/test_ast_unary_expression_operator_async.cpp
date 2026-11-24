@@ -74,8 +74,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = A()
         let x = async a.method()
         let s = x.await
-        std::mem::ops::drop(s)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -87,7 +85,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         !public
         fun method(self) -> Str {
-            std::mem::ops::drop(self)
             ret Str::from("hello")
         }
     }
@@ -96,16 +93,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = async a.method()
         std::mem::ops::drop(x)
         x = Fut[Str]()
-        std::mem::ops::drop(x)
     }
 )");
 
-// "&self" borrows the receiver, so the future holds a borrow, and a future holding one cannot be thrown away before
-// it is awaited: writing over it would discard it unconsumed.
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// "&self" borrows the receiver, so the future holds a borrow. Writing over it drops the old future before the write,
+// which waits for its task ("Fut::drop") and so ends the borrow with it.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
-  test_invalid_async_overwriting_a_future_that_borrows_its_receiver,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_async_overwriting_a_future_that_borrows_its_receiver, R"(
     cls A { }
     sup A {
         !public
@@ -115,7 +110,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let a = A()
         let mut x = async a.method()
         x = Fut[Str]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -127,7 +121,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = async f()
         std::mem::ops::drop(x)
         x = Fut[Str]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -139,7 +132,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = async f("hello")
         std::mem::ops::drop(x)
         x = Fut[Void]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -151,7 +143,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let x = 5
         let f = async take(ident(x))
-        std::mem::ops::drop(f)
     }
 )");
 
@@ -163,8 +154,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = Str::from("hello")
         let future = async f(&x)
         let s = future.await
-        std::mem::ops::drop(s)
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -187,8 +176,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let x = Str::from("hello")
         let future = async f(&x)
-        std::mem::ops::drop(future)
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -224,7 +211,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let h = Holder(s=Str::from("hello"))
         let f = async take(&h.s)
         f.await
-        std::mem::ops::drop(h)
     }
 )");
 
@@ -241,7 +227,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut h = Holder(s=Str::from("hello"))
         let f = async take(&mut h.s)
         f.await
-        std::mem::ops::drop(h)
     }
 )");
 
@@ -261,7 +246,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let h = Holder(a=Str::from("a"), b=Str::from("b"))
         let f = async take(&h.a, &h.b)
         f.await
-        std::mem::ops::drop(h)
     }
 )");
 
@@ -281,7 +265,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut h = Holder(a=Str::from("a"), b=Str::from("b"))
         let f = async take(&h.a, &mut h.b)
         f.await
-        std::mem::ops::drop(h)
     }
 )");
 
@@ -322,7 +305,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let h = Holder(s=Str::from("hello"))
         let f = async h.read()
         f.await
-        std::mem::ops::drop(h)
     }
 )");
 
@@ -348,7 +330,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut o = Outer(inner=Holder(s=Str::from("hello")))
         let f = async o.inner.write()
         f.await
-        std::mem::ops::drop(o)
     }
 )");
 
@@ -369,7 +350,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let h = Holder(s=Str::from("hello"))
         let f = async h.read(&h.s)
         f.await
-        std::mem::ops::drop(h)
     }
 )");
 
@@ -384,7 +364,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup Holder {
         !public
         fun consume(self) -> Void {
-            std::mem::ops::drop(self)
         }
     }
 
@@ -507,7 +486,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let f: Fut[Gen[S32]] = async c()
         let coro: Gen[S32] = f.await
-        std::mem::ops::drop(coro)
     }
 )");
 
@@ -519,7 +497,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let s = Str::from("hello")
         let f = async c(1, s)
         let r: Str = f.await
-        std::mem::ops::drop(r)
     }
 )");
 
@@ -556,7 +533,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let f = async c(&x)
         let b = f.await
         let y = x
-        std::mem::ops::drop(y)
     }
 )");
 
@@ -572,7 +548,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = A()
         let f = async a.items()
         let v: S32 = f.await
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -628,7 +603,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun h() -> Str { ret Str::from("x") }
     fun g() -> Void {
         let s = (async h()).await
-        std::mem::ops::drop(s)
     }
 )");
 
@@ -638,7 +612,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun h() -> Str { ret Str::from("x") }
     fun g() -> Void {
         let s = { async h() }.await
-        std::mem::ops::drop(s)
     }
 )");
 
@@ -669,7 +642,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun pick() -> FunRef[(S32,), S32] { ret inc }
     fun g() -> Void {
         let f = async (pick())(1)
-        std::mem::ops::drop(f)
     }
 )");
 
@@ -682,9 +654,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let y = Str::from("world")
         let future = async f(&x, &y)
         let s = future.await
-        std::mem::ops::drop(s)
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(y)
     }
 )");
 
@@ -695,7 +664,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         !public
         fun consume(self) -> Str {
-            std::mem::ops::drop(self)
             ret Str::from("hello")
         }
     }
@@ -703,7 +671,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let future = async make().consume()
         let s = future.await
-        std::mem::ops::drop(s)
     }
 )");
 
@@ -714,7 +681,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         !public
         fun consume(self) -> Str {
-            std::mem::ops::drop(self)
             ret Str::from("hello")
         }
     }
@@ -723,7 +689,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let b = B(a=A())
         let future = async b.a.consume()
         let s = future.await
-        std::mem::ops::drop(s)
     }
 )");
 

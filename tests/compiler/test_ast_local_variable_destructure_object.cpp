@@ -293,8 +293,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(c: Bool) -> Void {
         let s = Str::from("a")
         let Pair(a, b) = case c { Pair(a=s, b=Str::from("b")) } else { Pair(a=s, b=Str::from("d")) }
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -330,8 +328,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let Pair(a, b) = g()
         let done = false
         loop done { }
-        std::mem::ops::drop(b)
-        std::mem::ops::drop(a)
     }
 )");
 

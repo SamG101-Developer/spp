@@ -178,7 +178,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             let mut elem2 = vec.index_ref(1_uz)
             elem2 = elem1
         }
-        std::mem::ops::drop(vec)
     }
 )");
 
@@ -197,7 +196,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun h() -> Void {
         let mut c = f()
         let v = c.res()
-        std::mem::ops::drop(c)
     }
 )");
 

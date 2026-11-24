@@ -59,7 +59,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = 7
         let g = |caps a| -> Void { }
-        std::mem::ops::drop(g)
     }
 )");
 
@@ -67,7 +66,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureCaptures,
   test_valid_drop_a_captured_closure_through_a_generic_parameter, R"(
     fun consume[F: std::function::FunMov[(), Void]](f: F) -> Void {
-        std::mem::ops::drop(f)
     }
 
     fun f() -> Void {
@@ -216,7 +214,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = Noisy(n=1)
         let b = Noisy(n=2)
         let c = |y: S32 caps a, b| y
-        std::mem::ops::drop(c)
     }
 )");
 
@@ -235,7 +232,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun take(x: Noisy) -> S32 {
         let n = x.n
-        std::mem::ops::drop(x)
         ret n
     }
 

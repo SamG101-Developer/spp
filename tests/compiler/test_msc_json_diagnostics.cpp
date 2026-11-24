@@ -304,20 +304,26 @@ fun second(h: &Holder) -> Void { }
 TEST(MscJsonDiagnostics, test_recovery_continues_past_an_error_raised_leaving_a_member) {
   const auto recovering = RecoveringCompile();
 
-  // The value is found unconsumed at the "ret", after the walk has entered the case's branches - the member's last
-  // scopes - and come back out. Skipping past the member from there used to run the walk off the end, so the next
-  // member's scopes were never walked (and the compile could crash).
+  // A value whose own "drop" lost a part is found at the "ret" (E106), after the walk has entered the case's
+  // branches - the member's last scopes - and come back out. Skipping past the member from there used to run the walk
+  // off the end, so the next member's scopes were never walked (and the compile could crash).
   build_temp_project(R"(
-cls Handle { }
+cls Handle { !public a: Str }
 
-fun first(flag: Bool) -> Res[Handle, Bool] {
-    let h = Handle()
-    ret case flag { Pass(val=h) } else { Fail(err=false) }
+sup Handle ext std::ops::drop::Drop {
+    fun drop(self) -> Void { }
 }
 
-fun second(flag: Bool) -> Res[Handle, Bool] {
-    let h = Handle()
-    ret case flag { Pass(val=h) } else { Fail(err=false) }
+fun first(flag: Bool) -> Res[Bool, Bool] {
+    let h = Handle(a=Str::from("a"))
+    let a = h.a
+    ret case flag { Pass(val=true) } else { Fail(err=false) }
+}
+
+fun second(flag: Bool) -> Res[Bool, Bool] {
+    let h = Handle(a=Str::from("a"))
+    let a = h.a
+    ret case flag { Pass(val=true) } else { Fail(err=false) }
 }
 )");
 
@@ -331,8 +337,8 @@ fun second(flag: Bool) -> Res[Handle, Bool] {
 
   found |= genex::actions::sort;
   ASSERT_EQ(found.size(), 2u);
-  EXPECT_EQ(found[0].first, "E94");
-  EXPECT_EQ(found[1].first, "E94");
+  EXPECT_EQ(found[0].first, "E106");
+  EXPECT_EQ(found[1].first, "E106");
   EXPECT_LT(found[0].second, found[1].second);
 }
 

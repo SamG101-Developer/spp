@@ -63,8 +63,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestPrelude,
   test_valid_prelude_types_without_an_import, R"(
     fun f(a: Vec[S32], b: Opt[Str], c: Bool) -> Void {
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 )");
 

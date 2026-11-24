@@ -64,7 +64,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or Bool) -> Void {
         std::mem::ops::drop(a)
         a = Str::from("hello")
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -72,7 +71,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_default, R"(
     fun f(a: Str or Bool = Str::from("hello")) -> Void {
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -82,7 +80,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: (Str,)) -> Void {
         std::mem::ops::drop(a)
         a = (Str::from("hello"),)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -92,7 +89,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: (Str, Bool)) -> Void {
         std::mem::ops::drop(a)
         a = (Str::from("hello"), true)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -100,7 +96,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_default, R"(
     fun f(a: (Str, Bool) = (Str::from("hello"), true)) -> Void {
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -146,7 +141,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x: MyType::X
         x = Str::from("hello")
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -170,7 +164,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x: MyTypeA::X::Y
         x = MyTypeC()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -253,7 +246,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x: C::X
         x = Str::from("hello")
-        std::mem::ops::drop(x)
     }
 )");
 

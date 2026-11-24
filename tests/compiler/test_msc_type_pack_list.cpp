@@ -62,7 +62,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = FixedThenPack[S32, Bool, U8](a=1_s32, t=(true, 2_u8))
         let y: Tup[Bool, U8] = x.t
         let z: S32 = x.a
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -99,7 +98,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a: SomeOrBool or Str = 1_s32
         let b: Str or Bool or S32 = a
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -113,7 +111,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x = TailAfterKeyword[A=S32, Bool, U8]()
         let y: TailAfterKeyword[S32, Bool, U8] = x
-        std::mem::ops::drop(y)
     }
 )");
 

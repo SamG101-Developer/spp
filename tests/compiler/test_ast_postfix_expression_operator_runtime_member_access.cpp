@@ -37,7 +37,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorRuntimeMemberAccessAst,
     test_valid_tuple_index, R"(
     fun f(p: (S32, S32)) -> Void {
-        std::mem::ops::drop(p.0)
     }
 )");
 
@@ -47,7 +46,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: (S32, Str)) -> Void {
         let mut x = p.0
         x = 123
-        std::mem::ops::drop(p)
     }
 )");
 
@@ -124,8 +122,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f(p: Point) -> Void {
-        std::mem::ops::drop(p.x)
-        std::mem::ops::drop(p)
     }
 )");
 
@@ -141,7 +137,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = p.x
         std::mem::ops::drop(x)
         x = Str::from("hello world")
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -189,7 +184,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(l: Line) -> Void {
         let mut x = l.start.x
         x = 123
-        std::mem::ops::drop(l)
     }
 )");
 
@@ -202,8 +196,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f(p: std::rc::rc::Rc[Point]) -> Void {
-        std::mem::ops::drop(p.x)
-        std::mem::ops::drop(p)
     }
 )");
 
@@ -248,7 +240,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let p = Point(x=1_u32)
         let a: U32 = p.x
-        drop(p)
     }
 )");
 

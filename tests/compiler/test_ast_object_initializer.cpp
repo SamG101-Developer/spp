@@ -14,7 +14,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_generic_type_valid_usage, R"(
     fun f[T]() -> Void {
         let foo = T()
-        std::mem::ops::drop(foo)
     }
 )");
 
@@ -27,7 +26,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let foo = Foo(a=1)
-        std::mem::ops::drop(foo)
     }
 )");
 
@@ -52,7 +50,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let foo = Bar()
-        std::mem::ops::drop(foo)
     }
 )");
 
@@ -65,7 +62,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f[T: Foo]() -> Void {
         let foo = T(a=1)
-        std::mem::ops::drop(foo)
     }
 )");
 
@@ -82,7 +78,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f[T: Foo]() -> Void {
         let foo = Wrapper[T](inner=T(a=1))
-        std::mem::ops::drop(foo)
     }
 )");
 
@@ -103,7 +98,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let x = g[Foo]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -116,7 +110,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let v = VecAlias()
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -239,7 +232,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let e = make[Empty]()
-        std::mem::ops::drop(e)
     }
 )");
 
@@ -317,6 +309,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let d = D(x=1_s32)
         let e: D[S32] = d
-        std::mem::ops::drop(e)
     }
 )");

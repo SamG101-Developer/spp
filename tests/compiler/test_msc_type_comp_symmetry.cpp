@@ -13,8 +13,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let a: A[1_uz, 1_uz] = f[1_uz]()
         let b: A[2_uz, 1_uz] = f[2_uz]()
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -26,7 +24,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f[cmp ..ns: USize]() -> A[0_uz, ns] { ret A[0_uz, ns]() }
     fun g() -> Void {
         let a: A[0_uz, 1_uz, 2_uz] = f[1_uz, 2_uz]()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -37,7 +34,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f[..Ts]() -> A[S32, Ts] { ret A[S32, Ts]() }
     fun g() -> Void {
         let a: A[S32, Bool, U8] = f[Bool, U8]()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -52,7 +48,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let a = A[true, false]()
         a.f()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -67,7 +62,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let a = A[1_uz, 2_uz, 3_uz]()
         let x = a.f()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -81,7 +75,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let a = A[true]()
         let x = a.f()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -94,7 +87,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let a = A[0_uz, 1_uz, 2_uz]()
         a.m()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -138,7 +130,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let e = E[Bool, true, false]()
         e.f()
-        std::mem::ops::drop(e)
     }
 )");
 
@@ -148,7 +139,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_infer_a_comp_head_from_a_recorded_comp_pack, R"(
     cls A[cmp ..ns: USize] { }
     fun first[cmp f: USize, cmp ..r: USize](a: A[f, r]) -> USize {
-        std::mem::ops::drop(a)
         ret f
     }
     fun g() -> Void { let x = first(A[1_uz, 2_uz, 3_uz]()) }
@@ -162,7 +152,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun h[..Ts]() -> B[Ts] { ret B[Ts]() }
     fun g() -> Void {
         let b: B = h()
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -173,7 +162,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f[cmp ..ns: USize]() -> A[ns] { ret A[ns]() }
     fun g() -> Void {
         let a: A = f()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -185,8 +173,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let a: A = A()
         let b: B = B()
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -206,7 +192,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
     fun g() -> Void {
         let s = Sq()
-        std::mem::ops::drop(s)
     }
 )");
 
@@ -225,7 +210,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
     fun g() -> Void {
         let s = Sq()
-        std::mem::ops::drop(s)
     }
 )");
 

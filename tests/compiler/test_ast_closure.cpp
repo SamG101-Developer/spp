@@ -130,7 +130,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = 5_u32
         let x = |b: U32, c: U32 caps a| a + b + c
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -151,7 +150,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut a = 5_u32
         let x = |mut b: &mut U32 caps &mut a| { b = a }
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -162,7 +160,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = 5_u32
         let x: FunMov[(), U32] = |caps a| 123_u32
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -173,7 +170,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut a = 5_u32
         let x: FunMut[(), U32] = |caps &mut a| 123_u32
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -228,7 +224,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = 5_u32
         let mut b = 6_u32
         let x: FunMut[(), U32] = |caps &a, &mut b| 123_u32
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -251,7 +246,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = "test"
         let x = |caps a| a
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -287,7 +281,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let some_variable = Str::from("hello world")
         let x = |caps &some_variable| 123_u32
         let b = some_variable
-        std::mem::ops::drop(&x)
+        std::hints::black_box(&x)
     }
 )");
 
@@ -313,7 +307,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = 5_u32
         let x = |caps a| { ret a }
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -371,7 +364,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let a = Str::from("x")
         let handle = hold(|caps &a| 123_u32)
         std::mem::ops::drop(a)
-        std::mem::ops::drop(&handle)
+        std::hints::black_box(&handle)
     }
 )");
 
@@ -398,7 +391,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let k = 3_s32
         let s = apply(|caps &k| { ret Str::from("s") })
         let t = s
-        std::mem::ops::drop(t)
     }
 )");
 
@@ -422,7 +414,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = Str::from("x")
         let n = apply(|caps &a| { ret a.len() })
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -431,7 +422,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_closure_returning_a_closure_with_a_declared_function_return_type, R"(
     fun f() -> Void {
         let chooser = || -> std::function::FunMov[(), S32] { ret || -> S32 { ret 5 } }
-        std::mem::ops::drop(chooser)
     }
 )");
 
@@ -440,7 +430,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_closure_returning_a_closure_with_an_inferred_return_type, R"(
     fun f() -> Void {
         let chooser = || { ret || -> S32 { ret 5 } }
-        std::mem::ops::drop(chooser)
     }
 )");
 
@@ -490,8 +479,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = A(n=1)
         let b = a.m()
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -521,48 +508,39 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = A(n=1)
         let b = a.m()
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
-  test_invalid_closure_owning_a_moved_capture_not_consumed,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_closure_owning_a_moved_capture_not_consumed, R"(
     fun f() -> Void {
         let s = Str::from("a")
         let x = |caps s| 1_u32
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
-  test_invalid_closure_parameter_not_consumed_expression_body,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_closure_parameter_not_consumed_expression_body, R"(
     fun f() -> Void {
         let x = |a: Str| 1_u32
-        std::mem::ops::drop(x)
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
-  test_invalid_closure_parameter_not_consumed_braced_body,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_closure_parameter_not_consumed_braced_body, R"(
     fun f() -> Void {
         let x = |a: Str| { 1_u32 }
-        std::mem::ops::drop(x)
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
-  test_invalid_closure_parameter_not_consumed_ret_body,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_closure_parameter_not_consumed_ret_body, R"(
     fun f() -> Void {
         let x = |a: Str| { ret 1_u32 }
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -571,10 +549,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_closure_parameter_consumed_before_ret, R"(
     fun f() -> Void {
         let x = |a: Str| {
-            std::mem::ops::drop(a)
             ret 1_u32
         }
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -584,7 +560,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let s = Str::from("a")
         let x = |caps s| 1_u32
-        std::mem::ops::drop(x)
     }
 )");
 

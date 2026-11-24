@@ -51,9 +51,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         loop b {
             let y = x
             x = Str::from("world")
-            std::mem::ops::drop(y)
         }
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -107,7 +105,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x = Str::from("hello")
         loop true {
-            std::mem::ops::drop(x)
             exit
         }
     }
@@ -120,7 +117,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = Str::from("hello")
         loop true {
             loop true {
-                std::mem::ops::drop(x)
                 exit exit
             }
         }
@@ -167,11 +163,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = Str::from("a")
         loop true {
             case c {
-                std::mem::ops::drop(x)
                 exit
             }
             else {
-                std::mem::ops::drop(x)
                 exit
             }
         }
@@ -185,7 +179,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = Str::from("a")
         loop true {
             case c {
-                std::mem::ops::drop(x)
                 exit
             }
         }
@@ -258,10 +251,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             loop b {
                 skip
             }
-            std::mem::ops::drop(x)
             ret
         }
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -305,7 +296,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         v.append(1)
         loop x in v.iter_mut() { x@ = 2 }
         v.append(3)
-        drop(v)
     }
 )");
 
@@ -388,6 +378,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             x = Str::from("world")
             case c { skip }
         }
-        std::mem::ops::drop(x)
     }
 )");

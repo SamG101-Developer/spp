@@ -14,7 +14,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !virtual_method
         !public
         fun f(&self, a: A) -> Void {
-            std::mem::ops::drop(a)
         }
 
         !virtual_method
@@ -31,7 +30,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         b.f()
         b.f(A())
         b.f(true, 1)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -65,7 +63,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = b.f(1)
         x = 123
         b.f(true, 1)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -83,7 +80,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !virtual_method
         !public
         fun f(&self, a: T) -> Vec[T] {
-            std::mem::ops::drop(a)
             ret Vec[T]()
         }
 
@@ -104,8 +100,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x = Vec[S32]()
         b.f(true, 1)
 
-        std::mem::ops::drop(b)
-        drop(x)
     }
 )");
 
@@ -123,7 +117,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !virtual_method
         !public
         cor c(&self, a: T) -> Gen[&T, Bool] {
-            std::mem::ops::drop(a)
         }
 
         !virtual_method
@@ -140,9 +133,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let mut coroutine = b.c(123)
             let v = coroutine.res(false)
-            std::mem::ops::drop(coroutine)
         }
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -351,7 +342,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun test_fn() -> Void {
         let d = Derived()
         let x = d.f[5]()
-        std::mem::ops::drop(d)
     }
 )");
 

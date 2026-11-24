@@ -155,7 +155,7 @@ TEST(TestErrorMessages, test_type_inferred_off_part_of_an_argument_shown_as_itse
   try {
     build_temp_project(R"(
     cls NotCopy { }
-    fun h[T: std::copy::Copy](a: Vec[T]) -> Void { std::mem::ops::drop(a) }
+    fun h[T: std::copy::Copy](a: Vec[T]) -> Void { }
     fun g() -> Void { h(Vec[NotCopy]::new()) }
 )");
   }

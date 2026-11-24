@@ -31,7 +31,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureArrayAst,
   test_valid_value_only, R"(
     fun f(p: Arr[Str, 2_uz]) -> Void {
-        case p is [x, y] { }
+        case p is [x, y] {
+        }
     }
 )");
 
@@ -43,7 +44,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         # so binding by value would leave "p" owning it with
         # nothing left able to consume it.
         case p is [&x, _] { }
-        std::mem::ops::drop(p)
     }
 )");
 
@@ -52,7 +52,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_value_and_unbound_multi_skip, R"(
     fun f(p: Arr[Str, 2_uz]) -> Void {
         case p is [&x, ..] { }
-        std::mem::ops::drop(p)
     }
 )");
 
@@ -60,7 +59,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureArrayAst,
   test_valid_value_and_bound_multi_skip, R"(
     fun f(p: Arr[Str, 2_uz]) -> Void {
-        case p is [..x] { }
+        case p is [..x] {
+        }
     }
 )");
 
@@ -68,7 +68,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureArrayAst,
   test_valid_value_before_and_after_bound_multi_skip, R"(
     fun f(p: Arr[Str, 5_uz]) -> Void {
-        case p is [a, ..b, c] { }
+        case p is [a, ..b, c] {
+        }
     }
 )");
 
@@ -95,7 +96,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureArrayAst,
   test_valid_nested_array_in_array, R"(
     fun f(p: Arr[Arr[Str, 2_uz], 2_uz]) -> Void {
-        case p is [[a, b], [c, d]] { }
+        case p is [[a, b], [c, d]] {
+        }
     }
 )");
 
@@ -103,7 +105,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureArrayAst,
   test_valid_nested_tuple_in_array, R"(
     fun f(p: Arr[(Str, Str), 2_uz]) -> Void {
-        case p is [(a, b), (c, d)] { }
+        case p is [(a, b), (c, d)] {
+        }
     }
 )");
 
@@ -117,7 +120,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: Arr[Point, 2_uz]) -> Void {
         case p of {
             is [Point(x=10, y), Point(x, y=20)] { }
-            else { std::mem::ops::drop(p) }
+            else { }
         }
     }
 )");

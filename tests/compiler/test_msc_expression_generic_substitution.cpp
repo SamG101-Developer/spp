@@ -4,7 +4,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestExpressionGenericSubstitution,
   test_valid_literal_default_is_carried_through, R"(
     fun f[T](t: T, n: S32 = 5) -> S32 {
-        std::mem::ops::drop(t)
         ret n
     }
 
@@ -23,7 +22,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f[T](w: Wrap[T] = Wrap[T]::new()) -> Void {
-        std::mem::ops::drop(w)
     }
 
     fun g() -> Void {
@@ -53,7 +51,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f[T](w: Wrap[T] = (Wrap[T]::new())) -> Void {
-        std::mem::ops::drop(w)
     }
 
     fun g() -> Void {
@@ -72,7 +69,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f[T](p: (S32, Wrap[T]) = (1, Wrap[T]::new())) -> Void {
         let (n, w) = p
-        std::mem::ops::drop(w)
     }
 
     fun g() -> Void {
@@ -91,8 +87,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f[T](a: Arr[Wrap[T], 2_uz] = [Wrap[T]::new(), Wrap[T]::new()]) -> Void {
         let [p, q] = a
-        std::mem::ops::drop(p)
-        std::mem::ops::drop(q)
     }
 
     fun g() -> Void {
@@ -122,7 +116,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f[T](h: Holder[T] = Holder[T](n=1)) -> Void {
-        std::mem::ops::drop(h)
     }
 
     fun g() -> Void {
@@ -152,7 +145,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f[T](w: Wrap[T] = make[T]()) -> Void {
-        std::mem::ops::drop(w)
     }
 
     fun g() -> Void {
@@ -205,7 +197,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f[T](w: Wrap[T] = Wrap[T]::new()) -> Void {
-        std::mem::ops::drop(w)
     }
 
     fun g() -> Void {
@@ -235,8 +226,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let h = H[3_u8]()
         let x: A[7_u8] = h.m[7_u8]()
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(h)
     }
 )");
 
@@ -253,8 +242,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let h = H[3_u8]()
         let x: A[7_u8] = h.m[7_u8]()
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(h)
     }
 )");
 
@@ -268,7 +255,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x: A[4_u8] = outer[9_u8]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -282,6 +268,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x: A[4_u8] = outer[9_u8]()
-        std::mem::ops::drop(x)
     }
 )");

@@ -1,9 +1,7 @@
 #include "test_macros.hpp"
 
-// Todo: Red until the standard library is migrated to linear ownership - see test_lin_scope_exit.cpp.
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestLinearParameters,
+    TestDropParameters,
     test_valid_move_parameter_returned, R"(
     cls Handle { !public fd: S32 }
 
@@ -13,7 +11,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestLinearParameters,
+    TestDropParameters,
     test_valid_move_parameter_taken_apart, R"(
     cls Handle { !public fd: S32 }
 
@@ -23,7 +21,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestLinearParameters,
+    TestDropParameters,
     test_valid_borrowed_self_not_consumed, R"(
     cls Handle { !public fd: S32 }
 
@@ -34,19 +32,17 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearParameters,
-    test_invalid_move_parameter_not_consumed,
-    SppLinearValueNotConsumedError, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropParameters,
+  test_valid_move_parameter_not_consumed, R"(
     cls Handle { !public fd: S32 }
 
     fun ignore(h: Handle) -> Void { }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearParameters,
-    test_invalid_move_self_not_consumed,
-    SppLinearValueNotConsumedError, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropParameters,
+  test_valid_move_self_not_consumed, R"(
     cls Handle { !public fd: S32 }
 
     sup Handle {
@@ -55,7 +51,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestLinearParameters,
+    TestDropParameters,
     test_valid_move_self_taken_apart, R"(
     cls Handle { !public fd: S32 }
 

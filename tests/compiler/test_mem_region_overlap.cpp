@@ -8,7 +8,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let s = Str::from("x")
         g(&s, &s)
-        std::mem::ops::drop(s)
     }
 )");
 
@@ -16,14 +15,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestMemRegionOverlap,
   test_valid_borrow_and_move_of_distinct_values, R"(
     fun g(a: &mut Str, b: Str) -> Void {
-        std::mem::ops::drop(b)
     }
 
     fun f() -> Void {
         let mut a = Str::from("x")
         let b = Str::from("y")
         g(&mut a, b)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -31,14 +28,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestMemRegionOverlap,
   test_valid_names_sharing_a_spelling_prefix, R"(
     fun g(a: &mut Str, b: Str) -> Void {
-        std::mem::ops::drop(b)
     }
 
     fun f() -> Void {
         let mut s = Str::from("x")
         let second = Str::from("y")
         g(&mut s, second)
-        std::mem::ops::drop(s)
     }
 )");
 
@@ -51,8 +46,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut a = Str::from("x")
         let ab = Str::from("y")
         g(&mut a, &ab)
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(ab)
     }
 )");
 
@@ -69,7 +62,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut p = P(a=Str::from("x"), b=Str::from("y"))
         g(&mut p.a, &p.b)
-        std::mem::ops::drop(p)
     }
 )");
 
@@ -313,6 +305,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut p = P(q=Q(a=1), b=2)
         g(p.q.a_mut(), &p.b)
-        std::mem::ops::drop(p)
     }
 )");

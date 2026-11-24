@@ -169,7 +169,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_recursive_type_through_a_vector, R"(
     cls RecG { !public a: Vec[RecG] }
 
-    fun f(x: RecG) -> Void { std::mem::ops::drop(x) }
+    fun f(x: RecG) -> Void { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(

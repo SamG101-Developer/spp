@@ -1,11 +1,8 @@
 #include "test_macros.hpp"
 
-// Todo: Red until the standard library is migrated to linear ownership - see test_lin_scope_exit.cpp.
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearBranches,
-    test_invalid_value_live_at_return,
-    SppLinearValueNotConsumedError, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropBranches,
+  test_valid_value_live_at_return, R"(
     cls Handle { !public fd: S32 }
 
     fun f() -> Void {
@@ -14,10 +11,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearBranches,
-    test_invalid_value_live_at_return_from_nested_scope,
-    SppLinearValueNotConsumedError, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropBranches,
+  test_valid_value_live_at_return_from_nested_scope, R"(
     cls Handle { !public fd: S32 }
 
     fun f() -> Void {
@@ -29,7 +25,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestLinearBranches,
+    TestDropBranches,
     test_valid_value_consumed_before_return, R"(
     cls Handle { !public fd: S32 }
 
@@ -41,7 +37,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestLinearBranches,
+    TestDropBranches,
     test_valid_value_returned_counts_as_consumed, R"(
     cls Handle { !public fd: S32 }
 
@@ -51,10 +47,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearBranches,
-    test_invalid_value_live_at_loop_exit,
-    SppLinearValueNotConsumedError, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropBranches,
+  test_valid_value_live_at_loop_exit, R"(
     cls Handle { !public fd: S32 }
 
     fun f() -> Void {
@@ -66,10 +61,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearBranches,
-    test_invalid_value_live_at_loop_skip,
-    SppLinearValueNotConsumedError, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropBranches,
+  test_valid_value_live_at_loop_skip, R"(
     cls Handle { !public fd: S32 }
 
     fun f() -> Void {
@@ -82,14 +76,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-// A value consumed on some branches of a "case" and left alone on the others is still owned on those paths, so the
-// scope end has to answer for it. The inconsistency is only reported when the value is used again after the "case";
-// at the scope end "IsLive" reads the first branch's state, so which branch comes first decides the outcome.
+// A value moved on some branches of a "case" and left alone on the others is still owned on those paths, so each
+// path still holding it drops it before the paths meet. The inconsistency is only reported when the value is used
+// again after the "case".
 // FIXED
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearBranches,
-    test_invalid_value_consumed_in_first_branch_only,
-    SppLinearValueNotConsumedError, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropBranches,
+  test_valid_value_consumed_in_first_branch_only, R"(
     cls BrHandleA { }
 
     fun eat(l: BrHandleA) -> Void { let BrHandleA() = l }
@@ -101,10 +94,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 // FIXED
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearBranches,
-    test_invalid_value_consumed_in_two_of_three_branches,
-    SppLinearValueNotConsumedError, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropBranches,
+  test_valid_value_consumed_in_two_of_three_branches, R"(
     cls BrHandleB { }
 
     fun eat(l: BrHandleB) -> Void { let BrHandleB() = l }
@@ -120,10 +112,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 // FIXED
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearBranches,
-    test_invalid_value_consumed_in_case_without_else,
-    SppLinearValueNotConsumedError, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropBranches,
+  test_valid_value_consumed_in_case_without_else, R"(
     cls BrHandleC { }
 
     fun eat(l: BrHandleC) -> Void { let BrHandleC() = l }
@@ -134,10 +125,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearBranches,
-    test_invalid_value_consumed_in_else_branch_only,
-    SppLinearValueNotConsumedError, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropBranches,
+  test_valid_value_consumed_in_else_branch_only, R"(
     cls BrHandleD { }
 
     fun eat(l: BrHandleD) -> Void { let BrHandleD() = l }
@@ -149,7 +139,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestLinearBranches,
+    TestDropBranches,
     test_valid_value_consumed_on_every_branch, R"(
     cls BrHandleE { }
 

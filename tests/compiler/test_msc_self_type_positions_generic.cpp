@@ -81,7 +81,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public fun m(&self) -> Void {
             let v: Vec[Self]
             v = Vec[Self]::new()
-            std::mem::ops::drop(v)
         }
     }
     fun f() -> Void {
@@ -98,7 +97,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup [T: std::copy::Copy] Box[T] {
         !public fun m(&self) -> Void {
             let v: Vec[Self] = Vec[Self]::new()
-            std::mem::ops::drop(v)
         }
     }
     fun f() -> Void {
@@ -113,7 +111,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     !public cls Box[T] { !public v: T }
     sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
     sup [T: std::copy::Copy] Box[T] {
-        !public fun m(&self, v: Vec[Self]) -> Void { std::mem::ops::drop(v) }
+        !public fun m(&self, v: Vec[Self]) -> Void { }
     }
     fun f() -> Void {
         let b = Box(v=1)
@@ -132,7 +130,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let b = Box(v=1)
         let v: Vec[Box[S32]] = b.many()
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -145,7 +142,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
     fun f() -> Void {
         let n = Node(v=1, kids=Vec[Node[S32]]::new())
-        std::mem::ops::drop(n)
     }
 )");
 
@@ -178,7 +174,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let b = Box(v=1)
         let v: Vec[Box[S32]] = b.m()
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -396,7 +391,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let b = Box(v=1)
         let v: Vec[Box[S32]] = b.m()
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -422,7 +416,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     !public cls Box[T] { !public v: T }
     sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
     sup [T: std::copy::Copy] Box[T] {
-        !public fun m(&self, ..rest: Self) -> Void { std::mem::ops::drop(..rest) }
+        !public fun m(&self, ..rest: Self) -> Void { }
     }
     fun f() -> Void {
         let b = Box(v=1)
@@ -485,7 +479,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let b = Box(v=1)
         let v: Vec[Box[S32]] = b.m()
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -659,7 +652,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     !public cls Box[T] { !public v: T }
     sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
     sup [T: std::copy::Copy] Box[T] {
-        !public fun m(&self, ..rest: Self) -> Void { std::mem::ops::drop(..rest) }
+        !public fun m(&self, ..rest: Self) -> Void { }
     }
     fun f() -> Void {
         let b = Box(v=1)

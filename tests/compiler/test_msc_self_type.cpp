@@ -12,7 +12,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let a = A::make()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -29,8 +28,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a2 = A()
         let mut b = a1.eq(&a2)
         b = false
-        std::mem::ops::drop(a2)
-        std::mem::ops::drop(a1)
     }
 )");
 
@@ -44,7 +41,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let x = A::make()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -61,7 +57,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let a = A::make_via_self()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -78,7 +73,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = A()
         let mut r = a.get()
         r = 0
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -114,7 +108,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let a = A[Bool]::make()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -131,8 +124,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a2 = A(val=false)
         let mut b = a1.combine(&a2)
         b = false
-        std::mem::ops::drop(a1)
-        std::mem::ops::drop(a2)
     }
 )");
 
@@ -158,8 +149,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let p2 = Point()
         let mut b = p1.my_eq(&p2)
         b = false
-        std::mem::ops::drop(p1)
-        std::mem::ops::drop(p2)
     }
 )");
 
@@ -178,7 +167,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Num { }
     sup Num ext MyAdd[Rhs=Self, Ret=Self] {
         fun my_add(self, that: Self) -> Self {
-            std::mem::ops::drop(that)
             ret self
         }
     }
@@ -187,7 +175,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let n1 = Num()
         let n2 = Num()
         let n3 = n1.my_add(n2)
-        std::mem::ops::drop(n3)
     }
 )");
 

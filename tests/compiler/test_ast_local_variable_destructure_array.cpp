@@ -107,8 +107,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let [(a, mut b), c] = [t, (3, Str::from("4"))]
         std::mem::ops::drop(b)
         b = Str::from("5")
-        std::mem::ops::drop(b)
-        std::mem::ops::drop(c)
     }
 )");
 
@@ -207,8 +205,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(c: Bool) -> Void {
         let s = Str::from("a")
         let [a, b] = case c { [s, Str::from("b")] } else { [s, Str::from("d")] }
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -236,8 +232,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let [a, b] = g()
         let done = false
         loop done { }
-        std::mem::ops::drop(b)
-        std::mem::ops::drop(a)
     }
 )");
 

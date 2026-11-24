@@ -432,7 +432,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(a: A) -> Void {
         f(&a, &a.b)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -449,7 +448,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(a: A) -> Void {
         f(&a.b, &a)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -466,7 +464,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(a: A) -> Void {
         f(&a, &a)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -483,7 +480,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(mut a: A) -> Void {
         f(&mut a.a, &a.b)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -500,7 +496,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(mut a: A) -> Void {
         f(&a.a, &mut a.b)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -517,7 +512,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(mut a: A) -> Void {
         f(&mut a.a, &mut a.b)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -534,7 +528,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(a: A) -> Void {
         f(&a.a, &a.b)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -551,7 +544,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(a: A) -> Void {
         f(a.a, &a.b)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -568,7 +560,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(mut a: A) -> Void {
         f(a.a, &mut a.b)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -585,7 +576,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(a: A) -> Void {
         f(&a.a, a.b)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -602,6 +592,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(mut a: A) -> Void {
         f(&mut a.a, a.b)
-        std::mem::ops::drop(a)
     }
 )");

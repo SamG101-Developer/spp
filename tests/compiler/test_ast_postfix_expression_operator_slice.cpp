@@ -16,7 +16,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let x = a[0_uz to 2_uz]
         }
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -27,7 +26,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let x = a[mut 0_uz to 2_uz]
         }
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -38,7 +36,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let x: &View[S32] = a[0_uz to 2_uz]
         }
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -49,7 +46,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let x: &mut View[S32] = a[mut 0_uz to 2_uz]
         }
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -77,10 +73,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
-  test_invalid_slicing_an_early_return,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_slicing_an_early_return, R"(
     fun g() -> Opt[Vec[U64]] { ret None }
     fun f() -> Opt[U64] {
         {
@@ -103,7 +98,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let z = a[to]
         }
-        std::mem::ops::drop(a)
     }
 )");
 

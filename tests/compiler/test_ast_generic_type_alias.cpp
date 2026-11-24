@@ -105,8 +105,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup [T, E] ZzR[T, E] {
         !public
         fun and_then[U, F: std::function::FunMov[(T,), ZzR[U, E]]](self, mut pred: F) -> Void {
-            drop(pred)
-            drop(self)
         }
     }
 

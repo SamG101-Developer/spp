@@ -181,12 +181,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor f() -> Gen[&Str] {
         let elem = Str::from("x")
         gen &elem
-        std::mem::ops::drop(elem)
     }
 )");
 
-// A generator destroyed at a "gen" drops what its frame still owns there, innermost scope and newest first, after the
-// "defer"s destroying it runs ("OwnedAtSuspend"); "tests/codegen/check-drops.sh" checks what runs.
+// A generator destroyed at a "gen" drops what its frame still owns there, innermost scope and newest first
+// ("OwnedAtSuspend"); "tests/codegen/check-drops.sh" checks what runs.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     GenExpressionAst,
     test_valid_owned_values_at_a_gen, R"(
@@ -205,13 +204,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let b = Noisy(n=2)
             gen 1
-            std::mem::ops::drop(b)
         }
         let c = Noisy(n=3)
         gen 2
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(c)
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -226,30 +221,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             std::mem::ops::drop(s)
             i += 1_u64
         }
-        std::mem::ops::drop(x)
     }
 
     fun f() -> Void {
         let mut c = g(Str::from("a"))
         let r = c.res()
-        std::mem::ops::drop(c)
     }
 )");
 
-// The "defer"s run where a generator is destroyed, so one taking a value already moved there would take it twice.
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    GenExpressionAst,
-    test_invalid_defer_consuming_a_value_moved_before_a_gen,
-    SppDeferConsumesMovedValueError, R"(
-    cor g(x: Str) -> Gen[U64] {
-        defer std::mem::ops::drop(x)
-        let y = x
-        gen 1_u64
-        std::mem::ops::drop(y)
-    }
-)");
-
-// A borrow a loop's generator yields is handed on by the "gen", and the loop's "defer" drops the generator: the frame
+// A borrow a loop's generator yields is handed on by the "gen", and the loop's end drops the generator: the frame
 // being destroyed ends every borrow, so that drop is not a move of borrowed memory.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     GenExpressionAst,
@@ -274,7 +254,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let p = Pair2(a=Str::from("a"), b=Str::from("b"))
         std::mem::ops::drop(p.a)
         gen 1_u64
-        std::mem::ops::drop(p.b)
     }
 )");
 

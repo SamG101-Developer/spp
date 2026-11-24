@@ -21,7 +21,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let w = Wrapper(inner=Inner(v=1))
         let a = w.get()@.v
-        std::mem::ops::drop(w)
     }
 )");
 
@@ -40,7 +39,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let w = Wrapper(inner=Inner(v=1))
         let a = w.fwd_ref()@.v
-        std::mem::ops::drop(w)
     }
 )");
 
@@ -59,7 +57,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut w = Wrapper(inner=Inner(v=1))
         w.fwd_mut()@.v = 2
-        std::mem::ops::drop(w)
     }
 )");
 
@@ -130,7 +127,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let w = VariantWrapper(inner=Some(val=1_s32))
         let b = w.get().is_some()
-        std::mem::ops::drop(w)
     }
 )");
 
@@ -141,6 +137,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let s = std::single::Single[Opt[S32]]::new(Some(val=1_s32))
         let b = s.get_ref().is_some()
-        std::mem::ops::drop(s)
     }
 )");

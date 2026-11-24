@@ -47,7 +47,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(p: Point) -> Void {
         Point::m(&p)
-        std::mem::ops::drop(p)
     }
 )");
 
@@ -291,7 +290,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let p = Point(x=1_u32)
         let a: U32 = p.x
         let b: Bool = Point::x
-        drop(p)
     }
 )");
 
@@ -314,7 +312,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let p = Point(x=1_u32)
         let a: U32 = p.x
         let b: Bool = Point::x
-        drop(p)
     }
 )");
 
@@ -359,7 +356,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(c: Counter) -> Void {
         let r = apply(Counter::bump, &c, 2)
-        std::mem::ops::drop(c)
     }
 )");
 
@@ -378,7 +374,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(c: Counter) -> Void {
         let r = apply(Counter::bump, &c, 2)
-        std::mem::ops::drop(c)
     }
 )");
 
@@ -449,7 +444,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(b: Box[S32]) -> Void {
         let r = apply(Box[S32]::get, &b)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -472,8 +466,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(a: Box[S32], b: Box[Bool]) -> Void {
         let r = apply_s(Box[S32]::get, &a)
         let s = apply_b(Box[Bool]::get, &b)
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -500,7 +492,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(b: Box[S32]) -> Void {
         let r = apply1(Box[S32]::get, &b)
         let s = apply2(Box[S32]::get, &b)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -587,13 +578,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun apply(mut f: std::function::FunMut[(&mut Counter, S32), Void], c: &mut Counter) -> Void {
         f(c, 5)
-        std::mem::ops::drop(f)
     }
 
     fun f() -> Void {
         let mut c = Counter(n=1)
         apply(Counter::add, &mut c)
-        std::mem::ops::drop(c)
     }
 )");
 
@@ -654,7 +643,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let h: std::function::FunRef[(S32,), Counter] = Counter::new
         let c = h(3)
         let n = g(&c)
-        std::mem::ops::drop(c)
         ret n
     }
 )");
@@ -829,7 +817,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public cmp doubled: USize = k + k
     }
 
-    fun g(w: Wrap[6_uz]) -> Void { std::mem::ops::drop(w) }
+    fun g(w: Wrap[6_uz]) -> Void { }
 
     fun f(w: Wrap[Wrap[3_uz]::doubled]) -> Void {
         g(w)
@@ -864,5 +852,39 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> USize {
         ret Wrap[3_uz]::doubled
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorStaticMemberAccessAst,
+    test_valid_static_call_returning_a_type_naming_self_in_a_template, R"(
+    cls K[A] { !public n: U32 }
+    sup [A] K[A] {
+        !public
+        fun make(n: U32) -> Res[Self, Bool] { ret Pass(val=Self(n)) }
+    }
+
+    fun g[A]() -> K[A] {
+        let k = K[A]::make(1_u32).expect("x")
+        ret k
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorStaticMemberAccessAst,
+    test_valid_static_call_returning_a_type_naming_self_in_an_instantiated_template, R"(
+    cls K[A] { !public n: U32 }
+    sup [A] K[A] {
+        !public
+        fun make(n: U32) -> Res[Self, Bool] { ret Pass(val=Self(n)) }
+    }
+
+    fun g[A]() -> K[A] {
+        let k = K[A]::make(1_u32).expect("x")
+        ret k
+    }
+
+    fun f() -> Void {
+        let k = g[Bool]()
     }
 )");

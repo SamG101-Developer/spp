@@ -54,7 +54,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   VoidGenericValues,
   test_valid_void_argument_consumes_what_it_was_built_from, R"(
     fun sink(s: Str) -> Void {
-        std::mem::ops::drop(s)
     }
 
     fun take[T](t: T) -> T { ret t }
@@ -74,7 +73,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let b = Box[Void](v=nothing())
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -86,7 +84,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let b = Box(v=nothing())
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -100,7 +97,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun take(p: Pair[S32, Void]) -> S32 {
         let x = p.a
-        std::mem::ops::drop(p)
         ret x
     }
 
@@ -118,7 +114,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let b = Box[Void]()
         let x = b.v
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -153,7 +148,96 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let v = nothing()
         let a = Box(v=v)
         let b = Box(v=v)
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_closure_void_parameter_is_no_parameter, R"(
+    fun f() -> Void {
+        let c = |v: Void| 1_u32
+        let n = c()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_function_type_void_argument_is_no_argument, R"(
+    fun f() -> Void {
+        let c: std::function::FunRef[(Void,), U32] = || 1_u32
+        let n = c()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_map_a_void_result_with_an_empty_closure, R"(
+    fun g() -> Res[Void, Bool] { ret Pass[Void]() }
+
+    fun f() -> Void {
+        let r = g().map(|| 1_u32)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_map_a_void_result_with_a_void_parameter_closure, R"(
+    fun g() -> Res[Void, Bool] { ret Pass[Void]() }
+
+    fun f() -> Void {
+        let r = g().map(|v: Void| 1_u32)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_map_a_void_result_with_a_function, R"(
+    fun g() -> Res[Void, Bool] { ret Pass[Void]() }
+    fun h() -> U32 { ret 1_u32 }
+
+    fun f() -> Void {
+        let r = g().map(h)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_map_a_void_result_moving_a_capture_out, R"(
+    fun g() -> Res[Void, Bool] { ret Pass[Void]() }
+
+    fun f() -> Res[Vec[U8], Bool] {
+        let out = Vec[U8]()
+        ret g().map(|caps out| out)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_void_argument_with_no_parameter_is_no_argument, R"(
+    fun nothing() -> Void { }
+    fun k() -> U32 { ret 1_u32 }
+
+    fun f() -> Void {
+        let n = k(nothing())
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  VoidGenericValues,
+  test_invalid_void_argument_still_binds_positionally,
+  SppFunctionCallNoValidSignaturesError, R"(
+    fun nothing() -> Void { }
+    fun k(x: U32) -> U32 { ret x }
+
+    fun f() -> Void {
+        let n = k(nothing(), 1_u32)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_void_argument_with_no_parameter_in_a_comp_time_call, R"(
+    cmp fun nothing() -> Void { }
+    cmp fun k() -> U32 { ret 3_u32 }
+    cmp c: U32 = k(nothing())
 )");

@@ -34,7 +34,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_function_constraint, R"(
     cls A { }
     fun g[T: A](t: T) -> Void {
-        std::mem::ops::drop(t)
     }
 
     fun f() -> Void {
@@ -54,7 +53,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup C ext B { }
 
     fun g[T: A and B](t: T) -> Void {
-        std::mem::ops::drop(t)
     }
 
     fun f() -> Void {
@@ -101,8 +99,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = A()
         let b = B[A]()
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -120,8 +116,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let c = C()
         let d = D[C]()
-        std::mem::ops::drop(c)
-        std::mem::ops::drop(d)
     }
 )");
 
@@ -254,7 +248,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = A[U32]()
         a.my_function()  # valid; U32 is Copy
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -274,7 +267,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = A[U32, Bool]()
         a.my_function()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -353,7 +345,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstGenericConstraints,
   test_valid_constraint_with_arguments_met_by_a_sup_with_self_defaults, R"(
     fun f[T: std::ops::add::Add[S32]](x: T) -> Void {
-        std::mem::ops::drop(x)
     }
 
     fun g() -> Void {

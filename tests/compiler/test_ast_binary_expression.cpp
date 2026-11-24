@@ -218,7 +218,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::bignum::bigint::BigInt
     fun f(b: (BigInt, BigInt, BigInt, BigInt)) -> Void {
         let a = .. + b
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -228,7 +227,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::bignum::bigint::BigInt
     fun f(a: (BigInt, BigInt, BigInt, BigInt)) -> Void {
         let b = a + ..
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -258,7 +256,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> (BigInt, BigInt, BigInt) { ret (BigInt::from(1), BigInt::from(2), BigInt::from(3)) }
     fun f() -> Void {
         let a = .. + g()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -344,7 +341,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun size(s: Str) -> USize {
         let n = s.len()
-        std::mem::ops::drop(s)
         ret n
     }
 

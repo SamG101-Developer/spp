@@ -14,16 +14,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             let mut a = v[mut 0_uz]
             a = v[mut 1_uz]
         }
-        std::mem::ops::drop(v)
     }
 )");
 
-// A handle holding loans cannot be moved, so it can never be consumed; writing over it would throw it away, which no
-// assignment may do.
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// A handle holding loans cannot be moved, but writing over it drops the old handle before the write, which ends its
+// loans with it.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestMemLoans,
-  test_invalid_reassigning_a_handle_that_holds_borrows,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_reassigning_a_handle_that_holds_borrows, R"(
     cor c(a: &Str) -> Gen[&StrView] {
         gen "0"
     }
@@ -35,8 +33,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             let mut h = c(&x)
             h = c(&y)
         }
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(y)
     }
 )");
 
@@ -60,10 +56,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             else {
                 h = c(&y)
             }
-            std::mem::ops::drop(h)
         }
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(y)
     }
 )");
 
@@ -172,7 +165,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let b = v[mut 1_uz]
         }
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -186,7 +178,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         a@ = 5
         let b = v[mut 1_uz]
         b@ = 6
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -268,7 +259,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut g = co(&mut x)
         let r = g.res()
         write(&mut x)
-        std::mem::ops::drop(g)
     }
 )");
 

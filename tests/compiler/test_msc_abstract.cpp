@@ -60,7 +60,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun test_fn() -> Void {
         let b = B()
         g(&b)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -86,7 +85,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun h(b: B) -> Void {
-        std::mem::ops::drop(b)
     }
 
     fun test_fn() -> Void {
@@ -113,7 +111,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun test_fn() -> Void {
         let b = B()
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -216,7 +213,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun test_fn() -> Void {
         let c = C()
-        std::mem::ops::drop(c)
     }
 )");
 
@@ -324,7 +320,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun g(b: B[A]) -> Void {
-        std::mem::ops::drop(b)
     }
 
     fun test_fn() -> Void { }
@@ -344,7 +339,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun g(b: B[C[A]]) -> Void {
-        std::mem::ops::drop(b)
     }
 
     fun test_fn() -> Void { }
@@ -467,7 +461,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun test_fn() -> Void {
         let b = AliasB()
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -526,7 +519,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun test_fn() -> Void {
         let b = B[S32]()
         b.f()
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -621,7 +613,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun test_fn() -> Void {
         let c = C()
-        std::mem::ops::drop(c)
     }
 )");
 
@@ -683,7 +674,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun test_fn() -> Void {
         let a = A()
         a.f()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -700,6 +690,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun test_fn() -> Void {
         let a = A()
         a.f()
-        std::mem::ops::drop(a)
     }
 )");

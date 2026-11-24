@@ -89,7 +89,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A {
         fun f(self) -> Void {
-            std::mem::ops::drop(self)
         }
     }
 )");
@@ -143,7 +142,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A {
         fun f(self, a: S32) -> Void {
-            std::mem::ops::drop(self)
         }
     }
 )");
@@ -155,7 +153,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A {
         fun f(self, a: S32 = 0) -> Void {
-            std::mem::ops::drop(self)
         }
     }
 )");
@@ -167,7 +164,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A {
         fun f(self, ..a: S32) -> Void {
-            std::mem::ops::drop(self)
         }
     }
 )");
@@ -179,7 +175,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A {
         fun f(self, a: S32, b: S32 = 0, ..c: S32) -> Void {
-            std::mem::ops::drop(self)
         }
     }
 )");
@@ -205,7 +200,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_variadic_generic_parameter_element_access, R"(
     fun g[..Ts](..a: Ts) -> Void {
         let x = a.0
-        std::mem::ops::drop(x)
     }
     fun f() -> Void { g(1, true) }
 )");

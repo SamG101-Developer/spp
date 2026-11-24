@@ -9,8 +9,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut s = Str::from("x")
         let mut t = Str::from("y")
         g(&s, &mut t)
-        std::mem::ops::drop(s)
-        std::mem::ops::drop(t)
     }
 )");
 
@@ -28,7 +26,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let h = Holder(val=1)
         let a = h.peek()@
-        std::mem::ops::drop(h)
     }
 )");
 
@@ -65,10 +62,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestMemSecondClassBorrows,
-  test_invalid_partial_move_leaving_a_part_of_a_consumed_self,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_partial_move_leaving_a_part_of_a_consumed_self, R"(
     cls Holder { !public a: Str
     !public b: Str }
 
@@ -79,10 +75,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestMemSecondClassBorrows,
-  test_invalid_partial_move_of_only_a_copyable_part_of_a_consumed_self,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_partial_move_of_only_a_copyable_part_of_a_consumed_self, R"(
     cls Holder { !public n: S32
     !public b: Str }
 
@@ -140,7 +135,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let a = X[1]()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -243,8 +237,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = Str::from("x")
         let b = Str::from("y")
         let less = sort_with(&a, &b, never)
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -266,7 +258,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let h = Holder(val=1)
         let a = h.peek()@
-        std::mem::ops::drop(h)
     }
 )");
 
@@ -285,7 +276,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let h = Holder(val=1)
         let a = h.peek()@
-        std::mem::ops::drop(h)
     }
 )");
 
@@ -305,7 +295,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let h = Holder(val=1)
         let g = h.maybe()
-        std::mem::ops::drop(g)
-        std::mem::ops::drop(h)
     }
 )");

@@ -4,16 +4,28 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverloads_FreeFuncs,
   test_invalid_overload_parameter_conventions_1,
   SppFunctionPrototypeConflictError, R"(
-    fun f(a: &Bool) -> Void { }
-    fun f(a: &mut Bool) -> Void { }
+    cls A { }
+    sup A {
+        fun f(a: &Bool) -> Void { }
+    }
+
+    sup A {
+        fun f(a: &mut Bool) -> Void { }
+    }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverloads_FreeFuncs,
   test_invalid_overload_parameter_conventions_2,
   SppFunctionPrototypeConflictError, R"(
-    fun f(a: &mut Bool) -> Void { }
-    fun f(a: &Bool) -> Void { }
+    cls A { }
+    sup A {
+        fun f(a: &mut Bool) -> Void { }
+    }
+
+    sup A {
+        fun f(a: &Bool) -> Void { }
+    }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -63,7 +75,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_overload_parameter_types, R"(
     fun f(a: Bool) -> Void { }
     fun f(a: std::bignum::bigint::BigInt) -> Void {
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -71,16 +82,28 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverloads_FreeFuncs,
   test_invalid_overload_generics_same_name,
   SppFunctionPrototypeConflictError, R"(
-    fun f[T](a: T) -> Void { }
-    fun f[T](a: T) -> Void { }
+    cls A { }
+    sup A {
+        fun f[T](a: T) -> Void { }
+    }
+
+    sup A {
+        fun f[T](a: T) -> Void { }
+    }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverloads_FreeFuncs,
   test_invalid_overload_generics_different_name,
   SppFunctionPrototypeConflictError, R"(
-    fun f[T](a: T) -> Void { }
-    fun f[U](a: U) -> Void { }
+    cls A { }
+    sup A {
+        fun f[T](a: T) -> Void { }
+    }
+
+    sup A {
+        fun f[U](a: U) -> Void { }
+    }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -88,7 +111,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_overload_generics_usage_1, R"(
     fun f[T]() -> Void { }
     fun f[T](b: T) -> Void {
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -96,11 +118,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverloads_FreeFuncs,
   test_valid_overload_generics_usage_2, R"(
     fun f[T](a: T) -> Void {
-        std::mem::ops::drop(a)
     }
     fun f[T](a: T, b: T) -> Void {
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -242,7 +261,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     sup A {
         fun f(a: std::bignum::bigint::BigInt) -> Void {
-            std::mem::ops::drop(a)
         }
     }
 )");
@@ -285,7 +303,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     sup A {
         fun f[T](b: T) -> Void {
-            std::mem::ops::drop(b)
         }
     }
 )");
@@ -296,14 +313,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A {
         fun f[T](a: T) -> Void {
-            std::mem::ops::drop(a)
         }
     }
 
     sup A {
         fun f[T](a: T, b: T) -> Void {
-            std::mem::ops::drop(a)
-            std::mem::ops::drop(b)
         }
     }
 )");
@@ -351,7 +365,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverloads_FreeFuncs,
   test_valid_overload_by_value_and_by_borrow, R"(
-    fun f[T](a: T) -> Void { std::mem::ops::drop(a) }
+    fun f[T](a: T) -> Void { }
     fun f[T](a: &T) -> Void { }
 )");
 
@@ -412,7 +426,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let b = Box[S32](v=1)
         let s: Bool = b.swap(true)
-        std::mem::ops::drop(b)
     }
 )");
 

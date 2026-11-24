@@ -14,7 +14,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or U64 or Bool) -> Void {
         std::mem::ops::drop(a)
         a = 123_u64
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -24,7 +23,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or U64 or Bool) -> Void {
         std::mem::ops::drop(a)
         a = true
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -34,7 +32,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or U64 or Bool, b: Str or U64) -> Void {
         std::mem::ops::drop(a)
         a = b
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -44,7 +41,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or U64 or Bool, b: Str or Bool) -> Void {
         std::mem::ops::drop(a)
         a = b
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -54,7 +50,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or U64 or Bool, b: U64 or Bool) -> Void {
         std::mem::ops::drop(a)
         a = b
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -64,7 +59,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or U64 or Bool, b: Str or U64 or Bool) -> Void {
         std::mem::ops::drop(a)
         a = b
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -74,7 +68,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or U64 or Bool, b: Str or U64 or Bool or Bool) -> Void {
         std::mem::ops::drop(a)
         a = b
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -121,12 +114,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// ...including alongside an owned alternative, which is what makes the variant itself owned and so still owed.
+// ...including alongside an owned alternative, which is what makes the variant itself owned, and so dropped at its
+// scope's end.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_including_a_borrowed_type_2, R"(
     fun f(a: Str or &mut U64 or Bool) -> Str {
-        std::mem::ops::drop(a)
         ret Str::from("hello")
     }
 )");
@@ -135,14 +128,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_and_tuple_combination, R"(
     fun g(a: (Opt[Str], U64)) -> Str {
-        std::mem::ops::drop(a)
         ret Str::from("hello world")
     }
 
     fun f() -> Void {
         let t = (Some(val=Str::from("hello world")), 123_u64)
         let a = g(t)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -159,7 +150,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_as_let_annotation, R"(
     fun f() -> Void {
         let x: Bool or Str = true
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -167,7 +157,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_as_function_argument, R"(
     fun g(x: Bool or Str) -> Void {
-        std::mem::ops::drop(x)
     }
 
     fun f() -> Void {
@@ -184,7 +173,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let a = A(x=true)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -193,7 +181,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_as_generic_argument, R"(
     fun f() -> Void {
         let v = Vec[Bool or Str]()
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -203,7 +190,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: [Bool or Str; 2_uz]) -> Void {
         std::mem::ops::drop(a)
         a = [true, Str::from("hello")]
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -213,7 +199,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: [Bool or Str; 2_uz]) -> Void {
         std::mem::ops::drop(a)
         a = [true; 2_uz]
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -261,8 +246,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_valid_member_order_is_not_part_of_the_type, R"(
     fun f[T](a: T, b: T) -> Void {
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 
     fun g(x: S32 or Bool, y: Bool or S32) -> Void {
@@ -301,7 +284,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_valid_positional_tuple_member_beside_another, R"(
-    fun f(x: std::variant::Var[(S32, Str), Bool]) -> Void { std::mem::ops::drop(x) }
+    fun f(x: std::variant::Var[(S32, Str), Bool]) -> Void { }
     fun g(y: std::variant::Var[Bool, (S32, Str)]) -> Void { f(y) }
 )");
 
@@ -310,7 +293,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_valid_lone_tuple_argument_is_one_member, R"(
-    fun f(x: std::variant::Var[(S32, Bool)]) -> Void { std::mem::ops::drop(x) }
+    fun f(x: std::variant::Var[(S32, Bool)]) -> Void { }
     fun g(y: std::variant::Var[(S32, Bool)]) -> Void { f(y) }
     fun h() -> Void { f((1_s32, false)) }
 )");
@@ -333,7 +316,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let v: S32 or Bool or Str = 1_s32
         v.f()
-        std::mem::ops::drop(v)
     }
 )");
 

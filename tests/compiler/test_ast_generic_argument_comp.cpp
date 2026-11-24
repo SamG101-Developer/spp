@@ -7,7 +7,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x = A[123_uz]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -29,7 +28,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x = A[USize, 123_uz]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -52,7 +50,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x = A[n=123_uz]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -64,7 +61,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let mut x = A[n=123_uz](a=0_uz)
         x.a = 456_uz
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -163,7 +159,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f[T, cmp n: T]() -> A[T, n] { ret A[T, n]() }
     fun g() -> Void {
         let x: A[USize, 5_uz] = f[n=5_uz]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -186,7 +181,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_infer_comp_from_a_class_argument, R"(
     cls A2[cmp n: USize] { }
     fun f[cmp n: USize](a: A2[n]) -> USize {
-        std::mem::ops::drop(a)
         ret n
     }
     fun g() -> Void { let x: USize = f(A2[3_uz]()) }
@@ -199,7 +193,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f[U, cmp m: U](c: C[U, m]) -> C[U, m] { ret c }
     fun g() -> Void {
         let x: C[USize, 4_uz] = f(C[n=4_uz]())
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -219,7 +212,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestGenericArgumentComp,
     test_valid_infer_comp_from_an_array_size, R"(
     fun f[T, cmp n: USize](a: Arr[T, n]) -> USize {
-        std::mem::ops::drop(a)
         ret n
     }
     fun g() -> Void { let x = f([1, 2, 3]) }
@@ -238,8 +230,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let x: A[2_uz] = f[1_uz]()
         let y: A[3_uz] = f[2_uz]()
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(y)
     }
 )");
 
@@ -258,7 +248,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x: A[4_uz] = A[2_uz + 2_uz]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -269,7 +258,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x: A[6_uz] = A[(1_uz + 2_uz) * 2_uz]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -278,7 +266,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_comp_expression_arg_array_size, R"(
     fun g() -> Void {
         let a: Arr[S32, 1_uz + 2_uz] = [1, 2, 3]
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -289,7 +276,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x: B[true] = B[1_uz < 2_uz]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -327,7 +313,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x: A[3_uz] = A[ct()]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -339,7 +324,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x: A[3_uz] = A[n=ct()]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -351,7 +335,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x: A[4_uz] = A[twice(2_uz)]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -363,7 +346,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let y: B[3_uz] = B()
-        std::mem::ops::drop(y)
     }
 )");
 
@@ -498,7 +480,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x: A[1.0_f32] = A[5.0_f32 % 2.0_f32]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -511,9 +492,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: A[true] = A[true ^ false]()
         let y: A[true] = A[true | false]()
         let z: A[false] = A[true & false]()
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(y)
-        std::mem::ops::drop(z)
     }
 )");
 
@@ -527,8 +505,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let x: A[false == true] = A[eq()]()
         let y: A[true ^ false] = A[xor()]()
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(y)
     }
 )");
 
@@ -541,7 +517,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x = A[[Some(val=1_u64), None]]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -553,7 +528,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x = A[k]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -565,7 +539,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let x = A[mk()]()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -609,5 +582,47 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun g() -> Void {
         f[[Some(val=1_u64), 5_u64]]()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_array_argument_substituted_in_a_field_type, R"(
+    cls A[cmp xs: [U64; 2_uz]] { }
+    cls B[cmp n: U64] { !public a: A[[n, 2_u64]] }
+
+    fun g() -> Void {
+        let b = B[1_u64](a=A[[1_u64, 2_u64]]())
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_array_argument_is_its_value_not_its_spelling, R"(
+    cls A[cmp xs: [U64; 2_uz]] { }
+
+    fun g() -> Void {
+        let x: A[[1_u64, 2_u64]] = A[[0x1_u64, 2_u64]]()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_repeated_array_argument_is_its_copies, R"(
+    cls A[cmp xs: [U64; 2_uz]] { }
+
+    fun g() -> Void {
+        let x: A[[1_u64, 1_u64]] = A[[1_u64; 2_uz]]()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestGenericArgumentComp,
+    test_invalid_array_arguments_of_different_values,
+    SppTypeMismatchError, R"(
+    cls A[cmp xs: [U64; 2_uz]] { }
+
+    fun g() -> Void {
+        let x: A[[1_u64, 2_u64]] = A[[2_u64, 1_u64]]()
     }
 )");

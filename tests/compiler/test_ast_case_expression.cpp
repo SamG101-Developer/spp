@@ -165,7 +165,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: Point) -> Void {
         case p of {
             is Point(x, y) and x == 1 { }
-            else { std::mem::ops::drop(p) }
+            else { }
         }
     }
 )");
@@ -176,10 +176,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: Opt[Str]) -> Void {
         let x = Str::from("x")
         case p of {
-            is Some[Str](val) and val == x { }
-            else { std::mem::ops::drop(p) }
+            is Some[Str](val) and val == x {
+            }
+            else { }
         }
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -356,10 +356,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   CaseExpressionAst,
-  test_invalid_branch_type_mismatch_in_statement_position,
-  SppTypeMismatchError, R"(
+  test_valid_mismatched_branch_values_in_statement_position_are_discarded, R"(
     fun f() -> Void {
         case 1 of {
             == 1 { 1 }
@@ -368,10 +367,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   CaseExpressionAst,
-  test_invalid_branch_type_mismatch_in_statement_position_all_copy,
-  SppTypeMismatchError, R"(
+  test_valid_mismatched_branch_values_in_statement_position_are_discarded_all_copy, R"(
     fun f() -> Void {
         case 1 of {
             == 1 { 1 }
@@ -380,10 +378,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   CaseExpressionAst,
-  test_invalid_branch_non_void_in_statement_position,
-  SppDiscardedValueError, R"(
+  test_valid_branch_non_void_in_statement_position, R"(
     fun f() -> Void {
         case 1 of {
             == 1 { 1 }
@@ -416,12 +413,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// A pattern guard runs before its branch is chosen, so a move it makes also happens on the path into the next
-// branch when it answers false. Guards may not move.
+// A guard's move holds on every path past its branch: where the guard never ran, the "case" drops the value
+// instead, so after the "case" it is held on no path.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CaseExpressionAst,
   test_invalid_move_in_pattern_guard_then_use,
-  SppPatternGuardMovesValueError, R"(
+  SppInconsistentlyInitializedMemoryUseError, R"(
     cls GuardL { }
     cls GuardP { !public a: S32 }
 
@@ -626,11 +623,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// FIXED
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CaseExpressionAst,
   test_invalid_move_in_pattern_guard_then_use_in_the_else_branch,
-  SppPatternGuardMovesValueError, R"(
+  SppInconsistentlyInitializedMemoryUseError, R"(
     cls GuardL2 { }
     cls GuardP2 { !public a: S32 }
 
@@ -646,6 +642,123 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         case p of {
             is GuardP2(a) and eat(l) { }
             else { let GuardL2() = l }
+        }
+    }
+)");
+
+// A destructure binding no part still needs the whole value there.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_destructure_of_maybe_moved_value,
+  SppInconsistentlyInitializedMemoryUseError, R"(
+    cls MaybeL { }
+
+    fun eat(l: MaybeL) -> Void {
+        let MaybeL() = l
+    }
+
+    fun f(b: Bool) -> Void {
+        let l = MaybeL()
+        case b { } else { eat(l) }
+        let MaybeL() = l
+    }
+)");
+
+// A guard may move a value nothing after it uses (a "FunMov" predicate called in the guard).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_move_in_pattern_guard,
+  R"(
+    fun filter[T, P: FunMov[(&T,), Bool]](o: Opt[T], mut pred: P) -> Opt[T] {
+        ret case o of {
+            is Some(&val) and pred(val) { o }
+            else { None }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_move_in_pattern_guard_of_a_later_branch,
+  R"(
+    cls GuardL3 { }
+
+    fun eat(l: GuardL3) -> Bool {
+        let GuardL3() = l
+        ret true
+    }
+
+    fun f(x: Opt[S32]) -> Void {
+        let l = GuardL3()
+        case x of {
+            is None() { }
+            is Some(val) and eat(l) { }
+            else { }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_move_in_pattern_guard_then_reassign,
+  R"(
+    cls GuardL4 { }
+
+    fun eat(l: GuardL4) -> Bool {
+        let GuardL4() = l
+        ret true
+    }
+
+    fun f(x: Opt[S32]) -> Void {
+        let mut l = GuardL4()
+        case x of {
+            is Some(val) and eat(l) { }
+            else { }
+        }
+        l = GuardL4()
+        let GuardL4() = l
+    }
+)");
+
+// A guard moving nothing carries nothing: what checking its branch's patterns did stays in that branch.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_pattern_guard_moving_nothing_after_nested_pattern,
+  R"(
+    cls GuardPoint {
+        !public x: S32
+        !public y: S32
+    }
+    cls GuardDirVec {
+        !public point: GuardPoint
+        !public dir: S32
+    }
+
+    fun f() -> Void {
+        let d = GuardDirVec(point=GuardPoint(x=1, y=2), dir=4)
+        case d of {
+            is GuardDirVec(point=GuardPoint(x=1, y=2), dir=4) and false { }
+            is GuardDirVec(point=GuardPoint(x, ..), ..) { }
+        }
+    }
+)");
+
+// A pattern's binding is still a part of the subject until the branch is taken: a guard cannot move it.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_move_of_pattern_binding_in_pattern_guard,
+  SppPatternGuardMovesValueError, R"(
+    cls GuardL5 { }
+
+    fun eat(l: GuardL5) -> Bool {
+        let GuardL5() = l
+        ret true
+    }
+
+    fun f(o: Opt[GuardL5]) -> Void {
+        case o of {
+            is Some(val) and eat(val) { }
+            else { }
         }
     }
 )");

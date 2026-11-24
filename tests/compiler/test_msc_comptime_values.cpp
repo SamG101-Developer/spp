@@ -724,6 +724,19 @@ SPP_TEST_CMP_VALUES(
   cmp al: USize = std::mem::ops::align_of[U32]()
 )", {"sz", "8_uz"}, {"al", "4_uz"});
 
+// A raw pointer has no fields, but is lowered to a bare llvm pointer, so it measures as one ("IsTypePointer"); a class
+// holding one, as shield's handles do, is not zero-sized.
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_size_of_a_raw_pointer_and_a_class_holding_one, R"(
+  cls Holder { !public p: std::cffi::CVoidPtr }
+  cls Generic[T] { !public p: std::cffi::CVoidPtr }
+  cmp ptr: USize = std::mem::ops::size_of[std::cffi::CVoidPtr]()
+  cmp held: USize = std::mem::ops::size_of[Holder]()
+  cmp generic: USize = std::mem::ops::size_of[Generic[U8]]()
+  cmp al: USize = std::mem::ops::align_of[Holder]()
+)", {"ptr", "8_uz"}, {"held", "8_uz"}, {"generic", "8_uz"}, {"al", "8_uz"});
+
 // Which of std's constants the target's "!cfg" selects.
 #if SPP_PLATFORM_WINDOWS
 constexpr auto kPathMax = "260_uz";

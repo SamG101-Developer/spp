@@ -12,7 +12,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut x = Str::from("123")
         let coro1 = c(&mut x)
         let coro2 = c(&mut x)
-        std::mem::ops::drop(&coro1)
+        std::hints::black_box(&coro1)
     }
 )");
 
@@ -32,7 +32,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut x = Str::from("123")
         let coro1 = c1(&mut x)
         let coro2 = c2(&x)
-        std::mem::ops::drop(&coro1)
+        std::hints::black_box(&coro1)
     }
 )");
 
@@ -52,7 +52,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut x = Str::from("123")
         let coro1 = c1(&x)
         let coro2 = c2(&mut x)
-        std::mem::ops::drop(&coro1)
+        std::hints::black_box(&coro1)
     }
 )");
 
@@ -68,10 +68,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let coro1 = c(&x)
             let coro2 = c(&x)
-            std::mem::ops::drop(coro1)
-            std::mem::ops::drop(coro2)
         }
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -85,7 +82,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = Str::from("hello world")
         let coroutine = g(&x)
         let y = x
-        std::mem::ops::drop(&coroutine)
+        std::hints::black_box(&coroutine)
     }
 )");
 
@@ -100,7 +97,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = Str::from("hello world")
         let coroutine = g(&x)
         y = x
-        std::mem::ops::drop(&coroutine)
+        std::hints::black_box(&coroutine)
     }
 )");
 
@@ -120,7 +117,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let coroutine = g(&x)
         std::mem::ops::drop(a.a)
         a.a = x
-        std::mem::ops::drop(&coroutine)
+        std::hints::black_box(&coroutine)
     }
 )");
 
@@ -136,7 +133,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = Str::from("hello world")
         let coroutine = g(&x)
         f(x)
-        std::mem::ops::drop(&coroutine)
+        std::hints::black_box(&coroutine)
     }
 )");
 
@@ -154,7 +151,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = Str::from("hello world")
         let coroutine = g(&x)
         let a = A(a=x)
-        std::mem::ops::drop(&coroutine)
+        std::hints::black_box(&coroutine)
     }
 )");
 
@@ -171,7 +168,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             std::mem::ops::drop(coroutine)
             x
         }
-        std::mem::ops::drop(y)
     }
 )");
 
@@ -185,10 +181,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let looped = loop true {
             let x = Str::from("hello world")
             let coroutine = g(&x)
-            std::mem::ops::drop(coroutine)
             exit x
         }
-        std::mem::ops::drop(looped)
     }
 )");
 
@@ -202,7 +196,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = Str::from("hello world")
         let coroutine = g(&x)
         let sent = gen x
-        std::mem::ops::drop(&coroutine)
+        std::hints::black_box(&coroutine)
     }
 )");
 
@@ -230,10 +224,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let coroutine = g(&x)
             let z = y
-            std::mem::ops::drop(z)
-            std::mem::ops::drop(coroutine)
         }
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -246,10 +237,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = Str::from("hello world")
         {
             let coroutine = g(&x)
-            std::mem::ops::drop(coroutine)
         }
         let y = x
-        std::mem::ops::drop(y)
     }
 )");
 
@@ -266,7 +255,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             coroutine = g(&x)
         }
         let y = x
-        std::mem::ops::drop(&coroutine)
+        std::hints::black_box(&coroutine)
     }
 )");
 
@@ -278,7 +267,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         xs.append(1_u32)
         let a = xs[0_uz]@
         let b = xs
-        std::mem::ops::drop(b)
     }
 )");
 

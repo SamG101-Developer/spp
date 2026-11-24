@@ -7,13 +7,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         !public fun m(&self) -> Void {
             let x: Self = A()
-            std::mem::ops::drop(x)
         }
     }
     fun f() -> Void {
         let a = A()
         a.m()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -25,13 +23,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public fun m(&self) -> Void {
             let x: Self
             x = A()
-            std::mem::ops::drop(x)
         }
     }
     fun f() -> Void {
         let a = A()
         a.m()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -40,12 +36,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_self_inside_a_parameter_type, R"(
     cls A { }
     sup A {
-        !public fun m(&self, x: Vec[Self]) -> Void { std::mem::ops::drop(x) }
+        !public fun m(&self, x: Vec[Self]) -> Void { }
     }
     fun f() -> Void {
         let a = A()
         a.m(Vec[A]())
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -58,7 +53,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
     fun f() -> Void {
         let a = A(v=Vec[A]())
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -70,13 +64,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         type Mine = Vec[Self]
         !public fun m(&self) -> Void {
             let x: Mine = Vec[A]()
-            std::mem::ops::drop(x)
         }
     }
     fun f() -> Void {
         let a = A()
         a.m()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -88,13 +80,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         type Mine = Self
         !public fun m(&self) -> Void {
             let x: Mine = A()
-            std::mem::ops::drop(x)
         }
     }
     fun f() -> Void {
         let a = A()
         a.m()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -105,13 +95,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         !public fun m(&self) -> Void {
             let x: (Self, Self) = (A(), A())
-            std::mem::ops::drop(x)
         }
     }
     fun f() -> Void {
         let a = A()
         a.m()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -122,13 +110,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         !public fun m(&self) -> Void {
             let x: Self or S32 = A()
-            std::mem::ops::drop(x)
         }
     }
     fun f() -> Void {
         let a = A()
         a.m()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -139,13 +125,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         !public fun m(&self) -> Void {
             let v = Vec[Self]()
-            std::mem::ops::drop(v)
         }
     }
     fun f() -> Void {
         let a = A()
         a.m()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -154,13 +138,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_self_as_a_variadic_parameter_type, R"(
     cls A { }
     sup A {
-        !public fun m(&self, ..rest: Self) -> Void { std::mem::ops::drop(..rest) }
+        !public fun m(&self, ..rest: Self) -> Void { }
     }
     fun f() -> Void {
         let a = A()
         let b = A()
         a.m(b)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -170,12 +153,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A {
         !public fun make() -> Self { ret Self() }
-        !public fun m(&self, other: Self = A::make()) -> Void { std::mem::ops::drop(other) }
+        !public fun m(&self, other: Self = A::make()) -> Void { }
     }
     fun f() -> Void {
         let a = A()
         a.m()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -204,7 +186,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
     fun f() -> Void {
         let a = A::make()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -221,8 +202,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = A()
         let b = a.m()
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -232,14 +211,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A {
         !public fun m(&self) -> Void {
-            let c = |x: Self| -> Void { std::mem::ops::drop(x) }
+            let c = |x: Self| -> Void { }
             c(A())
         }
     }
     fun f() -> Void {
         let a = A()
         a.m()
-        std::mem::ops::drop(a)
     }
 )");
 

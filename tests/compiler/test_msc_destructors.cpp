@@ -1,12 +1,9 @@
 #include "test_macros.hpp"
 
-// This file used to test compiler-inserted destruction: "Del::del" run at scope exit, drop flags for conditionally
-// moved values, unwind drops at a loop "exit", and the destruction of a discarded statement value. None of that
-// exists any more - ownership is linear, so nothing is destroyed implicitly and every one of those cases is now a
-// compile time error instead. What survives is "Drop", an ordinary trait whose "drop" takes "self" by move and is
-// called explicitly, so that is what is tested here.
-//
-// Todo: Red until the standard library is migrated to linear ownership - see test_lin_scope_exit.cpp.
+// "Drop" is an ordinary trait whose "drop" takes "self" by move. It is called explicitly, or by the compiler wherever a
+// value still owned ends its lifetime: at its scope's end, at an early exit, on an overwrite, and at the end of the
+// statement of a temporary or a discarded value. There are no drop flags: a value held on only some of the paths that
+// meet is dropped on each path still holding it, before they meet.
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstDestructors,
@@ -43,16 +40,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let d = Derived(fd=1)
-        drop(d)
     }
 )");
 
-// Every copyable type is discardable, which is what lets a generic constrained by "Drop" take a number.
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+// A copyable type has no destructor (E131 if it tried), so it does not satisfy "Drop": a number is not one.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstDestructors,
-  test_valid_copyable_type_is_droppable, R"(
+  test_invalid_copyable_type_is_not_drop,
+  SppFunctionCallNoValidSignaturesError, R"(
     fun discard[T: std::ops::drop::Drop](v: T) -> Void {
-        drop(v)
     }
 
     fun f() -> Void {
@@ -60,12 +56,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Nothing is destroyed implicitly any more, so a value left holding something at the end of its scope is an error
-// rather than something the compiler quietly cleans up. This is the case the old first test asserted the opposite of.
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// A value still owned at the end of its scope is dropped there by the compiler, which runs its type's "drop".
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstDestructors,
-  test_invalid_value_not_dropped_at_scope_exit,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_value_not_dropped_at_scope_exit, R"(
     cls Handle { !public fd: S32 }
 
     sup Handle ext std::ops::drop::Drop {
@@ -143,7 +137,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
 
     fun main() -> Void {
         let t = (Handle(fd=1), Handle(fd=2))
-        drop(t)
     }
 )");
 
@@ -160,7 +153,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
 
     fun main() -> Void {
         let a = [Handle(fd=1), Handle(fd=2)]
-        drop(a)
     }
 )");
 
@@ -177,7 +169,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
 
     fun main() -> Void {
         let t = ((Handle(fd=1), Handle(fd=2)), Handle(fd=3))
-        drop(t)
     }
 )");
 
@@ -199,7 +190,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
 
     fun main() -> Void {
         let h = Holder(pair=(Handle(fd=1), Handle(fd=2)), many=[Handle(fd=3), Handle(fd=4)])
-        drop(h)
     }
 )");
 
@@ -210,7 +200,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
         let t = (1_u32, 2_u32)
         drop(t)
         let a = [1_u32, 2_u32]
-        drop(a)
     }
 )");
 
@@ -242,7 +231,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup Holder ext std::ops::drop::Drop {
         fun drop(self) -> Void {
             let Holder(val) = self
-            drop(val)
         }
     }
 
@@ -276,7 +264,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun combine(self, that: Big) -> Str {
             let d = self.data
             let s = self.sign and that.sign
-            drop(that.data)
             ret d
         }
     }
@@ -290,13 +277,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
     sup Holder ext std::ops::drop::Drop {
         fun drop(self) -> Void {
             let Holder(val) = self
-            drop(val)
         }
     }
 
     fun main() -> Void {
         let h = Holder(val=Str::new())
-        drop(h)
     }
 )");
 
@@ -308,7 +293,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
     sup Holder ext std::ops::drop::Drop {
         fun drop(self) -> Void {
             let Holder(val) = self
-            drop(val)
         }
     }
 
@@ -317,7 +301,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
         let v = h.val
         drop(v)
         h.val = Str::new()
-        drop(h)
     }
 )");
 
@@ -341,16 +324,14 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC_NO_MAIN(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC_NO_MAIN(
-    TestAstDestructors,
-    test_invalid_partial_move_repaired_but_value_never_consumed,
-    SppLinearValueNotConsumedError, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
+  TestAstDestructors,
+  test_valid_partial_move_repaired_but_value_never_consumed, R"(
     cls Holder { !public val: Str }
 
     sup Holder ext std::ops::drop::Drop {
         fun drop(self) -> Void {
             let Holder(val) = self
-            drop(val)
         }
     }
 
@@ -392,14 +373,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
     sup Inner ext std::ops::drop::Drop {
         fun drop(self) -> Void {
             let Inner(val) = self
-            drop(val)
         }
     }
 
     fun main() -> Void {
         let o = Outer(inner=Inner(val=Str::new()))
         let i = o.inner
-        drop(i)
     }
 )");
 
@@ -415,7 +394,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
         drop(v)
         o.inner.val = Str::new()
         let i = o.inner
-        drop(i)
     }
 )");
 
@@ -428,7 +406,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
     sup Inner ext std::ops::drop::Drop {
         fun drop(self) -> Void {
             let Inner(val) = self
-            drop(val)
         }
     }
 
@@ -438,7 +415,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
         drop(v)
         o.inner.val = Str::new()
         let i = o.inner
-        drop(i)
     }
 )");
 

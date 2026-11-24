@@ -156,7 +156,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             == 1 { std::mem::ops::drop(p) }
             == 2 { }
         }
-        std::mem::ops::drop(&g)
+        std::hints::black_box(&g)
     }
 )");
 
@@ -178,7 +178,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             == 1 { std::mem::ops::drop(p.x) }
             == 2 { }
         }
-        std::mem::ops::drop(&g)
+        std::hints::black_box(&g)
     }
 )");
 
@@ -223,7 +223,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             == 1 { g(&p) }
             == 2 { }
         }
-        std::mem::ops::drop(&h)
+        std::hints::black_box(&h)
     }
 )");
 
@@ -242,13 +242,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case 1 of {
             == 1 {
                 let x = c(&p)
-                std::mem::ops::drop(x)
             }
             == 2 { }
         }
 
         let r = p
-        std::mem::ops::drop(r)
     }
 )");
 
@@ -267,13 +265,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case 1 of {
             == 1 {
                 let x = c(&p.x)
-                std::mem::ops::drop(x)
             }
             == 2 { }
         }
 
         let r = p
-        std::mem::ops::drop(r)
     }
 )");
 
@@ -292,16 +288,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case 1 of {
             == 1 {
                 let x = c(&p.x)
-                std::mem::ops::drop(x)
             }
             == 2 {
                 let x = c(&p.y)
-                std::mem::ops::drop(x)
             }
         }
 
         let r = p
-        std::mem::ops::drop(r)
     }
 )");
 
@@ -320,15 +313,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case 1 of {
             == 1 {
                 let r = p
-                std::mem::ops::drop(r)
             }
             == 2 {
                 let r = p
-                std::mem::ops::drop(r)
             }
             else {
                 let r = p
-                std::mem::ops::drop(r)
             }
         }
     }
@@ -351,7 +341,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
 
         let r = p
-        std::mem::ops::drop(r)
     }
 )");
 
@@ -372,13 +361,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case 1 of {
             == 1 {
                 let h = c(&mut p)
-                std::mem::ops::drop(h)
             }
             == 2 { }
         }
 
         g(&p)
-        std::mem::ops::drop(p)
     }
 )");
 
@@ -449,7 +436,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         }
 
         let r = p
-        std::mem::ops::drop(&h)
+        std::hints::black_box(&h)
     }
 )");
 
@@ -469,16 +456,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case 1 of {
             == 1 {
                 let x = p.x
-                std::mem::ops::drop(x)
             }
             else {
                 let x = p.x
-                std::mem::ops::drop(x)
             }
         }
 
         let y = p.y
-        std::mem::ops::drop(y)
     }
 )");
 
@@ -511,13 +495,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-// Todo: A part taken on only one path is still owned on the other, so "p.x" leaks when the "else" runs. Scope exit
-//  counts a part taken on any path as taken (see "linear_utils::IsLive"), because a "case" without an "else" keeps its
-//  entry state as a path even for a pattern that cannot fail. Fixed by the match and fall-through edges of M4.3.
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// A part taken on only one path is still owned on the other, so the "else" drops "p.x" before the paths meet, and
+// "p.y" can still be taken after the "case".
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstMemoryInconsistent,
-  test_invalid_memory_part_moved_on_one_path_leaks_on_the_other,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_memory_part_moved_on_one_path_leaks_on_the_other, R"(
     cls Point {
         !public x: Str
         !public y: Str
@@ -528,13 +510,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         case 1 of {
             == 1 {
                 let x = p.x
-                std::mem::ops::drop(x)
             }
             else { }
         }
 
         let y = p.y
-        std::mem::ops::drop(y)
     }
 )");
 

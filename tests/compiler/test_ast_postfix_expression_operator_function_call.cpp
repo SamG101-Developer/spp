@@ -105,7 +105,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_postfix_func_call_concrete_beats_generic, R"(
     fun f(a: S32) -> Bool { ret true }
     fun f[T](a: T) -> S32 {
-        std::mem::ops::drop(a)
         ret 1
     }
 
@@ -226,7 +225,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x = 123
         let fut = async a(&x)
-        std::mem::ops::drop(fut.await)
     }
 )");
 
@@ -241,13 +239,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     sup TestClass {
         !public fun f(self) -> Void {
-            std::mem::ops::drop(self)
         }
     }
 
     fun g(n: NewClass) -> Void {
         n.t.f()
-        std::mem::ops::drop(n.u)
     }
 )");
 
@@ -262,8 +258,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     sup TestClass {
         !public fun f(self, t: TestClass) -> Void {
-            std::mem::ops::drop(self)
-            std::mem::ops::drop(t)
         }
     }
 
@@ -284,7 +278,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     sup TestClass {
         !public fun f(self, t: TestClass) -> TestClass {
-            std::mem::ops::drop(self)
             ret t
         }
     }
@@ -302,14 +295,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !virtual_method
         !public
         fun f(self) -> Void {
-            std::mem::ops::drop(self)
         }
     }
 
     cls TestClass2 { }
     sup TestClass2 ext TestClass {
         fun f(self) -> Void {
-            std::mem::ops::drop(self)
         }
     }
 
@@ -341,7 +332,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = (1, 2, 3, 4)
         let y = (1, 2, 3, 4)
         let mut z = f(x, y)..
-        std::mem::ops::drop(z)
     }
 )");
 
@@ -352,8 +342,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     sup [T] TestClass[T] {
         !public fun f(self, a: T) -> Void {
-            std::mem::ops::drop(self)
-            std::mem::ops::drop(a)
         }
     }
 
@@ -414,7 +402,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_single_generic_type, R"(
     fun g[T](a: &StrView, ..b: T) -> Void {
-            std::mem::ops::drop(..b)
         ret
     }
 
@@ -427,7 +414,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_mixed_generic_type, R"(
     fun g[..Ts](a: &StrView, ..b: Ts) -> Void {
-            std::mem::ops::drop(..b)
         ret
     }
 
@@ -440,7 +426,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_mixed_generic_type_no_leading_param, R"(
     fun h[..Ts](..a: Ts) -> Void {
-            std::mem::ops::drop(..a)
         ret
     }
 
@@ -453,7 +438,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_ordinary_generic_with_leading_param, R"(
     fun g[U](a: &StrView, ..b: U) -> Void {
-            std::mem::ops::drop(..b)
         ret
     }
 
@@ -466,7 +450,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_generic_two_leading_params_single_arg, R"(
     fun g[..V](a: S32, b: S32, ..c: V) -> S32 {
-        std::mem::ops::drop(..c)
         ret a
     }
 
@@ -479,7 +462,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_generic_single_arg_no_leading_param, R"(
     fun g[..Ts](..a: Ts) -> Void {
-        std::mem::ops::drop(..a)
         ret
     }
 
@@ -499,7 +481,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = pass_through(1, true, Str::from("hi"))
         std::mem::ops::drop(x)
         x = (0, false, Str::from("bye"))
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -519,7 +500,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_generic_given_no_args, R"(
     fun g[..Ts](a: &StrView, ..b: Ts) -> Void {
-            std::mem::ops::drop(..b)
         ret
     }
 
@@ -548,7 +528,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   test_invalid_variadic_pack_reuses_moved_argument,
   SppUninitializedMemoryUseError, R"(
     fun g[..Ts](..a: Ts) -> Void {
-        std::mem::ops::drop(..a)
         ret
     }
 
@@ -643,7 +622,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(a: TestClass) -> Void {
         a.f()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -659,7 +637,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(mut a: TestClass) -> Void {
         a.f()
-        std::mem::ops::drop(a)
     }
 )");
 

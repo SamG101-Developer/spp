@@ -108,11 +108,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 // A "?" moves the value out of its operand, so what it gives back is a temporary even when the operand is a name: one
-// that is only borrowed, here by the forwarded "len", is never consumed.
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstPostfixExpressionOperatorEarlyReturnAst,
-    test_invalid_early_return_temporary_not_consumed,
-    SppLinearValueNotConsumedError, R"(
+// that is only borrowed, here by the forwarded "len", is dropped at the end of its statement.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorEarlyReturnAst,
+  test_valid_early_return_temporary_not_consumed, R"(
     fun f(o: Opt[Vec[U64]]) -> Opt[USize] {
         let n = o?.len()
         ret Some(val=n)

@@ -10,7 +10,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let b = Box[Plain](v=Plain(a=1))
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -87,7 +86,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun forward[U: ThreadSafe](v: U) -> Void {
         let b = Box[U](v=v)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -126,7 +124,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_capture_free_closure_is_thread_safe, R"(
     use std::threading::safe::ThreadSafe
 
-    fun needs_safe[T: ThreadSafe](x: T) -> Void { std::mem::ops::drop(x) }
+    fun needs_safe[T: ThreadSafe](x: T) -> Void { }
 
     fun f() -> Void {
         needs_safe(|| -> std::number::S32 { ret 1 })
@@ -138,7 +136,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_closure_capturing_a_safe_value_is_thread_safe, R"(
     use std::threading::safe::ThreadSafe
 
-    fun needs_safe[T: ThreadSafe](x: T) -> Void { std::mem::ops::drop(x) }
+    fun needs_safe[T: ThreadSafe](x: T) -> Void { }
 
     fun f() -> Void {
         let n = 7
@@ -194,7 +192,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestThreadSafety,
   test_valid_closure_still_matches_a_written_function_type, R"(
-    fun take(g: std::function::FunRef[(), std::number::S32]) -> Void { std::mem::ops::drop(g) }
+    fun take(g: std::function::FunRef[(), std::number::S32]) -> Void { }
 
     fun f() -> Void {
         let g: std::function::FunRef[(), std::number::S32] = || -> std::number::S32 { ret 1 }
@@ -220,7 +218,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_spawn_a_closure_holding_a_mutex, R"(
     fun f() -> Void {
         let m = std::threading::mutex::Mutex[std::number::S32]::new(1)
-        let h = std::threading::thread::spawn(|caps m| -> std::void::Void { std::mem::ops::drop(m) })
+        let h = std::threading::thread::spawn(|caps m| -> std::void::Void { })
             .expect("spawn failed")
         h.join().expect("join failed")
     }
@@ -268,7 +266,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_arc_of_a_safe_value_is_thread_safe, R"(
     use std::threading::safe::ThreadSafe
 
-    fun needs_safe[T: ThreadSafe](x: T) -> Void { std::mem::ops::drop(x) }
+    fun needs_safe[T: ThreadSafe](x: T) -> Void { }
 
     fun f() -> Void {
         needs_safe(std::threading::arc::Arc[std::number::S32]::new(1))
@@ -294,7 +292,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_threading_weak_is_thread_safe, R"(
     use std::threading::safe::ThreadSafe
 
-    fun needs_safe[T: ThreadSafe](x: T) -> Void { std::mem::ops::drop(x) }
+    fun needs_safe[T: ThreadSafe](x: T) -> Void { }
 
     fun f() -> Void {
         let a = std::threading::arc::Arc[std::number::S32]::new(1)

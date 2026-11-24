@@ -101,8 +101,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_members_differing_by_a_float_or_bool_comp_argument, R"(
     cls A[cmp x: F64] { }
     cls C[cmp b: Bool] { }
-    fun f(v: A[2.5_f64] or A[1.5_f64]) -> Void { std::mem::ops::drop(v) }
-    fun h(v: C[true] or C[false]) -> Void { std::mem::ops::drop(v) }
+    fun f(v: A[2.5_f64] or A[1.5_f64]) -> Void { }
+    fun h(v: C[true] or C[false]) -> Void { }
     fun g() -> Void {
         let a: A[1.5_f64] or A[2.5_f64] = A[1.5_f64]()
         f(a)
@@ -115,7 +115,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantMemberOrder,
     test_valid_members_differing_by_a_comp_operation, R"(
     cls A[cmp n: USize] { }
-    fun f[cmp n: USize](v: A[n + 2_uz] or A[n + 1_uz]) -> Void { std::mem::ops::drop(v) }
+    fun f[cmp n: USize](v: A[n + 2_uz] or A[n + 1_uz]) -> Void { }
     fun g() -> Void {
         let a: A[2_uz] or A[3_uz] = A[2_uz]()
         f[1_uz](a)

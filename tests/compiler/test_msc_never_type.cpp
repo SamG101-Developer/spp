@@ -193,7 +193,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { !public x: S32 }
     fun f() -> Void {
         let a = A(x=abort())
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -346,10 +345,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestNeverType,
-  test_invalid_discarded_value_still_rejected,
-  SppDiscardedValueError, R"(
+  test_valid_discarded_copy_value_is_allowed, R"(
     fun f() -> Void {
         1
         let y = 2
@@ -491,7 +489,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 // A "let" bound to a "!" value ("let y = loop true { .. }" whose only exits leave an outer loop) stored a null value
-// in codegen and segfaulted; it also read as a linear value left unconsumed.
+// in codegen and segfaulted; it also read as an owned value left for the scope's end to drop.
 // FIXED
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestNeverType,

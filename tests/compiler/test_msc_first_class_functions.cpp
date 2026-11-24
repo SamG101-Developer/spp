@@ -141,7 +141,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = 1_s32
         let mut c = |caps &mut x| { x@ = 2_s32 }
         run(&mut c)
-        std::mem::ops::drop(c)
     }
 )");
 

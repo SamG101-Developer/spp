@@ -70,7 +70,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is S32(..) { b }
             else { c }
         }
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -88,7 +87,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is &S32(..) { b }
             else { c }
         }
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -126,7 +124,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let b = a.res()
         let c = a.res()
         let d = b
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -140,7 +137,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut a = g()
         let b: S32 or std::generator::GenDone = a.res(false)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -197,7 +193,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         loop x in g() {
-            std::mem::ops::drop(x)
         }
     }
 )");
@@ -215,7 +210,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is std::generator::GenDone() { true }
             else { false }
         }
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -241,20 +235,18 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstPostfixExpressionOperatorResumeCoroutineAst,
-    test_invalid_res_on_an_early_return,
-    SppLinearValueNotConsumedError, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorResumeCoroutineAst,
+  test_valid_res_on_an_early_return, R"(
     fun f(o: Opt[Gen[S32]]) -> Opt[S32] {
         let x = o?.res()
         ret None
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstPostfixExpressionOperatorResumeCoroutineAst,
-    test_invalid_res_on_a_block,
-    SppLinearValueNotConsumedError, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorResumeCoroutineAst,
+  test_valid_res_on_a_block, R"(
     cor g() -> Gen[S32] {
         gen 1
     }

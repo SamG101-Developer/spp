@@ -88,7 +88,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let h = Holder[S32]::new()
         let a = h.pick()
-        std::mem::ops::drop(h)
     }
 )");
 
@@ -150,7 +149,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = A[3_uz]()
         let b: A[3_uz, 4_uz] = a
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -166,7 +164,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(b)
         let c = B[S32, 5_uz]()
         let d: B[S32, 5_uz, 10_uz] = c
-        std::mem::ops::drop(d)
     }
 )");
 

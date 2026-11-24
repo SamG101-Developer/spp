@@ -321,7 +321,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
         drop(v)
         o.inner.val = Str::new()
         let i = o.inner
-        drop(i)
     }
 )");
 

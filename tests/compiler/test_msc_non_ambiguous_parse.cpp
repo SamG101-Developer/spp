@@ -21,8 +21,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = (v[1_uz])()
         std::mem::ops::drop(x)
         x = Str::from("hello")
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -79,7 +77,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = foo
             .bar()
         x = 2
-        std::mem::ops::drop(foo)
     }
 )");
 

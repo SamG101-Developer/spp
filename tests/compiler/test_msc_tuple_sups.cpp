@@ -78,7 +78,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let t = (1_u64, Str::from("hello"), false)
         t.f()
-        std::mem::ops::drop(t)
     }
 )");
 
@@ -101,8 +100,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
         let t4 = (false,)
         t4.f()
-        std::mem::ops::drop(t2)
-        std::mem::ops::drop(t3)
     }
 )");
 
@@ -366,7 +363,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let t = (1_u64, Str::from("hello"))
         t.f()
-        std::mem::ops::drop(t)
     }
 )");
 
@@ -410,7 +406,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 // A tuple owns nothing beyond its elements, so it is copyable exactly when all of them are - the same shape as
-// "sup [..Variants: Copy] Var[Variants] ext Copy". Without this a variadic pack of numbers arrived as a linear value.
+// "sup [..Variants: Copy] Var[Variants] ext Copy". Without this a variadic pack of numbers arrived as a non-Copy value.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTupleSuperimpositions,
     test_valid_tuple_of_copyable_elements_is_copy, R"(
@@ -419,11 +415,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// ...and is not copyable when one of them is not, so it still has to be taken apart.
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestTupleSuperimpositions,
-    test_invalid_tuple_with_a_non_copyable_element,
-    SppLinearValueNotConsumedError, R"(
+// ...and is not copyable when one of them is not, so it is moved, and dropped at its scope's end.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestTupleSuperimpositions,
+  test_valid_tuple_with_a_non_copyable_element, R"(
     cls T { }
 
     fun f() -> Void {

@@ -37,7 +37,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let a = A[Str]()
-        std::mem::ops::drop(a)
     }
 )");
 

@@ -6,7 +6,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls TestType { }
     sup TestType {
         fun f(self) -> Void {
-            std::mem::ops::drop(self)
         }
     }
 )");
@@ -17,7 +16,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls TestType { }
     sup TestType {
         fun f(mut self) -> Void {
-            std::mem::ops::drop(self)
         }
     }
 )");
@@ -60,7 +58,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup TestType {
         fun f(mut self) -> Void {
             self.x = true
-            std::mem::ops::drop(self)
         }
     }
 )");

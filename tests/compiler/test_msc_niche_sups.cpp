@@ -124,7 +124,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x = Type1[S32, Bool]()
         let y = x.tagged()
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -152,6 +151,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let x = Type1[S32]()
-        std::mem::ops::drop(x)
     }
 )");

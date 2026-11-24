@@ -38,7 +38,6 @@ TEST(TestCompileIsolation, test_same_named_class_laid_out_again_in_a_later_compi
     fun f() -> std::void::Void {
         let obj = A()
         let x = obj.a
-        std::mem::ops::drop(obj)
     }
 )");
 }

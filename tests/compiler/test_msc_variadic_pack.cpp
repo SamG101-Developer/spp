@@ -8,7 +8,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
   test_valid_pack_collected_into_a_tuple_and_passed_on, R"(
     fun takes[T](v: T) -> Void {
-        std::mem::ops::drop(v)
     }
 
     fun packed(a: Bool, ..b: S32) -> Void {
@@ -26,7 +25,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
   test_valid_packs_of_different_lengths, R"(
     fun packed[T](a: Bool, ..b: T) -> Void {
-        std::mem::ops::drop(..b)
     }
 
     fun f() -> Void {
@@ -40,7 +38,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
   test_valid_pack_over_a_variadic_generic, R"(
     fun packed[..Ts](a: Bool, ..b: Ts) -> Void {
-        std::mem::ops::drop(..b)
     }
 
     fun f() -> Void {
@@ -48,12 +45,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Each element of a pack is a value, so a body that never uses them has abandoned them - unless every element is
-// copyable, which is what makes a pack of numbers usable without the function discarding it.
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// Each element of a pack is a value, so a body that never uses them drops each at its end, as it does any other
+// parameter.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
-  test_invalid_pack_of_non_copyable_elements_not_consumed,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_pack_of_non_copyable_elements_not_consumed, R"(
     cls T { }
 
     fun packed(a: Bool, ..b: T) -> Void { }
@@ -70,7 +66,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
   test_valid_pack_spread_into_another_variadic_call, R"(
       fun inner[..Us](..c: Us) -> Void {
-          std::mem::ops::drop(..c)
       }
 
       fun packed[..Ts](a: Bool, ..b: Ts) -> Void {
@@ -132,7 +127,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
       sup [..Us] Tup[Us] ext AnyTuple { }
 
       fun takes_any[T: AnyTuple](t: T) -> Void {
-          std::mem::ops::drop(t)
       }
 
       fun packed[..Ts](a: Bool, ..b: Ts) -> Void {
@@ -190,7 +184,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
           let t = (Str::from("a"), 1_s32)
           refs(&..t)
           refs(&..t)
-          std::mem::ops::drop(t)
       }
   )");
 
@@ -200,7 +193,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   test_invalid_plain_spread_of_a_borrowed_tuple_moves_out_of_the_borrow,
   SppMoveFromBorrowedMemoryError, R"(
       fun take_vals[..Ts](..xs: Ts) -> Void {
-          std::mem::ops::drop(..xs)
       }
 
       fun give(t: &Tup[Str, S32]) -> Void {
@@ -213,7 +205,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
   test_valid_plain_spread_of_a_borrowed_tuple_of_copy_elements, R"(
       fun take_vals[..Ts](..xs: Ts) -> Void {
-          std::mem::ops::drop(..xs)
       }
 
       fun give(t: &Tup[S32, Bool]) -> Void {
@@ -230,7 +221,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
       fun f() -> Void {
           let mut t = (Str::from("a"), 1_s32)
           muts(&mut ..t)
-          std::mem::ops::drop(t)
       }
   )");
 
@@ -296,7 +286,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
       fun packed[..Ts](a: Bool, ..b: Ts) -> Void {
           take_refs(&..b)
-          std::mem::ops::drop(..b)
       }
 
       fun f() -> Void {
@@ -322,7 +311,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
       fun f() -> Void {
           let t = (Str::from("a"), 1_s32)
           t.show()
-          std::mem::ops::drop(t)
       }
   )");
 
@@ -339,7 +327,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
           let a = Str::from("a")
           let b = 1_s32
           show(&a, &b)
-          std::mem::ops::drop(a)
       }
   )");
 
@@ -353,8 +340,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
           let a = Str::from("a")
           let b = Str::from("b")
           show(&a, &b)
-          std::mem::ops::drop(a)
-          std::mem::ops::drop(b)
       }
   )");
 
@@ -386,7 +371,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
           let a = Str::from("a")
           let b = 1_s32
           walk(&a, &b)
-          std::mem::ops::drop(a)
       }
   )");
 
@@ -403,7 +387,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
       fun f() -> Void {
           let a = Str::from("a")
           outer(&a, &a)
-          std::mem::ops::drop(a)
       }
   )");
 
@@ -452,7 +435,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
       fun f() -> Void {
           let t = collect(Str::from("a"), 1_s32)
-          std::mem::ops::drop(t)
       }
   )");
 
@@ -488,7 +470,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
   test_valid_pack_consumed_by_the_variadic_drop, R"(
       fun take[..Ts](..xs: Ts) -> Void {
-          std::mem::ops::drop(..xs)
       }
 
       fun f() -> Void {
@@ -519,13 +500,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
       }
   )");
 
-// Each element is its own value: one left unconsumed is not consumed (E94), whichever it is.
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// Each element is its own value: one left unused is dropped at the body's end, whichever it is.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
-  test_invalid_pack_element_left_unconsumed,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_pack_element_left_unconsumed, R"(
       fun take[..Ts](..xs: Ts) -> Void {
-          std::mem::ops::drop(xs.0)
       }
 
       fun f() -> Void {
@@ -574,7 +553,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
   test_valid_comp_pack_spread_into_a_tuple, R"(
       fun takes[T](v: T) -> Void {
-          std::mem::ops::drop(v)
       }
 
       fun g[cmp ..n: Bool]() -> Void {
@@ -859,7 +837,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
       }
   )");
 
-// A temporary of linear elements spread by move gives each away, which consumes it.
+// A temporary of non-Copy elements spread by move gives each away, which consumes it.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
   test_valid_spread_of_a_temporary_tuple_of_owned_values, R"(
@@ -868,8 +846,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
       }
 
       fun take(a: Str, b: Str) -> Void {
-          std::mem::ops::drop(a)
-          std::mem::ops::drop(b)
       }
 
       fun f() -> Void {
@@ -877,12 +853,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
       }
   )");
 
-// Spread as borrows, the temporary is only borrowed, so its linear elements are not consumed: as for any borrowed
-// linear temporary ("TestLinearTemporaries").
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// Spread as borrows, the temporary is only borrowed, so its non-Copy elements are dropped at the end of the statement:
+// as for any borrowed temporary ("TestDropTemporaries").
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
-  test_invalid_borrowed_spread_of_a_temporary_tuple_of_owned_values,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_borrowed_spread_of_a_temporary_tuple_of_owned_values, R"(
       fun strs() -> (Str, Str) {
           ret (Str::from("a"), Str::from("b"))
       }
@@ -920,7 +895,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
       fun f[T](..xs: T) -> Void {
           let t = g(..xs)
-          std::mem::ops::drop(t)
       }
 
       fun h() -> Void {
@@ -982,7 +956,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
           let mut a = 1_s32
           let mut b = Str::from("b")
           bump(&mut a, &mut b)
-          std::mem::ops::drop(b)
       }
   )");
 
@@ -1005,8 +978,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   test_invalid_pack_spread_by_move_twice,
   SppUninitializedMemoryUseError, R"(
       fun take[..Ts](..xs: Ts) -> Void {
-          std::mem::ops::drop(..xs)
-          std::mem::ops::drop(..xs)
+          let first = (..xs)
+          let second = (..xs)
       }
 
       fun f() -> Void {
@@ -1095,7 +1068,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_binary_fold_over_an_addable_type_pack_of_one_type, R"(
       fun total[..Ts: std::ops::add::Add](..xs: Ts) -> Void {
           let t = .. + xs
-          std::mem::ops::drop(t)
       }
 
       fun f() -> Void {
@@ -1124,7 +1096,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_binary_fold_over_a_pairwise_addable_type_pack_of_one_type, R"(
       fun total[..Ts: std::ops::add::Add[Ts]](..xs: Ts) -> Void {
           let t = .. + xs
-          std::mem::ops::drop(t)
       }
 
       fun f() -> Void {
@@ -1184,7 +1155,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
       fun total[..Ts: std::ops::add::Add[Ts]](..xs: Ts) -> Void {
           let t = .. + xs
-          std::mem::ops::drop(t)
       }
 
       fun f() -> Void {
@@ -1198,7 +1168,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
   test_valid_call_fold_over_a_type_pack, R"(
       fun size_of[T](t: T) -> S32 {
-          std::mem::ops::drop(t)
           ret 1_s32
       }
 
@@ -1274,12 +1243,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
       }
   )");
 
-// A call fold over a pack of linear elements moves each, so the pack is consumed.
+// A call fold over a pack of non-Copy elements moves each, so the pack is consumed.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
   test_valid_call_fold_consuming_a_pack, R"(
       fun eat[T](t: T) -> S32 {
-          std::mem::ops::drop(t)
           ret 1_s32
       }
 
@@ -1292,13 +1260,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
       }
   )");
 
-// A borrowed pack is discarded the same way an owned one is consumed: "drop(..xs)" over "&Ts" picks the borrowed
-// variadic "drop", and the values behind the borrows are still usable after.
+// A borrowed pack owns nothing, so there is nothing of it to drop, and the values behind the borrows are still usable
+// after.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
   test_valid_drop_of_a_borrowed_pack, R"(
       fun discard[..Ts](..xs: &Ts) -> Void {
-          std::mem::ops::drop(..xs)
       }
 
       fun f() -> Void {
@@ -1306,23 +1273,20 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
           let b = 1_s32
           discard(&a, &b)
           let c = a
-          std::mem::ops::drop(c)
       }
   )");
 
-// A borrowed pack of one type is discarded the same way.
+// A borrowed pack of one type owns nothing either.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
   test_valid_drop_of_a_borrowed_single_type_pack, R"(
       fun discard(..xs: &Str) -> Void {
-          std::mem::ops::drop(..xs)
       }
 
       fun f() -> Void {
           let a = Str::from("a")
           let b = Str::from("b")
           discard(&a, &b)
-          std::mem::ops::drop(a, b)
       }
   )");
 
@@ -1354,13 +1318,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
       }
   )");
 
-// A fold over a callee returning a value is still the tuple of the results, so discarding it is E95.
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// A fold over a callee returning a value is still the tuple of the results, which a statement may discard as it may
+// any value whose type is not "!must_use".
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
-  test_invalid_call_fold_of_values_discarded,
-  SppDiscardedValueError, R"(
+  test_valid_call_fold_of_values_discarded, R"(
       fun one[T](t: T) -> S32 {
-          std::mem::ops::drop(t)
           ret 1_s32
       }
 

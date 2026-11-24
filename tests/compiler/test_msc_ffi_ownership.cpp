@@ -71,6 +71,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         std::console::println("a")
         let v = std::vector::Vec[U64]()
-        std::mem::ops::drop(v)
     }
 )");

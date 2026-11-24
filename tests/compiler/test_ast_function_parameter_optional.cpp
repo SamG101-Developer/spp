@@ -24,7 +24,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   FunctionParameterOptionalAst,
   test_valid_function_parameter_optional_non_copyable_default, R"(
     fun f(a: Str = Str::from("hello")) -> Void {
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -66,7 +65,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
     fun make() -> A { ret A() }
     fun h(x: A = make()) -> Void {
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -76,7 +74,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     fun make() -> A { ret A() }
     fun h(x: A = make()) -> Void {
-        std::mem::ops::drop(x)
     }
     fun g() -> Void {
         h()
@@ -89,12 +86,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A {
         !public fun make() -> A { ret A() }
-        !public fun m(&self, other: A = A::make()) -> Void { std::mem::ops::drop(other) }
+        !public fun m(&self, other: A = A::make()) -> Void { }
     }
     fun g() -> Void {
         let a = A()
         a.m()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -104,7 +100,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     fun make() -> A { ret A() }
     fun h[T](x: A = make()) -> Void {
-        std::mem::ops::drop(x)
     }
     fun g() -> Void {
         h[S32]()
@@ -117,12 +112,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A {
         fun helper() -> A { ret A() }
-        !public fun m[T](&self, x: A = A::helper()) -> Void { std::mem::ops::drop(x) }
+        !public fun m[T](&self, x: A = A::helper()) -> Void { }
     }
     fun g() -> Void {
         let a = A()
         a.m[S32]()
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -254,12 +248,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   FunctionParameterOptionalAst,
   test_valid_function_parameter_optional_default_with_a_nested_generic, R"(
     fun f[T](a: T, b: Vec[Vec[T]] = Vec[Vec[T]]::new()) -> Vec[Vec[T]] {
-        std::mem::ops::drop(a)
         ret b
     }
     fun g() -> Void {
         let v: Vec[Vec[S32]] = f(1_s32)
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -268,16 +260,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   FunctionParameterOptionalAst,
   test_valid_function_parameter_optional_default_with_a_caller_generic_of_the_same_name, R"(
     fun f[T](a: T, b: Vec[T] = Vec[T]::new()) -> Vec[T] {
-        std::mem::ops::drop(a)
         ret b
     }
     fun g[T](x: T) -> Vec[S32] {
-        std::mem::ops::drop(x)
         ret f(1_s32)
     }
     fun h() -> Void {
         let v = g(true)
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -291,7 +280,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
     fun f(b: &Box[S32]) -> Void {
         let v: Vec[S32] = b.make()
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -331,15 +319,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(a: (S32, S32) = (1_s32, case true { 1_s32 } else { 2_s32 })) -> Void { }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   FunctionParameterOptionalAst,
-  test_invalid_generic_function_default_resuming_a_temporary_generator,
-  SppLinearValueNotConsumedError, R"(
+  test_valid_generic_function_default_resuming_a_temporary_generator, R"(
     cor nums() -> Gen[Yield=S32, Send=Bool] {
         let sent = gen 1_s32
     }
     fun f[T](x: T, a: S32 or std::generator::GenDone = nums().res(true)) -> T {
-        std::mem::ops::drop(a)
         ret x
     }
     fun g() -> Void {

@@ -9,7 +9,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let a = A(b=true)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -25,8 +24,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a = A(b=MyVec[Bool]::from(&[true, false, true]))
         let b = A(b=Vec[Bool]::from(&[false, false]))
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -39,7 +36,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let a = A(b=123)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -79,7 +75,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let v = Vec[Bool]::from(&[true, false])
         let mut len = v.test()
         len = 0_uz
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -104,7 +99,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_simple, R"(
     sup S32 ext From[Str] {
         fun from(that: Str) -> Self {
-                std::mem::ops::drop(that)
             ret 0
         }
     }
@@ -123,7 +117,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     sup MyVec[S32] ext From[Str] {
         fun from(that: Str) -> Self {
-                std::mem::ops::drop(that)
             ret MyVec[S32]::new()
         }
     }
@@ -139,7 +132,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut v = Vec[S32]::from(s)
         std::mem::ops::drop(v)
         v = MyVec[S32]::new()
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -151,7 +143,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut s = Str::from(n)
         std::mem::ops::drop(s)
         s = Str::from("changed")
-        std::mem::ops::drop(s)
     }
 )");
 
@@ -203,7 +194,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type MyVec[ZZ] = Vec[ZZ]
 
     fun g(v: MyVec[Bool]) -> Void {
-        std::mem::ops::drop(v)
     }
 
     fun f() -> Void {
@@ -290,8 +280,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(v2)
         v2 = Vec[Bool]::new()
 
-        std::mem::ops::drop(v1)
-        std::mem::ops::drop(v2)
     }
 )");
 
@@ -338,8 +326,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut v2 = g[MyVec[Bool]]()
         std::mem::ops::drop(v2)
         v2 = Vec[Bool]::new()
-        std::mem::ops::drop(v1)
-        std::mem::ops::drop(v2)
     }
 )");
 
@@ -366,10 +352,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(s: MyA, t: A) -> Void {
         case s is MyA(bytes) {
-            std::mem::ops::drop(bytes)
         }
         case t is A(bytes) {
-            std::mem::ops::drop(bytes)
         }
     }
 )");
@@ -385,10 +369,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(v: MyVec[U8], v2: MyVec[U8]) -> Void {
         case v is MyVec[U8](buffer, ..) {
-            std::mem::ops::drop(buffer)
         }
         case v2 is A[U8](buffer, ..) {
-            std::mem::ops::drop(buffer)
         }
     }
 )");
@@ -414,7 +396,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let MyA(mut bytes) = s
         std::mem::ops::drop(bytes)
         bytes = Vec[U8]::new()
-        std::mem::ops::drop(bytes)
     }
 )");
 
@@ -431,7 +412,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let MyVec[U8](mut buffer, ..) = v
         std::mem::ops::drop(buffer)
         buffer = Vec[U8]::new()
-        std::mem::ops::drop(buffer)
     }
 )");
 
@@ -467,7 +447,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         v = Vec[Bool]::new()
         std::mem::ops::drop(v)
         v = std::vector::Vec[Bool]()
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -536,7 +515,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         v = MyVec[Bool]::from(&[true, false])
         std::mem::ops::drop(v)
         v = Vec[Bool]::from(&[false, true])
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -568,7 +546,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut v: MyVec[Bool] = MyVec[Bool]::from(&[true, false])
         std::mem::ops::drop(v)
         v = Vec[Bool]::from(&[false, true])
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -598,7 +575,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let v1: MyVec[Bool] = MyVec[Bool]::new()
         let v2: Vec[Bool] = v1
-        std::mem::ops::drop(v2)
     }
 )");
 
@@ -631,7 +607,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         t = (MyVec[Bool]::new(), false)
         std::mem::ops::drop(t)
         t = (Vec[Bool]::new(), true)
-        std::mem::ops::drop(t)
     }
 )");
 
@@ -659,7 +634,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: [MyVec[Bool]; 2_uz]) -> Void {
         std::mem::ops::drop(a)
         a = [MyVec[Bool]::new(), Vec[Bool]::new()]
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -692,7 +666,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x = Vec[Bool]::new()
         std::mem::ops::drop(x)
         x = true
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -756,7 +729,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup Derived ext Base { }
 
     fun g[T: BaseAlias](t: T) -> Void {
-        std::mem::ops::drop(t)
     }
 
     fun f() -> Void {

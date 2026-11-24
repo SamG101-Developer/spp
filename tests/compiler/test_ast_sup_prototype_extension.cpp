@@ -277,7 +277,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public
         fun f(mut self) -> Void {
             self.a = 100
-            std::mem::ops::drop(self)
         }
     }
 
@@ -290,7 +289,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let b = B(b=200)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -304,7 +302,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !virtual_method
         !public
         fun f(mut self) -> Void {
-            std::mem::ops::drop(self)
         }
     }
 
@@ -313,13 +310,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             let Self(mut a, b) = self
             std::mem::ops::drop(a)
             a = b
-            std::mem::ops::drop(a)
         }
     }
 
     fun f() -> Void {
         let b = B(b=100)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -355,6 +350,33 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup Str ext Drop {
         fun drop(self) -> Void { }
     }
+)");
+
+// A copy holds what the original does, so a "Copy" type has no destructor of its own, whichever block comes first.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstSupPrototypeExtensionAst,
+  test_invalid_superimposition_extension_copy_type_with_drop,
+  SppSuperimpositionCopyAndDropError, R"(
+    use std::ops::drop::Drop
+
+    cls Handle { fd: S32 }
+    sup Handle ext Copy { }
+    sup Handle ext Drop {
+        fun drop(self) -> Void { }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstSupPrototypeExtensionAst,
+  test_invalid_superimposition_extension_drop_type_made_copy_after,
+  SppSuperimpositionCopyAndDropError, R"(
+    use std::ops::drop::Drop
+
+    cls Handle { fd: S32 }
+    sup Handle ext Drop {
+        fun drop(self) -> Void { }
+    }
+    sup Handle ext Copy { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(

@@ -39,7 +39,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         loop mut x in v.iter_mut() {
             let temp: &mut Str = x
         }
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -51,7 +50,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         loop mut x in v.iter_ref() {
             let temp: &Str = x
         }
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -63,7 +61,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         loop mut x in v.iter_mov() {
             std::mem::ops::drop(x)
             x = Str::from("hello")
-            std::mem::ops::drop(x)
         }
     }
 )");
@@ -74,7 +71,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let v = Vec[Str]()
         loop x in v.iter_ref() { }
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -87,7 +83,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         loop x in gen_strings() {
-            std::mem::ops::drop(x)
         }
     }
 )");

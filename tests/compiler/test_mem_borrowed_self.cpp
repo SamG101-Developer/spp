@@ -4,8 +4,6 @@
 // other parameter and was never registered as a borrow at all - a value could be moved straight out of "&self" and
 // nothing complained. test_mem_move_from_borrowed_ctx.cpp covers the "p: &mut Point" shape, which always worked; the
 // gap was that nothing covered the "self" shape.
-//
-// Todo: Red until the standard library is migrated to linear ownership - see test_lin_scope_exit.cpp.
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryBorrowedSelf,

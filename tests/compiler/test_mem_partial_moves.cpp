@@ -70,7 +70,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut c = C()
         let x = c.b.a.str
         c.b.a.str = Str::from("hello")
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(c)
     }
 )");

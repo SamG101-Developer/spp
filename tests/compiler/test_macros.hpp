@@ -93,8 +93,15 @@ namespace spp_test {
 
       const auto q1 = block.find('\'');
       const auto q2 = block.find('\'', q1 + 1);
-      // By path components, as the separator is "\\" on Windows.
-      const auto path = spp::Path(block.substr(q1 + 1, q2 - q1 - 1));
+      // By path components, as the separator is "\\" on Windows. The ":line:col" suffix comes off first.
+      auto quoted_path = block.substr(q1 + 1, q2 - q1 - 1);
+      for (auto i = 0; i < 2; ++i) {
+        const auto colon = quoted_path.rfind(':');
+        if (colon == std::string::npos or colon + 1 == quoted_path.size()) { break; }
+        if (quoted_path.find_first_not_of("0123456789", colon + 1) != std::string::npos) { break; }
+        quoted_path.resize(colon);
+      }
+      const auto path = spp::Path(quoted_path);
       EXPECT_TRUE(path.filename() == "main.spp" and path.parent_path().filename() == "src")
         << "An error block points outside the test's own source:\n" << block;
       if (underline != nullptr and not primary_seen) {

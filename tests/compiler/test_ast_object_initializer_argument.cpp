@@ -119,7 +119,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> std::void::Void {
         let foo = Foo(a=1)
-        std::mem::ops::drop(foo)
     }
 )");
 
@@ -133,7 +132,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let a = 1
         let foo = Foo(a)
-        std::mem::ops::drop(foo)
     }
 )");
 
@@ -147,7 +145,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(other: Foo) -> std::void::Void {
         let foo = Foo(a=1, ..other)
-        std::mem::ops::drop(foo)
-        std::mem::ops::drop(other)
     }
 )");

@@ -44,7 +44,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let v = Vec[S32]::from(&[1, 2, 3])
         std::mem::ops::drop(v)
         let v = Vec[Bool]::from(&[true])
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -129,7 +128,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
 
         fun consume(&self, s: std::string::Str) -> Void {
-            drop(s)
         }
     }
 )");
@@ -145,8 +143,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let (a, b) = (Str::from("1"), Str::from("2"))
         let (a, b) = (b, a)
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
     }
 )");
 
@@ -173,7 +169,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             else { 0 }
         }
         let b = o is Some[Str](&val)
-        std::mem::ops::drop(o)
         ret n
     }
 )");

@@ -139,12 +139,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
 
     fun f() -> A {
         let scratch = A()
-        drop(scratch)
         ret A()
     }
 
     fun main() -> Void {
         let r = f()
-        drop(r)
     }
 )");

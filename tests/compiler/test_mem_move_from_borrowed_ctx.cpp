@@ -11,7 +11,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public y: T
     }
 
-    fun f(p: &mut Point) -> Void {
+    fun f(p: &Point) -> Void {
         let x = p.x
     }
 )");
@@ -27,7 +27,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public y: T
     }
 
-    fun f(p: &mut Point) -> Void {
+    fun f(p: &Point) -> Void {
         let q = p
         let x = q.x
     }
@@ -47,7 +47,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public y: T
     }
 
-    fun f(p: &mut Point) -> Void {
+    fun f(p: &Point) -> Void {
         let q = p
         let x = q.x.u
     }
@@ -256,7 +256,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(mut v: std::vector::Vec[S32]) -> Void {
         g(&v, v.len())
-        std::mem::ops::drop(v)
     }
 )");
 

@@ -15,7 +15,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(v: Vec[S32]) -> Void {
         let mut n = v.len()
         n = 0_uz
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -25,7 +24,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(v: Vec[S32]) -> Void {
         let mut b = v.is_empty()
         b = false
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -37,7 +35,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let x = v[0_uz]
         }
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -49,7 +46,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let s = v[0_uz to 2_uz]
         }
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -59,7 +55,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_forwarding_vec_iteration_ref, R"(
     fun f(v: Vec[S32]) -> Void {
         loop x in v.iter_ref() { }
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -68,7 +63,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_forwarding_vec_iteration_mut, R"(
     fun f(mut v: Vec[S32]) -> Void {
         loop x in v.iter_mut() { }
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -81,7 +75,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(s: Str) -> Void {
         let mut n = s.len()
         n = 0_uz
-        std::mem::ops::drop(s)
     }
 )");
 
@@ -91,7 +84,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(s: Str) -> Void {
         let mut b = s.contains(&"lo")
         b = false
-        std::mem::ops::drop(s)
     }
 )");
 
@@ -103,8 +95,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let hello = Str::from("hello")
         let mut b = s == hello
         b = false
-        std::mem::ops::drop(s)
-        std::mem::ops::drop(hello)
     }
 )");
 
@@ -114,7 +104,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_forwarding_str_chars_iteration, R"(
     fun f(s: Str) -> Void {
         loop c in s.chars() { }
-        std::mem::ops::drop(s)
     }
 )");
 
@@ -138,7 +127,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(w: Wrapper) -> Void {
         let mut b = w.greet()
         b = false
-        std::mem::ops::drop(w)
     }
 )");
 
@@ -199,14 +187,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(w: Wrapper) -> Void {
         let b = w.accepts(&Mine())
-        std::mem::ops::drop(w)
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestForwarding,
-    test_invalid_forwarding_through_an_early_return,
-    SppLinearValueNotConsumedError, R"(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestForwarding,
+  test_valid_forwarding_through_an_early_return, R"(
     fun g() -> Opt[Vec[U64]] { ret None }
     fun f() -> Opt[USize] {
         let n = g()?.len()
@@ -219,6 +205,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_forwarding_static_member_access_on_type, R"(
     fun g(v: Vec[S32]) -> Void {
         let m = Vec[S32]::is_empty
-        std::mem::ops::drop(v)
     }
 )");

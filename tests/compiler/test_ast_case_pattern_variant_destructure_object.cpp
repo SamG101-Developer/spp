@@ -102,7 +102,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f(p: Point) -> Void {
-        case p is Point(x, y) { }
+        case p is Point(x, y) {
+        }
     }
 )");
 
@@ -118,7 +119,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         # Bound by borrow: a binary "is" matches on one path only, so binding by value would leave "p" partially
         # moved on that path and intact on the other, which is not a state it can be discarded from.
         case p is Point(&x, ..) { }
-        std::mem::ops::drop(p)
     }
 )");
 
@@ -137,8 +137,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(p: Point1 or Point2) -> Void {
         case p of {
-            is Point1(x, y) { }
-            is Point2(x, y) { }
+            is Point1(x, y) {
+            }
+            is Point2(x, y) {
+            }
         }
     }
 )");
@@ -155,8 +157,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case p of {
             is Point1(x as x_value, y as y_unused) {
                 let xxx = x_value
-                std::mem::ops::drop(xxx)
-                std::mem::ops::drop(y_unused)
             }
         }
     }
@@ -165,8 +165,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case p of {
             is Point1(y as y_value, x as x_unused) {
                 let yyy = y_value
-                std::mem::ops::drop(yyy)
-                std::mem::ops::drop(x_unused)
             }
         }
     }
@@ -180,7 +178,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public y: Str
     }
     fun f(p: Point) -> Void {
-        case p is Point(x=[a, b], y) { }
+        case p is Point(x=[a, b], y) {
+        }
     }
 )");
 
@@ -192,7 +191,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public y: Str
     }
     fun f(p: Point) -> Void {
-        case p is Point(x=(a, b), y) { }
+        case p is Point(x=(a, b), y) {
+        }
     }
 )");
 
@@ -211,15 +211,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f(p: Outer) -> Void {
-        case p is Outer(i=Inner(a, b), y) { }
+        case p is Outer(i=Inner(a, b), y) {
+        }
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
-  test_invalid_nested_tuple_in_object_partially_bound,
-  SppDestructureSkipsOwnedPartError, R"(
-    # Only the first element of the tuple is bound, so "p.x.1" is left with no owner once the pattern takes "p".
+  test_valid_nested_tuple_in_object_partially_bound, R"(
+    # Only the first element of the tuple is bound, so "p.x.1" stays with "p", which drops it at the end of "f".
     cls Point {
         !public x: (Str, Str)
         !public y: Str
@@ -229,10 +229,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
-  test_invalid_nested_class_in_object_partially_bound,
-  SppDestructureSkipsOwnedPartError, R"(
+  test_valid_nested_class_in_object_partially_bound, R"(
     cls Inner {
         !public a: Str
         !public b: Str
@@ -273,7 +272,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_variant_narrowing_opt, R"(
     fun f(p: Opt[Str]) -> Void {
         case p of {
-            is Some[Str](val) { }
+            is Some[Str](val) {
+            }
             is None() { }
         }
     }
@@ -284,7 +284,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_variant_narrowing_res, R"(
     fun f(p: Res[Str, Bool]) -> Void {
         case p of {
-            is Pass[Str](val) { }
+            is Pass[Str](val) {
+            }
             is Fail[Bool](err) { }
         }
     }
@@ -303,8 +304,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(p: A or B) -> Void {
         case p of {
-            is A(a) { }
-            is B(b) { }
+            is A(a) {
+            }
+            is B(b) {
+            }
         }
     }
 )");

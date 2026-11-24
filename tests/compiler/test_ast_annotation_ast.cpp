@@ -22,7 +22,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AnnotationAst_BuiltinVirtualMethod,
   test_invalid_usage_on_function,
   SppCalledAnnotationAppliedToInvalidAstError, R"(
-    !virtual_method
+    !abstract_method
     fun f() -> Void { }
 )");
 
@@ -81,7 +81,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     cls B { }
     sup B ext A {
-        !public
+        !private
         fun f(&self) -> Void { }
     }
 )");
@@ -123,7 +123,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     cls B { }
     sup B ext A {
-        !package
+        !private
         fun f(&self) -> Void { }
     }
 )");
@@ -165,7 +165,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     cls B { }
     sup B ext A {
-        !protected
+        !private
         fun f(&self) -> Void { }
     }
 )");

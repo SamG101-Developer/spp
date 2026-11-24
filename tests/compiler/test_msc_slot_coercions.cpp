@@ -164,7 +164,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut g = c()
         let a = g.res(None)
         let b = g.res(Some(val=1))
-        std::mem::ops::drop(g)
     }
 )");
 
@@ -249,7 +248,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_member_into_closure_body, R"(
     fun f() -> Void {
         let c = || -> Opt[S32] { Some(val=1) }
-        std::mem::ops::drop(c)
     }
 )");
 
@@ -260,7 +258,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let c = || -> FunRef[(S32,), S32] { g }
-        std::mem::ops::drop(c)
     }
 )");
 
@@ -517,6 +514,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut x = |y: S32| y
         x = |y: S32| y + 1
-        std::mem::ops::drop(x)
     }
 )");

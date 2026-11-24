@@ -50,9 +50,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
                 let coro = c(&s)
                 x = coro
             }
-            std::mem::ops::drop(x)
         }
-        std::mem::ops::drop(s)
     }
 )");
 
@@ -70,9 +68,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             {
                 x = c(&s)
             }
-            std::mem::ops::drop(x)
         }
-        std::mem::ops::drop(s)
     }
 )");
 
@@ -113,10 +109,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
                 let coro = c(&s1, &s2)
                 x = coro
             }
-            std::mem::ops::drop(x)
         }
-        std::mem::ops::drop(s1)
-        std::mem::ops::drop(s2)
     }
 )");
 
@@ -197,7 +190,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             {
                 c = |caps &mut x| { x@ = 2_s32 }
             }
-            std::mem::ops::drop(c)
         }
     }
 )");

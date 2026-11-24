@@ -16,7 +16,7 @@
 
     fun two(a: &mut A, b: &mut S32) -> Void { }
     fun twice(a: &mut A, b: &mut A) -> Void { }
-    fun take_c(c: FunMut[(), Void], y: &mut S32) -> Void { std::mem::ops::drop(c) }
+    fun take_c(c: FunMut[(), Void], y: &mut S32) -> Void { }
     fun read(y: &S32) -> Void { }
     fun write(y: &mut S32) -> Void { }
     cor counter(y: &mut S32) -> Gen[S32] {
@@ -189,7 +189,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             let a = v[mut 0_uz]
             write(a)
         }
-        std::mem::ops::drop(v)
     }
 )");
 
@@ -201,7 +200,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case a of {
             is A(&mut n, ..) { write(n) }
         }
-        std::mem::ops::drop(a)
     }
 )");
 

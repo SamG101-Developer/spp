@@ -4,8 +4,6 @@
 // there. "RetStatementAst" declared "Terminates()" but "LoopControlFlowStatementAst" did not, so a branch ending in
 // "skip" or "exit" read as falling through and every move it made was applied to the statements after the case. The
 // "ret" form was covered and worked; the loop-control form was not covered and did not.
-//
-// Todo: Red until the standard library is migrated to linear ownership - see test_lin_scope_exit.cpp.
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryTerminatingBranches,

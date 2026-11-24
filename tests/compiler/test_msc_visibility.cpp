@@ -157,7 +157,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestMscVisibility,
   test_valid_visibility_access_public_module_member, R"(
     fun f(x: Str) -> Void {
-        std::mem::ops::drop(x)
     }
 )");
 
@@ -234,7 +233,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Box[T] { !public v: T }
     fun f() -> Void {
         let v = Vec[Box[S32]]::new()
-        std::mem::ops::drop(v)
     }
 )");
 

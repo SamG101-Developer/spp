@@ -48,7 +48,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a: Point = Point(x=1, y=2)
         case a is Point(&x, &y) { }
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -58,10 +57,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a: Str or Bool = Str::from("hello")
         case a is Str(..) {
-            std::mem::ops::drop(a)
         }
         else {
-            std::mem::ops::drop(a)
         }
     }
 )");
@@ -76,7 +73,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a: Point[S32] = Point[S32](x=1, y=2)
         case a is Point[S32](&x, &y) { }
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -90,7 +86,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a: Point = Point(x=1, y=2)
         let b: Bool = a is Point(&x, &y)
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -106,7 +101,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case a is Point(&x, &y) {
             let s = x
         }
-        std::mem::ops::drop(a)
     }
 )");
 
@@ -131,7 +125,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let a: Point = Point(x=1, y=2)
         case a is Point(&x, &y) and x == 1 { }
-        std::mem::ops::drop(a)
     }
 )");
 
