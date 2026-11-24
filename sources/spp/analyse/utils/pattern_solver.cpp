@@ -830,51 +830,14 @@ auto spp::analyse::utils::pattern_solver::CoverageOf(
 
 auto spp::analyse::utils::pattern_solver::EdgesOf(
   Vec<CaseExpressionBranchAst*> const &branches, CaseCoverage const &coverage) -> SubjectEdges {
-  // Lambda to detect if every type ref in a list is copyable
-  // or not. This dictates if a subject is moved or copied on
-  // a match.
-  const auto all_copy = [](Vec<TypeRef> const &types) {
-    const auto copyable = [](auto const &t) { return t.Symbol != nullptr and t.Symbol->IsCopyable(); };
-    return not types.empty() and genex::all_of(types, copyable);
-  };
-
-  // Each match edge: a binding by move takes the subject;
-  // narrowing it to "Copy" members alone, or an "else" left with
-  // only those, finds it owes nothing. A branch never reached
-  // does nothing to it.
+  // A reachable branch binding by move off the subject takes it; a
+  // branch never reached does nothing to it.
   auto out = SubjectEdges();
   for (auto const &[i, branch] : branches | genex::views::enumerate) {
-    // If a branch is not reachable, then mark the subject as
-    // being kept - this branch can never execute. Continue.
-    auto const &patterns = branch->Patterns;
-    if (not coverage.Reachable[i]) {
-      out.OnMatch.emplace_back(SubjectOnMatch::kKeep);
-      continue;
-    }
-
-    // The members the branch's patterns select, where each does.
-    auto narrowed = Vec<TypeRef>();
-    for (auto const &member : coverage.SelectedMembers[i]) {
-      if (member.has_value()) { narrowed.emplace_back(*member); }
-    }
-    const auto is_else = IsElseBranch(*branch);
-    const auto narrows_only_to_copy = narrowed.size() == patterns.size() and all_copy(narrowed);
-
-    // Take a subject where any of the patterns move the subject,
-    // discharge the subject if we are at the "else" block and
-    // all the previous branches were copying; otherwise keep it.
-    out.OnMatch.emplace_back(
-      genex::any_of(patterns, [](auto const &p) { return p->BindsByMove(); })
-      ? SubjectOnMatch::kTake
-      : (is_else and all_copy(coverage.RemainingBefore[i])) or (not is_else and narrows_only_to_copy)
-      ? SubjectOnMatch::kDischarge
-      : SubjectOnMatch::kKeep);
+    const auto takes = coverage.Reachable[i]
+      and genex::any_of(branch->Patterns, [](auto const &p) { return p->BindsByMove(); });
+    out.OnMatch.emplace_back(takes ? SubjectOnMatch::kTake : SubjectOnMatch::kKeep);
   }
-
-  // The fall-through holds the members none of the branches matched.
-  out.OnFallThrough = coverage.FallsThrough and all_copy(coverage.Remaining)
-    ? SubjectOnMatch::kDischarge
-    : SubjectOnMatch::kKeep;
   return out;
 }
 
@@ -896,7 +859,7 @@ auto spp::analyse::utils::pattern_solver::LiteralCheckOf(PatternNode const &node
   auto const &literal = *node.Source->To<CasePatternVariantLiteralAst>()->Literal;
   const auto pos = literal.PosStart();
 
-  // The hidden borrow, a view that owes nothing.
+  // The hidden borrow, a view that drops nothing.
   auto name = MakeShared<IdentifierAst>(pos, "$_pat_" + spp::utils::Uid());
   auto type = node.Col.Ref.AstIn(*sm.CurrentScope)->WithConvention(MakeUnique<ConventionRefAst>(nullptr));
   auto value = MakeShared<VariableSymbol>(name, std::move(type), sm.CurrentScope, VariableKind::Temporary);
@@ -959,7 +922,7 @@ auto spp::analyse::utils::pattern_solver::DeclareSubjectValue(
   TypeRef const &subject, const std::size_t pos,
   ScopeManager &sm) -> Shared<VariableSymbol> {
   // A borrow of the subject, as the tests only read it: a view,
-  // which owes nothing.
+  // which drops nothing.
   auto name = MakeShared<IdentifierAst>(pos, SubjectValueName());
   auto type = subject.WithoutConvention().AstIn(*sm.CurrentScope)
                      ->WithConvention(MakeUnique<ConventionRefAst>(nullptr));
