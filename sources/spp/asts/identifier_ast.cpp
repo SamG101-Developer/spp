@@ -158,7 +158,10 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
   // there.
   if (sym != nullptr) { type_resolution::StampComp(*this, *sym); }
 
-  if (sym == nullptr and not sm->CurrentScope->HasNsSymbol(this)) {
+  // A namespace is only named as the left-hand side of a static member access
+  // ("std::x"); anywhere else it is no value. Todo: Possibly change "allow ns"
+  // to "what are we looking for?" (var or ns -> compare).
+  if (sym == nullptr and not (meta->AllowNamespaceName and sm->CurrentScope->HasNsSymbol(this))) {
     RaiseIf<SppSelfIdentifierInvalidContextError>(Val == "self", ERR_ARGS(*this));
     member_lookup::RaiseMissingIdentifierAndClosestOptions(*this, sm->CurrentScope->GetAllVarSymbols(), {});
   }
