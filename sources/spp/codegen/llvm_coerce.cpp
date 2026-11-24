@@ -350,14 +350,15 @@ auto spp::codegen::CoerceToSlot(
   const auto differ = target_llvm_type != nullptr and source_llvm_type != nullptr
     and (target_llvm_type != source_llvm_type or target.Id != source.Id);
 
-  // A tuple has no attributes for "CoerceStructurally" to walk, and its layout may reorder the elements, so each side
-  // maps a declared index through its own field index map.
+  // A tuple has no attributes for "CoerceStructurally" to walk, and its layout leaves out its valueless elements, so
+  // each side maps a declared index through its own field index map, and a valueless element has nothing to carry.
   if (differ and IsTypeTuple(target, scope) and IsTypeTuple(source, scope)) {
     const auto target_args = target.Symbol->TypeArgRefs();
     const auto source_args = source.Symbol->TypeArgRefs();
     if (target_args.size() == source_args.size()) {
       auto elems = Vec<Pair<unsigned, llvm::Value*>>();
       for (auto i = 0uz; i < target_args.size(); ++i) {
+        if (IsValuelessType(GetLlvmTypeOf(target_args[i], ctx))) { continue; }
         const auto elem_name = name + ".tup." + std::to_string(i);
         auto elem = ctx->Builder.CreateExtractValue(
           llvm_val, {GetPhysicalFieldIndex(*source.Symbol->LlvmInfo, i)}, elem_name + ".from");
