@@ -5,7 +5,9 @@ module spp.analyse.scopes.type_key;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.comp_generics;
+import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types_precompiled;
 import spp.utils.ice;
 import spp.utils.interner;
 import spp.utils.types;
@@ -62,6 +64,11 @@ namespace spp::analyse::scopes {
 
   /// What "ParamsNamedBy" has read off each type id.
   static auto ParamsMemo() -> StableMap<TypeId, TypeIdParams>&;
+
+  /// A function type's arguments ("FunMov[Args, Out]") with "Void" taken out of
+  /// its "Args" tuple, as a "Void" parameter is no parameter: "FunMov[(Void,), U]"
+  /// is "FunMov[(), U]". Any other template's arguments are returned as they are.
+  static auto WithoutVoidFnArgs(TypeSymbol const &tmpl, TypeId args) -> TypeId;
 }
 
 /// [CHECKED]
@@ -461,8 +468,48 @@ auto spp::analyse::scopes::PackIdOf(
   return InternTypeKey(std::move(key));
 }
 
-auto spp::analyse::scopes::InstanceIdOfArgs(
+auto spp::analyse::scopes::WithoutVoidFnArgs(
   TypeSymbol const &tmpl, const TypeId args) -> TypeId {
+  // The precompiled symbols, as stamped up front ("StampPrecompiledTypes"):
+  // there is no scope here to find them from.
+  using namespace asts::generate::common_types_precompiled;
+  const auto symbol_of = [](Shared<asts::TypeAst> const &type) -> TypeSymbol const* {
+    if (type == nullptr) { return nullptr; }
+    const auto hit = TEMPLATE_SYMBOLS.find(type.get());
+    return hit != TEMPLATE_SYMBOLS.end() ? hit->second.second : nullptr;
+  };
+  if (&tmpl != symbol_of(FUN_MOV) and &tmpl != symbol_of(FUN_MUT) and &tmpl != symbol_of(FUN_REF)) { return args; }
+  auto const *const tup = symbol_of(TUP);
+  auto const *const void_sym = symbol_of(VOID);
+  if (tup == nullptr or void_sym == nullptr) { return args; }
+
+  // The "Args" tuple's pack without its "Void" elements, as a tuple again (an
+  // empty one is "Tup" itself, "InstanceIdOfArgs").
+  const auto is_void = [void_sym](const TypeId elem) {
+    auto const &head = spp::analyse::scopes::HeaderOf(elem);
+    return head.Kind == TypeKey::Tag::Symbol and head.Conv == 0 and head.Symbol() == void_sym;
+  };
+  const auto same_comp = [](const CompId comp) { return comp; };
+  const auto without_void_elems = [&](const TypeId pack) -> TypeId {
+    if (not spp::analyse::scopes::IsPackTypeId(pack)) { return pack; }
+    auto const &elems = spp::analyse::scopes::HeaderOf(pack).PackElements;
+    if (not genex::any_of(elems, is_void)) { return pack; }
+    return spp::analyse::scopes::PackIdOf(
+      elems | genex::views::filter([&](const TypeId e) { return not is_void(e); }) | genex::to<Vec>());
+  };
+  const auto without_void = [&](const TypeId type) -> TypeId {
+    auto const &head = spp::analyse::scopes::HeaderOf(type);
+    if (head.Kind != TypeKey::Tag::Inst or head.Conv != 0 or head.Symbol() != tup) { return type; }
+    const auto args_id = spp::analyse::scopes::MapArgsId(head.Args, without_void_elems, same_comp);
+    return args_id != head.Args ? spp::analyse::scopes::InstanceIdOfArgs(*tup, args_id) : type;
+  };
+  return spp::analyse::scopes::MapArgsId(args, without_void, same_comp);
+}
+
+auto spp::analyse::scopes::InstanceIdOfArgs(
+  TypeSymbol const &tmpl, TypeId args) -> TypeId {
+  // A "Void" parameter is no parameter, of a function type too.
+  args = WithoutVoidFnArgs(tmpl, args);
   auto key = TypeKey();
   const auto all_args = spp::analyse::scopes::ArgsOf(args);
   const auto empty_packs = not all_args.empty() and genex::all_of(all_args, [](TypeIdArg const &arg) {
@@ -539,6 +586,29 @@ auto spp::analyse::scopes::FindArgOf(
     if (arg->Named and arg->Slot == param_id) { return arg; }
   }
   return Nullopt;
+}
+
+auto spp::analyse::scopes::MapArgsId(
+  const TypeId args, FuncRef<TypeId(TypeId)> on_type, FuncRef<CompId(CompId)> on_comp) -> TypeId {
+  // Each argument re-encoded as it was decoded: its parameter (or position),
+  // then its mapped value.
+  auto key = TypeKey();
+  auto changed = false;
+  for (auto const &arg : spp::analyse::scopes::ArgsOf(args)) {
+    key.Push(arg.Named ? TypeKey::Tag::Arg : TypeKey::Tag::Pos, arg.Slot);
+    if (arg.CompVal != nullptr) {
+      const auto value = on_comp(arg.CompVal);
+      if (value == nullptr) { return nullptr; }
+      changed = changed or value != arg.CompVal;
+      key.PushCompPart(value);
+      continue;
+    }
+    const auto value = on_type(arg.TypeVal);
+    if (value == nullptr) { return nullptr; }
+    changed = changed or value != arg.TypeVal;
+    key.PushTypePart(value);
+  }
+  return changed ? spp::analyse::scopes::InternTypeKey(std::move(key)) : args;
 }
 
 /// [CHECKED]

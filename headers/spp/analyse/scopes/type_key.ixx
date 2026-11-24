@@ -63,6 +63,14 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS auto FindArgOf(
     TypeKey const *args, std::uint64_t param_id) -> Opt<TypeIdArg>;
 
+  /// An instantiation's arguments key with each argument's value mapped, each
+  /// kept for the parameter (or position) it was for: "on_type" for a type
+  /// argument, "on_comp" for a comp one. Null if either mapper gives null; the
+  /// same key if nothing changed.
+  SPP_EXP_CLS auto MapArgsId(
+    TypeKey const *args, FuncRef<TypeKey const*(TypeKey const*)> on_type,
+    FuncRef<CompKey const*(CompKey const*)> on_comp) -> TypeKey const*;
+
   /// The "type key" is an identity that a type instantiation
   /// is tagged as. It holds what each argument resolved to
   /// (as ids themselves) and their shapes.
