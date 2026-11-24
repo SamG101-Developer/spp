@@ -205,8 +205,8 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
 
   // What each branch drops at its end. A lowered "is" hands its
   // pattern's bindings on to the statement it is in instead.
-  for (auto const &[i, branch] : Branches | genex::views::ptr | genex::views::enumerate) {
-    branch->SetDropsBindings(not LoweredFromIsExpr, not LoweredFromIsExpr and tests_condition_directly and i == 0);
+  for (auto const &branch : Branches) {
+    branch->SetDropsBindings(not LoweredFromIsExpr);
   }
 
   // Analyse each branch of the case expression. Nothing takes
@@ -335,8 +335,10 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
     const auto _meta_guard = MetaGuard(meta);
     meta->CaseCondition = Cond.get();
     meta->CaseSubject = subject;
+    // An "is" never takes its subject on a match: its bindings are
+    // views of it, which the subject's owner keeps owning.
     _DropsOnFallThrough = case_utils::ValidateInconsistentMemory(
-      this, branches, coverage, subject != nullptr ? &plan.Edges : nullptr, sm, meta);
+      this, branches, coverage, subject != nullptr and not LoweredFromIsExpr ? &plan.Edges : nullptr, sm, meta);
   }
 
   // Move out of the case expression scope.

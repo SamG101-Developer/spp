@@ -238,3 +238,60 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     case b { ret }
   }
 )");
+
+// A destructure takes the value apart: its type's own "drop" never runs on it, so skipping an owned part is no E106.
+// The skipped part is dropped field by field by the value's owner.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropDestructure,
+  test_valid_destructure_skipping_an_owned_part_of_a_destructible_value, R"(
+  cls Held {
+    !public a: Str
+    !public b: Str
+  }
+
+  sup Held ext std::ops::drop::Drop {
+    fun drop(self) -> Void { }
+  }
+
+  fun f() -> Void {
+    let h = Held(a=Str::from("a"), b=Str::from("b"))
+    let Held(a, ..) = h
+  }
+)");
+
+// Binding nothing takes it apart all the same: how a "close"-style consumer disarms the type's own "drop".
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropDestructure,
+  test_valid_destructure_binding_nothing_disarms_the_destructor, R"(
+  cls Held { !public a: Str }
+
+  sup Held ext std::ops::drop::Drop {
+    fun drop(self) -> Void { }
+  }
+
+  sup Held {
+    fun close(self) -> Void {
+      let Self(..) = self
+    }
+  }
+)");
+
+// A field moved out by access is no destructure: the value's own "drop" would run on what is left (E106).
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestDropDestructure,
+  test_invalid_field_moved_out_of_a_destructible_value_by_access,
+  SppPartialMoveOfDestructibleValueError, R"(
+  cls Held {
+    !public a: Str
+    !public b: Str
+  }
+
+  sup Held ext std::ops::drop::Drop {
+    fun drop(self) -> Void { }
+  }
+
+  fun f() -> Void {
+    let h = Held(a=Str::from("a"), b=Str::from("b"))
+    let a = h.a
+  }
+)");

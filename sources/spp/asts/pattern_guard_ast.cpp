@@ -87,9 +87,10 @@ auto spp::asts::PatternGuardAst::Stage8_CheckMemory(
   // A guard may move a value: it is moved on every path past the
   // branch too, the "case" dropping it where the guard never ran
   // ("case_utils::CarryGuardMoves"). Not a binding of the branch's
-  // patterns, or of the "case" condition's "is": until the branch
-  // is taken it is still a part of the subject, which every later
-  // branch matches against whole. A borrow binding takes nothing.
+  // patterns, or of the "case" condition's "is", whole or any part
+  // of it: until the branch is taken it is still a part of the
+  // subject, which every later branch matches against whole. A
+  // borrow binding takes nothing.
   const auto before = memory_state::SnapshotFlow(*sm->CurrentScope);
   Expr->Stage8_CheckMemory(sm, meta);
   mem_utils::ValidateSymbolMemory(*Expr, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
@@ -97,8 +98,9 @@ auto spp::asts::PatternGuardAst::Stage8_CheckMemory(
   if (sm->CurrentScope->Parent != nullptr) { bindings.append_range(sm->CurrentScope->Parent->GetOwners()); }
   for (const auto sym : bindings) {
     RaiseIf<SppPatternGuardMovesValueError>(
-      not sym->IsBorrow() and memory_state::StateIn(before, *sym).AstMoved == nullptr
-      and memory_state::StateOf(*sm->CurrentScope, *sym).AstMoved != nullptr and sym->Name != nullptr,
+      not sym->IsBorrow() and sym->Name != nullptr
+      and not memory_state::SameShape(
+        memory_state::StateIn(before, *sym), memory_state::StateOf(*sm->CurrentScope, *sym)),
       ERR_ARGS(*Expr, *sym->Name));
   }
 

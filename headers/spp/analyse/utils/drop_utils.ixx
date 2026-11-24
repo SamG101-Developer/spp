@@ -19,6 +19,7 @@ use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct FunctionCallArgumentAst);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct PostfixExpressionOperatorRuntimeMemberAccessAst);
 use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::drop_utils {
@@ -104,20 +105,17 @@ namespace spp::analyse::utils::drop_utils {
   SPP_EXP_FUN auto ReleaseOwnedLoans(
     Scope const &scope) -> void;
 
-  /// What a statement's end ends ("EndStatementBindings"): its "is"
-  /// bindings ("ExpiresWithStatement"), the "$" temporaries a
-  /// lowering made inside it ("VariableKind::Temporary"), or both.
-  SPP_EXP_CLS enum class StatementEnds { kIsBindings, kTemporaries, kBoth };
-
-  /// The end of a statement, for the bindings of "scope" among
-  /// "bindings" from "from" on that "ends" names: nothing can name
-  /// one after it, so what they still own is dropped there. A
-  /// statement that is itself the "let" of a temporary
-  /// ("own_let", a lowering's "let $x = .." read by the statements
-  /// after it) does not end that one.
-  SPP_EXP_FUN auto EndStatementBindings(
+  /// The end of a statement, for the "$" temporaries a lowering
+  /// made inside it ("VariableKind::Temporary") among "bindings" of
+  /// "scope", from "from" on: nothing can name one after it, so what
+  /// it still owns is dropped there, and it is gone. A statement that
+  /// is itself the "let" of a temporary ("own_let", a lowering's
+  /// "let $x = .." read by the statements after it) does not end that
+  /// one. An "is" binding owns nothing (it is a view of its subject's
+  /// part), so a statement's end drops none.
+  SPP_EXP_FUN auto EndStatementTemporaries(
     Scope const &scope, Vec<VariableSymbol*> const &bindings, std::size_t from, Ast const &end,
-    StatementEnds ends, ScopeManager &sm, CompilerMetaData *meta,
+    ScopeManager &sm, CompilerMetaData *meta,
     IdentifierAst const *own_let = nullptr) -> Vec<OwnedValue>;
 
   /// A loop's iteration starts afresh for the bindings its own
@@ -197,6 +195,16 @@ namespace spp::analyse::utils::drop_utils {
   SPP_EXP_FUN auto EnsureDropInstantiated(
     TypeRef const &type, ScopeManager &sm,
     CompilerMetaData *meta) -> void;
+
+  /// The field read ending "expr" when "expr" is a chain of field reads
+  /// that starts at a temporary ("mk().a", "mk().a.b"), or none. The
+  /// temporary owns what the chain reads: the first read makes it and
+  /// drops what is left of it as the statement ends ("DropsReceiverRest"),
+  /// so a value only borrowed or discarded there is no temporary of its
+  /// own ("ReadByBorrow").
+  SPP_EXP_FUN auto FieldReadOffTemporary(
+    ExpressionAst &expr, ScopeManager &sm, CompilerMetaData *meta)
+    -> asts::PostfixExpressionOperatorRuntimeMemberAccessAst*;
 
   /// Whether "expr" makes a temporary: a value that names no place
   /// ("mk()", "Str::from(..)", "(a, b)"), owned rather than borrowed,

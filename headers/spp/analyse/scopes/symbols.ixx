@@ -9,6 +9,7 @@ import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.utils.visibility;
 import spp.codegen.llvm_sym_info;
+import spp.utils.interner;
 import spp.utils.ptr;
 import spp.utils.types;
 import std;
@@ -453,6 +454,16 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// narrowed down from. If this is a variable of "Some[S32]",
   /// the "NarrowsSymbol" might be the "Opt[S32]" type variable.
   Shared<VariableSymbol> NarrowsSymbol;
+
+  /// A pattern's binding records the place it is read off ("let y =
+  /// o.val": "o", then "val"). Once an "is" exposes it, the binding is
+  /// a view of that part of the subject, owning nothing (its kind is
+  /// "FlowNarrowing"): "ViewRoot" is the owner and "ViewSteps" the
+  /// field path to the part, none for the whole (a part reached
+  /// through a variant's payload is taken with the whole). Moving the
+  /// binding moves that part out of "ViewRoot".
+  VariableSymbol *ViewRoot = nullptr;
+  Vec<spp::utils::InternedId> ViewSteps;
 
   /// There is a unique cases with functional types; if we constrain
   /// a generic F to FunMov, and then supply a FunRef, the "f: F"

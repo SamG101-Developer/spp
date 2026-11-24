@@ -65,6 +65,7 @@ auto spp::asts::IsExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(TokOp),
     AstClone(Rhs));
   ast->_MappedFn = _MappedFn;
+  ast->_SubjectLet = AstClone(_SubjectLet);
   return ast;
 }
 
@@ -86,6 +87,15 @@ auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
 
   _LhsAsId = AstClone(Lhs->To<IdentifierAst>());
 
+  // The subject is owned by a place for as long as the bindings
+  // viewing it last: a named one already is; anything else is
+  // held by a hidden "$is" temporary, ending with the statement.
+  if (auto hoisted = expr_utils::HoistOnce(*Lhs, "$is", sm, meta); hoisted.Let != nullptr) {
+    _SubjectLet = std::move(hoisted.Let);
+    Lhs = AstClone(hoisted.Name);
+  }
+  auto *const subject_root = sm->CurrentScope->FindVarSymbolOutermost(*Lhs).first;
+
   // Convert to a "case" destructure and analyse it.
   const auto n = sm->CurrentScope->Children.size();
   _MappedFn = operator_desugaring::ConvertIsExprToCase(*this, sm, meta);
@@ -102,10 +112,22 @@ auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
     for (auto const &x : destructure_syms) {
       _Exposed.emplace_back(x->SharedFromThis<VariableSymbol>());
       sm->CurrentScope->RecordLetBinding(_Exposed.back());
-      if (x->Kind == VariableKind::Local) {
+      if (x->Kind == VariableKind::Local or x->Kind == VariableKind::FlowNarrowing) {
         x->ExpiresWithStatement = true;
         meta->AddedIsBindings.emplace_back(x);
       }
+      if (x->Kind != VariableKind::Local and x->Kind != VariableKind::Temporary) { continue; }
+
+      // A binding is a view of the part of the subject it names, which
+      // the subject's owner keeps owning: nothing drops the binding,
+      // and moving it moves that part out of the owner. A part read
+      // off the subject itself keeps its path; one behind a narrowing
+      // (a variant's payload), or the flow-typed subject, is the whole.
+      // So is the hidden "$" binding a pattern narrows the subject into.
+      if (x->IsBorrow() or subject_root == nullptr) { continue; }
+      if (x->ViewRoot != subject_root) { x->ViewSteps.clear(); }
+      x->ViewRoot = subject_root;
+      x->Kind = VariableKind::FlowNarrowing;
     }
     _DeclareExposed(*sm, meta);
   }
@@ -118,7 +140,13 @@ auto spp::asts::IsExpressionAst::_DeclareExposed(
   // holds notes the holder, which its block puts back at the
   // end of the statement.
   for (auto const &x : _Exposed) {
-    auto *const held = sm.CurrentScope->FindVarSymbol(x->Name.get(), true);
+    // What the name means outside the statement: this scope's
+    // binding of it, else one further out (a parameter, the subject
+    // a flow-typed "o" narrows), put back into this scope there.
+    auto *held = sm.CurrentScope->FindVarSymbol(x->Name.get(), true);
+    if (held == nullptr and sm.CurrentScope->Parent != nullptr) {
+      held = sm.CurrentScope->Parent->FindVarSymbol(x->Name.get());
+    }
     if (x->ExpiresWithStatement and held != nullptr and held != x.get()) {
       meta->DisplacedByIsBindings.push_back({
         .In = sm.CurrentScope, .Binding = x,
@@ -133,6 +161,7 @@ auto spp::asts::IsExpressionAst::Stage8_CheckMemory(
   // Forward the memory checking to the mapped function, then
   // expose what it binds: the subject it tests is the one
   // named before the "is", not the one it narrows.
+  if (_SubjectLet != nullptr) { _SubjectLet->Stage8_CheckMemory(sm, meta); }
   _MappedFn->Stage8_CheckMemory(sm, meta);
   _DeclareExposed(*sm, meta);
 }
@@ -159,6 +188,7 @@ auto spp::asts::IsExpressionAst::Stage11_CodeGen(
   }
 
   // Forward the code generation to the mapped function.
+  if (_SubjectLet != nullptr) { _SubjectLet->Stage11_CodeGen(sm, meta, ctx); }
   return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
 }
 
@@ -166,6 +196,7 @@ auto spp::asts::IsExpressionAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward the resolution to the mapped function, then expose
   // what it binds, as stage 8 does.
+  if (_SubjectLet != nullptr) { _SubjectLet->EvaluateCompTime(sm, meta); }
   _MappedFn->EvaluateCompTime(sm, meta);
   _DeclareExposed(*sm, meta);
 }

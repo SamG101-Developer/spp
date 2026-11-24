@@ -28,6 +28,9 @@ import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.loop_conditional_expression_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.string_literal_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
@@ -516,27 +519,22 @@ auto spp::analyse::utils::drop_utils::ReleaseOwnedLoans(
   for (auto const *const sym : scope.GetOwners()) { memory_state::ReleaseLoans(loans, *sym); }
 }
 
-auto spp::analyse::utils::drop_utils::EndStatementBindings(
+auto spp::analyse::utils::drop_utils::EndStatementTemporaries(
   Scope const &scope, Vec<VariableSymbol*> const &bindings, const std::size_t from, Ast const &end,
-  const StatementEnds ends, ScopeManager &sm, CompilerMetaData *meta,
-  IdentifierAst const *const own_let) -> Vec<OwnedValue> {
+  ScopeManager &sm, CompilerMetaData *meta, IdentifierAst const *const own_let) -> Vec<OwnedValue> {
   auto owned = Vec<OwnedValue>();
   for (auto i = from; i < bindings.size(); ++i) {
-    auto const &sym = *bindings[i];
-    const auto is_binding = sym.ExpiresWithStatement;
-    const auto temporary = not is_binding and sym.Kind == VariableKind::Temporary
-      and (own_let == nullptr or sym.Name->NameId() != own_let->NameId());
-    const auto ended = ends == StatementEnds::kBoth
-      ? is_binding or temporary
-      : ends == StatementEnds::kIsBindings ? is_binding : temporary;
-    if (not ended) { continue; }
-    auto &state = memory_state::StateOf(*sm.CurrentScope, *bindings[i]);
-    if (auto value = OwnedOnPath(*bindings[i], state, scope, end, sm, meta)) {
-      owned.emplace_back(std::move(*value));
+    auto &sym = *bindings[i];
+    if (sym.Kind != VariableKind::Temporary or (own_let != nullptr and sym.Name->NameId() == own_let->NameId())) {
+      continue;
+    }
 
-      // A temporary dropped here is gone: the scope's end does not
-      // drop it again (one a destructure took apart is still owned).
-      if (temporary) { state.MovedBy(end); }
+    // Dropped here, the temporary is gone: the scope's end does not
+    // drop it again (one a destructure took apart is still owned).
+    auto &state = memory_state::StateOf(*sm.CurrentScope, sym);
+    if (auto value = OwnedOnPath(sym, state, scope, end, sm, meta)) {
+      owned.emplace_back(std::move(*value));
+      state.MovedBy(end);
     }
   }
   SortNewestFirst(owned);
@@ -601,8 +599,7 @@ auto spp::analyse::utils::drop_utils::OwnedUpToLoop(
       loops_seen += 1;
       if (loops_seen > num_exits) {
         if (has_skip) {
-          iteration = EndStatementBindings(
-            *scope, scope->GetOwners(), 0, exit_point, StatementEnds::kBoth, sm, meta);
+          iteration = EndStatementTemporaries(*scope, scope->GetOwners(), 0, exit_point, sm, meta);
         }
         break;
       }
@@ -651,6 +648,22 @@ auto spp::analyse::utils::drop_utils::OwnedBeforeWrite(
   if (not moved.has_value()) { return Nullopt; }
   EnsureDropInstantiated(ref, sm, meta);
   return OwnedValue{.Moved = std::move(*moved), .TakenApart = TakenApartPathsUnder(state.TakenApart, place->Steps)};
+}
+
+auto spp::analyse::utils::drop_utils::FieldReadOffTemporary(
+  ExpressionAst &expr, ScopeManager &sm, CompilerMetaData *meta)
+  -> asts::PostfixExpressionOperatorRuntimeMemberAccessAst* {
+  using asts::PostfixExpressionAst;
+  using asts::PostfixExpressionOperatorRuntimeMemberAccessAst;
+  auto *const postfix = expr.To<PostfixExpressionAst>();
+  auto *const field = postfix != nullptr ? postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() : nullptr;
+  if (field == nullptr) { return nullptr; }
+  auto *first = postfix;
+  while (auto *const inner = first->Lhs->To<PostfixExpressionAst>()) {
+    if (inner->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { break; }
+    first = inner;
+  }
+  return IsTemporary(*first->Lhs, sm, meta) ? field : nullptr;
 }
 
 auto spp::analyse::utils::drop_utils::IsTemporary(

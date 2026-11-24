@@ -26,6 +26,7 @@ import spp.codegen.llvm_debug;
 import spp.codegen.llvm_type;
 import spp.utils.ice;
 import spp.utils.uid;
+import genex;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, Scope);
@@ -117,6 +118,15 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
     // Set borrow asts based on the value's type's convention.
     if (const auto conv = val_type->GetConvention(); conv != nullptr) {
       sym->MemInfo->AstBorrowed = val;
+    }
+
+    // A pattern's binding records the place it is read off, which an
+    // "is" makes it a view of ("VariableSymbol::ViewRoot").
+    if (const auto place = _FromCasePattern ? regions::PlaceOf(*val, *sm->CurrentScope) : Nullopt; place.has_value()
+      and genex::none_of(place->Steps, [](auto const &step) { return step.Opaque; })) {
+      sym->ViewRoot = place->Root;
+      sym->ViewSteps = place->Steps
+        | genex::views::transform([](auto const &step) { return step.Name; }) | genex::to<Vec>();
     }
   }
 

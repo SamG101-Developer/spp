@@ -1603,8 +1603,15 @@ auto spp::analyse::utils::overload_resolution::InferTemplateReceiver(
         InferAllGns(proto, *fn_call.FnArgGroup, slots, site, solver, sm, meta);
         const auto solved = solver.SolvedArgsId();
         if (solved == nullptr) { continue; }
+        // The receiver may name the enclosing function's own generics ("Vec[U]" inside "fun f[U](x: U)", whose body
+        // is analysed with "U" open), but not one of the block's, which the solve left unbound.
         const auto self = scopes::SubstituteTypeId(pattern, scopes::BindingsOfArgs(solved, &declared));
-        if (self == nullptr or not scopes::IsConcreteTypeId(self)) { continue; }
+        if (self == nullptr) { continue; }
+        auto const &named = scopes::ParamsNamedBy(self);
+        const auto names_block_param = genex::any_of(named.TypeParams, [&](const auto id) {
+          return genex::contains(declared.TypeParams, id);
+        }) or genex::any_of(named.CompParams, [&](const auto id) { return genex::contains(declared.CompParams, id); });
+        if (names_block_param) { continue; }
 
         // Inference binds what a parameter naming a generic is given (its constraints checked by the solve); an
         // argument a concrete parameter does not take ("x: S32" given "true") rules the block out. The full check is

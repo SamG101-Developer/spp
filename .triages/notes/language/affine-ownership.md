@@ -23,10 +23,10 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
 | A lowered `GenOnce`'s by-value `gen` (its return) | the same list, passed to `EmitReturn` | `_OwnedAtSuspend` |
 | Paths meeting that disagree (`case` branches and fall-through, loop exits) | `OwnedOnJoinPath` per path | `_DropsAtEnd` (a branch's, `AddDropsAtJoin`), `_DropsAfterExit` (an `exit`'s, `SetDropsAtJoin`), `_DropsOnFallThrough`, `_DropsOnCondEnd` |
 | A guard's moves, on the edges passing its branch over (no match, guard false) | `case_utils::CarryGuardMoves` | `_DropsOnNoMatch`, `_DropsOnGuardFalse` |
-| `is` bindings at their statement's end; a loop condition's per iteration and at `skip` | `EndStatementBindings` | `_StatementDrops`, `_IterationDrops` |
+| A logical operator's right operand vs its short circuit | `OwnedOnJoinPath` per path | `BinaryExpressionAst::_DropsOnShortCircuit`, `_DropsAfterRhs` |
 | Overwrite (`x = v`, `p.a = v`, through `&mut`, `x@ = v`) | `OwnedOnPath`, `OwnedBeforeWrite` | `AssignmentStatementAst::_DropsOld` |
 | Temporary borrowed, read a part off, or `case`d over without being taken | `IsTemporary` sets a flag | pending list, `codegen::PushTemporary` |
-| A lowering's hidden `$` temporary (`$cmp`, `$spread`, `$fold`, `$_dst_`) at its statement's end | `EndStatementBindings` (`StatementEnds`) | `_StatementDrops`, `_IterationDrops`, `_DropsOnCondEnd`, a `case`'s paths |
+| A lowering's hidden `$` temporary (`$cmp`, `$spread`, `$fold`, `$_dst_`, `$is`) at its statement's end | `EndStatementTemporaries` | `_StatementDrops`, `_IterationDrops`, `_DropsOnCondEnd`, a `case`'s paths |
 | Discarded temporary (a statement's value) | `expr_utils::DiscardValue` | `_DropsDiscarded` |
 | A call fold's hoisted temporaries no call took | `OwnedOnPath`, then marked moved | `_FoldDrops` |
 
@@ -47,11 +47,28 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
 - **A pattern guard may move** an outer value (2026-11-24): the move holds on every path past its branch, so the no-match
   edge (where the guard never ran) drops it, and later branches see it held on none (E8). E114 is left only for a guard
   moving the branch's own non-borrow bindings, which are still parts of the subject.
+- **An `is` binding is a view** (2026-11-24): `o is Some(val as y)` binds `y` as a view of the part of `o` it names
+  (`VariableKind::FlowNarrowing`, `VariableSymbol::ViewRoot`/`ViewSteps`, recorded from the pattern binding's source
+  place). The subject's owner keeps owning it, so nothing drops an `is` binding; moving `y` moves that part out of `o`
+  (`mem_utils::ValidateSymbolMemory`), the whole of it through a variant's payload. A subject that is no place is held
+  by a hidden `$is` temporary to the statement's end. The lowered `case` never takes its subject. So there are no
+  statement-end drops of `is` bindings at all (the old `kIsBindings` / `_DropsConditionBindings` are gone), and a
+  name an `is` binding shadowed, from this scope or further out, is put back after the statement.
+  `case o is P { .. }` is not this: it is rewritten to `case o of { is P { .. } }`, whose bindings own as any branch's.
+- **A logical operator's right operand is a path of its own:** a move in it (`flag and take(x)`) is joined with the
+  short circuit, which drops what it still holds.
+- **A field read off a temporary** (`mk().a`) is moved out of it, the rest dropped as the statement ends; borrowed
+  (`f(&mk().a)`, a `&self` receiver) or discarded, nothing is moved and the temporary is dropped whole
+  (`ReadByBorrow`, `drop_utils::FieldReadOffTemporary`).
 - **A statement `case` yields no value** (`ValueDiscarded`): codegen makes no phi and never joins its branch types.
-- **Destructures** binding every owned part consume the source whole, which disarms a type's own `drop` (how `close`
-  takes `self` apart). Skipping an owned part leaves the source partly moved; its owner drops the rest.
-- **`self` at the end of its own type's `drop`** is dropped field by field (`OwnedValue::Structural`,
-  `EmitDrop(.., own_drop = false)`), not through `drop` again. A partial move out of it is no E106 there.
+- **A destructure takes the value apart** (choice A, 2026-11-24): its type's own `drop` never runs on it, and the
+  owned parts the patterns skipped are dropped field by field by its owner (`MemoryState::TakenApart`, carried to codegen
+  as `OwnedValue::TakenApart` paths). Binding every owned part moves it whole. So `let Self(..) = self` is how a
+  `close`-style consumer disarms `drop` without leaking fields, and skipping an owned part of a `Drop` type is no E106.
+  A field moved out by access (`let a = h.a`) is still E106. Paths that disagree about it are a "maybe", dropped on each
+  path before they meet.
+- **`self` at the end of its own type's `drop`** is dropped field by field (the empty path in `OwnedValue::TakenApart`),
+  not through `drop` again. A partial move out of it is no E106 there.
 - **Overwrites build the new value into a temporary** when an old one is dropped, never straight into the slot.
 - **Shadowing keeps the old value** to its scope's end (`Scope::GetOwners` lists displaced bindings).
 - **`std::mem::ops::drop` stays an intrinsic**: `drop_utils::EndsArgument` reads its marker to know the call ends its

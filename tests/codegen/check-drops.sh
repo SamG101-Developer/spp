@@ -573,6 +573,99 @@ fun loop_trailing_place() -> Void {
     std::console::println("after loop")
 }
 
+cls Guarded {
+    !public a: Noisy
+    !public b: Noisy
+}
+
+sup Guarded ext std::ops::drop::Drop {
+    fun drop(self) -> Void {
+        std::console::println("Guarded.drop")
+    }
+}
+
+sup Guarded {
+    !public
+    fun close(self) -> Void {
+        let Self(..) = self
+        std::console::println("closed")
+    }
+}
+
+fun mk_guarded(n: U64) -> Guarded { ret Guarded(a=Noisy(n=n), b=Noisy(n=n + 1_u64)) }
+
+fun taken_apart() -> Void {
+    mk_guarded(600_u64).close()
+    let y = mk_guarded(610_u64)
+    let Guarded(a, ..) = y
+    let Guarded(..) = mk_guarded(620_u64)
+    let mut z = mk_guarded(630_u64)
+    let Guarded(..) = z
+    z = mk_guarded(640_u64)
+    std::console::println("end of scope")
+}
+
+fun taken_apart_on_one_path(flag: Bool) -> Void {
+    let w = mk_guarded(650_u64)
+    case flag { let Guarded(..) = w }
+    std::console::println("after case")
+}
+
+fun vec_of_boxes() -> Void {
+    let mut v = Vec[std::single::Single[Noisy]]::new()
+    v.append(std::single::Single::new(Noisy(n=660_u64)))
+    v.append(std::single::Single::new(Noisy(n=661_u64)))
+    std::console::println("filled")
+}
+
+fun is_bare(o: Opt[Noisy]) -> Void {
+    let b = o is Some(val as y)
+    std::console::println("after is")
+}
+
+fun is_moves_binding(o: Opt[Noisy]) -> Void {
+    let b = o is Some(val as y) and takes(y)
+    std::console::println("after is")
+}
+
+fun takes(x: Noisy) -> Bool { ret true }
+
+fun mk_opt(n: U64) -> Opt[Noisy] { ret Some(val=Noisy(n=n)) }
+
+fun is_temporary_subject() -> Void {
+    let b = mk_opt(720_u64) is Some(val as y) and y.n > 0_u64
+    std::console::println("after is")
+    let c = mk_opt(721_u64) is Some(val as z) and takes(z)
+    std::console::println("after moving is")
+}
+
+cls Guarded2 { !public a: Noisy }
+
+sup Guarded2 ext std::ops::drop::Drop {
+    fun drop(self) -> Void { std::console::println("Guarded2.drop") }
+}
+
+fun look(x: &Noisy) -> Void { }
+
+fun borrowed_field_of_temporary() -> Void {
+    look(&Guarded2(a=Noisy(n=730_u64)).a)
+    std::console::println("after borrow")
+    let n = Guarded2(a=Noisy(n=731_u64)).a.n
+    std::console::println("after copy")
+}
+
+cls Named2 {
+    !public name: Noisy
+    !public id: S32
+}
+
+fun case_over_temporary_shape() -> Void {
+    case Named2(name=Noisy(n=740_u64), id=1) of {
+        is Named2(id=1, ..) { std::console::println("matched") }
+        else { std::console::println("else") }
+    }
+}
+
 fun reassign_partial() -> Void {
     let mut p = Pair2(a=Noisy(n=480_u64), b=Noisy(n=481_u64))
     let a = p.a
@@ -684,6 +777,27 @@ fun main() -> Void {
     void_tuple()
     std::console::println("loop body ending on a place")
     loop_trailing_place()
+    std::console::println("taken apart")
+    taken_apart()
+    std::console::println("taken apart on one path")
+    taken_apart_on_one_path(true)
+    std::console::println("kept whole on the other")
+    taken_apart_on_one_path(false)
+    std::console::println("vector of boxes nothing else drops")
+    vec_of_boxes()
+    std::console::println("is, binding a view, matched")
+    is_bare(Some(val=Noisy(n=700_u64)))
+    std::console::println("is, binding a view, not matched")
+    is_bare(None)
+    std::console::println("is, binding moved")
+    is_moves_binding(Some(val=Noisy(n=710_u64)))
+    is_moves_binding(None)
+    std::console::println("is over a temporary")
+    is_temporary_subject()
+    std::console::println("field of a destructible temporary, borrowed")
+    borrowed_field_of_temporary()
+    std::console::println("case over a temporary, shape test")
+    case_over_temporary_shape()
     std::console::println("loop exit")
     loop_exit()
     std::console::println("loop condition ends")
@@ -790,6 +904,57 @@ loop body ending on a place
 dropped 550
 dropped 551
 after loop
+taken apart
+closed
+dropped 601
+dropped 600
+dropped 621
+dropped 620
+dropped 631
+dropped 630
+end of scope
+Guarded.drop
+dropped 641
+dropped 640
+dropped 610
+dropped 611
+taken apart on one path
+dropped 651
+dropped 650
+after case
+kept whole on the other
+Guarded.drop
+dropped 651
+dropped 650
+after case
+vector of boxes nothing else drops
+filled
+dropped 660
+dropped 661
+is, binding a view, matched
+after is
+dropped 700
+is, binding a view, not matched
+after is
+is, binding moved
+dropped 710
+after is
+after is
+is over a temporary
+dropped 720
+after is
+dropped 721
+after moving is
+field of a destructible temporary, borrowed
+Guarded2.drop
+dropped 730
+after borrow
+Guarded2.drop
+dropped 731
+after copy
+case over a temporary, shape test
+matched
+dropped 740
 loop exit
 dropped 390
 after loop

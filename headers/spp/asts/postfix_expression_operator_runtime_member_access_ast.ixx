@@ -76,6 +76,13 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst fi
   /// what the temporary is left missing ("PostfixExpressionAst").
   bool ReadOnwards = false;
 
+  /// The value is only borrowed ("f(&mk().a)", or the receiver of a
+  /// "&self" method) or discarded ("mk().a" as a statement): read off
+  /// a temporary, nothing is moved out of it, so the temporary is
+  /// dropped whole. Set by the call's argument check and by
+  /// "expr_utils::DiscardValue".
+  bool ReadByBorrow = false;
+
 private:
   /// The access rewritten against the forwarded-to value
   /// ("x.fwd_ref().field"), built when the member is not found

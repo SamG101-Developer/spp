@@ -202,6 +202,11 @@ auto spp::analyse::utils::expr_utils::DiscardValue(
   }
 
   // A temporary nothing takes is dropped once made. A place
-  // ("x", "x.a") written as a statement takes nothing from it.
-  if (drop_utils::IsTemporary(*expr, tm, meta)) { owner.SetDropsDiscarded(i); }
+  // ("x", "x.a") written as a statement takes nothing from it, nor
+  // does a field read off a temporary ("mk().a"): the temporary is
+  // dropped whole, as for a borrowed read.
+  if (auto *const field = drop_utils::FieldReadOffTemporary(*expr, tm, meta); field != nullptr) {
+    field->ReadByBorrow = true;
+  }
+  else if (drop_utils::IsTemporary(*expr, tm, meta)) { owner.SetDropsDiscarded(i); }
 }

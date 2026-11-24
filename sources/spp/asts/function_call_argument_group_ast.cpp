@@ -36,6 +36,7 @@ import spp.asts.let_statement_initialized_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -246,6 +247,17 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       ? arg->Val->To<ClosureExpressionAst>()
       : nullptr;
     const auto arg_carries_borrows = closure_arg != nullptr and closure_arg->HasBorrowedCaptures();
+
+    // A field read off a temporary and passed by borrow ("f(&mk().a)", "mk().a.len()" with "&self") is not moved
+    // out of it: the temporary stays whole, and is dropped whole as the statement ends.
+    const auto receiver_self = is_receiver and target != nullptr ? target->FnParamGroup->GetSelfParam() : nullptr;
+    if (arg->Conv != nullptr or (receiver_self != nullptr and receiver_self->Conv != nullptr)) {
+      if (auto const *const postfix = arg->Val->To<PostfixExpressionAst>(); postfix != nullptr) {
+        if (auto *const field = postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()) {
+          field->ReadByBorrow = true;
+        }
+      }
+    }
 
     {
       const auto _meta_guard = MetaGuard(meta);

@@ -14,6 +14,7 @@ use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct CaseExpressionAst);
 use(spp::asts, struct CasePatternVariantAst);
 use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, struct TypeRef);
@@ -58,6 +59,11 @@ private:
   Shared<CaseExpressionAst> _MappedFn;
 
   Shared<IdentifierAst> _LhsAsId;
+
+  /// A subject that is no place ("mk() is Some(..)") is held by a
+  /// hidden "$is" temporary, which owns it to the end of the
+  /// statement, as long as the bindings that view it last.
+  Unique<LetStatementInitializedAst> _SubjectLet;
 
   /// The bindings this "is" exposes to the scope it is written
   /// in (its pattern's names, and the subject flow-typed by it),

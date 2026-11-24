@@ -179,7 +179,11 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
         const auto _pack_guard = spp::utils::functions::ScopedAssign(
           meta->AllowPackWhole, names_element and Lhs->To<IdentifierAst>() != nullptr);
         // A namespace may name the left of a member access: "::" reads it, and "." reports it (E: "::" expected).
-        meta->AllowNamespaceName = Op->To<PostfixExpressionOperatorStaticMemberAccessAst>() != nullptr or access != nullptr;
+        // Only that identifier: nothing analysed inside a left side ("foo(std).x", "[std].x") is one.
+        const auto _ns_guard = spp::utils::functions::ScopedAssign(
+          meta->AllowNamespaceName,
+          (Op->To<PostfixExpressionOperatorStaticMemberAccessAst>() != nullptr or access != nullptr)
+            and Lhs->To<IdentifierAst>() != nullptr);
         Lhs->Stage7_AnalyseSemantics(sm, meta);
         common_errors::RequirePrimary(*Lhs, *sm, {.AllowTypeAst = true});
       }
@@ -276,11 +280,12 @@ auto spp::asts::PostfixExpressionAst::_TakeFieldsOffTemporary(
 
   // Off a temporary, the first read makes it and drops the rest of it as the
   // statement ends: less the path if the value read here is moved out, all of
-  // it if it is a copy. The path leaves a hole in every value it runs through,
+  // it if it is a copy or only borrowed ("ReadByBorrow"). The path leaves a hole in every value it runs through,
   // which is E106 for one with its own "drop", as for a named value.
   if (not drop_utils::IsTemporary(*first->Lhs, sm, meta)) { return; }
   auto &rest = first->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()->DropsReceiverRest;
-  if (not InferTypeRef(&sm, meta).IsMoveOnly()) {
+  const auto read_by_borrow = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()->ReadByBorrow;
+  if (read_by_borrow or not InferTypeRef(&sm, meta).IsMoveOnly()) {
     rest = Vec<Vec<spp::utils::InternedId>>();
     return;
   }

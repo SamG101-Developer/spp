@@ -121,6 +121,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Clone() const -
   ast->Source.Lowered = Source.Lowered;
   ast->DropsReceiverRest = DropsReceiverRest;
   ast->ReadOnwards = ReadOnwards;
+  ast->ReadByBorrow = ReadByBorrow;
   return ast;
 }
 
@@ -167,12 +168,16 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::_CheckIndexAcce
   if (type_compare::IsOpenTuple(lhs_ref, *sm->CurrentScope)) { return; }
 
   // Only a tuple or an array is indexed, within its bounds. The
-  // lhs's type is only spelled out for the errors.
+  // lhs's type is only spelled out for the errors, held in a local:
+  // "ERR_ARGS" keeps references, so a temporary would be freed
+  // before the error reads it (a call's type is a fresh clone).
   if (not type_predicates::IsTypeCompTimeIndexable(lhs_ref, *sm->CurrentScope)) {
-    Raise<SppMemberAccessNonIndexableError>(ERR_ARGS(*Lhs, *Lhs->InferType(sm, meta), *TokDot));
+    const auto lhs_type = Lhs->InferType(sm, meta);
+    Raise<SppMemberAccessNonIndexableError>(ERR_ARGS(*Lhs, *lhs_type, *TokDot));
   }
   if (const auto n = type_members::IndexBoundOf(lhs_ref, *sm->CurrentScope); std::stoul(Name->Val) >= n) {
-    Raise<SppMemberAccessOutOfBoundsError>(ERR_ARGS(*Lhs, *Lhs->InferType(sm, meta), n, *TokDot));
+    const auto lhs_type = Lhs->InferType(sm, meta);
+    Raise<SppMemberAccessOutOfBoundsError>(ERR_ARGS(*Lhs, *lhs_type, n, *TokDot));
   }
 }
 
@@ -206,7 +211,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::_CheckNamedAcce
       return;
     }
     if (const auto try_op = AstAs<PostfixExpressionOperatorEarlyReturnAst>(Source.OriginalExpr); try_op != nullptr) {
-      Raise<SppExpressionNotTryError>(ERR_ARGS(*try_op, *Lhs->InferType(sm, meta)));
+      const auto lhs_type = Lhs->InferType(sm, meta);
+      Raise<SppExpressionNotTryError>(ERR_ARGS(*try_op, *lhs_type));
     }
     member_lookup::RaiseMemberNotFound(*owner, lhs_ref, *Name, MemberAccessForm::Runtime, *sm->CurrentScope);
   }

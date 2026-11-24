@@ -274,6 +274,13 @@ auto spp::analyse::utils::destructure_utils::DestructureStage8(
   if (tmp_name != nullptr) {
     auto const *const tmp_sym = sm.CurrentScope->FindVarSymbol(tmp_name.get());
     if (tmp_sym == nullptr) { Ice(*tmp_name, *sm.CurrentScope, "destructure temporary has no symbol"); }
+
+    // A case pattern that moves nothing out only tests the shape of a value the "case" keeps (and drops): the
+    // temporary is a view of it, owning nothing.
+    if (from_case_pattern and not destructure.BindsByMove()) {
+      memory_state::StateOf(*sm.CurrentScope, *tmp_sym).MovedBy(*tmp_name);
+      return;
+    }
     mem_utils::TakeApart(*tmp_sym, *tmp_name, *tmp_name, true, sm);
     return;
   }

@@ -452,6 +452,8 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
   ExpiresWithStatement(that.ExpiresWithStatement),
   AliasSymbol(that.AliasSymbol),
   NarrowsSymbol(that.NarrowsSymbol),
+  ViewRoot(that.ViewRoot),
+  ViewSteps(that.ViewSteps),
   IndirectFnType(that.IndirectFnType),
   VisibilityFallback(that.VisibilityFallback),
   VisibilityFrom(that.VisibilityFrom),

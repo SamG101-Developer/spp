@@ -269,7 +269,7 @@ auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
   Register(map, "std.mem.raw_buf.RawBuf.take_at", fn_impls::StdRawBufTakeAt);
   Register(map, "std.mem.raw_buf.RawBuf.place_at", fn_impls::StdRawBufPlaceAt);
   Register(map, "std.mem.raw_buf.RawBuf.shift", fn_impls::StdRawBufShift);
-  Register(map, "std.mem.raw_buf.RawBuf.clear_range", fn_impls::StdRawBufClearRange);
+  Register(map, "std.mem.raw_buf.RawBuf.clear_range", fn_impls::StdRawBufClearRange, nullptr, "T");
 
   Register(map, "std.mem.ops.size_of", fn_impls::StdMemOpsSizeOf, ct::MakeCompTimeFn<true>(ct::StdMemOpsSizeOf));
   Register(map, "std.mem.ops.size_of_val", fn_impls::StdMemOpsSizeOfVal);

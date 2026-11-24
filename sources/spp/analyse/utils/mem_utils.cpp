@@ -211,6 +211,11 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   // borrows being moved.
   RaiseIfInconsistent(*var_sym, value_ast, options, sm.CurrentScope);
   RaiseIfMoved(*var_sym, value_ast, sm.CurrentScope);
+
+  // An "is" binding views a part of its owner: the owner has to still
+  // hold it ("o is Some(val as y) and consume(o) and y.len()").
+  auto *const view_root = var_sym->Kind == scopes::VariableKind::FlowNarrowing ? var_sym->ViewRoot : nullptr;
+  if (view_root != nullptr and view_root != var_sym) { RaiseIfMoved(*view_root, value_ast, sm.CurrentScope); }
   RaiseIfBadEscapingBorrow(*var_sym, value_ast, move_ast, moves_value, options, sm);
 
   // Check we aren't trying to move a comptime constant
@@ -271,6 +276,19 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   // copyable.
   if (options.MarkMoves and value_ast.To<IdentifierAst>() != nullptr and not outer_is_copyable) {
     mark_chain(var_sym, [&](const auto s) { memory_state::StateOf(*sm.CurrentScope, *s).MovedBy(value_ast); });
+
+    // Moving a view moves the part of its owner it names.
+    if (view_root != nullptr and view_root != var_sym) {
+      auto &root_state = memory_state::StateOf(*sm.CurrentScope, *view_root);
+      if (var_sym->ViewSteps.empty()) { root_state.MovedBy(value_ast); }
+      else {
+        auto steps = var_sym->ViewSteps
+          | genex::views::transform([](const auto id) { return regions::PlaceStep{.Name = id}; })
+          | genex::to<Vec>();
+        root_state.PartMovedBy(
+          regions::PlaceAt(&value_ast, regions::Place{.Root = view_root, .Steps = std::move(steps)}));
+      }
+    }
   }
 
   // Only whole moves carry up the chain. A pattern binding

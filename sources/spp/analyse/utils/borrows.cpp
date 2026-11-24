@@ -142,8 +142,12 @@ auto spp::analyse::utils::borrows::ValidateUnnamedArgumentBorrow(
   if (conv == ConventionTag::MOV) { return; }
 
   // A borrowed temporary is held by nothing once the call is
-  // done, so its statement drops it.
-  arg.DropsTemporary = drop_utils::IsTemporary(*arg.Val, sm, meta);
+  // done, so its statement drops it. A field borrowed off one
+  // ("&mk().a") is part of the temporary its read makes, which
+  // is dropped whole.
+  arg.DropsTemporary =
+    drop_utils::FieldReadOffTemporary(*arg.Val, sm, meta) == nullptr
+    and drop_utils::IsTemporary(*arg.Val, sm, meta);
 
   // Cross check with the loans held and the call's own borrows,
   // raising an error on conflict, and hold this one too, so the
