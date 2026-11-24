@@ -227,8 +227,8 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
     Body->Stage8_CheckMemory(&walk, meta);
     if (not Body->Diverges(&walk, meta)) {
       auto const &end = Body->TokR != nullptr ? static_cast<Ast const&>(*Body->TokR) : static_cast<Ast const&>(*Body);
-      _IterationDrops = drop_utils::EndStatementBindings(
-        *walk.CurrentScope, walk.CurrentScope->GetOwners(), 0, end, drop_utils::StatementEnds::kBoth, walk, meta);
+      _IterationDrops = drop_utils::EndStatementTemporaries(
+        *walk.CurrentScope, walk.CurrentScope->GetOwners(), 0, end, walk, meta);
     }
   };
 
@@ -408,8 +408,8 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
   // what it made, a failed match's value included.
   if (cond_can_end) {
     drop_utils::ForgetIterationBindings(*sm->CurrentScope);
-    _DropsOnCondEnd.append_range(drop_utils::EndStatementBindings(
-      *sm->CurrentScope, sm->CurrentScope->GetOwners(), 0, *TokLoop, drop_utils::StatementEnds::kTemporaries, *sm,
+    _DropsOnCondEnd.append_range(drop_utils::EndStatementTemporaries(
+      *sm->CurrentScope, sm->CurrentScope->GetOwners(), 0, *TokLoop, *sm,
       meta));
   }
   if (first_exit + frame.ExitStmts.size() != paths.size()) {

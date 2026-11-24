@@ -48,8 +48,7 @@ use_alias(spp::codegen, LlvmCtx);
 namespace spp::asts {
   /// Put back what the "is" bindings of a statement took the name
   /// of ("DisplacedByIsBindings", from "from" on), as the statement
-  /// ends. That the bindings are dead there is checked by the
-  /// statement's end ("EndStatementBindings").
+  /// ends.
   static auto RestoreDisplacedByIs(
     CompilerMetaData *meta, std::size_t from) -> void;
 
@@ -69,7 +68,13 @@ auto spp::asts::RestoreDisplacedByIs(
   for (auto i = displaced.size(); i > from; --i) {
     auto const &[in, binding, held] = displaced[i - 1];
     if (in->FindVarSymbol(binding->Name.get(), true) != binding.get()) { continue; }
-    in->AddVarSymbol(held);
+
+    // A binding of this scope's is put back; for one further out (a
+    // parameter, a subject a flow-typed name narrowed), the "is"
+    // binding is taken out, so the name reads outwards again, rather
+    // than this scope adopting the value as an owner of its own.
+    if (held->ScopeDefinedIn == in) { in->AddVarSymbol(held); }
+    else { ignore = in->InternalTable.VarTable.Rem(binding->Name.get()); }
   }
   displaced.resize(from);
 }
@@ -222,8 +227,8 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
     const auto displaced_before = meta->DisplacedByIsBindings.size();
     const auto reached_before = sm->CurrentScope->Reached.size();
     m->Stage8_CheckMemory(sm, meta);
-    _StatementDrops[i] = drop_utils::EndStatementBindings(
-      *sm->CurrentScope, sm->CurrentScope->Reached, reached_before, *m, drop_utils::StatementEnds::kBoth, *sm, meta,
+    _StatementDrops[i] = drop_utils::EndStatementTemporaries(
+      *sm->CurrentScope, sm->CurrentScope->Reached, reached_before, *m, *sm, meta,
       OwnLetName(*m));
     RestoreDisplacedByIs(meta, displaced_before);
   }

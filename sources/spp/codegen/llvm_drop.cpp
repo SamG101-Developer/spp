@@ -190,8 +190,8 @@ auto spp::codegen::EmitDrop(
 }
 
 namespace spp::codegen {
-  /// The symbol "value" names in "scope": of the scope's owners, the one of its name declared where it was, as two
-  /// of one name can be owned there; else whatever holds the name, for a value nothing declares.
+  /// The symbol "value" names in "scope": of the scope's owners (never a view of one), the one of its name declared
+  /// where it was, as two of one name can be owned there; else whatever holds the name, for a value nothing declares.
   static auto FindOwned(
     analyse::scopes::Scope const &scope,
     analyse::utils::drop_utils::OwnedValue const &value) -> analyse::scopes::VariableSymbol*;
@@ -201,7 +201,10 @@ auto spp::codegen::FindOwned(
   analyse::scopes::Scope const &scope,
   analyse::utils::drop_utils::OwnedValue const &value) -> analyse::scopes::VariableSymbol* {
   if (not value.DeclaredAt.has_value()) { return scope.FindVarSymbol(value.Name.get(), true); }
+  // A view ("FlowNarrowing": a flow-typed name, an "is" binding) owns nothing, though it can carry the name and the
+  // position of the value it views: it is never what is dropped.
   for (auto *const sym : scope.GetOwners()) {
+    if (sym->Kind == analyse::scopes::VariableKind::FlowNarrowing) { continue; }
     if (sym->Name->NameId() == value.Name->NameId() and sym->Name->PosStart() == *value.DeclaredAt) { return sym; }
   }
   return nullptr;

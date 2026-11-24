@@ -83,11 +83,12 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
 
 protected:
   /// What this scope still owns at its closing brace, dropped there
-  /// after what it deferred ("OwnedIn").
+  /// ("drop_utils::EndRegion").
   Vec<analyse::utils::drop_utils::OwnedValue> _OwnedAtEnd;
 
-  /// What each member's "is" bindings still own at its end, dropped
-  /// there ("drop_utils::EndStatementBindings"), one entry per member.
+  /// What the "$" temporaries each member made still own at its end,
+  /// dropped there ("drop_utils::EndStatementTemporaries"), one entry
+  /// per member.
   Vec<Vec<analyse::utils::drop_utils::OwnedValue>> _StatementDrops;
 
   /// Per member, whether its value is a temporary dropped once made.
