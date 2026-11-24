@@ -40,11 +40,6 @@ namespace spp::analyse::scopes {
   /// indexed by "param" (if one exists).
   static auto BoundCompOf(GenericSubst const &subst, const std::uint64_t param) -> CompId;
 
-  /// An instantiation's arguments ("ArgsOf") rewritten, keyed as "Scope::ArgsIdOf" keys them: each named or
-  /// positional, a type part or a comp identity ("RewriteCompId"). A type pack's argument is its list, which splices
-  /// the packs bound in it ("RewriteTypeId").
-  static auto RewriteArgsId(const TypeId args, GenericSubst const &subst, const TypeId subst_id) -> TypeId;
-
   /// A type identity rewritten part by part under "subst"
   /// (the type twin of "RewriteCompId"), memoised per ("id",
   /// "subst") once nothing in it is unresolved. Branches on
@@ -87,36 +82,6 @@ auto spp::analyse::scopes::BoundCompOf(GenericSubst const &subst, const std::uin
 }
 
 /// [CHECKED]
-auto spp::analyse::scopes::RewriteArgsId(const TypeId args, GenericSubst const &subst, const TypeId subst_id) -> TypeId {
-  auto out = TypeKey();
-  // From the interned type id of the args, pull the type
-  // id args out and iterate them.
-  for (auto const &arg : ArgsOf(args)) {
-    const auto tag = arg.Named ? TypeKey::Tag::Arg : TypeKey::Tag::Pos;
-    const auto at = arg.Slot;
-
-    // For a generic comp arg, rewrite the comp id, and
-    // push the tag+name and value. Handles positional,
-    // keyword+name, and the value.
-    if (arg.CompVal != nullptr) {
-      const auto value = RewriteCompId(arg.CompVal, subst, subst_id);
-      if (value == nullptr) { return nullptr; }
-      out.Push(tag, at);
-      out.PushCompPart(value);
-      continue;
-    }
-
-    // A type argument: a standard rewrite, and tag+name and
-    // part push.
-    const auto part = RewriteTypeId(arg.TypeVal, subst, subst_id);
-    if (part == nullptr) { return nullptr; }
-    out.Push(tag, at);
-    out.PushTypePart(part);
-  }
-  return InternTypeKey(std::move(out));
-}
-
-/// [CHECKED]
 auto spp::analyse::scopes::RewriteTypeId(const TypeId id, GenericSubst const &subst, const TypeId subst_id) -> TypeId {
   auto &memo = TypeMemo();
   if (const auto hit = memo.find({id, subst_id}); hit != memo.end()) { return hit->second; }
@@ -156,7 +121,9 @@ auto spp::analyse::scopes::RewriteTypeId(const TypeId id, GenericSubst const &su
         if (head.Symbol() == nullptr or head.Args == nullptr) {
           Ice("instantiation identity has no template or arguments");
         }
-        const auto args = RewriteArgsId(head.Args, subst, subst_id);
+        const auto args = MapArgsId(
+          head.Args, [&](const TypeId type) { return RewriteTypeId(type, subst, subst_id); },
+          [&](const CompId comp) { return RewriteCompId(comp, subst, subst_id); });
         if (args == nullptr) { return nullptr; }
         const auto inst = InstanceIdOfArgs(*head.Symbol(), args);
         if (head.Conv == 0) { return inst; }
