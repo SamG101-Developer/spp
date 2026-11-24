@@ -82,14 +82,6 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
   //
   IMPORT_UTILS;
 
-  // A deferred expression runs at the exits of its scope,
-  // so the "ret" this lowers to would have to be emitted at
-  // each of them - returning out of the return that is
-  // already in progress.
-  RaiseIf<SppDeferTerminatesError>(
-    meta->WithinDeferTok != nullptr,
-    ERR_ARGS(*meta->WithinDeferTok, *this));
-
   // The operand is read three times (whether it holds a value, then the value
   // or the residual), so is evaluated once with hoisting: a place where it is,
   // anything else into a temporary, placed in the lowering's own scope (below).
