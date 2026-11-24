@@ -9,9 +9,7 @@ import std;
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::analyse::utils::memory_state, struct BodyFlow);
-use(spp::analyse::utils::memory_state, struct DeferExit);
 use(spp::analyse::utils::memory_state, struct FlowState);
-use(spp::analyse::utils::memory_state, struct KeptTemporary);
 use(spp::analyse::utils::memory_state, struct LoopFrame);
 use(spp::analyse::utils::memory_state, struct MemoryInfo);
 use(spp::analyse::utils::memory_state, struct MemoryState);
@@ -113,11 +111,6 @@ SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryState {
   /// path's.
   Opt<PathsDisagree> MaybeInit;
 
-  /// What the symbol still holds on every path is "Copy", so
-  /// it is owed to nobody: a "case" subject narrowed to "None",
-  /// or left to an "else" once every other member was matched.
-  /// It can still be read; it never has to be consumed.
-  bool OwesNothing = false;
 
   /// The list of partial moves taken from the symbol that
   /// this memory info is attached to, on every path. For the
@@ -202,26 +195,9 @@ SPP_EXP_CLS struct spp::analyse::utils::memory_state::LoopFrame {
   std::size_t Skips = 0;
   Vec<Pair<Ast const*, ScopeSnapshot>> SkipStates;
   Vec<Pair<Ast const*, ScopeSnapshot>> ExitStates;
-};
-
-/// A "defer" being checked at an exit it runs from
-/// ("DeferStatementAst::CheckAtExit"): the statement, and the exit.
-/// A value its expression uses that is gone by then is reported
-/// against both.
-SPP_EXP_CLS struct spp::analyse::utils::memory_state::DeferExit {
-  Ast const *Stmt = nullptr;
-  Ast const *ExitPoint = nullptr;
-  StrView ExitWhat;
-};
-
-/// A linear temporary a "case" branch keeps (the "case" is over it
-/// and the branch does not take it) in a branch that never finishes.
-/// Nothing owns it once the walk leaves the branch's scope, so an
-/// edge that does ("ret", "exit", "skip") drops it; one that never
-/// leaves (an abort) does not.
-SPP_EXP_CLS struct spp::analyse::utils::memory_state::KeptTemporary {
-  ExpressionAst *Temporary = nullptr;
-  Ast const *Branch = nullptr;
+  /// The "exit" statement each of "ExitStates" was taken at, in
+  /// step with it: the join hands each its drops.
+  Vec<Ast*> ExitStmts;
 };
 
 /// The memory state of one function (or closure) body as its
@@ -242,11 +218,7 @@ SPP_EXP_CLS struct spp::analyse::utils::memory_state::FlowState {
   /// The loops being checked in the body, innermost last.
   Vec<LoopFrame> Loops;
 
-  /// The "defer" being checked at an exit, if one is.
-  Opt<DeferExit> Deferring;
 
-  /// The temporaries kept by the "case" branches being checked.
-  Vec<KeptTemporary> KeptTemporaries;
 };
 
 /// An RAII guard that sets the flow in a scope to a new flow
@@ -273,13 +245,15 @@ namespace spp::analyse::utils::memory_state {
     MemoryState &into, MemoryState const &other, Ast *into_path,
     Ast *other_path) -> void;
 
-  /// A state of "sym" with every owned part taken off it, settled
-  /// into a whole move (the first part's move as the witness): a
-  /// value fully taken apart is consumed, so a path that did that
-  /// and a path that moved it whole agree where they meet. "scope"
-  /// is where the symbol's type resolves.
-  SPP_EXP_FUN auto SettleFullyTaken(
-    MemoryState state, VariableSymbol const &sym,
+  /// The states of "sym" on the paths that meet, joined into the
+  /// first ("Join"), each given with its path. A value fully taken
+  /// apart on a path is consumed, so where another path moved it
+  /// whole, the two agree: it is settled into a whole move first.
+  /// Only then: paths that all took its parts keep them, so a part
+  /// written back after the join is put back, not written into a
+  /// moved value. "scope" is where the symbol's type resolves.
+  SPP_EXP_FUN auto JoinAll(
+    Vec<Pair<MemoryState, Ast*>> paths, VariableSymbol const &sym,
     Scope const &scope) -> MemoryState;
 
   /// Whether two states of a symbol agree on everything a later

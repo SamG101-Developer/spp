@@ -22,6 +22,12 @@ use_alias(spp::asts, Ast);
 use_alias(spp::asts, ExpressionAst);
 
 namespace spp::analyse::utils::memory_state {
+  /// "state" of "sym" with every owned part taken off it, settled
+  /// into a whole move (the first part's move as the witness).
+  static auto SettleFullyTaken(
+    MemoryState state, VariableSymbol const &sym,
+    Scope const &scope) -> MemoryState;
+
   /// What a borrow is compared by across paths: its place (the
   /// root variable and steps, so a shadowed name is another
   /// place), or what it was written as if it names none. Each
@@ -34,14 +40,17 @@ namespace spp::analyse::utils::memory_state {
 
   /// A loan, compared across paths: its holder, the place
   /// borrowed, and how.
-  static auto KeyOf(Loan const &loan) -> Tup<VariableSymbol const*, BorrowKey, bool, bool>;
+  static auto KeyOf(
+    Loan const &loan) -> Tup<VariableSymbol const*, BorrowKey, bool, bool>;
 
   /// The loan in "loans" that is "loan", if any.
-  static auto FindLoan(LoanSet &loans, Loan const &loan) -> Loan*;
+  static auto FindLoan(
+    LoanSet &loans, Loan const &loan) -> Loan*;
 
   /// Whether two partial moves took the same part: the same
   /// place ("PartMovedBy" records none without one).
-  static auto SamePart(regions::PlaceAt const &lhs, regions::PlaceAt const &rhs) -> bool;
+  static auto SamePart(
+    regions::PlaceAt const &lhs, regions::PlaceAt const &rhs) -> bool;
 
   /// Whether "parts" holds "part". A "contains" function with
   /// a custom equality test ("SamePart").
@@ -52,7 +61,8 @@ namespace spp::analyse::utils::memory_state {
   /// it already is. An "add element if unique", with a custom
   /// equality test ("SamePart").
   static auto AddMaybePart(
-    Vec<MaybeMovedPart> &maybe, regions::PlaceAt const &part, PathsDisagree const &paths) -> void;
+    Vec<MaybeMovedPart> &maybe, regions::PlaceAt const &part,
+    PathsDisagree const &paths) -> void;
 }
 
 auto spp::analyse::utils::memory_state::BorrowKeyOf(
@@ -62,11 +72,13 @@ auto spp::analyse::utils::memory_state::BorrowKeyOf(
     : BorrowKey(borrow.Site->ToString());
 }
 
-auto spp::analyse::utils::memory_state::KeyOf(Loan const &loan) -> Tup<VariableSymbol const*, BorrowKey, bool, bool> {
+auto spp::analyse::utils::memory_state::KeyOf(
+  Loan const &loan) -> Tup<VariableSymbol const*, BorrowKey, bool, bool> {
   return {loan.Holder, BorrowKeyOf(loan.Borrowed), loan.IsMut, loan.Yielded};
 }
 
-auto spp::analyse::utils::memory_state::FindLoan(LoanSet &loans, Loan const &loan) -> Loan* {
+auto spp::analyse::utils::memory_state::FindLoan(
+  LoanSet &loans, Loan const &loan) -> Loan* {
   const auto key = KeyOf(loan);
   for (auto &x : loans) {
     if (KeyOf(x) == key) { return &x; }
@@ -74,7 +86,8 @@ auto spp::analyse::utils::memory_state::FindLoan(LoanSet &loans, Loan const &loa
   return nullptr;
 }
 
-auto spp::analyse::utils::memory_state::SamePart(regions::PlaceAt const &lhs, regions::PlaceAt const &rhs) -> bool {
+auto spp::analyse::utils::memory_state::SamePart(
+  regions::PlaceAt const &lhs, regions::PlaceAt const &rhs) -> bool {
   return *lhs.Of == *rhs.Of;
 }
 
@@ -86,7 +99,8 @@ auto spp::analyse::utils::memory_state::HoldsPart(
 
 /// [CHECKED]
 auto spp::analyse::utils::memory_state::AddMaybePart(
-  Vec<MaybeMovedPart> &maybe, regions::PlaceAt const &part, PathsDisagree const &paths) -> void {
+  Vec<MaybeMovedPart> &maybe, regions::PlaceAt const &part,
+  PathsDisagree const &paths) -> void {
   if (genex::any_of(maybe, [&](auto const &x) { return SamePart(x.Part, part); })) { return; }
   maybe.emplace_back(MaybeMovedPart{.Part = part, .Paths = paths});
 }
@@ -102,11 +116,10 @@ auto spp::analyse::utils::memory_state::MemoryState::InitializedBy(
   AstMoved = nullptr;
   Given = true;
 
-  // Clear the "maybe init" flag, nothing is owed as this is
-  // a fresh value, and there are no partial moves.
+  // Clear the "maybe init" flag: this is a fresh value, and
+  // there are no partial moves.
   // Todo: PartialMoves.clear()?
   MaybeInit = Nullopt;
-  OwesNothing = false;
   MaybePartialMoves.clear();
 }
 
@@ -253,13 +266,6 @@ auto spp::analyse::utils::memory_state::Join(
     AddMaybePart(into.MaybePartialMoves, maybe.Part, maybe.Paths);
   }
 
-  // Nothing is owed where every path either moved the value
-  // or holds only a "Copy" one. Read before the witnesses.
-  const auto into_moved = into.AstInitialization == nullptr;
-  const auto other_moved = other.AstInitialization == nullptr;
-  const auto owes_nothing = (into_moved or into.OwesNothing)
-    and (other_moved or other.OwesNothing);
-
   // The "into" state is "maybe initialised" if there is a
   // mismatch in the initialisation or move state in the
   // two states.
@@ -286,7 +292,6 @@ auto spp::analyse::utils::memory_state::Join(
   // another. The "given" is the initial initialisation so
   // from one path at least.
   into.Given = into.Given or other.Given;
-  into.OwesNothing = owes_nothing;
 }
 
 /// [CHECKED]
@@ -311,7 +316,6 @@ auto spp::analyse::utils::memory_state::SameShape(
   return (lhs.AstInitialization == nullptr) == (rhs.AstInitialization == nullptr)
     and (lhs.AstMoved == nullptr) == (rhs.AstMoved == nullptr)
     and lhs.MaybeInit.has_value() == rhs.MaybeInit.has_value()
-    and lhs.OwesNothing == rhs.OwesNothing
     and parts(lhs.PartialMoves, self) == parts(rhs.PartialMoves, self)
     and parts(lhs.MaybePartialMoves, maybe_part) == parts(rhs.MaybePartialMoves, maybe_part);
 }
@@ -497,6 +501,23 @@ auto spp::analyse::utils::memory_state::SameLoans(
   return keys(lhs) == keys(rhs);
 }
 
+auto spp::analyse::utils::memory_state::JoinAll(
+  Vec<Pair<MemoryState, Ast*>> paths, VariableSymbol const &sym,
+  Scope const &scope) -> MemoryState {
+  // Moved whole on a path, or on one of the paths an earlier join met.
+  const auto moved_whole = genex::any_of(paths, [](auto const &path) {
+    return path.first.AstMoved != nullptr or path.first.MaybeInit.has_value();
+  });
+  if (moved_whole) {
+    for (auto &path : paths) { path.first = SettleFullyTaken(std::move(path.first), sym, scope); }
+  }
+  auto joined = paths.front().first;
+  for (auto const &[state, path] : paths | genex::views::drop(1)) {
+    Join(joined, state, paths.front().second, path);
+  }
+  return joined;
+}
+
 /// [CHECKED]
 auto spp::analyse::utils::memory_state::SettleFullyTaken(
   MemoryState state, VariableSymbol const &sym,
@@ -513,7 +534,7 @@ auto spp::analyse::utils::memory_state::SettleFullyTaken(
   // If the type is copyable, it can't be moved anyway, so
   // return the state as it is too.
   const auto type = TypeRef::Of(*sym.Type, scope);
-  if (type.Symbol == nullptr or type.Symbol->IsCopyable()) {
+  if (not type.IsMoveOnly()) {
     return state;
   }
 
