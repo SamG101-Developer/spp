@@ -274,6 +274,9 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
     case A::kThreadHazard:
       if (cls_ctx) { sm->CurrentScope->FindHeadSymbol(*cls_ctx->Name)->IsDirectlyThreadHazard = true; }
       break;
+    case A::kMustUse:
+      if (cls_ctx) { sm->CurrentScope->FindHeadSymbol(*cls_ctx->Name)->IsDirectlyMustUse = true; }
+      break;
 
     // Mark a function's llvm inlining (which kind is read off
     // "Builtin" at codegen), or its temperature.
