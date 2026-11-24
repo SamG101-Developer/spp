@@ -39,5 +39,6 @@
 - [Debug info: line tables](debug-info-line-tables.md) — [binary.debug] info; CU per module, subprogram per body, location per statement; verify spp.o with dwarfdump 23; no .debug_names
 - [Source-line table](source-line-table.md) — crash-report lines: llvm_lines builds a table from spp.o's DWARF, keyed by name hash; no IR refs (BTI); LoadedObjectInfo for sections at 0
 - [Opaque struct layout cache](opaque-struct-layout-cache.md) — never size a registered-but-unfilled struct: LLVM caches an empty layout per module; Opt[BigInt] had a [0 x i8] payload
+- [Special lowering, matching layout](special-lowering-needs-matching-layout.md) — LayoutOf must special-case what lowering does; Ptr[T] was 0 bytes, Vec never allocated (IsTypePointer)
 - [Builtin coroutine bodies](builtin-coroutine-bodies.md) — mock gens are never analysed: SetOwnedAtSuspend per gen; a by-move self slot holds the value, no load
 - [Float checks shape](float-checks-shape.md) — one hot uno(r-r) branch, cold classifier; deferral reads only the hot flag (0x23); +-* checks elided into their checked users

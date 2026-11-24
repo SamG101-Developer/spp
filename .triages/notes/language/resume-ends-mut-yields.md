@@ -17,4 +17,4 @@ through variant members (`HoldsMutBorrow`). A top-level `Conv` check silently di
 exists so a name rebound since the resume (`let x = 5`) isn't ended.
 
 **Not covered:** a borrow copied on out of the holder (`e2 = e1` in a case branch), and unnamed generators.
-Related: [[generator-gen-done-sentinel]], [[spp-linear-types]].
+Related: [[generator-gen-done-sentinel]], [[affine-ownership]].

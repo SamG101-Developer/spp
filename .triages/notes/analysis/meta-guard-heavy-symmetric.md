@@ -1,7 +1,7 @@
 ---
 name: meta-guard-heavy-symmetric
 description: "CompilerMetaData is saved only through MetaGuard; any stage that sets a heavy (Enclosing*) field takes a heavy guard, in every stage of that ast"
-updated: 2026-10-25
+updated: 2026-11-23
 ---
 
 `CompilerMetaData::Save` and `Restore` are private (N6.6): the only way to snapshot and put back the context is a
@@ -14,7 +14,7 @@ other stage of that ast that sets one.** A function, coroutine or closure sets t
 
 **Why:** a light guard around a heavy set lets it escape. Closure stage 8 and function stage 8 set `EnclosingFnScope`
 under light guards (found 2026-10-25): after a closure, the enclosing function's later `ret` walked
-`CheckLiveUpToFn` past its own scope to the module, as the closure's scope is not on its chain. Latent (the scopes
+`OwnedUpToFn` (was `CheckLiveUpToFn`) past its own scope to the module, as the closure's scope is not on its chain. Latent (the scopes
 past a function hold nothing to discharge), but wrong.
 
 **How to apply:** when adding a stage that sets an `Enclosing*` field, use a heavy guard and check the ast's other

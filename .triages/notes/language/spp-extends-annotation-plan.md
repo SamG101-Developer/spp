@@ -11,4 +11,4 @@ such as `Copy` on the class itself instead of as separate empty `sup X ext Copy 
 
 **How to apply:** For now `sup X ext Copy { }` is the accepted way to make a type `Copy` - write it without asking. Don't
 build `!extends` or sweep std's marker blocks unprompted; it is later work the maintainer will ask for. When it is asked for, the
-marker blocks across std are the cleanup target. Related: [[zero-type-implies-copy]], [[spp-linear-types]].
+marker blocks across std are the cleanup target. Related: [[zero-type-implies-copy]], [[affine-ownership]].

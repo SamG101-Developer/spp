@@ -26,4 +26,4 @@ And reserving a word breaks every existing identifier of that name. The conventi
 underscore: `sppc::async_` was named that because `async` is a keyword, and `sppc::await` had to become
 `sppc::await_` for the same reason.
 
-Related: [[spp-dollar-mock-types]], [[spp-linear-types]].
+Related: [[spp-dollar-mock-types]], [[affine-ownership]].

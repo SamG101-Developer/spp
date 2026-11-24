@@ -2,7 +2,7 @@
 - [IMPORT_UTILS convention](import-utils-macro-convention.md) — utils as module::F, errors unqualified
 - [Scope symbol family duplication](scope-symbol-family-duplication.md) — one member per kind (symmetric), shared bodies; FindTypeSymbol kept apart
 - [ScopeDefinedIn can dangle](scope-defined-in-can-dangle.md) — resolve through LinkedScope
-- [Same-scope shadowing](spp-same-scope-shadowing.md) — lets declare at their position each walk (M2); hide on entry, reveal on exit
+- [Same-scope shadowing](spp-same-scope-shadowing.md) — lets declare at their position each walk (M2); hide on entry, reveal on exit; $_dst_ temps; is bindings hand the name back at statement end
 - [Visibility stage ordering](spp-visibility-stage-ordering.md) — attribute visibility syncs in Stage4; pre-stage-6 type names deferred (bug 45)
 - [Meta flags are per-stage](spp-meta-flags-are-per-stage.md) — stage 7 flags don't reach 8; new keywords
 - [Heavy guards, symmetric](meta-guard-heavy-symmetric.md) — Save/Restore only via MetaGuard; set an Enclosing* field = heavy guard, every stage
@@ -29,3 +29,4 @@
 - [JSON inline backticks](json-diagnostics-inline-backticks.md) — INLINE_* spans become `backticks` in JSON diagnostics, matched by exact colour codes
 - [Overridables recorded at stage 7](overridables-recorded-at-stage-7.md) — sup-ext 'still to override' record; MethodsOf caches, so not before stage 7; names as written
 - [Guards through ScopedInsert/Assign](thread-local-guards-scoped.md) — thread_local guard sets and saved values: utils::functions helpers only; a hand erase skipped by a throw leaks into the next compile
+- [Open instances made by analysis](open-instances-made-by-analysis.md) — open instantiation exists only once its type is analysed; analyse types spelled from an id

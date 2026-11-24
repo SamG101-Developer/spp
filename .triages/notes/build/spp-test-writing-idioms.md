@@ -1,7 +1,7 @@
 ---
 name: spp-test-writing-idioms
 description: "Syntax that costs a rebuild each time it is guessed wrong when writing s++ tests or benchmarks"
-updated: 2026-11-16
+updated: 2026-11-23
 ---
 
 Collected while writing std unit tests — each of these was found by a failed build, so check here first.
@@ -12,7 +12,7 @@ Collected while writing std unit tests — each of these was found by a failed b
 - **Unary minus only applies to literals.** `-x` on a variable is a syntax error; write `0_s32 - x`.
 - **Comparison-branch values are comma-separated:** `== b'\n', b'\r' { .. }`. `a | b` there is a *bitwise or* (it silently compared against 0x0f in `BufRead::read_line` and never stripped a line ending).
 - `of` is a **keyword** — it cannot be a function name.
-- **Everything non-`Copy` is linear**, including a `Var` holding a non-`Copy` alternative, `Pair`, `Vol` and `Single`. Every test binding one must end by consuming it (`drop(x)`, or a consuming method like `Mutex::take`).
+- **Nothing has to be consumed** (affine since 2026-11-23, [[affine-ownership]]): a test binding a non-`Copy` value needs no `drop(x)`; it is dropped at its scope's end. Only a `!must_use` value (a `Res`, a `Fut`) left as a statement is an error (E95).
 - **`Vec` and `drop` are in scope unqualified** in std test modules; everything else needs its full path, and the path mirrors directories *plus filename* — `src/std/rc/rc.spp` is `std::rc::rc::Rc`, not `std::rc::Rc`.
 - **Keywords that bite as identifiers:** `of` and `ext` cannot be variable or function names.
 - **No escape sequences in string literals** — `\"` is a syntax error.
@@ -54,7 +54,7 @@ Found writing the differential programs (`tests/differential`, 2026-11-13):
   used". Reborrow at each call: `f(&v, ..)`.
 - **`let r = &x` is a syntax error**: borrows are made at a call's arguments only.
 - **A shift distance is always `U32`**, for signed and unsigned operands alike.
-- **A class of `Copy` fields is still linear** until `sup C ext std::copy::Copy { }`.
+- **A class of `Copy` fields still moves** until `sup C ext std::copy::Copy { }`, and then cannot superimpose `Drop` (E131).
 - **`v[i]` of a `Vec[Str]` is already a borrow**: pass `words[k]` to a `&StrView` parameter; `&words[k]@` is E70.
 
 **C++ unit tests that lex:** call `lexer.Lex()` before `lexer.PreludeTokenIndex()`, in separate statements, never
@@ -62,4 +62,4 @@ both as arguments of one call (`ForFile(lexer.Lex(), path, lexer.PreludeTokenInd
 arguments are evaluated in, and GCC reads the index first, before lexing has set it, so the prelude reads as the
 author's code (2026-11-11, `test_msc_source_positions.cpp`, `test_msc_error_files.cpp`).
 
-Related: [[spp-linear-types]], [[build-workflow]], [[add-tests-even-if-failing]].
+Related: [[affine-ownership]], [[build-workflow]], [[add-tests-even-if-failing]].

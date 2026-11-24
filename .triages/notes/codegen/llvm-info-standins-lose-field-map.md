@@ -25,4 +25,4 @@ real class symbol whose map is populated; that asymmetry is the tell.
 program, so this path is nearly untested and worth suspecting. To check any GEP bug of this shape, dump
 `out/<target>/<mode>/llvm/**/*.ll`, find the `= type { ... }` line for the struct and compare it against the emitted
 `getelementptr ... i32 0, i32 N` — see [[spp-ir-diff-verification]]. Related: [[drop-needs-forced-instantiation]],
-[[scope-symbol-family-duplication]], [[no-destructor-dispatch-yet]].
+[[scope-symbol-family-duplication]], [[affine-ownership]].

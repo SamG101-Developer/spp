@@ -1,7 +1,6 @@
-- [Linear types](spp-linear-types.md) — non-Copy used exactly once; 5 rules, Drop bound
-- [Implicit destructors are gone](no-destructor-dispatch-yet.md) — linear typing; EmitDrop for drop intrinsics, closure captures, coroutine frames
+- [Affine ownership](affine-ownership.md) — move at most once; compiler drops at each lifetime end; drop-point table; no drop flags
 - [Drop needs forced instantiation](drop-needs-forced-instantiation.md) — every synthesised drop calls EnsureDropInstantiated; a miss drops field by field (Vec loses its elements)
-- [zero_type is not Copy](zero-type-implies-copy.md) — layout only; markers are linear unless Copy
+- [zero_type is not Copy](zero-type-implies-copy.md) — layout only; a marker moves unless Copy
 - [Markers only from own package](markers-only-from-own-package.md) — Copy/Drop/FwdRef/FwdMut: declaring package only (E111)
 - [Soundness audit 2026-09](spp-soundness-audit-2026-09.md) — branch-consumption on; where red tests live
 - [Borrow is a param convention](borrow-is-param-convention.md) — f[T](x: T) can't take &Str
@@ -14,7 +13,6 @@
 - [Pattern solver](pattern-solver.md) — N9.2: MatchPlan checks; gtest cannot see pattern miscompiles; run check-case-patterns
 - [Nested case with no else](nested-case-in-generic-segfaults.md) — no-else case is Void, not Never
 - [Destructure alias scope](spp-destructure-alias-scope.md) — `x as y` only in object destructures
-- [Defer applies to earlier exits](defer-applies-to-earlier-exits.md) — Stage 8 clears Deferred on entry
 - [Closures are |..| delimited](closures-are-bar-delimited.md) — `|a: T caps b| body`; `||` no params; a line-leading `|` is never bit-or
 - [Closure return types](closure-return-types.md) — `|x: T| -> R { ret .. }`
 - [Closure captures in loops](closure-captures-in-loops.md) — fixed; loop tests need a 2nd pass
@@ -23,8 +21,9 @@
 - [Copied capture is FunMov](closure-copied-capture-is-fun-mov.md) — copyable by-value capture still FunMov: FunRef is Copy, heap env would leak; reverted 2026-11-19
 - [$ mock types](spp-dollar-mock-types.md) — TypeFuncEq for $ types; IsTypeFunction yes
 - [GenDone sentinel](generator-gen-done-sentinel.md) — finished Gen answers GenDone; E110
-- [GenOnce defer runs early](gen-once-defer-runs-before-borrow-use.md) — the frame finishes on read; a defer after gen runs before the borrow is used; locks are closure-scoped
+- [GenOnce frame ends on read](gen-once-frame-ends-on-read.md) — the frame finishes on read; what it drops (a guard) goes before the borrow is used; locks are closure-scoped
 - [Resume ends &mut yields](resume-ends-mut-yields.md) — 2nd g.res() moves earlier &mut holders
 - [Green task detach UAF](spp-green-task-detach-uaf.md) — a dropped future must await
 - [!extends annotation plan](spp-extends-annotation-plan.md) — future; use `sup X ext Copy` for now
-- [Call results are temporaries](method-result-receiver-temporary-unchecked.md) — PlaceOf derives v.clone() from v; IsLinearTemporary skips it for calls (fixed 2026-11-10); std must land first
+- [Call results are temporaries](method-result-receiver-temporary-unchecked.md) — PlaceOf derives v.clone() from v; IsTemporary skips it for calls, so the result is dropped
+- [Void is no value](void-is-no-value.md) — Void params stripped (fns, closures), Fun* Args drop Void, Void arg with no param unbound but evaluated

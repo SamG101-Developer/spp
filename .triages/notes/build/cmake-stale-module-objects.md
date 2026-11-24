@@ -1,7 +1,7 @@
 ---
 name: cmake-stale-module-objects
 description: "cmake/ninja silently skips rebuilding a changed C++ module TU; touch the .cpp when a change seems to have no effect"
-updated: 2026-10-16
+updated: 2026-11-20
 ---
 
 The ninja build sometimes does not rebuild a changed `.cpp` in this project's C++20 module setup, and the build
@@ -20,6 +20,10 @@ a registration/table entry the running binary does not see - do not go looking f
 **An interrupted build leaves 0-byte objects** (2026-10-16: the session ended mid-build). Ninja then treats them as up
 to date, and the link fails with `undefined symbol` for whole classes (every `GenericParameterAst` member) in files
 nobody edited. Fix: `find <release build dir> -name '*.o' -size 0 -delete` (check `*.gcm` too), rebuild.
+
+**A deleted module file is still built** (2026-11-20, removing `array_literal_ast.ixx`). The `CONFIGURE_DEPENDS` glob
+did not drop it, and the build failed with `cc1plus: fatal error: .../array_literal_ast.ixx: No such file or
+directory`. Fix: rerun the configure step (`cmake <build dir>`), then build.
 
 ## `git stash` can silently de-sync a module interface from its implementation (2026-09-04)
 

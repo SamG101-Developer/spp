@@ -1,6 +1,7 @@
 - [Generic inference engine](generic-inference-engine-shape.md) — two constructors, given layers, Evidence, one matcher; shared helpers to hook into
 - [Inference is one-way](spp-generic-inference-is-one-way.md) — from a thing's own args, never its result
 - [Destructures infer from the subject](destructure-infers-from-subject.md) — let/case patterns take unwritten args from the value; written args filter variant members; >1 left is E129
+- [Static calls infer the receiver](static-call-receiver-inference.md) — Vec::from(&[1, 2]): callee defers bare template, call solves each block, writes receiver; E130
 - [Variadic pack model](variadic-pack-model.md) — every pack a list, never named; tuples/variants are classes over a pack; E123/E124; helpers
 - [Pack in a variant flattens](variant-pack-flattens.md) — f[S32, Str] on Bool or Rest is Bool or S32 or Str (maintainer, 2026-10-22)
 - [Generic alias constraints](generic-alias-constraints.md) — aliases::TargetOf; checks from arg scope

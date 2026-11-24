@@ -1,7 +1,7 @@
 ---
 name: analyse-utils-module-map
 description: "Where analyse::utils functions live: the 2026-09-28 reorg (old module → new module), the 2026-10-16 regrouping (fn_signatures, control_flow folded, twins moved), common_errors (2026-10-25)"
-updated: 2026-10-25
+updated: 2026-11-23
 ---
 
 On 2026-09-28, Phase 1 of `.triages/docs_closed/analyse-utils-reorg.md` moved and renamed modules with no logic change. The doc's
@@ -46,8 +46,8 @@ now live in other modules.
 **2026-10-25 (N6.11):** new `common_errors` for the checks that belong to no one area, each raising where it fails:
 `RequirePrimary` (was 24 copies of `RaiseIf<SppInvalidPrimaryExpressionError>(not IsPrimaryExprTypeValid(..))`) and
 `RequireNotBorrowed` (13 of `RaiseIf<SppSecondClassBorrowViolationError>(IsTypeBorrowed(..))`). Area raise helpers
-(`mem_utils::RaiseIfMoved`, `borrows::RaiseIfConflictedUse`, `member_lookup::RaiseIfAmbiguous`, the `linear_utils`
-and `visibility_utils` checks) stay in their area, so the call site names it. `marker_sups::IsCopyMarker` /
+(`mem_utils::RaiseIfMoved`, `borrows::RaiseIfConflictedUse`, `member_lookup::RaiseIfAmbiguous`, the
+`visibility_utils` checks; `linear_utils` is gone, its drop collectors live in `drop_utils`) stay in their area, so the call site names it. `marker_sups::IsCopyMarker` /
 `IsDropMarker` replace the spelled `IsA(*COPY / *DROP, ..)` kind checks.
 
 **2026-10-25 (N7.2):** attributes are one walk: `type_members::GetAllAttrs` (name, type read where declared,

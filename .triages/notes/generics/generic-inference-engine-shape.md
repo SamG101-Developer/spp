@@ -31,6 +31,8 @@ its own.
     (one, else E129, else none); see [[destructure-infers-from-subject]].
 
   A new source of evidence is a new `Evidence` field, not a member and hook on the AST.
+- a static call's bare receiver is inferred before resolution, from each block's method solved against the arguments
+  (`InferTemplateReceiver`; [[static-call-receiver-inference]]).
 
 **Matching** is one path: `_Match` → `_MatchIds` → `scopes::UnifyTypeIds`. For a target with a shape to match, it
 falls back to the given type's super classes (`type_members::UnifyInHierarchy`), then, for two borrows of the same

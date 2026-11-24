@@ -1,7 +1,7 @@
 ---
 name: diverges-single-definition
 description: "StatementAst::Diverges(sm, meta) virtual is the one definition of \\\"never falls through\\\" (Terminates() and expr_utils::Diverges removed 2026-10-23); no dead code at all (E28), even after `loop true { }`"
-updated: 2026-10-23
+updated: 2026-11-23
 ---
 
 Since 2026-10-23 (N4.1), `StatementAst::Diverges(sm, meta)` is the only answer to "does control continue past this?".
@@ -23,9 +23,8 @@ The overrides:
 - case branch types and memory merging (`case_utils`)
 - the branch codegen's `body_is_never`
 - the loop second pass
-- the scope, function and closure end `CheckScopeExit` calls
+- the scope, function and closure end `drop_utils::EndRegion` calls
 - missing `ret` (E58, in `subroutine_prototype_ast.cpp`)
-- `defer` terminating
 
 **the maintainer's rule: uniform behaviour, so NO dead code.** Code after an exit-less `loop true { }` is E28 too. Tests that
 used `loop true` as a placeholder were changed to `loop b` with a `b: Bool` parameter, which keeps a second iteration
@@ -35,4 +34,4 @@ and a reachable follow-on. `exit` was added only where the test was about a sing
 old fallback to "all branches" compared a `ret` branch's `Void` against the target (E1 in std `Result::zip`).
 
 **How to apply:** a new check that asks "does this finish" calls `Diverges`. A new statement kind that always jumps
-overrides it. Related: [[spp-linear-types]].
+overrides it. Related: [[affine-ownership]].

@@ -22,9 +22,12 @@ project's std without touching the fixture, run `spp_tests` from `<dir>/w1/w2` w
 
 Fixed later the same day: loop dataflow (zero-iteration merge, and skip-moves via the `LoopSkipMoves` meta field),
 recursive types through tuple/generic/variant (`HoldsByValue`), `Copy` over non-Copy attributes, pattern-guard moves
-(new E114), tuple aliases, and `f.await` carrying a generator's borrows. Semantics chosen: a generic instance with a
-`Copy` sup is Copy only when all its attributes are. Still open: linear temporaries (`test_lin_temporaries.cpp`) and
+(new E114; narrowed to a guard moving its branch's own bindings 2026-11-24), tuple aliases, and `f.await` carrying a generator's borrows. Semantics chosen: a generic instance with a
+`Copy` sup is Copy only when all its attributes are. Still open: linear temporaries (`test_lin_temporaries.cpp`, now `test_drop_temporaries.cpp`; moot since affine
+drops, 2026-11-23) and
 polymorphic recursion OOMs (DISABLED\_). Loop exit states were merged 2026-09-28: every `exit` snapshots into
 `CompilerMetaData::LoopExitStates` for its target loop, and `LoopConditionalExpressionAst::Stage8` merges all paths out
 like case branches. The open-bug list lives in `../../../.triages/open-bugs.md`.
-Related: \[[spp-linear-types]\], \[[add-tests-even-if-failing]\], \[[spp-probe-harness]\].
+Superseded by affine ownership (2026-11-23): the checks below are gone, see [[affine-ownership]].
+
+Related: \[[affine-ownership]\], \[[add-tests-even-if-failing]\], \[[spp-probe-harness]\].
