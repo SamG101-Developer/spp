@@ -205,18 +205,17 @@ auto spp::analyse::scopes::IdArgNamed(
 
 auto spp::analyse::scopes::FindOrMakeTypeSymbol(
   Scope const &scope, TypeAst const &type) -> TypeSymbol* {
-  // Find the type symbol. If there is type symbol for the
-  // type name, then return it.
+  // Find the type symbol. If there is type symbol for the type name, then
+  // return it.
   if (const auto sym = scope.FindTypeSymbol(&type); sym != nullptr) {
     return sym;
   }
 
-  // The open instantiation the type was stamped with, read
-  // raw from its template's instances (not re-read through
-  // this scope's bindings, which is what found nothing); the
-  // stamps are read in the order "FindTypeSymbol" reads them.
-  // Make the instantiation its identity names here.
-  auto const *const last = type.LastTypePart();
+  // The open instantiation the type was stamped with, read raw from its
+  // template's instances (not re-read through this scope's bindings, which is
+  // what found nothing); the stamps are read in the order "FindTypeSymbol"
+  // reads them. Make the instantiation its identity names here.
+  const auto last = type.LastTypePart();
   auto open = scope.FindTypeSymbolById(type.StampedTypeId());
   if (open == nullptr and last != &type) { open = scope.FindTypeSymbolById(last->StampedTypeId()); }
   if (open != nullptr) { return MakeOnRead(scope, *open, scope.ReadIn(open->Id)); }
@@ -450,6 +449,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
   IsVariadic(that.IsVariadic),
   Pack(that.Pack),
   IsMutable(that.IsMutable),
+  ExpiresWithStatement(that.ExpiresWithStatement),
   AliasSymbol(that.AliasSymbol),
   NarrowsSymbol(that.NarrowsSymbol),
   IndirectFnType(that.IndirectFnType),
@@ -565,7 +565,7 @@ auto spp::analyse::scopes::TypeSymbol::IsCopyable() const -> bool {
       // "Copy" superimposed over a generic class ("sup [T] P[T]
       // ext Copy") only holds for an instance whose attributes
       // are all copyable: copying "P[Str]" would copy the "Str",
-      // which is then destroyed twice. Such an instance is linear.
+      // which is then destroyed twice. Such an instance moves.
       return genex::all_of(utils::type_members::GetAllAttrs(*this), [](auto const &attr) {
         auto const *const attr_sym = get<1>(attr).Symbol;
         return attr_sym == nullptr or attr_sym->IsCopyable();
@@ -584,6 +584,11 @@ auto spp::analyse::scopes::TypeSymbol::IsCopyable() const -> bool {
 auto spp::analyse::scopes::TypeSymbol::IsZeroType() const -> bool {
   return IsDirectlyZeroType
     or (DerivesFromSymbol != nullptr and DerivesFromSymbol->IsZeroType());
+}
+
+auto spp::analyse::scopes::TypeSymbol::IsMustUse() const -> bool {
+  return IsDirectlyMustUse
+    or (DerivesFromSymbol != nullptr and DerivesFromSymbol->IsMustUse());
 }
 
 auto spp::analyse::scopes::TypeSymbol::IsGn() const -> bool {
@@ -733,6 +738,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
   Convention(that.Convention),
   IsDirectlyCopyable(that.IsDirectlyCopyable),
   IsDirectlyZeroType(that.IsDirectlyZeroType),
+  IsDirectlyMustUse(that.IsDirectlyMustUse),
   IsDirectlyThreadHazard(that.IsDirectlyThreadHazard),
   DeclaredAbi(that.DeclaredAbi),
   Serial(NextTypeSymbolSerial()) {
@@ -784,6 +790,7 @@ auto spp::analyse::scopes::TypeSymbol::BindTo(
   LinkedScope = target.LinkedScope;
   IsDirectlyCopyable = target.IsDirectlyCopyable;
   IsDirectlyZeroType = target.IsDirectlyZeroType;
+  IsDirectlyMustUse = target.IsDirectlyMustUse;
   DeclaredAbi = target.DeclaredAbi;
   TypeConstraints = target.TypeConstraints;
 }
@@ -1114,9 +1121,7 @@ auto spp::analyse::scopes::TypeRef::FromId(
 /// [CHECKED]
 auto spp::analyse::scopes::TypeRef::Of(
   TypeAst const &type, Scope const &scope) -> TypeRef {
-  // A resolved type is never an alias: it is what the
-  // alias stands for ("AliasTarget"). The alias stays
-  // on the written type, for visibility and messages.
+  // Find the symbol if it exists in the provided scope, otherwise create it.
   const auto found = FindOrMakeTypeSymbol(scope, type);
   if (found == nullptr) { return TypeRef(); }
 
@@ -1312,7 +1317,7 @@ auto spp::analyse::scopes::TypeRef::SameAs(
   return Id != nullptr and Id == that.Id and Conv == that.Conv;
 }
 
-auto spp::analyse::scopes::TypeRef::Owes() const -> bool {
+auto spp::analyse::scopes::TypeRef::IsMoveOnly() const -> bool {
   return Symbol != nullptr and not IsNever and not IsBorrowed() and not Symbol->IsCopyable();
 }
 
