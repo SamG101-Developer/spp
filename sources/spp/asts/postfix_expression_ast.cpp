@@ -8,30 +8,34 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.packs;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lsp.resolution_index;
+import spp.utils.functions;
+import spp.utils.interner;
 import genex;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
-use_alias(spp::asts::meta, AllowPackWholeGuard);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
@@ -129,7 +133,22 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
     meta->ReturnTypeOverloadResolverType = nullptr;
     if (Lhs->To<TypeAst>() != nullptr) {
       auto temp_lhs = Shared<TypeAst>(Lhs.release()->As<TypeAst>());
-      temp_lhs = type_resolution::AnalyseWrittenType(*temp_lhs, *sm, *meta);
+
+      // A call's static receiver written without the arguments it needs ("Vec" in "Vec::from(&[1, 2])") is left for
+      // the call, which has the arguments to infer it from ("InferTemplateReceiver"), and analyses this again.
+      auto *const access = Op->To<PostfixExpressionOperatorStaticMemberAccessAst>();
+      try {
+        temp_lhs = type_resolution::AnalyseWrittenType(*temp_lhs, *sm, *meta);
+      }
+      catch (SppGenericParameterNotInferredError const &) {
+        if (access == nullptr or not access->IsCalleeOfCall() or not temp_lhs->LastTypePart()->GnArgGroup->Args.empty()) {
+          throw;
+        }
+        access->LeaveReceiverToCall(true);
+        Lhs = AstClone(temp_lhs);
+        return;
+      }
+      if (access != nullptr) { access->LeaveReceiverToCall(false); }
       Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }
     else {
@@ -144,9 +163,20 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
       // checking that the lhs is a valid form of primary expression.
       // An element of a pack ("xs.0") names the pack whole, as a spread does.
       if (not _LhsAnalysed) {
+        // A static access called ("Vec::from(..)") may leave its receiver for the call (see above).
+        if (auto const *const call = Op->To<PostfixExpressionOperatorFunctionCallAst>(); call != nullptr and call->Fold == nullptr) {
+          if (auto *const callee = Lhs->To<PostfixExpressionAst>(); callee != nullptr) {
+            if (auto *const callee_access = callee->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>()) {
+              callee_access->MarkCalleeOfCall();
+            }
+          }
+        }
         auto const *const access = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
-        const auto _pack_guard = AllowPackWholeGuard(
-          meta, access != nullptr and std::isdigit(access->Name->Val[0]) and Lhs->To<IdentifierAst>() != nullptr);
+        const auto names_element = access != nullptr and std::isdigit(access->Name->Val[0]);
+        const auto _pack_guard = spp::utils::functions::ScopedAssign(
+          meta->AllowPackWhole, names_element and Lhs->To<IdentifierAst>() != nullptr);
+        // A namespace may name the left of a member access: "::" reads it, and "." reports it (E: "::" expected).
+        meta->AllowNamespaceName = Op->To<PostfixExpressionOperatorStaticMemberAccessAst>() != nullptr or access != nullptr;
         Lhs->Stage7_AnalyseSemantics(sm, meta);
         common_errors::RequirePrimary(*Lhs, *sm, {.AllowTypeAst = true});
       }
@@ -199,26 +229,15 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
     if (Lhs != nullptr) { Lhs->Stage8_CheckMemory(sm, meta); }
   }
 
-  // An attribute read off a linear temporary takes that attribute and leaves the rest with no owner, unless the
-  // attribute is the one owned part there is ("mk().a" on a value whose other parts are all "Copy").
-  // Todo: CLEAN
-  if (auto const *const field = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>(); field != nullptr
-    and Lhs != nullptr and linear_utils::IsLinearTemporary(*Lhs, *sm, meta)) {
-    const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
-    auto is_part = false;
-    auto leaves_owned = false;
-    for (auto const &[step, _, type, ref, where] : type_members::GetAllParts(lhs_ref, *sm->CurrentScope)) {
-      const auto owned = ref.Symbol != nullptr and not ref.Symbol->IsCopyable();
-      if (step->NameId() == field->Name->NameId()) {
-        is_part = true;
-        leaves_owned |= not owned;
-      }
-      else { leaves_owned |= owned; }
+  // An attribute read off a temporary ("mk().a") takes that attribute if it is owned, and the rest of the temporary
+  // is dropped as its statement ends.
+  if (auto *const field = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>(); field != nullptr
+    and Lhs != nullptr and drop_utils::IsTemporary(*Lhs, *sm, meta)) {
+    auto moved = Vec<Vec<spp::utils::InternedId>>();
+    for (auto const &[step, _, type, ref, where] : type_members::GetAllParts(Lhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
+      if (step->NameId() == field->Name->NameId() and ref.IsMoveOnly()) { moved.push_back({step->NameId()}); }
     }
-    if (is_part and leaves_owned) {
-      linear_utils::RaiseTemporaryNotConsumed(
-        *Lhs, *this, "A part is read off it here, leaving the rest with no owner", *sm, meta);
-    }
+    field->DropsReceiverRest = std::move(moved);
   }
 
   const auto _meta_guard = MetaGuard(meta);
