@@ -117,7 +117,6 @@ use(spp::asts, struct UnaryExpressionOperatorAst);
 use(spp::asts, struct UnaryExpressionOperatorAsyncAst);
 use(spp::asts, struct PostfixExpressionOperatorDerefAst);
 use(spp::asts, struct ParenthesisedExpressionAst);
-use(spp::asts, struct DeferStatementAst);
 use(spp::asts, struct RetStatementAst);
 use(spp::asts, struct StatementAst);
 use(spp::asts, struct TokenAst);
@@ -299,7 +298,6 @@ public:
   auto ParseAssignmentTargetPrimaryExpression() -> Unique<ExpressionAst>;
 
   auto ParseRetStatement() -> Unique<RetStatementAst>;
-  auto ParseDeferStatement() -> Unique<DeferStatementAst>;
   auto ParseExitStatement() -> Unique<LoopControlFlowStatementAst>;
   auto ParseExitStatementWithValue() -> Unique<LoopControlFlowStatementAst>;
   auto ParseSkipStatement() -> Unique<LoopControlFlowStatementAst>;
@@ -515,7 +513,6 @@ public:
   auto ParseKeywordRet() -> Unique<TokenAst>;
   auto ParseKeywordExit() -> Unique<TokenAst>;
   auto ParseKeywordSkip() -> Unique<TokenAst>;
-  auto ParseKeywordDefer() -> Unique<TokenAst>;
   auto ParseKeywordIs() -> Unique<TokenAst>;
   auto ParseKeywordAs() -> Unique<TokenAst>;
   auto ParseKeywordOr() -> Unique<TokenAst>;

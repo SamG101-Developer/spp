@@ -53,7 +53,6 @@ use_alias(spp::asts, ConventionAst);
 use_alias(spp::asts, ConventionMutAst);
 use_alias(spp::asts, ConventionRefAst);
 use_alias(spp::asts, CoroutinePrototypeAst);
-use_alias(spp::asts, DeferStatementAst);
 use_alias(spp::asts, ExpressionAst);
 use_alias(spp::asts, FloatLiteralAst);
 use_alias(spp::asts, FoldExpressionAst);
@@ -1311,7 +1310,7 @@ auto spp::parse::ParserSpp::ParseStatement()
   PARSE_ALTERNATE(
     p1, StatementAst, ParseTypeStatement, ParseLetStatement, ParseRetStatement,
     ParseExitStatement, ParseExitStatementWithValue, ParseSkipStatement,
-    ParseDeferStatement, ParseAssignmentStatement, ParseGenUnrollExpression,
+    ParseAssignmentStatement, ParseGenUnrollExpression,
     ParseExpression);
   return FORWARD_AST(p1);
 }
@@ -1359,13 +1358,6 @@ auto spp::parse::ParserSpp::ParseAssignmentTargetPrimaryExpression()
   PARSE_ALTERNATE(
     p1, PrimaryExpressionAst, ParseIdentifier, ParseSelfIdentifier);
   return FORWARD_AST(p1);
-}
-
-auto spp::parse::ParserSpp::ParseDeferStatement()
-  -> Unique<DeferStatementAst> {
-  PARSE_ONCE(p1, ParseKeywordDefer);
-  PARSE_ONCE(p2, ParseExpression);
-  return _CreateAst<DeferStatementAst>(p1, p2);
 }
 
 auto spp::parse::ParserSpp::ParseRetStatement()
@@ -2956,12 +2948,6 @@ auto spp::parse::ParserSpp::ParseKeywordGen()
 auto spp::parse::ParserSpp::ParseKeywordWith()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_WITH, lex::SppTokenType::KW_WITH); });
-  return FORWARD_AST(p1);
-}
-
-auto spp::parse::ParserSpp::ParseKeywordDefer()
-  -> Unique<TokenAst> {
-  PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_DEFER, lex::SppTokenType::KW_DEFER); });
   return FORWARD_AST(p1);
 }
 

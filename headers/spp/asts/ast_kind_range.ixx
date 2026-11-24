@@ -41,7 +41,6 @@ namespace spp::asts {
   SPP_EXP_CLS struct ConventionMutAst;
   SPP_EXP_CLS struct ConventionRefAst;
   SPP_EXP_CLS struct CoroutinePrototypeAst;
-  SPP_EXP_CLS struct DeferStatementAst;
   SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct FloatLiteralAst;
   SPP_EXP_CLS struct FoldExpressionAst;
@@ -378,13 +377,6 @@ namespace spp::asts {
     static constexpr auto Known = true;
     static constexpr auto First = AstKind::kCoroutinePrototypeAst;
     static constexpr auto Last = AstKind::kCoroutinePrototypeAst;
-  };
-
-  template <>
-  struct AstKindRange<DeferStatementAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kDeferStatementAst;
-    static constexpr auto Last = AstKind::kDeferStatementAst;
   };
 
   template <>

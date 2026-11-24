@@ -86,7 +86,6 @@ SPP_EXP_CLS enum class spp::asts::AstKind : std::uint8_t {
   kStatementAst,
   kAssignmentStatementAst,
   kCmpStatementAst,
-  kDeferStatementAst,
   kExpressionAst,
   kBinaryExpressionAst,
   kIsExpressionAst,
