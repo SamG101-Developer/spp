@@ -120,6 +120,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Clone() const -
   ast->Source.OriginalExpr = Source.OriginalExpr;
   ast->Source.Lowered = Source.Lowered;
   ast->DropsReceiverRest = DropsReceiverRest;
+  ast->ReadOnwards = ReadOnwards;
   return ast;
 }
 
@@ -341,7 +342,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::_EmitFieldPtr(
 
   // An array lowers to "[n x T]", indexed through the array itself
   // (the leading zero steps over the pointer); a tuple to a struct
-  // whose fields keep declaration order, so element "n" is field "n".
+  // whose fields keep declaration order less its valueless elements,
+  // so element "n" is found through the layout's index map.
   const auto index = static_cast<std::uint32_t>(std::stoul(Name->Val));
   if (type_predicates::IsTypeArray(TypeRef::ForKindCheck(owner, *sm->CurrentScope), *sm->CurrentScope)) {
     const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
@@ -349,7 +351,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::_EmitFieldPtr(
       llvm_type, base_ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
       "member_access.arr.elem_ptr" + uid);
   }
-  return ctx->Builder.CreateStructGEP(llvm_type, base_ptr, index, "member_access.tup.elem_ptr" + uid);
+  return ctx->Builder.CreateStructGEP(
+    llvm_type, base_ptr, codegen::GetPhysicalFieldIndex(*owner.LlvmInfo, index), "member_access.tup.elem_ptr" + uid);
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::EvaluateCompTime(

@@ -71,6 +71,11 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst fi
   /// path to it). Set by memory checking ("PostfixExpressionAst").
   Opt<Vec<Vec<spp::utils::InternedId>>> DropsReceiverRest;
 
+  /// Another member is read off this one's value ("mk().a.b"), so
+  /// this access is no end of a chain: the access at the end checks
+  /// what the temporary is left missing ("PostfixExpressionAst").
+  bool ReadOnwards = false;
+
 private:
   /// The access rewritten against the forwarded-to value
   /// ("x.fwd_ref().field"), built when the member is not found

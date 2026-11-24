@@ -12,9 +12,11 @@ import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.packs;
+import spp.analyse.utils.regions;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
+import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_operator_ast;
@@ -44,6 +46,7 @@ namespace spp::asts {
   /// "PackElementCloneGuard": the closed packs whose elements a clone renames, by name, to their element counts.
   static thread_local auto pack_elements = spp::Map<spp::Str, std::size_t>();
 }
+
 
 SPP_MOD_BEGIN
 spp::asts::PackElementCloneGuard::PackElementCloneGuard(
@@ -218,6 +221,12 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
     return;
   }
 
+  // A member read off another member's value ("mk().a.b") leaves the inner read no end of a chain.
+  auto const *const field = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
+  if (auto *const inner = field != nullptr ? _InnerFieldRead() : nullptr; inner != nullptr) {
+    inner->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()->ReadOnwards = true;
+  }
+
   // A dereference copies out of the borrow its lhs produced, so the value this expression is being assigned to holds
   // a copy and not the borrow. Any escaping borrow the lhs establishes on the way ("xs[i]@" resolving through the
   // "index_ref" coroutine) belongs to that temporary, not to the assignment target, so clear the target while the lhs
@@ -229,16 +238,7 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
     if (Lhs != nullptr) { Lhs->Stage8_CheckMemory(sm, meta); }
   }
 
-  // An attribute read off a temporary ("mk().a") takes that attribute if it is owned, and the rest of the temporary
-  // is dropped as its statement ends.
-  if (auto *const field = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>(); field != nullptr
-    and Lhs != nullptr and drop_utils::IsTemporary(*Lhs, *sm, meta)) {
-    auto moved = Vec<Vec<spp::utils::InternedId>>();
-    for (auto const &[step, _, type, ref, where] : type_members::GetAllParts(Lhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
-      if (step->NameId() == field->Name->NameId() and ref.IsMoveOnly()) { moved.push_back({step->NameId()}); }
-    }
-    field->DropsReceiverRest = std::move(moved);
-  }
+  if (field != nullptr and not field->ReadOnwards) { _TakeFieldsOffTemporary(*sm, meta); }
 
   const auto _meta_guard = MetaGuard(meta);
   Op->Lhs = Lhs.get();
@@ -250,6 +250,44 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
       {.CheckMove = false, .CheckPartialMove = false, .CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
   }
   Op->Stage8_CheckMemory(sm, meta);
+}
+
+auto spp::asts::PostfixExpressionAst::_InnerFieldRead() const -> PostfixExpressionAst* {
+  auto *const inner = Lhs != nullptr ? Lhs->To<PostfixExpressionAst>() : nullptr;
+  return inner != nullptr and inner->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr
+    ? inner
+    : nullptr;
+}
+
+auto spp::asts::PostfixExpressionAst::_TakeFieldsOffTemporary(
+  ScopeManager &sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+
+  // The fields the chain this read ends reads ("mk().a.b": "a", "b"), back
+  // to the value it starts at. Only the first read holds a list of its own.
+  auto path = Vec<regions::PlaceStep>();
+  auto *first = this;
+  for (auto *at = this; at != nullptr; at = at->_InnerFieldRead()) {
+    auto *const read = at->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
+    read->DropsReceiverRest = Nullopt;
+    path.insert(path.begin(), regions::PlaceStep{.Name = read->Name->NameId()});
+    first = at;
+  }
+
+  // Off a temporary, the first read makes it and drops the rest of it as the
+  // statement ends: less the path if the value read here is moved out, all of
+  // it if it is a copy. The path leaves a hole in every value it runs through,
+  // which is E106 for one with its own "drop", as for a named value.
+  if (not drop_utils::IsTemporary(*first->Lhs, sm, meta)) { return; }
+  auto &rest = first->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()->DropsReceiverRest;
+  if (not InferTypeRef(&sm, meta).IsMoveOnly()) {
+    rest = Vec<Vec<spp::utils::InternedId>>();
+    return;
+  }
+  rest = Vec<Vec<spp::utils::InternedId>>{path | genex::views::transform(&regions::PlaceStep::Name) | genex::to<Vec>()};
+  const auto field_name = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()->Name;
+  drop_utils::RaiseIfPathStrandsDestructor(
+    first->Lhs->InferTypeRef(&sm, meta).WithoutConvention(), path, *field_name, *this, sm, meta);
 }
 
 auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(
