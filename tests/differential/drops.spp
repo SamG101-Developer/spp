@@ -1,6 +1,6 @@
-# Drop order: values whose destructor prints, dropped on an early and a normal return, under "defer"s, out of a loop
-# left by "exit exit", in "case" arms, by a partial move out of a class, by assignment over a live value, and through a
-# vector. Each drop must run once, in the same order at dev as at rel.
+# Drop order: values whose destructor prints, dropped on an early and a normal return, implicitly at a scope's end,
+# out of a loop left by "exit exit", in "case" arms, by a partial move out of a class, by assignment over a live value,
+# and through a vector. Each drop must run once, in the same order at dev as at rel.
 
 cls Noisy {
   !public n: U64
@@ -29,7 +29,7 @@ fun take(x: Noisy) -> U64 {
 
 fun early(stop: Bool) -> U64 {
   let a = Noisy(n=1_u64)
-  defer std::console::println("defer outer")
+  let held = Noisy(n=3_u64)
   let b = Noisy(n=2_u64)
   case stop {
     std::mem::ops::drop(b)
@@ -41,12 +41,10 @@ fun early(stop: Bool) -> U64 {
   ret r
 }
 
-fun deferred_drops() -> Void {
+fun implicit_drops() -> Void {
   let a = Noisy(n=10_u64)
-  defer std::mem::ops::drop(a)
   let b = Noisy(n=11_u64)
-  defer std::mem::ops::drop(b)
-  std::console::println("body of deferred_drops")
+  std::console::println("body of implicit_drops")
 }
 
 fun nested_loops() -> U64 {
@@ -135,7 +133,7 @@ fun show(what: &StrView, got: U64) -> Void {
 fun main() -> Void {
   show("early stop", early(true))
   show("early run", early(false))
-  deferred_drops()
+  implicit_drops()
   show("nested loops", nested_loops())
   let some: Opt[U64] = Some(val=5_u64)
   let none: Opt[U64] = None

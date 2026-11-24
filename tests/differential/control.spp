@@ -1,4 +1,4 @@
-# Control flow: "defer" run on an early and a normal return, loops giving a value by "exit" or by their "else", "skip",
+# Control flow: a guard's "drop" run on an early and a normal return, loops giving a value by "exit" or by their "else", "skip",
 # an "exit exit" out of two loops, and loops over ranges.
 
 fun show(what: &StrView, text: Str) -> Void {
@@ -8,8 +8,16 @@ fun show(what: &StrView, text: Str) -> Void {
   std::mem::ops::drop(text)
 }
 
-fun with_defer(early: Bool) -> U32 {
-  defer std::console::println("deferred")
+cls Guard { }
+
+sup Guard ext std::ops::drop::Drop {
+  fun drop(self) -> Void {
+    std::console::println("guard dropped")
+  }
+}
+
+fun with_guard(early: Bool) -> U32 {
+  let guard = Guard()
   case early { ret 1_u32 }
   std::console::println("body end")
   ret 2_u32
@@ -48,8 +56,8 @@ fun nested_exit() -> U32 {
 }
 
 fun main() -> Void {
-  show("defer early", Str::from(with_defer(true)))
-  show("defer normal", Str::from(with_defer(false)))
+  show("guard early", Str::from(with_guard(true)))
+  show("guard normal", Str::from(with_guard(false)))
   show("first over 50", Str::from(first_over(50_u32)))
   show("first over 99999", Str::from(first_over(99999_u32)))
   show("odd sum 10", Str::from(odd_sum(10_uz)))
