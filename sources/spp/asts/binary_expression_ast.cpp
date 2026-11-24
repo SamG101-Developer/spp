@@ -34,6 +34,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.functions;
 import spp.utils.ice;
 import spp.utils.uid;
 import genex;
@@ -44,7 +45,6 @@ use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts, TokenAst);
-use_alias(spp::asts::meta, AllowPackWholeGuard);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);
 
@@ -136,7 +136,8 @@ auto spp::asts::BinaryExpressionAst::_BindFoldOperand(
   }
 
   // A name may be a pack, which a fold names whole ("AllowPackWhole").
-  const auto _pack_guard = AllowPackWholeGuard(meta, true);
+  const auto _pack_guard = spp::utils::functions::ScopedAssign(
+    meta->AllowPackWhole, true);
   operand->Stage7_AnalyseSemantics(sm, meta);
 }
 
