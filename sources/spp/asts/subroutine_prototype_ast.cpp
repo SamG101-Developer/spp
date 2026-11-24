@@ -24,6 +24,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_debug;
+import spp.codegen.llvm_drop;
 import spp.lex.tokens;
 import spp.utils.ice;
 import genex;
@@ -208,6 +209,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
     meta->EnclosingFnSourceRetType = ReturnType;
     meta->ClosureRetJoin = nullptr;
     meta->EnclosingFnScope = sm->CurrentScope;
+    meta->TemporaryBase = codegen::TemporaryDepth(ctx);
 
     // If there is an implementation, generate its code.
     if (BuiltinAnnotation or FfiAnnotation) {
@@ -226,6 +228,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
       // Add a return instruction inside the function if there isn't
       // one (abstract methods will never be called due to previous
       // semantic analysis on abstracts, but to satisfy LLVM analysis).
+      codegen::EmitOwnedDrops(*sm->CurrentScope, _OwnedAtEnd, this, sm, meta, ctx);
       const auto insert_bb = ctx->Builder.GetInsertBlock();
       if (not insert_bb->hasTerminator()) {
         const auto ret_void = insert_bb->getParent()->getReturnType()->isVoidTy();
