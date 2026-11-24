@@ -27,6 +27,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.ice;
@@ -183,70 +184,42 @@ auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
   IMPORT_UTILS_AND_UID;
   for (auto const &temp : _SpreadTemps) { temp->Stage11_CodeGen(sm, meta, ctx); }
 
-  // The tuple lowers to a struct of its element types, kept in declaration order, so element "i" is field "i".
+  // The tuple lowers to a struct of its element types, kept in declaration order ("LayOutInOrder"), less any
+  // element carrying no value ("(Void, S32)"): it takes no field, so each element's field is read off the layout's
+  // index map, as a named attribute's is. A valueless element is still generated, for what it does.
   const auto uid = "." + Uid();
-  const auto llvm_type = codegen::GetLlvmTypeOf(
-    InferTypeRef(sm, meta).WithoutConvention(), ctx);
-  SPP_ASSERT(llvm_type != nullptr);
-
-  // Runtime pathway: build the tuple in a stack slot, and load it back out to give the expression its value.
-  if (not ctx->InConstantContext) {
-    const auto llvm_struct_type = llvm::cast<llvm::StructType>(llvm_type);
-
-    // Every element is generated up front, because whether the tuple as a whole is constant cannot be known until
-    // they have been.
-    auto elem_values = Vec<llvm::Value*>();
-    elem_values.reserve(Elems.size());
-    for (auto const &elem : Elems) {
-      const auto elem_value = elem->Stage11_CodeGen(sm, meta, ctx);
-      SPP_ASSERT(elem_value != nullptr);
-      elem_values.emplace_back(elem_value);
-    }
-
-    // If they all came back constant then so is the tuple, and it can be produced as a value rather than
-    // materialised: no stack slot, no per-field GEP and store, and no load to read it back. Being outside a constant
-    // context only says this was not written as a "cmp" initializer, which is no statement about the elements.
-    auto all_elems_constant = true;
-    for (auto i = 0uz; i < elem_values.size(); ++i) {
-      const auto field_type = llvm_struct_type->getElementType(static_cast<unsigned>(i));
-      if (llvm::isa<llvm::Constant>(elem_values[i]) and elem_values[i]->getType() == field_type) { continue; }
-      all_elems_constant = false;
-      break;
-    }
-
-    if (all_elems_constant) {
-      auto llvm_ct_elems = Vec<llvm::Constant*>();
-      llvm_ct_elems.reserve(elem_values.size());
-      for (auto *elem_value : elem_values) {
-        llvm_ct_elems.emplace_back(llvm::cast<llvm::Constant>(elem_value));
-      }
-      return llvm::ConstantStruct::get(llvm_struct_type, llvm_ct_elems);
-    }
-
-    const auto alloca = codegen::LlvmEntryAlloca(llvm_type, "tuple.alloca" + uid, ctx);
-    SPP_ASSERT(alloca != nullptr);
-
-    // Store each element into the tuple alloca.
-    for (auto i = 0uz; i < elem_values.size(); ++i) {
-      const auto elem_ptr = ctx->Builder.CreateStructGEP(
-        llvm_type, alloca, static_cast<std::uint32_t>(i), "tuple.elem.ptr" + uid);
-      ctx->Builder.CreateStore(elem_values[i], elem_ptr);
-    }
-
-    // Load the tuple value from the alloca and return it.
-    const auto tuple_value = ctx->Builder.CreateLoad(llvm_type, alloca, "tuple.val" + uid);
-    return tuple_value;
+  const auto tuple_ref = InferTypeRef(sm, meta).WithoutConvention();
+  const auto llvm_type = codegen::GetLlvmTypeOf(tuple_ref, ctx);
+  SPP_ASSERT(llvm_type != nullptr and tuple_ref.Symbol != nullptr);
+  const auto llvm_struct_type = llvm::cast<llvm::StructType>(llvm_type);
+  auto fields = Vec<Pair<std::uint32_t, llvm::Value*>>();
+  fields.reserve(Elems.size());
+  for (auto i = 0uz; i < Elems.size(); ++i) {
+    const auto elem_value = Elems[i]->Stage11_CodeGen(sm, meta, ctx);
+    if (elem_value == nullptr or codegen::IsValuelessType(elem_value->getType())) { continue; }
+    fields.emplace_back(codegen::GetPhysicalFieldIndex(*tuple_ref.Symbol->LlvmInfo, i), elem_value);
   }
 
-  // Constant pathway: the struct constant is built from the elements' own constants.
-  auto comp_elems = Vec<llvm::Constant*>();
-  comp_elems.reserve(Elems.size());
-  for (auto const &elem : Elems) {
-    const auto comp_elem = elem->Stage11_CodeGen(sm, meta, ctx);
-    SPP_ASSERT(comp_elem != nullptr);
-    comp_elems.emplace_back(llvm::cast<llvm::Constant>(comp_elem));
+  // If every field came back constant then so is the tuple, and it is produced as a value rather than materialised:
+  // no stack slot, no per-field GEP and store, and no load to read it back. A constant context's always do.
+  const auto all_constant = genex::all_of(fields, [&](auto const &field) {
+    return llvm::isa<llvm::Constant>(field.second)
+      and field.second->getType() == llvm_struct_type->getElementType(field.first);
+  });
+  if (all_constant or ctx->InConstantContext) {
+    auto consts = Vec<llvm::Constant*>(llvm_struct_type->getNumElements(), nullptr);
+    for (auto const &[index, value] : fields) { consts[index] = llvm::cast<llvm::Constant>(value); }
+    SPP_ASSERT(genex::all_of(consts, [](auto const *c) { return c != nullptr; }));
+    return llvm::ConstantStruct::get(llvm_struct_type, consts);
   }
-  return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(llvm_type), comp_elems);
+
+  // Otherwise the tuple is built in a stack slot, each field stored, and loaded back out.
+  const auto alloca = codegen::LlvmEntryAlloca(llvm_type, "tuple.alloca" + uid, ctx);
+  SPP_ASSERT(alloca != nullptr);
+  for (auto const &[index, value] : fields) {
+    ctx->Builder.CreateStore(value, ctx->Builder.CreateStructGEP(llvm_type, alloca, index, "tuple.elem.ptr" + uid));
+  }
+  return ctx->Builder.CreateLoad(llvm_type, alloca, "tuple.val" + uid);
 }
 
 auto spp::asts::TupleLiteralAst::EvaluateCompTime(
