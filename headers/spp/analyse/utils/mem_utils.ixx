@@ -45,8 +45,9 @@ namespace spp::analyse::utils::mem_utils {
     ScopeManager &sm, CompilerMetaData *meta,
     SymbolMemoryOptions const &options = {}) -> void;
 
-  /// Raise if the value "sym" holds has already been moved out,
-  /// reported against "use", the expression reading it.
+  /// Raise if the value "sym" holds has already been moved out, or is
+  /// held on only some of the paths that met (E8), reported against
+  /// "use", the expression reading it.
   SPP_EXP_FUN auto RaiseIfMoved(
     VariableSymbol const &sym, Ast const &use, Scope const *scope) -> void;
 
