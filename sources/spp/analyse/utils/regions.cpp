@@ -293,11 +293,11 @@ auto spp::analyse::utils::regions::RegionConsumed(
   // Each part is checked on its own, under the name a
   // destructure would have recorded it by - an attribute's
   // own name, or an element's index. A copyable part was
-  // never owed to anyone, so it never has to be accounted
+  // never moved, so it never has to be accounted
   // for. If any part is unaccounted for, then nor is the
   // value holding it.
   for (auto const &[step, _, part_type, part_ref, part_scope] : type_members::GetAllParts(type, scope)) {
-    if (not part_ref.Owes()) { continue; }
+    if (not part_ref.IsMoveOnly()) { continue; }
     part.Steps.back() = {.Name = step->NameId()};
     if (not RegionConsumed(part, part_ref, *part_scope, moves, unaccounted)) { return false; }
   }
