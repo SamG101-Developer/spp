@@ -325,12 +325,12 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       continue;
     }
 
-    // Ensure the argument isn't moved or partially moved (applies to all conventions). For non-symbolic arguments,
-    // nested checking is done via the argument itself (tuples, arrays, etc). Can borrow attributes so don't check
-    // for moving from borrowed context right here.
+    // Ensure the argument isn't moved or partially moved (applies to all conventions: a borrow of a value with a part
+    // missing hands the callee the hole). For non-symbolic arguments, nested checking is done via the argument itself
+    // (tuples, arrays, etc). Can borrow attributes so don't check for moving from borrowed context right here.
     mem_utils::ValidateSymbolMemory(
       *arg->Val, *arg, *sm, meta,
-      {.CheckMove = false, .CheckPartialMove = false, .CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
+      {.CheckMove = false, .CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
 
     // An argument rooted at a holder of loans (a borrow binding passed on, a closure or generator given or borrowed)
     // hands the callee the ways to what those loans borrow: the call holds them beside its other arguments' borrows,
