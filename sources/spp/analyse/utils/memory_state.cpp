@@ -116,10 +116,9 @@ auto spp::analyse::utils::memory_state::MemoryState::InitializedBy(
   AstMoved = nullptr;
   Given = true;
 
-  // Clear the "maybe init" flag: this is a fresh value, and
-  // there are no partial moves.
-  // Todo: PartialMoves.clear()?
+  // A fresh value: nothing is taken out of it, on any path.
   MaybeInit = Nullopt;
+  PartialMoves.clear();
   MaybePartialMoves.clear();
 }
 
