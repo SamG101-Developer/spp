@@ -13,12 +13,13 @@ A probe-driven audit on 2026-09-27 added ~95 tests (red ones document open bugs;
 still holds from it:
 
 - A generic instance with a `Copy` sup is `Copy` only when all its attributes are.
-- Loop exit states are merged (2026-09-28): every `exit` snapshots into `CompilerMetaData::LoopExitStates` for its
-  target loop, and `LoopConditionalExpressionAst::Stage8` joins all paths out as `case` branches are.
+- Loop exit states are merged (2026-09-28): every `exit` snapshots into its target loop's frame
+  (`memory_state::LoopFrame::ExitStates`, `ExitStmts`), and `LoopConditionalExpressionAst::Stage8` joins all paths out
+  as `case` branches are (`drop_utils::JoinPaths`).
 - Pattern-guard moves were E114 from here; since 2026-11-24 a guard may move a value, and E114 is only for one moving
   its branch's own bindings or the subject.
-- Polymorphic recursion still runs out of memory (its tests are `DISABLED_`). The open-bug list is
-  `../../../.triages/open-bugs.md`.
+- Polymorphic recursion is stopped by the instantiation depth limit (E109; the `test_invalid_polymorphic_recursion_*`
+  tests in `test_msc_generic_inference.cpp`). The open-bug list is `../../../.triages/open-bugs.md`.
 
 **Why:** the audit's red tests and fixes are spread across the suites; this says which of its rules outlived the
 linear checks.

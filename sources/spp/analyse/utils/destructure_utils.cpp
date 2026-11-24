@@ -94,19 +94,20 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
   if (val == nullptr or not expr_utils::IsPlace(*val, *sm.CurrentScope)) { return; }
 
   // Get the outermost (root) symbol for the value being
-  // destructured.
+  // destructured: through a view, its owner ("regions::PlaceOf").
   const auto sym = sm.CurrentScope->FindVarSymbolOutermost(*val).first;
   if (sym == nullptr) { Ice(*val, *sm.CurrentScope, "destructured place has no root variable symbol"); }
+  auto const *const holder = regions::PlaceOf(*val, *sm.CurrentScope)->Root;
 
   // Destructuring a borrow reads through it. The value behind
   // it belongs to someone else, so it is not consumed here.
-  if (sym->IsBorrow()) { return; }
+  if (sym->IsBorrow() or holder->IsBorrow()) { return; }
 
   // The value has to still be there to be taken apart. Each
   // bound part is checked as it is read, but a destructure
   // binding nothing ("let L() = l") reads no part, so a value
   // already moved away was consumed a second time unnoticed.
-  if (val->To<IdentifierAst>() != nullptr) { mem_utils::RaiseIfMoved(*sym, *val, sm.CurrentScope); }
+  if (val->To<IdentifierAst>() != nullptr) { mem_utils::RaiseIfMoved(*holder, *val, sm.CurrentScope); }
 
   // The "case" subject itself is taken on the branch's
   // match edge; a part nested inside it is taken here. The

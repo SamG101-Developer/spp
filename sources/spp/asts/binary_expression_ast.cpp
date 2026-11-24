@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_iterator;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
@@ -290,19 +291,25 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
         Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Lhs, *lhs_ty, what));
       }
 
-      // The right operand runs on a path of its own, in a scope of
-      // its own: where an "and"'s left operand is true, what it bound
-      // holds there; an "or"'s runs where it was false.
-      auto scope_name = ScopeBlockName::FromParts("logical-rhs", {}, Rhs->PosStart());
-      sm->CreateAndMoveIntoNewScope(std::move(scope_name), nullptr);
-      sm->CurrentScope->IsOperandScope = true;
-      _DeclareLhsBound(*sm);
+      // Where an "and"'s left operand is true, what it bound holds: its
+      // right operand is then analysed in a scope of its own, holding
+      // those bindings. Nothing else has one (a comp argument's operator
+      // is analysed off the walk, which never enters a scope it makes).
+      const auto scoped = TokOp->TokenType == lex::SppTokenType::KW_AND
+        and not analyse::utils::expr_utils::BoundWhenTrue(*Lhs).empty();
+      if (scoped) {
+        auto scope_name = ScopeBlockName::FromParts("and-rhs", {}, Rhs->PosStart());
+        sm->CreateAndMoveIntoNewScope(std::move(scope_name), nullptr);
+        sm->CurrentScope->IsOperandScope = true;
+        _RhsScope = sm->CurrentScope;
+        _DeclareLhsBound(*sm->CurrentScope);
+      }
       Rhs->Stage7_AnalyseSemantics(sm, meta);
       if (not type_predicates::IsTypeBool(Rhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
         const auto rhs_ty = Rhs->InferType(sm, meta);
         Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Rhs, *rhs_ty, what));
       }
-      sm->MoveOutOfCurrentScope();
+      if (scoped) { sm->MoveOutOfCurrentScope(); }
 
       _LogicalAnalysed = true;
       return;
@@ -315,9 +322,22 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
 }
 
 auto spp::asts::BinaryExpressionAst::_DeclareLhsBound(
-  ScopeManager &sm) const -> void {
+  analyse::scopes::Scope &rhs_scope) const -> void {
   if (TokOp->TokenType != lex::SppTokenType::KW_AND) { return; }
-  sm.CurrentScope->DeclareBoundWhenTrue(analyse::utils::expr_utils::BoundWhenTrue(*Lhs));
+  rhs_scope.DeclareBoundWhenTrue(analyse::utils::expr_utils::BoundWhenTrue(*Lhs));
+}
+
+auto spp::asts::BinaryExpressionAst::_InRhsScope(
+  ScopeManager &sm, auto &&walk) const -> void {
+  if (_RhsScope == nullptr) {
+    walk();
+    return;
+  }
+  sm.MoveToNextScope();
+  SPP_ASSERT(sm.CurrentScope == _RhsScope);
+  _DeclareLhsBound(*sm.CurrentScope);
+  walk();
+  sm.MoveOutOfCurrentScope();
 }
 
 auto spp::asts::BinaryExpressionAst::MarkCondition(
@@ -371,11 +391,10 @@ auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
 
     const auto short_circuit = memory_state::SnapshotFlow(*sm->CurrentScope);
     const auto rhs_region = drop_utils::TemporaryRegion(*sm->CurrentScope->TemporaryHome());
-    sm->MoveToNextScope();
-    _DeclareLhsBound(*sm);
-    Rhs->Stage8_CheckMemory(sm, meta);
-    mem_utils::ValidateSymbolMemory(*Rhs, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
-    sm->MoveOutOfCurrentScope();
+    _InRhsScope(*sm, [&] {
+      Rhs->Stage8_CheckMemory(sm, meta);
+      mem_utils::ValidateSymbolMemory(*Rhs, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
+    });
 
     // A temporary the right operand declared was never made on the
     // short-circuit path, so the join never sees it. It ends with the
@@ -503,10 +522,8 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   // its value being a "Bool" that borrows none of them.
   ctx->Builder.SetInsertPoint(rhs_bb);
   const auto temporaries = codegen::TemporaryDepth(ctx);
-  sm->MoveToNextScope();
-  _DeclareLhsBound(*sm);
-  const auto llvm_rhs = Rhs->Stage11_CodeGen(sm, meta, ctx);
-  sm->MoveOutOfCurrentScope();
+  auto llvm_rhs = static_cast<llvm::Value*>(nullptr);
+  _InRhsScope(*sm, [&] { llvm_rhs = Rhs->Stage11_CodeGen(sm, meta, ctx); });
   SPP_ASSERT(llvm_rhs->getType()->isIntegerTy(1));
   auto &home = *sm->CurrentScope->TemporaryHome();
   if (_HeldWhenTrue.empty()) {
@@ -552,15 +569,31 @@ auto spp::asts::BinaryExpressionAst::EvaluateCompTime(
   if (IsLogicalOperator()) {
     Lhs->EvaluateCompTime(sm, meta);
     const auto lhs_is_true = meta->CompTimeResult->As<BooleanLiteralAst>()->IsTrue();
-    sm->MoveToNextScope();
-    if (lhs_is_true != (TokOp->TokenType == lex::SppTokenType::KW_AND)) {
+    const auto runs_rhs = lhs_is_true == (TokOp->TokenType == lex::SppTokenType::KW_AND);
+
+    // Evaluated in walk order, the walk goes into the right operand's
+    // scope (or past it, when the left operand decided). Evaluated
+    // again out of order (a boolean "case"'s condition, re-read in its
+    // branch), it is evaluated by a walk of its own, standing there.
+    auto next = sm->Position().It;
+    const auto in_order = _RhsScope != nullptr and next != analyse::scopes::ScopeIterator()
+      and *++next == _RhsScope;
+    if (_RhsScope == nullptr) {
+      if (runs_rhs) { Rhs->EvaluateCompTime(sm, meta); }
+    }
+    else if (in_order and not runs_rhs) {
+      sm->MoveToNextScope();
       ignore = sm->SkipSubtree(sm->CurrentScope);
+      sm->MoveOutOfCurrentScope();
     }
-    else {
-      _DeclareLhsBound(*sm);
-      Rhs->EvaluateCompTime(sm, meta);
+    else if (in_order) {
+      _InRhsScope(*sm, [&] { Rhs->EvaluateCompTime(sm, meta); });
     }
-    sm->MoveOutOfCurrentScope();
+    else if (runs_rhs) {
+      auto walk = sm->NewManagerAt(_RhsScope);
+      _DeclareLhsBound(*_RhsScope);
+      Rhs->EvaluateCompTime(&walk, meta);
+    }
     return;
   }
 

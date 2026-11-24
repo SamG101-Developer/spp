@@ -336,8 +336,19 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
   // Recursive drop search. A place taken apart is destroyed part by
   // part, its own destructor not run, so its parts are searched
   // (and, a part further in being taken apart too, theirs).
+  // A variant is stepped into as the member a path names ("type_members::VariantMemberStep").
   const auto apart = [&](auto const &self, TypeRef const &ref, Vec<spp::utils::InternedId> &path) -> void {
-    if (not genex::contains(taken_apart, path)) { walk(walk, ref); return; }
+    const auto under = genex::any_of(taken_apart, [&](auto const &taken) {
+      return taken.size() >= path.size() and std::equal(path.begin(), path.end(), taken.begin());
+    });
+    if (not under) { walk(walk, ref); return; }
+    const auto members = type_members::VariantMemberRefs(ref, *sm.CurrentScope);
+    for (auto const &member : members) {
+      path.emplace_back(type_members::VariantMemberStep(member));
+      self(self, member, path);
+      path.pop_back();
+    }
+    if (not members.empty()) { return; }
     for (auto const &part : type_members::GetAllParts(ref, *sm.CurrentScope, true)) {
       path.emplace_back(part.Step->NameId());
       self(self, part.Ref, path);

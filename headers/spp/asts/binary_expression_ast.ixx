@@ -144,9 +144,20 @@ private:
   /// c" as "a and (b and c)").
   auto _NestChainRight() -> void;
 
-  /// On entering an "and"'s right operand's scope, in every walk,
-  /// declare what its left operand bound where it is true.
-  auto _DeclareLhsBound(ScopeManager &sm) const -> void;
+  /// An "and"'s right operand's scope, holding what its left operand
+  /// bound ("IsOperandScope"), made by Stage 7 when there is any. None
+  /// otherwise: the right operand is then walked where the operator
+  /// stands.
+  analyse::scopes::Scope *_RhsScope = nullptr;
+
+  /// Walk the right operand in its scope ("_RhsScope"): on entering
+  /// an "and"'s, in every walk, declare what its left operand bound
+  /// where it is true.
+  auto _InRhsScope(ScopeManager &sm, auto &&walk) const -> void;
+
+  /// An "and"'s right operand's scope holds what its left operand
+  /// bound where it is true: declared on entering it, in every walk.
+  auto _DeclareLhsBound(analyse::scopes::Scope &rhs_scope) const -> void;
 
   /// Stage 8 for a logical operator: join the state the left operand
   /// left ("short_circuit") with the right operand's, filling the two

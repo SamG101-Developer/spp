@@ -308,14 +308,18 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
 auto spp::analyse::utils::mem_utils::TakeApart(
   VariableSymbol const &sym, Ast const &place, Ast const &by,
   const bool disarms, ScopeManager const &sm) -> void {
-  auto &state = memory_state::StateOf(*sm.CurrentScope, sym);
+  // A view ("regions::IsView") is taken apart in its owner: the place
+  // resolves to the owner's ("o.<Some[T]>.val"), which is what is marked.
   const auto region = regions::PlaceOf(place, *sm.CurrentScope);
-  if (region.has_value() and not regions::FirstUnaccountedPart(sym, *region, sm).empty()) {
-    if (disarms) { state.TakenApartAt(regions::PlaceAtOf(place, *sm.CurrentScope)); }
+  auto const &owner = region.has_value() ? *region->Root : sym;
+  auto &state = memory_state::StateOf(*sm.CurrentScope, owner);
+  if (region.has_value() and not regions::FirstUnaccountedPart(owner, *region, sm).empty()) {
+    if (disarms) { state.TakenApartAt(regions::PlaceAt(&place, region)); }
     return;
   }
-  if (place.To<IdentifierAst>() != nullptr) { state.MovedBy(by); }
-  else { state.PartMovedBy(regions::PlaceAtOf(place, *sm.CurrentScope)); }
+  const auto whole = region.has_value() ? region->Steps.empty() : place.To<IdentifierAst>() != nullptr;
+  if (whole) { state.MovedBy(by); }
+  else { state.PartMovedBy(regions::PlaceAt(&place, region)); }
 }
 
 /// [CHECKED]

@@ -2,7 +2,7 @@
 - [Drop needs forced instantiation](drop-needs-forced-instantiation.md) — every synthesised drop calls EnsureDropInstantiated; a miss drops field by field (Vec loses its elements)
 - [zero_type is not Copy](zero-type-implies-copy.md) — layout only; a marker moves unless Copy
 - [Markers only from own package](markers-only-from-own-package.md) — Copy/Drop/FwdRef/FwdMut: declaring package only (E111)
-- [Soundness audit 2026-09](spp-soundness-audit-2026-09.md) — linear checks gone; the Copy-instance rule, loop exit joins, DISABLED_ recursion OOMs remain
+- [Soundness audit 2026-09](spp-soundness-audit-2026-09.md) — linear checks gone; Copy-instance rule, loop exit joins, polymorphic recursion E109
 - [Borrow is a param convention](borrow-is-param-convention.md) — f[T](x: T) can't take &Str
 - [Borrow is no generic argument](borrow-not-a-generic-argument.md) — E2 outside Gen/Fun types (sups); substituted types exempt; naming runs under the flag
 - [Checked arithmetic is the default](checked-arithmetic-is-default.md) — +,-,*,/,% trap (/0, %0, MIN/-1); MIN % -1 is 0; use *_wrapping

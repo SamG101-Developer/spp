@@ -133,11 +133,14 @@ auto spp::codegen::EmitDrop(
       ctx->Builder.SetInsertPoint(member_bb);
       const auto payload = GetVariantPayloadPtr(ptr, variant_ty, "drop.var.payload" + uid, ctx);
       const auto step = analyse::utils::type_members::VariantMemberStep(members[i]);
-      auto member_moved = Vec<Vec<spp::utils::InternedId>>();
-      for (auto const &path : moved) {
-        if (not path.empty() and path.front() == step) { member_moved.emplace_back(path.begin() + 1, path.end()); }
-      }
-      EmitDrop(members[i], payload, sm, meta, ctx, member_moved);
+      const auto under_member = [&](Vec<Vec<spp::utils::InternedId>> const &paths) {
+        auto out = Vec<Vec<spp::utils::InternedId>>();
+        for (auto const &path : paths) {
+          if (not path.empty() and path.front() == step) { out.emplace_back(path.begin() + 1, path.end()); }
+        }
+        return out;
+      };
+      EmitDrop(members[i], payload, sm, meta, ctx, under_member(moved), under_member(taken_apart));
       ctx->Builder.CreateBr(done_bb);
     }
     done_bb->insertInto(func);

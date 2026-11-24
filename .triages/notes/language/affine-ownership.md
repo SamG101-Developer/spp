@@ -57,12 +57,15 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
   of the place it was read off (`o.<Some[T]>.val.a`). `regions::PlaceOf` resolves a place rooted at a view to the
   owner's place, so every check and mark (`mem_utils::ValidateSymbolMemory` marks the owner) sees through it with no
   forwarding: moving `y.a` partly moves `o` through its member, and `EmitDrop` hands paths under a member to that
-  member. Binding a view takes nothing (`LocalVariableSingleIdentifierAst::Stage8`). A path into a variant naming no
-  member uses the variant whole. `NarrowsSymbol`, its move/loan chains and the narrowed symbol's copied state are gone.
+  member, as it hands taken-apart paths (a destructure through a view is taken apart in the owner,
+  `mem_utils::TakeApart`). Binding a view takes nothing (`LocalVariableSingleIdentifierAst::Stage8`). A path into a
+  variant naming no member uses the variant whole. `NarrowsSymbol`, its move/loan chains and the narrowed symbol's
+  copied state are gone.
 - **`is` bindings are scoped where the match holds** (2026-11-24): an `is` declares nothing where it stands
-  (`IsExpressionAst::Bound`). A logical operator's right operand has a scope of its own (`Scope::IsOperandScope`); an
-  `and`'s declares what its left operand bound (`expr_utils::BoundWhenTrue`), as does the body of a loop, a guard's
-  branch and a boolean `case`'s first branch (`InnerScopeExpressionAst::SetBoundOnEntry`), in every walk. Nothing is
+  (`IsExpressionAst::Bound`). An `and` whose left operand binds something analyses its right operand in a scope of
+  its own (`Scope::IsOperandScope`), declaring what the left operand bound (`expr_utils::BoundWhenTrue`), as does
+  the body of a loop, a guard's branch and a boolean `case`'s first branch (`InnerScopeExpressionAst::SetBoundOnEntry`),
+  in every walk; nothing else makes one (a comp argument's operator is analysed off the walk). Nothing is
   retracted: no statement end, no `or` or `else` hiding (the old `ExpiresWithStatement`, `ExpiredIsBindings`,
   `EndStatement` are gone). A hidden temporary made in an operand scope lives in the condition around it
   (`Scope::TemporaryHome`, `LocalVariableSingleIdentifierAst::DeclareIn`). `case o is P { .. }` is not this: it is

@@ -158,11 +158,10 @@ public:
   /// ("drop_utils::TemporaryRegion", "EndStatement").
   Vec<VariableSymbol*> Declarations;
 
-  /// The scope of a logical operator's right operand, which runs on a
-  /// path of its own: an "and"'s holds what its left operand's "is"
-  /// bound (where the match is known to hold). It is part of the
-  /// condition around it, so it holds no temporaries of its own
-  /// ("TemporaryHome").
+  /// The scope of an "and"'s right operand, holding what its left
+  /// operand's "is" bound (where the match is known to hold). It is
+  /// part of the condition around it, so it holds no temporaries of
+  /// its own ("TemporaryHome").
   bool IsOperandScope = false;
 
   /// Whether this scope's super scopes have been attached: they
