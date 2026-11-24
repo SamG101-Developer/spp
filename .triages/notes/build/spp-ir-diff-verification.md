@@ -1,7 +1,7 @@
 ---
 name: spp-ir-diff-verification
 description: "Verify spp refactors by diffing generated .ll files, but normalise Uid addresses first"
-updated: 2026-11-01
+updated: 2026-11-24
 ---
 
 To prove a refactor is behaviourally transparent, diff `project/out/x86_64-linux-gnu/dev/llvm/**/*.ll` before and
@@ -25,8 +25,8 @@ prefer it for any cross-directory comparison. A same-vintage snapshot is the onl
 `pr_s1` against `pr_base` (or `pj_t` against `pj_c`), not against an `irbase7_*` baseline, which was copied out of a
 different project dir and from *unpatched* std. Live dirs: probe `pr_s1`/`pr_base` (93 `.ll`), project `pj_t`/`pj_c`
 (196 compared), output under `out/x86_64-pc-linux-gnu/dev/llvm`. `probeE` is stale - `spp build` re-fetches std from
-SPP-STL, so its copy lacks the local `drop(...)` patch and fails E94 in `option.spp`; that error there means the wrong
-directory was used, not a regression.
+SPP-STL, so its copy lacks local std patches and can fail to build; such an error there means the wrong directory was
+used, not a regression.
 
 **When a change renames things on purpose** (mangling), check equality *up to renaming*: per file, replace every quoted
 llvm name - `%"…"`, `@"…"`, and block labels, which are *defined bare* as `"….exit":` at line start and referenced as
