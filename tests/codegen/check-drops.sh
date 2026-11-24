@@ -3,15 +3,20 @@
 # End-to-end check that dropping a value runs every destructor it owns. A closure dropped without being called drops
 # what it captured by value, newest first, through the destructor its environment's header points to; one that is called
 # leaves that to its body; a borrowed or copied capture is not dropped. A generator destroyed at a "gen" drops what its
-# frame still owns there, innermost scope and newest first, after the "defer"s that destroying it runs; what it yielded,
+# frame still owns there, innermost scope and newest first; what it yielded,
 # consumed, or has not declared yet is not dropped, one partly moved loses only what is left of it, and one that
-# finished drops nothing more. One dropped before it was ever resumed drops its by-value parameters, newest first: its
-# body has not run, so they are all it owns, an instantiation of a generic coroutine included. What either drops goes
-# through the value's own destructor, even one nothing written calls (a "Vec" drops its elements, not only its buffer).
-# An array moved out element by element ("iter_mov", "reverse_iter_mov") yields each in order, and dropped part-way
-# drops only the elements it has not yielded. A type extending two bases that each declare an attribute of one name
-# holds and drops both, each filled from its own base's default. The unit tests only build these, so a destructor that
-# never runs is only seen by running it.
+# finished drops nothing more, a local hidden by an "is" binding of the statement it is suspended in included. One
+# dropped before it was ever resumed drops its by-value parameters, newest first: its body has not run, so they are all
+# it owns, an instantiation of a generic coroutine included. What either drops goes through the value's own destructor,
+# even one nothing written calls (a "Vec" drops its elements, not only its buffer). An array moved out element by
+# element ("iter_mov", "reverse_iter_mov") yields each in order, and dropped part-way drops only the elements it has not
+# yielded. A type extending two bases that each declare an attribute of one name holds and drops both, each filled from
+# its own base's default. A second program covers where the compiler drops what nothing moved on (affine ownership):
+# scope ends, early returns, overwrites of a local and of a field, a borrowed temporary, the rest of a temporary a part
+# was read off, a part a destructure skipped, a discarded temporary, an "is" binding, the paths of a join (a "case" and
+# a loop's exit and condition), a loop condition's temporary per evaluation, a "case" over a temporary it keeps, and
+# "self" left whole at the end of its own "drop". The unit tests only build these, so a destructor that never runs is
+# only seen by running it.
 #
 #   [SPPC_LIB=path/to/libsppc.so] tests/codegen/check-drops.sh [path/to/spp]
 
@@ -94,12 +99,6 @@ cor consumed_before() -> Gen[U64] {
     gen 1_u64
 }
 
-cor deferred() -> Gen[U64] {
-    let a = Noisy(n=40_u64)
-    defer std::mem::ops::drop(a)
-    gen 1_u64
-}
-
 cor nested() -> Gen[U64] {
     let outer = Noisy(n=50_u64)
     {
@@ -140,6 +139,15 @@ cor partial_nested() -> Gen[U64] {
     std::mem::ops::drop(o.t.b)
     std::mem::ops::drop(o.t.c)
     std::mem::ops::drop(o.d)
+}
+
+cor shadowed(o: &Opt[Noisy]) -> Gen[U64] {
+    let x = Noisy(n=230_u64)
+    let b = o is Some[Noisy](&val as x) and {
+        gen 1_u64
+        true
+    }
+    std::mem::ops::drop(x)
 }
 
 cls BaseB {
@@ -212,11 +220,6 @@ fun main() -> Void {
     let r4 = g4.res()
     std::mem::ops::drop(g4)
 
-    std::console::println("generator: deferred")
-    let mut g5 = deferred()
-    let r5 = g5.res()
-    std::mem::ops::drop(g5)
-
     std::console::println("generator: nested scopes")
     let mut g6 = nested()
     let r6 = g6.res()
@@ -273,7 +276,8 @@ fun main() -> Void {
     v2.append(Noisy(n=172_u64))
     let mut g16 = v1.iter_mov().concat(v2.iter_mov())
     let r16 = g16.res()
-    std::mem::ops::drop(r16, g16)
+    std::mem::ops::drop(r16)
+    std::mem::ops::drop(g16)
 
     std::console::println("array: moved out in full")
     let a1 = [Noisy(n=180_u64), Noisy(n=181_u64)]
@@ -300,6 +304,13 @@ fun main() -> Void {
     std::console::println("array: never resumed")
     let g17 = [Noisy(n=220_u64), Noisy(n=221_u64)].iter_mov()
     std::mem::ops::drop(g17)
+
+    std::console::println("generator: a local hidden by an is binding of the suspended statement")
+    let o23: Opt[Noisy] = Some(val=Noisy(n=231_u64))
+    let mut g23 = shadowed(&o23)
+    let r23 = g23.res()
+    std::mem::ops::drop(g23)
+    std::mem::ops::drop(o23)
 
     std::console::println("two bases sharing an attribute name")
     let both = Both()
@@ -332,8 +343,6 @@ generator: yielded value
 dropped 20
 generator: consumed before
 dropped 30
-generator: deferred
-dropped 40
 generator: nested scopes
 dropped 51
 dropped 50
@@ -383,29 +392,294 @@ dropped 210
 array: never resumed
 dropped 221
 dropped 220
+generator: a local hidden by an is binding of the suspended statement
+dropped 230
+dropped 231
 two bases sharing an attribute name
 dropped 121
 dropped 120
 end
 OUT
 
-for mode in dev rel; do
-    dir="${WORK}/drops-${mode}"
-    new_project "${dir}"
-    printf '%s\n' "${PROGRAM}" > "${dir}/src/main.spp"
-    if ! build_project "drops [${mode}]" "${dir}" "${mode}"; then
-        failures=$((failures + 1))
-        continue
-    fi
-    run_exe "${EXE}" "${dir}/run.log"
-    grep -v '^  #[0-9]' "${dir}/run.log" > "${dir}/got.log"
-    diff -u --label want --label got <(printf '%s\n' "${WANT}") "${dir}/got.log" > "${dir}/run.diff"
-    same=$?
-    if (( RC != 0 || same != 0 )); then
-        fail "drops [${mode}]: destructors ran differently (exit ${RC})" "${dir}/run.diff"
-    else
-        ok "drops [${mode}]"
-    fi
-done
+# Where the compiler drops what nothing moved on (affine ownership): each case is a function, so what it owns is
+# dropped before the next label prints.
+read -r -d '' AFFINE <<'SPP'
+cls Noisy {
+    !public n: U64
+}
+
+sup Noisy ext std::ops::drop::Drop {
+    fun drop(self) -> Void {
+        let s = Str::from(self.n)
+        std::console::print("dropped ")
+        std::console::println(&s)
+        let Noisy(..) = self
+    }
+}
+
+cls Pair2 {
+    !public a: Noisy
+    !public b: Noisy
+}
+
+cls DropsOwn {
+    !public inner: Noisy
+}
+
+sup DropsOwn ext std::ops::drop::Drop {
+    fun drop(self) -> Void {
+        std::console::println("own drop")
+    }
+}
+
+fun mk(n: U64) -> Noisy { ret Noisy(n=n) }
+fun peek(x: &Noisy) -> Void { }
+fun take(x: Noisy) -> Void { }
+fun small(x: &Noisy) -> Bool { ret x.n < 502_u64 }
+
+fun scope_end() -> Void {
+    let x = Noisy(n=300_u64)
+}
+
+fun early(flag: Bool) -> Void {
+    let a = Noisy(n=301_u64)
+    case flag { ret }
+    let b = Noisy(n=302_u64)
+}
+
+fun overwrite() -> Void {
+    let mut o = Noisy(n=310_u64)
+    o = Noisy(n=311_u64)
+    std::console::println("after write")
+}
+
+fun field_overwrite() -> Void {
+    let mut p = Pair2(a=Noisy(n=320_u64), b=Noisy(n=321_u64))
+    p.a = Noisy(n=322_u64)
+    std::console::println("written")
+}
+
+fun borrowed_temporary() -> Void {
+    peek(&mk(330_u64))
+    std::console::println("after statement")
+}
+
+fun part_of_temporary() -> Void {
+    let a = Pair2(a=Noisy(n=340_u64), b=Noisy(n=341_u64)).a
+    std::console::println("after statement")
+}
+
+fun skipped_part() -> Void {
+    let p = Pair2(a=Noisy(n=350_u64), b=Noisy(n=351_u64))
+    let Pair2(a, ..) = p
+    std::console::println("after destructure")
+}
+
+fun discarded() -> Void {
+    mk(360_u64)
+    std::console::println("after")
+}
+
+fun is_binding() -> Void {
+    let o: Opt[Noisy] = Some(val=Noisy(n=370_u64))
+    case o is Some(val as v) { std::console::println("matched") }
+    std::console::println("after")
+}
+
+fun join(flag: Bool, n: U64) -> Void {
+    let x = Noisy(n=n)
+    case flag { take(x) }
+    std::console::println("after case")
+}
+
+fun eats(x: Noisy) -> Bool { ret false }
+
+fun guard_moves(k: Opt[U64], n: U64) -> Void {
+    let x = Noisy(n=n)
+    case k of {
+        is Some(val) and eats(x) { std::console::println("guarded") }
+        else { std::console::println("else") }
+    }
+    std::console::println("after case")
+}
+
+fun loop_exit() -> Void {
+    let x = Noisy(n=390_u64)
+    let mut i = 0_u64
+    loop i < 3_u64 {
+        case i == 1_u64 {
+            take(x)
+            exit
+        }
+        i += 1_u64
+    }
+    std::console::println("after loop")
+}
+
+fun loop_condition_ends() -> Void {
+    let x = Noisy(n=391_u64)
+    let mut i = 0_u64
+    loop i < 1_u64 {
+        case i == 5_u64 {
+            take(x)
+            exit
+        }
+        i += 1_u64
+    }
+    std::console::println("after loop")
+}
+
+fun condition_temporary() -> Void {
+    let mut i = 0_u64
+    loop small(&mk(500_u64 + i)) { i += 1_u64 }
+    std::console::println("after loop")
+}
+
+fun case_temporary() -> Void {
+    case mk(420_u64) of {
+        is Noisy(n=1_u64) { std::console::println("one") }
+        else { std::console::println("kept") }
+    }
+}
+
+fun own_drop() -> Void {
+    let d = DropsOwn(inner=Noisy(n=400_u64))
+}
+
+fun main() -> Void {
+    std::console::println("scope end")
+    scope_end()
+    std::console::println("early return")
+    early(true)
+    early(false)
+    std::console::println("overwrite")
+    overwrite()
+    std::console::println("field overwrite")
+    field_overwrite()
+    std::console::println("borrowed temporary")
+    borrowed_temporary()
+    std::console::println("part of a temporary")
+    part_of_temporary()
+    std::console::println("skipped destructure part")
+    skipped_part()
+    std::console::println("discarded temporary")
+    discarded()
+    std::console::println("is binding")
+    is_binding()
+    std::console::println("join, taken")
+    join(true, 380_u64)
+    std::console::println("join, kept")
+    join(false, 381_u64)
+    std::console::println("guard moves, guard ran")
+    guard_moves(Some(val=1_u64), 430_u64)
+    std::console::println("guard moves, no match")
+    guard_moves(None, 431_u64)
+    std::console::println("loop exit")
+    loop_exit()
+    std::console::println("loop condition ends")
+    loop_condition_ends()
+    std::console::println("temporary in a loop condition")
+    condition_temporary()
+    std::console::println("case over a kept temporary")
+    case_temporary()
+    std::console::println("own drop, self left whole")
+    own_drop()
+    std::console::println("end")
+}
+SPP
+
+read -r -d '' AFFINE_WANT <<'OUT'
+scope end
+dropped 300
+early return
+dropped 301
+dropped 302
+dropped 301
+overwrite
+dropped 310
+after write
+dropped 311
+field overwrite
+dropped 320
+written
+dropped 321
+dropped 322
+borrowed temporary
+dropped 330
+after statement
+part of a temporary
+dropped 341
+after statement
+dropped 340
+skipped destructure part
+after destructure
+dropped 350
+dropped 351
+discarded temporary
+dropped 360
+after
+is binding
+matched
+dropped 370
+after
+join, taken
+dropped 380
+after case
+join, kept
+dropped 381
+after case
+guard moves, guard ran
+dropped 430
+else
+after case
+guard moves, no match
+dropped 431
+else
+after case
+loop exit
+dropped 390
+after loop
+loop condition ends
+dropped 391
+after loop
+temporary in a loop condition
+dropped 500
+dropped 501
+dropped 502
+after loop
+case over a kept temporary
+kept
+dropped 420
+own drop, self left whole
+own drop
+dropped 400
+end
+OUT
+
+# Build "program" in both modes and run it, its output against "want".
+check_program() {
+    local name="$1" program="$2" want="$3" mode dir same
+    for mode in dev rel; do
+        dir="${WORK}/${name}-${mode}"
+        new_project "${dir}"
+        printf '%s\n' "${program}" > "${dir}/src/main.spp"
+        if ! build_project "${name} [${mode}]" "${dir}" "${mode}"; then
+            failures=$((failures + 1))
+            continue
+        fi
+        run_exe "${EXE}" "${dir}/run.log"
+        grep -v '^  #[0-9]' "${dir}/run.log" > "${dir}/got.log"
+        diff -u --label want --label got <(printf '%s\n' "${want}") "${dir}/got.log" > "${dir}/run.diff"
+        same=$?
+        if (( RC != 0 || same != 0 )); then
+            fail "${name} [${mode}]: destructors ran differently (exit ${RC})" "${dir}/run.diff"
+        else
+            ok "${name} [${mode}]"
+        fi
+    done
+}
+
+check_program drops "${PROGRAM}" "${WANT}"
+check_program affine-drops "${AFFINE}" "${AFFINE_WANT}"
 
 finish
