@@ -78,7 +78,6 @@ use_alias(spp::asts, AstCloneShared);
 use_alias(spp::asts, BinaryExpressionAst);
 use_alias(spp::asts, ClosureExpressionParameterAndCaptureGroupAst);
 use_alias(spp::asts, ConventionTag);
-use_alias(spp::asts, DeferStatementAst);
 use_alias(spp::asts, ExpressionAst);
 use_alias(spp::asts, GenericArgumentAst);
 use_alias(spp::asts, GenericArgumentGroupAst);
@@ -893,6 +892,8 @@ auto spp::analyse::scopes::RawCompKey(ExpressionAst const &expr, Scope const &sc
   }
 
   // Anything else is its spelling ("x.f()").
+  // Todo: an object value ("Some(val=n)") has no part either, so it never unifies with another spelling, nor is it
+  //  rewritten under a substitution (".triages/docs_open/comp-object-keys.md").
   return RecordedOpaque(expr, scope);
 }
 
@@ -955,7 +956,6 @@ spp::analyse::scopes::Scope::Scope(Scope const &other, const std::size_t depth) 
   LinkedTypeSymbol(other.LinkedTypeSymbol),
   LinkedNamespaceSymbol(other.LinkedNamespaceSymbol),
   NonGnScope(other.NonGnScope),
-  Deferred(other.Deferred),
   _ErrorFormatter(nullptr) {
   spp::utils::stats::Bump(spp::utils::stats::Counter::ScopesCopied);
   InternalTable.ShallowCopyFrom(other.InternalTable);
@@ -1177,10 +1177,17 @@ auto spp::analyse::scopes::Scope::RecordLetBinding(Shared<VariableSymbol> const 
   if (not genex::contains(LetBindings, sym)) { LetBindings.emplace_back(sym); }
 }
 
+auto spp::analyse::scopes::Scope::DeclareLetBinding(Shared<VariableSymbol> const &sym) -> void {
+  // A loop's second pass declares the same binding again.
+  AddVarSymbol(sym);
+  if (not genex::contains(Reached, sym.get())) { Reached.emplace_back(sym.get()); }
+}
+
 /// [CHECKED]
 auto spp::analyse::scopes::Scope::HideLetBindings() -> void {
   // Earlier shadows have already been replaced, so remove the
   // instance from this symbol table that remains.
+  Reached.clear();
   for (auto const &sym : LetBindings) {
     if (InternalTable.VarTable.Find(sym->Name.get()) == sym.get()) {
       InternalTable.VarTable.Rem(sym->Name.get());
@@ -1195,15 +1202,21 @@ auto spp::analyse::scopes::Scope::RevealLetBindings() -> void {
   // the last binding is put back, earlier ones of the same
   // name are skipped). A name is free when it is empty or held
   // by one of this scope's own bindings: a walk that left
-  // between two shadows of it filed the earlier one.
+  // between two shadows of it filed the earlier one. An "is"
+  // binding is over by its statement's end, so it is put back
+  // only for a name no other binding has.
   const auto own = [this](VariableSymbol const *held) {
     return genex::any_of(LetBindings, [held](auto const &b) { return b.get() == held; });
   };
+  Reached = LetBindings | genex::views::transform([](auto const &b) { return b.get(); }) | genex::to<Vec>();
   auto placed = Set<spp::utils::InternedId>();
-  for (auto const &sym : LetBindings | genex::views::reverse) {
-    if (not placed.insert(sym->Name->NameId()).second) { continue; }
-    if (const auto held = InternalTable.VarTable.Find(sym->Name.get()); held == nullptr or own(held)) {
-      InternalTable.VarTable.Add(sym->Name.get(), sym);
+  for (const auto expiring : {false, true}) {
+    for (auto const &sym : LetBindings | genex::views::reverse) {
+      if (sym->ExpiresWithStatement != expiring) { continue; }
+      if (not placed.insert(sym->Name->NameId()).second) { continue; }
+      if (const auto held = InternalTable.VarTable.Find(sym->Name.get()); held == nullptr or own(held)) {
+        InternalTable.VarTable.Add(sym->Name.get(), sym);
+      }
     }
   }
 }
@@ -1224,6 +1237,8 @@ auto spp::analyse::scopes::Scope::UnrecordLetBinding(IdentifierAst const &name) 
   // this to hide the captures post-processing.
   LetBindings |= genex::actions::remove_if(
     [&name](auto const &sym) { return *sym->Name == name; });
+  Reached |= genex::actions::remove_if(
+    [&name](auto const *sym) { return *sym->Name == name; });
 }
 
 /// [CHECKED]
@@ -1245,6 +1260,15 @@ auto spp::analyse::scopes::Scope::GetAllVarSymbols(
   const bool exclusive, const bool sup_scope_search) const -> Vec<VariableSymbol*> {
   return AllSymbols<VariableSymbol>(
     *this, &SymbolTable::VarTable, exclusive, sup_scope_search);
+}
+
+auto spp::analyse::scopes::Scope::GetOwners() const -> Vec<VariableSymbol*> {
+  // The table first, in its own order, so a scope's errors come as they did before displaced bindings were seen.
+  auto owners = GetAllVarSymbols(true);
+  for (auto *const sym : Reached) {
+    if (not genex::contains(owners, sym)) { owners.emplace_back(sym); }
+  }
+  return owners;
 }
 
 /// [CHECKED]

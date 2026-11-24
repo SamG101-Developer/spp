@@ -13,7 +13,6 @@ import std;
 import sys;
 
 use(spp::asts, struct Ast);
-use(spp::asts, struct DeferStatementAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericParameterGroupAst);
@@ -129,10 +128,6 @@ public:
   /// will point to itself. "Vec[Str]" -> "Vec", etc.
   Scope *NonGnScope;
 
-  /// The list of deferred statements written directly into
-  /// this scope, in the order they were reached. Leaving the
-  /// scope runs them in reverse.
-  Vec<DeferStatementAst*> Deferred;
 
   /// The memory state of the body this is the outermost scope of
   /// (a function's or a closure's), while Stage 8 walks it
@@ -151,6 +146,11 @@ public:
   /// The bindings "let"s in this scope declare, in the order they
   /// are written ("RecordLetBinding").
   Vec<Shared<VariableSymbol>> LetBindings;
+
+  /// The recorded bindings ("LetBindings") the walk now in this scope has declared, in the order it declared them
+  /// ("DeclareLetBinding"): all of them outside a walk. A binding a later one of its name displaced from the table is
+  /// still here, so it is still an owner ("GetOwners").
+  Vec<VariableSymbol*> Reached;
 
   /// Whether this scope's super scopes have been attached: they
   /// are attached once. Not carried by a copy, as a clone is a
@@ -272,6 +272,10 @@ public:
   /// and "is" asts, and cleared at the end of a scope.
   auto RecordLetBinding(Shared<VariableSymbol> const &sym) -> void;
 
+  /// Put a recorded binding under its name, where the walk reaches its declaration, and note it as reached
+  /// ("Reached").
+  auto DeclareLetBinding(Shared<VariableSymbol> const &sym) -> void;
+
   /// Take every recorded "let" binding out of the table, for a
   /// walk entering the scope: each "let" declares its own again
   /// where it is written, once its value is done. So a name means
@@ -281,8 +285,10 @@ public:
 
   /// Put every recorded "let" binding back, for a walk leaving the
   /// scope: outside a walk of it, a scope reads as Stage 7 left it,
-  /// each name meaning the binding last declared. A name something
-  /// else holds now (a symbol a later stage added) is left alone.
+  /// each name meaning the binding last declared, an "is" binding
+  /// only where nothing else has its name (it is over by its
+  /// statement's end). A name something else holds now (a symbol
+  /// a later stage added) is left alone.
   auto RevealLetBindings() -> void;
 
   /// "RevealLetBindings" for every scope nested in this one, for a
@@ -307,6 +313,12 @@ public:
   /// table unrolled into a vector.
   SPP_ATTR_NODISCARD auto GetAllVarSymbols(
     bool exclusive = false, bool sup_scope_search = false) const -> Vec<VariableSymbol*>;
+
+  /// Every symbol this scope's own variables are held by where the walk has got to, each once: the table's (what
+  /// the scope declares up front, and the bindings reached that still hold their name), then the bindings reached
+  /// that a later one of the same name displaced. What must be dead when the scope ends is read off these, not off
+  /// the table, which holds one symbol per name.
+  SPP_ATTR_NODISCARD auto GetOwners() const -> Vec<VariableSymbol*>;
 
   /// Get all the type symbols from the internal type table
   /// unrolled into a vector.
