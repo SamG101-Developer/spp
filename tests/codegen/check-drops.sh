@@ -493,6 +493,48 @@ fun join(flag: Bool, n: U64) -> Void {
 }
 
 fun eats(x: Noisy) -> Bool { ret false }
+fun holds(x: &Noisy) -> Bool { ret true }
+
+cls InnerN {
+    !public b: Noisy
+    !public c: Noisy
+}
+
+cls OuterN {
+    !public a: InnerN
+}
+
+fun mk_outer() -> OuterN { ret OuterN(a=InnerN(b=Noisy(n=460_u64), c=Noisy(n=461_u64))) }
+
+fun swap() -> Void {
+    let mut a = Noisy(n=440_u64)
+    let mut b = Noisy(n=441_u64)
+    a, b = b, a
+    std::console::println("swapped")
+}
+
+fun discarded_block() -> Void {
+    let s = Noisy(n=450_u64)
+    { s }
+    std::console::println("after block")
+}
+
+fun field_chain() -> Void {
+    let b = mk_outer().a.b
+    std::console::println("after chain")
+}
+
+fun short_circuit(flag: Bool, n: U64) -> Void {
+    let ok = flag and holds(&Noisy(n=n))
+    std::console::println("after and")
+}
+
+fun reassign_partial() -> Void {
+    let mut p = Pair2(a=Noisy(n=480_u64), b=Noisy(n=481_u64))
+    let a = p.a
+    p = Pair2(a=Noisy(n=482_u64), b=Noisy(n=483_u64))
+    std::console::println("reassigned")
+}
 
 fun guard_moves(k: Opt[U64], n: U64) -> Void {
     let x = Noisy(n=n)
@@ -574,6 +616,18 @@ fun main() -> Void {
     guard_moves(Some(val=1_u64), 430_u64)
     std::console::println("guard moves, no match")
     guard_moves(None, 431_u64)
+    std::console::println("swap")
+    swap()
+    std::console::println("discarded block")
+    discarded_block()
+    std::console::println("field chain off a temporary")
+    field_chain()
+    std::console::println("short circuit, right side runs")
+    short_circuit(true, 470_u64)
+    std::console::println("short circuit, right side skipped")
+    short_circuit(false, 471_u64)
+    std::console::println("reassign a partly moved value")
+    reassign_partial()
     std::console::println("loop exit")
     loop_exit()
     std::console::println("loop condition ends")
@@ -636,6 +690,28 @@ guard moves, no match
 dropped 431
 else
 after case
+swap
+swapped
+dropped 440
+dropped 441
+discarded block
+after block
+dropped 450
+field chain off a temporary
+dropped 461
+after chain
+dropped 460
+short circuit, right side runs
+dropped 470
+after and
+short circuit, right side skipped
+after and
+reassign a partly moved value
+dropped 481
+reassigned
+dropped 480
+dropped 483
+dropped 482
 loop exit
 dropped 390
 after loop

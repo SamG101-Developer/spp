@@ -149,3 +149,76 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let v = case c { OwHandleD() } else { 1_s32 }
     }
 )");
+
+// A "!must_use" value is there to be looked at: discarding one is E95.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestDropDiscardedValue,
+  test_invalid_discarded_must_use_value,
+  SppDiscardedValueError, R"(
+    !must_use
+    cls MustR { }
+
+    fun g() -> MustR { ret MustR() }
+
+    fun f() -> Void {
+        g()
+    }
+)");
+
+// A variant that may hold a must-use value ("Res" may be a "Fail") is must-use too.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestDropDiscardedValue,
+  test_invalid_discarded_variant_with_a_must_use_member,
+  SppDiscardedValueError, R"(
+    !must_use
+    cls MustV { }
+
+    fun g() -> MustV or S32 { ret 1_s32 }
+
+    fun f() -> Void {
+        g()
+    }
+)");
+
+// An instance of a must-use generic class is must-use ("TypeSymbol::IsMustUse" through "DerivesFromSymbol").
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestDropDiscardedValue,
+  test_invalid_discarded_must_use_generic_instance,
+  SppDiscardedValueError, R"(
+    !must_use
+    cls MustG[T] { }
+
+    fun g() -> MustG[S32] { ret MustG[S32]() }
+
+    fun f() -> Void {
+        g()
+    }
+)");
+
+// Binding a must-use value uses it.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropDiscardedValue,
+  test_valid_bound_must_use_value,
+  R"(
+    !must_use
+    cls MustB { }
+
+    fun g() -> MustB { ret MustB() }
+
+    fun f() -> Void {
+        let r = g()
+    }
+)");
+
+// A block written as a statement takes nothing from the place it ends on: the value stays its owner's to drop.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropDiscardedValue,
+  test_valid_discarded_block_ending_on_a_place,
+  R"(
+    fun f(flag: Bool) -> Void {
+        let s = Str::from("x")
+        { s }
+        case flag { s } else { }
+        let t = s
+    }
+)");

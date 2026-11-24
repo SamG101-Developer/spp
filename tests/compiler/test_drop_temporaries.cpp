@@ -229,3 +229,62 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
+
+// A field moved out of a temporary whose type has its own "drop" strands that destructor, as for a named value (E106).
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestDropTemporaries,
+  test_invalid_field_moved_out_of_a_destructible_temporary,
+  SppPartialMoveOfDestructibleValueError, R"(
+    cls TmpDestructible { !public a: Str }
+
+    sup TmpDestructible ext std::ops::drop::Drop {
+        fun drop(self) -> Void { }
+    }
+
+    fun mk() -> TmpDestructible { ret TmpDestructible(a=Str::from("x")) }
+
+    fun f() -> Void {
+        let a = mk().a
+    }
+)");
+
+// A copy read off a temporary moves nothing out of it, so its own "drop" still runs whole.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_copy_read_off_a_destructible_temporary,
+  R"(
+    cls TmpDestructibleCopy {
+        !public a: Str
+        !public n: S32
+    }
+
+    sup TmpDestructibleCopy ext std::ops::drop::Drop {
+        fun drop(self) -> Void { }
+    }
+
+    fun mk() -> TmpDestructibleCopy { ret TmpDestructibleCopy(a=Str::from("x"), n=1) }
+
+    fun f() -> Void {
+        let n = mk().n
+    }
+)");
+
+// Through a chain, the path moved runs through every value on it ("mk().a.b" leaves "mk().a" with a hole).
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestDropTemporaries,
+  test_invalid_field_moved_through_a_destructible_part_of_a_temporary,
+  SppPartialMoveOfDestructibleValueError, R"(
+    cls TmpInnerD { !public b: Str }
+
+    sup TmpInnerD ext std::ops::drop::Drop {
+        fun drop(self) -> Void { }
+    }
+
+    cls TmpOuterD { !public a: TmpInnerD }
+
+    fun mk() -> TmpOuterD { ret TmpOuterD(a=TmpInnerD(b=Str::from("x"))) }
+
+    fun f() -> Void {
+        let b = mk().a.b
+    }
+)");

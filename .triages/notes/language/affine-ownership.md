@@ -21,7 +21,7 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
 | `ret` / `?` (a lowered `ret`), `exit` / `skip` | `OwnedUpToFn`, `OwnedUpToLoop` | `_OwnedAtExit` |
 | Generator frame destroyed at a `gen`, or before its first resume | `OwnedAtSuspend` | `_OwnedAtSuspend`, `_OwnedAtStart` |
 | A lowered `GenOnce`'s by-value `gen` (its return) | the same list, passed to `EmitReturn` | `_OwnedAtSuspend` |
-| Paths meeting that disagree (`case` branches and fall-through, loop exits) | `OwnedOnPath` per path | `_DropsAtJoin`, `_DropsOnFallThrough`, `_DropsOnCondEnd` |
+| Paths meeting that disagree (`case` branches and fall-through, loop exits) | `OwnedOnJoinPath` per path | `_DropsAtEnd` (a branch's, `AddDropsAtJoin`), `_DropsAfterExit` (an `exit`'s, `SetDropsAtJoin`), `_DropsOnFallThrough`, `_DropsOnCondEnd` |
 | A guard's moves, on the edges passing its branch over (no match, guard false) | `case_utils::CarryGuardMoves` | `_DropsOnNoMatch`, `_DropsOnGuardFalse` |
 | `is` bindings at their statement's end; a loop condition's per iteration and at `skip` | `EndStatementBindings` | `_StatementDrops`, `_IterationDrops` |
 | Overwrite (`x = v`, `p.a = v`, through `&mut`, `x@ = v`) | `OwnedOnPath`, `OwnedBeforeWrite` | `AssignmentStatementAst::_DropsOld` |
@@ -34,7 +34,7 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
   it, before they meet; after the join it is held on none (`OwnedIn` skips `MaybeInit` / `MaybePartialMoves`). Earlier
   than Rust's scope-end drop, static. The loop head join records none: a value held there on some paths only cannot be
   used in the body without E8.
-- **Only enclosing scopes' owners join.** `drop_utils::OwnersOutToFn` starts at the `case`'s or loop's parent: their
+- **Only enclosing scopes' owners join.** `drop_utils::OwnersAround` starts at the `case`'s or loop's parent: their
   own scope holds `is` bindings that exist only where they matched, and the flow also holds branch-local symbols.
 - **Pending temporaries** live on `ctx->Pending->Held`: a block statement drops what it pushed at its end, a
   `ret` everything since `meta->TemporaryBase` (set per function, coroutine, closure), an `exit` / `skip` since

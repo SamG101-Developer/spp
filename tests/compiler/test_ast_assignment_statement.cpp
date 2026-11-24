@@ -238,6 +238,19 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// Every value is read before any target is written: swapping owned values moves each once and drops nothing.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AssignmentStatementAst,
+  test_valid_assign_multi_swap_owned, R"(
+    fun f() -> Void {
+        let mut a = Str::from("a")
+        let mut b = Str::from("b")
+        a, b = b, a
+        let c = a
+        let d = b
+    }
+)");
+
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AssignmentStatementAst,
   test_valid_assign_multi_rotate, R"(

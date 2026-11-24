@@ -241,3 +241,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cmp fun k() -> U32 { ret 3_u32 }
     cmp c: U32 = k(nothing())
 )");
+
+// Only a function type's "Args" loses its "Void"s: a tuple it returns keeps them.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_closure_returning_a_tuple_with_a_void_element,
+  R"(
+    fun nothing() -> Void { }
+
+    fun f() -> Void {
+        let g = || (nothing(), 1_s32)
+        let (a, b) = g()
+    }
+)");

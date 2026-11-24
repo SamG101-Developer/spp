@@ -4,28 +4,16 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverloads_FreeFuncs,
   test_invalid_overload_parameter_conventions_1,
   SppFunctionPrototypeConflictError, R"(
-    cls A { }
-    sup A {
-        fun f(a: &Bool) -> Void { }
-    }
-
-    sup A {
-        fun f(a: &mut Bool) -> Void { }
-    }
+    fun f(a: &Bool) -> Void { }
+    fun f(a: &mut Bool) -> Void { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverloads_FreeFuncs,
   test_invalid_overload_parameter_conventions_2,
   SppFunctionPrototypeConflictError, R"(
-    cls A { }
-    sup A {
-        fun f(a: &mut Bool) -> Void { }
-    }
-
-    sup A {
-        fun f(a: &Bool) -> Void { }
-    }
+    fun f(a: &mut Bool) -> Void { }
+    fun f(a: &Bool) -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -82,28 +70,16 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverloads_FreeFuncs,
   test_invalid_overload_generics_same_name,
   SppFunctionPrototypeConflictError, R"(
-    cls A { }
-    sup A {
-        fun f[T](a: T) -> Void { }
-    }
-
-    sup A {
-        fun f[T](a: T) -> Void { }
-    }
+    fun f[T](a: T) -> Void { }
+    fun f[T](a: T) -> Void { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverloads_FreeFuncs,
   test_invalid_overload_generics_different_name,
   SppFunctionPrototypeConflictError, R"(
-    cls A { }
-    sup A {
-        fun f[T](a: T) -> Void { }
-    }
-
-    sup A {
-        fun f[U](a: U) -> Void { }
-    }
+    fun f[T](a: T) -> Void { }
+    fun f[U](a: U) -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(

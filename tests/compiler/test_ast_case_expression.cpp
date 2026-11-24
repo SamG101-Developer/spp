@@ -743,6 +743,21 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// Nor can a guard move the subject: a later comparison pattern reads it without a check of its own.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_move_of_subject_in_pattern_guard,
+  SppPatternGuardMovesValueError, R"(
+    fun eat(t: (Str, S32)) -> Bool { ret false }
+
+    fun f(t: (Str, S32)) -> Void {
+        case t of {
+            is (_, 1) and eat(t) { }
+            else { }
+        }
+    }
+)");
+
 // A pattern's binding is still a part of the subject until the branch is taken: a guard cannot move it.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CaseExpressionAst,
