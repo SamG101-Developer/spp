@@ -171,8 +171,8 @@ SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryInfo : MemoryState {
 
 /// A saved state, put back by "RestoreSnapshot": inside a body, a
 /// copy of every symbol state and loan in its flow (not its loop
-/// and "defer" bookkeeping, which belongs to the walk, not to a
-/// path); outside one, the states of the symbols it was taken of
+/// bookkeeping, which belongs to the walk, not to a path); outside
+/// one, the states of the symbols it was taken of
 /// (held, so one replaced in its scope meanwhile is still the one
 /// restored). "Symbols" lists those it was taken of, with their
 /// states, either way.
@@ -330,8 +330,8 @@ namespace spp::analyse::utils::memory_state {
     -> ScopeSnapshot;
 
   /// The whole state of the body "scope" is in, symbols and loans,
-  /// for an edge to change and put back (an "exit", a "defer", the
-  /// scope ends a "ret" passes): every symbol the walk has touched,
+  /// for an edge to change and put back (an "exit", the scope ends
+  /// a "ret" passes, a guard's edges): every symbol the walk has touched,
   /// whatever its scope and whether or not it is shadowed (outside
   /// any body, every symbol visible from "scope").
   SPP_EXP_FUN auto SnapshotFlow(
