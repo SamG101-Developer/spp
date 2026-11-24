@@ -191,8 +191,8 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
     _FlowSymbol = MakeShared<VariableSymbol>(*_CondSymbol);
     _FlowSymbol->LlvmInfo = _CondSymbol->LlvmInfo;
 
-    // What this narrows, so that consuming through the
-    // narrowed name discharges the value itself.
+    // What this narrows, so that moving through the
+    // narrowed name moves the value itself.
     _FlowSymbol->NarrowsSymbol = _CondSymbol;
     _FlowSymbol->Type = Type;
     _FlowSymbol->Kind = VariableKind::FlowNarrowing;

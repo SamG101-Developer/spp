@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_expression_branch_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast;
 import spp.asts.ast_kind;
 import spp.asts.mixins.type_inferrable_ast;
@@ -11,6 +12,7 @@ import llvm;
 import std;
 
 use_common(CaseExpressionBranchAst);
+use(spp::analyse::utils::memory_state, struct ScopeSnapshot);
 use(spp::analyse::utils::pattern_solver, struct MatchPlan);
 use(spp::asts, struct BinaryExpressionAst);
 use(spp::asts, struct CasePatternVariantAst);
@@ -65,7 +67,43 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
   /// is in it: the tests its patterns make are read from there.
   auto UsePlan(MatchPlan const *plan, std::size_t index) -> void;
 
+  /// What this branch must have consumed by its end, set by its
+  /// "case": its patterns' bindings ("patterns"), and the "is"
+  /// bindings of the "case" condition ("condition"), which hold
+  /// in the first branch of "case o is P(..) { .. }" only. Neither
+  /// for a lowered "is", whose bindings are handed on to the
+  /// statement it is in.
+  auto SetDropsBindings(bool patterns, bool condition) -> void;
+
+  /// Add what the "case"'s join drops on this branch's path to
+  /// "_DropsAtEnd" ("case_utils::ValidateInconsistentMemory").
+  auto AddDropsAtJoin(Vec<analyse::utils::drop_utils::OwnedValue> drops) -> void;
+
+  /// What the "case"'s join drops where this branch is passed over
+  /// after its guard moved values: on the edge where the patterns do
+  /// not match (the guard never ran), and where the guard answers
+  /// false ("case_utils::ValidateInconsistentMemory").
+  auto SetGuardEdgeDrops(
+    Vec<analyse::utils::drop_utils::OwnedValue> on_no_match,
+    Vec<analyse::utils::drop_utils::OwnedValue> on_guard_false) -> void;
+
+  /// The states just before and just after the guard ran, as stage
+  /// 8 last left them (the patterns' own effects are in both); none
+  /// without a guard.
+  SPP_ATTR_NODISCARD auto StateBeforeGuard() const -> analyse::utils::memory_state::ScopeSnapshot const*;
+  SPP_ATTR_NODISCARD auto StateAfterGuard() const -> analyse::utils::memory_state::ScopeSnapshot const*;
+
+  /// See "_KeepsTemporary".
+  auto SetKeepsTemporary(bool keeps) -> void;
+  SPP_ATTR_NODISCARD auto KeepsTemporary() const -> bool;
+
 private:
+  /// The block an edge passing this branch over leads to: "next_bb",
+  /// or one dropping "drops" first.
+  auto _EdgeToNext(
+    Vec<analyse::utils::drop_utils::OwnedValue> const &drops, Str const &name, llvm::BasicBlock *next_bb,
+    ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::BasicBlock*;
+
   /// Save the generated combined pattern expressions for
   /// codegen, without re-walking asts and scopes, which messes
   /// up the scope manager's alignment.
@@ -74,6 +112,30 @@ private:
   /// See "UsePlan". Not carried by "Clone": a copy is analysed afresh.
   MatchPlan const *_CasePlan = nullptr;
   std::size_t _CaseIndex = 0;
+
+  /// See "SetDropsBindings". Not carried by "Clone": a copy's "case" sets them again.
+  bool _DropsPatternBindings = false;
+  bool _DropsConditionBindings = false;
+
+  /// What is dropped at the body's end: what the branch's bindings
+  /// (and the condition's, "_DropsConditionBindings") still own, then
+  /// what this path holds of values around the "case" that another
+  /// path out of it does not, so the "case"'s end holds each on none.
+  Vec<analyse::utils::drop_utils::OwnedValue> _DropsAtEnd;
+
+  /// See "SetGuardEdgeDrops".
+  Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnNoMatch;
+  Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnGuardFalse;
+
+  /// See "StateAfterGuard". Not carried by "Clone": read only by the
+  /// "case" analysing this branch, straight after.
+  Shared<analyse::utils::memory_state::ScopeSnapshot> _StateBeforeGuard;
+  Shared<analyse::utils::memory_state::ScopeSnapshot> _StateAfterGuard;
+
+  /// The "case" is over a temporary this branch does not take: it
+  /// is dropped at the branch's end, or where the branch is left
+  /// early ("meta->LlvmCaseTemporary").
+  bool _KeepsTemporary = false;
 
   /// With multiple patterns, the llvm value is a logical OR of
   /// all the pattern matches (analysis guarantees they are all

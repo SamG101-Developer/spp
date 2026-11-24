@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.comp_time_intrinsics;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.pattern_solver;
 import spp.analyse.utils.regions;
@@ -24,6 +25,7 @@ import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.object_initializer_ast;
+import spp.asts.pattern_guard_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -42,6 +44,7 @@ MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::analyse::utils::pattern_solver, CaseCoverage);
 use_alias(spp::analyse::utils::pattern_solver, MatchPlan);
@@ -62,6 +65,16 @@ use_alias(spp::codegen, LlvmCtx);
 
 namespace spp::analyse::utils::case_utils {
   using pattern_solver::PathStep;
+
+  /// Join the two edges passing "branch" over after its guard ran:
+  /// its patterns not matching ("before") and its guard answering
+  /// false ("after_guard"). Records each edge's drops on the branch,
+  /// and returns the joined state the next branch starts from.
+  static auto CarryGuardMoves(
+    CaseExpressionBranchAst &branch, memory_state::ScopeSnapshot const &before,
+    memory_state::ScopeSnapshot const &after_guard, Vec<VariableSymbol*> const &syms,
+    Map<VariableSymbol const*, Scope const*> const &owners, ScopeManager *sm,
+    CompilerMetaData *meta) -> memory_state::ScopeSnapshot;
 
   /// The address of the value at "path" in the subject at
   /// "subject_ptr": a payload behind its variant's discriminant; a
@@ -144,7 +157,7 @@ auto spp::analyse::utils::case_utils::CompTimeValueAt(
 
 auto spp::analyse::utils::case_utils::BindSubjectValue(
   pattern_solver::MatchPlan const &plan, llvm::Value *llvm_subject,
-  LlvmCtx *ctx) -> void {
+  LlvmCtx *ctx) -> llvm::Value* {
   // The hidden borrow holds the subject's address: a borrowed
   // subject is one already; any other is stored in a slot of its
   // own, once, for the checks to index.
@@ -158,6 +171,7 @@ auto spp::analyse::utils::case_utils::BindSubjectValue(
   const auto slot = LlvmEntryAlloca(llvm::PointerType::get(*ctx->Context, 0), "case.subject" + uid, ctx);
   ctx->Builder.CreateStore(subject_ptr, slot);
   plan.Subject->LlvmInfo->Alloca = slot;
+  return subject_ptr;
 }
 
 auto spp::analyse::utils::case_utils::EmitPatternChecks(
@@ -286,11 +300,49 @@ auto spp::analyse::utils::case_utils::JoinBranches(
   return join;
 }
 
+auto spp::analyse::utils::case_utils::CarryGuardMoves(
+  CaseExpressionBranchAst &branch, memory_state::ScopeSnapshot const &before,
+  memory_state::ScopeSnapshot const &after_guard, Vec<VariableSymbol*> const &syms,
+  Map<VariableSymbol const*, Scope const*> const &owners, ScopeManager *sm,
+  CompilerMetaData *meta) -> memory_state::ScopeSnapshot {
+  // Two edges pass a guarded branch over: its patterns did not
+  // match, so the guard never ran ("before"), or the guard ran and
+  // answered false ("after_guard"). They meet at the next branch,
+  // where they are joined as any paths are: a value one holds and
+  // the other does not is dropped on the edge still holding it, so
+  // past the branch it is held on neither (E8 on a later use). Only
+  // what the guard itself changed is carried: what checking the
+  // patterns did stays in the branch.
+  auto const &before_guard = *branch.StateBeforeGuard();
+  auto on_no_match = Vec<drop_utils::OwnedValue>();
+  auto on_guard_false = Vec<drop_utils::OwnedValue>();
+  for (auto *const sym : syms) {
+    if (memory_state::SameShape(memory_state::StateIn(before_guard, *sym), memory_state::StateIn(after_guard, *sym))) {
+      continue;
+    }
+    const auto no_match = memory_state::StateIn(before, *sym);
+    const auto guard_false = memory_state::StateIn(after_guard, *sym);
+    auto joined = memory_state::JoinAll(
+      {{no_match, &branch}, {guard_false, branch.Guard.get()}}, *sym, *sm->CurrentScope);
+    if (auto value = drop_utils::OwnedOnJoinPath(*sym, joined, no_match, owners, branch, *sm, meta)) {
+      on_no_match.emplace_back(std::move(*value));
+    }
+    if (auto value = drop_utils::OwnedOnJoinPath(*sym, joined, guard_false, owners, *branch.Guard, *sm, meta)) {
+      on_guard_false.emplace_back(std::move(*value));
+    }
+    memory_state::StateOf(*sm->CurrentScope, *sym) = std::move(joined);
+  }
+  drop_utils::SortNewestFirst(on_no_match);
+  drop_utils::SortNewestFirst(on_guard_false);
+  branch.SetGuardEdgeDrops(std::move(on_no_match), std::move(on_guard_false));
+  return memory_state::SnapshotSymbols(syms, *sm->CurrentScope);
+}
+
 auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
   Ast *parent, Vec<CaseExpressionBranchAst*> const &branches,
-  CaseCoverage const &coverage, VariableSymbol *subject,
+  CaseCoverage const &coverage,
   SubjectEdges const *subject_edges, ScopeManager *sm,
-  CompilerMetaData *meta) -> void {
+  CompilerMetaData *meta) -> Vec<drop_utils::OwnedValue> {
   // The symbols whose states are joined: those visible here,
   // and (inside a body) every one its flow has touched, so a
   // symbol hidden by a shadowing "let" is joined too. The
@@ -316,7 +368,11 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
   // from it, and it stands in as the path that falls through
   // every branch, where there is one. Each branch's state
   // is kept to be joined.
-  const auto pre_analysis = memory_state::SnapshotSymbols(var_syms, *sm->CurrentScope);
+  // A guard that moves a value moves it on every path past its
+  // branch as well ("CarryGuardMoves"), so the state a branch
+  // starts from is the one the branches before it left.
+  const auto owners = drop_utils::OwnersAround(*sm->CurrentScope, meta);
+  auto pre_analysis = memory_state::SnapshotSymbols(var_syms, *sm->CurrentScope);
   auto paths = Vec<Pair<CaseExpressionBranchAst*, memory_state::ScopeSnapshot>>();
   for (auto const &[i, branch] : branches | genex::views::enumerate) {
     // The branch applies its match edge to the subject.
@@ -326,14 +382,15 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
     branch->Stage8_CheckMemory(sm, meta);
     paths.emplace_back(branch, memory_state::SnapshotSymbols(var_syms, *sm->CurrentScope));
     memory_state::RestoreSnapshot(pre_analysis);
+    if (auto const *const after_guard = branch->StateAfterGuard(); after_guard != nullptr) {
+      pre_analysis = CarryGuardMoves(*branch, pre_analysis, *after_guard, var_syms, owners, sm, meta);
+    }
   }
 
   // On the fall-through path, the subject holds whichever
   // members no branch matched.
   const auto falls_through = coverage.FallsThrough;
   paths.emplace_back(nullptr, pre_analysis);
-  const auto discharged = subject_edges != nullptr
-    and subject_edges->OnFallThrough == SubjectOnMatch::kDischarge;
 
   // A branch that never finishes leaves no state behind to
   // agree with. Worked out once per branch, not per symbol:
@@ -390,20 +447,50 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
       or (branch != nullptr and not reachable(branch))
       or (skip_else and not branches.empty() and branch == branches.back()));
   };
-  const auto state_on = [&](memory_state::ScopeSnapshot const &path, VariableSymbol const &sym) {
-    auto state = memory_state::StateIn(path, sym);
-    if (discharged and &sym == subject and &path == &paths.back().second) { state.OwesNothing = true; }
-    return memory_state::SettleFullyTaken(state, sym, *sm->CurrentScope);
+  const auto state_on = [](memory_state::ScopeSnapshot const &path, VariableSymbol const &sym) {
+    return memory_state::StateIn(path, sym);
   };
+  // A value of a scope around the "case" held on only some of the
+  // paths out is dropped on each path still holding it, at its end,
+  // so after the join it is held on none. A branch's own symbols
+  // exist only in that branch.
+  auto path_drops = Map<CaseExpressionBranchAst const*, Vec<drop_utils::OwnedValue>>();
   for (auto sym : var_syms) {
-    auto joined = state_on(first_path, *sym);
+    auto states = Vec<Pair<memory_state::MemoryState, Ast*>>();
+    states.emplace_back(state_on(first_path, *sym), first_branch);
     for (auto const &[branch_or_null, path] : paths) {
-      if (leaves(branch_or_null)) {
-        memory_state::Join(joined, state_on(path, *sym), first_branch, path_of(branch_or_null));
+      if (leaves(branch_or_null)) { states.emplace_back(state_on(path, *sym), path_of(branch_or_null)); }
+    }
+    auto joined = memory_state::JoinAll(std::move(states), *sym, *sm->CurrentScope);
+    for (auto const &[branch_or_null, path] : paths) {
+      if (not leaves(branch_or_null)) { continue; }
+      auto const &end = branch_or_null != nullptr ? static_cast<Ast const&>(*branch_or_null) : *parent;
+      if (auto value = drop_utils::OwnedOnJoinPath(*sym, joined, state_on(path, *sym), owners, end, *sm, meta)) {
+        path_drops[branch_or_null].emplace_back(std::move(*value));
       }
     }
-    memory_state::StateOf(*sm->CurrentScope, *sym) = joined;
+    memory_state::StateOf(*sm->CurrentScope, *sym) = std::move(joined);
   }
+  // The temporaries the condition made in the "case"'s own scope
+  // ("a < f() < b") are held on every path out, and nothing after
+  // the "case" names them: each path drops what it still holds.
+  for (auto *const sym : sm->CurrentScope->GetOwners()) {
+    if (sym->Kind != VariableKind::Temporary or sym->ExpiresWithStatement) { continue; }
+    for (auto const &[branch_or_null, path] : paths) {
+      if (not leaves(branch_or_null)) { continue; }
+      auto const &end = branch_or_null != nullptr ? static_cast<Ast const&>(*branch_or_null) : *parent;
+      if (auto value = drop_utils::OwnedOnPath(*sym, state_on(path, *sym), *sm->CurrentScope, end, *sm, meta)) {
+        path_drops[branch_or_null].emplace_back(std::move(*value));
+      }
+    }
+  }
+  for (auto *const branch : branches) {
+    auto drops = std::move(path_drops[branch]);
+    drop_utils::SortNewestFirst(drops);
+    branch->AddDropsAtJoin(std::move(drops));
+  }
+  auto fall_through_drops = std::move(path_drops[nullptr]);
+  drop_utils::SortNewestFirst(fall_through_drops);
 
   // The loans held after the "case", likewise.
   auto &loans = memory_state::LoansOf(*sm->CurrentScope);
@@ -414,33 +501,26 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
       memory_state::JoinLoans(loans, loans_on(path), first_branch, path_of(branch_or_null));
     }
   }
+  return fall_through_drops;
 }
 
 auto spp::analyse::utils::case_utils::ApplySubjectOnMatch(
-  CaseExpressionBranchAst const &branch,
   ScopeManager &sm,
   CompilerMetaData const &meta)
   -> void {
   // "case x of" takes the symbol itself; "case x.inner of"
   // takes one region of it, a partial move like any other.
-  // Only a whole subject can be found to owe nothing: the
-  // fact is held per symbol.
   const auto subject = meta.CaseSubject;
   auto const *const cond = meta.CaseCondition;
   if (subject == nullptr or cond == nullptr) { return; }
   const auto whole = cond->To<IdentifierAst>() != nullptr;
 
-  // The patterns took it apart, so a part they left unbound
-  // would be left with no owner once it is taken.
+  // The patterns took it apart. A part they left unbound stays
+  // with the subject, which is left partly moved for its owner to
+  // drop the rest of.
   if (meta.CaseSubjectOnMatch == SubjectOnMatch::kTake) {
     const auto taken = regions::PlaceOf(*cond, *sm.CurrentScope);
-    if (const auto skipped = taken.has_value() ? regions::FirstUnaccountedPart(*subject, *taken, sm) : Str();
-      not skipped.empty()) {
-      auto const *const blamed = branch.Patterns.empty()
-        ? static_cast<Ast const*>(&branch)
-        : static_cast<Ast const*>(branch.Patterns[0].get());
-      Raise<errors::SppDestructureSkipsOwnedPartError>(ERR_ARGS(*blamed, *subject->Name, StrView(skipped)));
-    }
+    if (taken.has_value() and not regions::FirstUnaccountedPart(*subject, *taken, sm).empty()) { return; }
   }
 
   // If we are moving an identifier part, then mark the state
@@ -457,9 +537,4 @@ auto spp::analyse::utils::case_utils::ApplySubjectOnMatch(
     memory_state::StateOf(*sm.CurrentScope, *subject).PartMovedBy(regions::PlaceAtOf(*cond, *sm.CurrentScope));
   }
 
-  // If the discharge flag has been set and it is a identifier
-  // ast, then mark the "owes nothing" as true.
-  else if (meta.CaseSubjectOnMatch == SubjectOnMatch::kDischarge and whole) {
-    memory_state::StateOf(*sm.CurrentScope, *subject).OwesNothing = true;
-  }
 }

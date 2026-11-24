@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_expression_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
@@ -53,6 +54,12 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
   /// "else" branch returns.
   bool LoweredFromTryOperator = false;
 
+  /// Set when nothing takes this "case"'s value (a statement, a
+  /// loop body's final one: "expr_utils::MarkValueDiscarded"). Its
+  /// branches need not agree on a type: each one's value is
+  /// discarded, and dropped as that ("expr_utils::DiscardValue").
+  bool ValueDiscarded = false;
+
   CaseExpressionAst(
     decltype(TokCase) &&tok_case,
     decltype(Cond) &&cond,
@@ -102,4 +109,14 @@ private:
   /// before the branches compare it.
   Shared<TypeAst> _SubjectType;
   Shared<VariableSymbol> _SubjectValue;
+
+  /// What the path falling through every branch still holds of
+  /// values of the scopes around the "case" that another path out
+  /// does not, dropped before it reaches the end
+  /// ("case_utils::ValidateInconsistentMemory").
+  Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnFallThrough;
+
+  /// The "case" is over a temporary that falling through every
+  /// branch keeps, so it is dropped on that path.
+  bool _KeepsTemporaryOnFallThrough = false;
 };

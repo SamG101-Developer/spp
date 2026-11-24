@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.case_utils;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.type_join;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.types;
@@ -22,14 +23,13 @@ use(spp::codegen, struct LlvmCtx);
 use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::case_utils {
-  /// The match edge of "branch", once its patterns and guard have
+  /// A branch's match edge, once its patterns and guard have
   /// matched: what "meta.CaseSubjectOnMatch" says is done to
   /// "meta.CaseSubject" (taken whole, or the part the condition
-  /// names; found to owe nothing; or kept). What is taken has to
-  /// have every owned part bound by the patterns first.
+  /// names; or kept). Patterns leaving an owned part unbound take
+  /// only what they bind, so the subject's owner drops the rest.
   SPP_EXP_FUN auto ApplySubjectOnMatch(
-    CaseExpressionBranchAst const &branch, ScopeManager &sm,
-    CompilerMetaData const &meta) -> void;
+    ScopeManager &sm, CompilerMetaData const &meta) -> void;
 
   /// Point the hidden borrow of a "case" subject (the plan's
   /// "Subject") at the subject's generated value "llvm_subject": a
@@ -37,7 +37,7 @@ namespace spp::analyse::utils::case_utils {
   /// other is stored in a slot of its own.
   SPP_EXP_FUN auto BindSubjectValue(
     MatchPlan const &plan, llvm::Value *llvm_subject,
-    LlvmCtx *ctx) -> void;
+    LlvmCtx *ctx) -> llvm::Value*;
 
   /// Generate "checks" (one pattern's, from the plan) against the
   /// subject its hidden borrow points at, in order, each only once the
@@ -75,10 +75,13 @@ namespace spp::analyse::utils::case_utils {
   /// Errors are not thrown if one branch moves a symbol and
   /// another doesn't; but the symbol mem-info is updated such
   /// that *using* that symbol later in the function would
-  /// cause an error.
+  /// cause an error. A value of an enclosing scope that the paths
+  /// out disagree about is dropped on each path still holding it:
+  /// each branch is given its own ("SetDropsAtJoin"), and what the
+  /// path falling through every branch drops is returned.
   SPP_EXP_FUN auto ValidateInconsistentMemory(
     Ast *parent, Vec<CaseExpressionBranchAst*> const &branches,
-    CaseCoverage const &coverage, VariableSymbol *subject,
+    CaseCoverage const &coverage,
     SubjectEdges const *subject_edges, ScopeManager *sm,
-    CompilerMetaData *meta) -> void;
+    CompilerMetaData *meta) -> Vec<drop_utils::OwnedValue>;
 }
