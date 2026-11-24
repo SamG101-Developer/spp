@@ -10,7 +10,6 @@ import llvm;
 import std;
 
 use_common(LoopIterableExpressionAst);
-use(spp::asts, struct DeferStatementAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct LocalVariableAst);

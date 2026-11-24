@@ -22,7 +22,6 @@ import spp.asts.case_pattern_variant_ast;
 import spp.asts.case_pattern_variant_destructure_object_ast;
 import spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
 import spp.asts.case_pattern_variant_else_ast;
-import spp.asts.defer_statement_ast;
 import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
@@ -241,11 +240,9 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   loop_new->LoweredFrom = this;
   _TransformedLoop = std::move(loop_new);
 
-  // The iterator is consumed on every way out of the loop, and
-  // only then, so it is deferred in the loop's own scope.
-  // Translated: "defer std::mem::ops::drop($_iter)".
-  _TransformedLoop->LoopDefer = MakeUnique<DeferStatementAst>(
-    nullptr, expr_utils::DropCall(*iterable_name));
+  // The iterator is dropped on every way out of the loop, and
+  // only then, which ends what it borrows.
+  _TransformedLoop->EndsWithLoop = iterable_name;
 
   // Analyse the other initial let statement.
   _TransformedLet = std::move(iterable_let);
