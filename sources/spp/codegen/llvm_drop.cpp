@@ -15,6 +15,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_cfi;
+import spp.codegen.llvm_coros;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
@@ -24,6 +25,7 @@ import spp.utils.ice;
 import spp.utils.interner;
 import spp.utils.uid;
 import genex;
+import llvm;
 
 auto spp::codegen::EmitDrop(
   analyse::scopes::TypeRef const &type,
@@ -31,7 +33,8 @@ auto spp::codegen::EmitDrop(
   analyse::scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta,
   LlvmCtx *ctx,
-  Vec<Vec<spp::utils::InternedId>> const &moved)
+  Vec<Vec<spp::utils::InternedId>> const &moved,
+  const bool own_drop)
   -> void {
   //
   using analyse::utils::drop_utils::FindDropOverload;
@@ -79,7 +82,7 @@ auto spp::codegen::EmitDrop(
 
   // The type's own destructor runs before its attributes
   // are destroyed, because it is still free to read them.
-  if (const auto drop_proto = FindDropOverload(type_sym, *sm, meta); drop_proto != nullptr) {
+  if (const auto drop_proto = own_drop ? FindDropOverload(type_sym, *sm, meta) : nullptr; drop_proto != nullptr) {
     if (not moved.empty()) { spp::Ice("a value with its own destructor is destroyed with a part missing"); }
 
     // A "drop" reached only through this path may not have
@@ -180,4 +183,139 @@ auto spp::codegen::EmitDrop(
           "drop.field" + uid + "." + part.Step->Val);
     EmitDrop(part.Ref, part_ptr, sm, meta, ctx, part_moved);
   }
+}
+
+namespace spp::codegen {
+  /// The symbol "value" names in "scope": of the scope's owners, the one of its name declared where it was, as two
+  /// of one name can be owned there; else whatever holds the name, for a value nothing declares.
+  static auto FindOwned(
+    analyse::scopes::Scope const &scope,
+    analyse::utils::drop_utils::OwnedValue const &value) -> analyse::scopes::VariableSymbol*;
+}
+
+auto spp::codegen::FindOwned(
+  analyse::scopes::Scope const &scope,
+  analyse::utils::drop_utils::OwnedValue const &value) -> analyse::scopes::VariableSymbol* {
+  if (not value.DeclaredAt.has_value()) { return scope.FindVarSymbol(value.Name.get(), true); }
+  for (auto *const sym : scope.GetOwners()) {
+    if (sym->Name->NameId() == value.Name->NameId() and sym->Name->PosStart() == *value.DeclaredAt) { return sym; }
+  }
+  return nullptr;
+}
+
+auto spp::codegen::EmitScopeExit(
+  analyse::scopes::Scope const *const into,
+  analyse::scopes::ScopeManager *const sm,
+  asts::meta::CompilerMetaData *const meta,
+  LlvmCtx *const ctx,
+  analyse::utils::drop_utils::OwnedScopes const &owned)
+  -> void {
+  // An early exit skips the ends of the scopes it jumps out of, so what they own is dropped at the jump instead,
+  // innermost first, the order they would have been left in had control reached their ends.
+  auto i = 0uz;
+  for (auto const *scope = sm->CurrentScope; scope != nullptr and scope != into and i < owned.size(); scope = scope->Parent, ++i) {
+    EmitOwnedDrops(*scope, owned[i], scope->AstNode, sm, meta, ctx);
+  }
+}
+
+auto spp::codegen::EmitOwnedDrops(
+  analyse::scopes::Scope const &scope,
+  Vec<analyse::utils::drop_utils::OwnedValue> const &owned,
+  asts::Ast const *const at,
+  analyse::scopes::ScopeManager *const sm,
+  asts::meta::CompilerMetaData *const meta,
+  LlvmCtx *const ctx)
+  -> void {
+  // A path that already branched or returned dropped what it held where it left.
+  const auto block = ctx->Builder.GetInsertBlock();
+  if (owned.empty() or block == nullptr or block->hasTerminator()) { return; }
+  for (auto const &value : owned) {
+    const auto sym = FindOwned(scope, value);
+    if (sym == nullptr or sym->LlvmInfo->Alloca == nullptr) {
+      if (at == nullptr) { spp::Ice("a value owned where its lifetime ends has no storage to drop"); }
+      Ice(*at, *sm->CurrentScope, "a value owned where its lifetime ends has no storage to drop");
+    }
+    EmitDrop(sym->TypeRefIn(scope), sym->LlvmInfo->Alloca, sm, meta, ctx, value.Moved, not value.Structural);
+  }
+}
+
+auto spp::codegen::EmitSuspendDestroy(
+  Vec<Vec<analyse::utils::drop_utils::OwnedValue>> const &owned,
+  asts::Ast const &at,
+  analyse::scopes::ScopeManager *const sm,
+  asts::meta::CompilerMetaData *const meta,
+  LlvmCtx *const ctx)
+  -> void {
+  // The temporaries the statement suspended in holds go first, then each scope out to the coroutine's drops what it
+  // still owns, newest first, before the next one out is left. A value partly moved out loses only what is left of it.
+  EmitTemporaryDrops(meta->TemporaryBase, sm, meta, ctx);
+  auto const *scope = sm->CurrentScope;
+  for (auto const &scope_owned : owned) {
+    if (scope == nullptr) { break; }
+    EmitOwnedDrops(*scope, scope_owned, &at, sm, meta, ctx);
+    scope = scope == meta->EnclosingFnScope ? nullptr : scope->Parent;
+  }
+  ctx->Builder.CreateBr(meta->LlvmGenerator->CleanupBlock);
+}
+
+auto spp::codegen::EmitOuterDrops(
+  Vec<analyse::utils::drop_utils::OwnedValue> const &owned,
+  asts::Ast const &at,
+  analyse::scopes::ScopeManager *const sm,
+  asts::meta::CompilerMetaData *const meta,
+  LlvmCtx *const ctx)
+  -> void {
+  const auto block = ctx->Builder.GetInsertBlock();
+  if (owned.empty() or block == nullptr or block->hasTerminator()) { return; }
+  for (auto const &value : owned) {
+    auto *sym = static_cast<analyse::scopes::VariableSymbol*>(nullptr);
+    auto const *scope = sm->CurrentScope;
+    while (scope != nullptr) {
+      sym = FindOwned(*scope, value);
+      if (sym != nullptr) { break; }
+      scope = scope->Parent;
+    }
+    if (sym == nullptr or scope == nullptr or sym->LlvmInfo->Alloca == nullptr) {
+      Ice(at, *sm->CurrentScope, "a value a join drops has no storage to drop");
+    }
+    EmitDrop(sym->TypeRefIn(*scope), sym->LlvmInfo->Alloca, sm, meta, ctx, value.Moved, not value.Structural);
+  }
+}
+
+auto spp::codegen::PushTemporary(
+  llvm::Value *const ptr,
+  analyse::scopes::TypeRef const &type,
+  Vec<Vec<spp::utils::InternedId>> moved,
+  LlvmCtx *const ctx)
+  -> void {
+  ctx->Pending->Held.push_back(
+    {.Ptr = ptr, .Type = MakeShared<analyse::scopes::TypeRef>(type), .Moved = std::move(moved)});
+}
+
+auto spp::codegen::TemporaryDepth(
+  LlvmCtx const *const ctx)
+  -> std::size_t {
+  return ctx->Pending->Held.size();
+}
+
+auto spp::codegen::EmitTemporaryDrops(
+  const std::size_t from,
+  analyse::scopes::ScopeManager *const sm,
+  asts::meta::CompilerMetaData *const meta,
+  LlvmCtx *const ctx)
+  -> void {
+  // Copied: dropping one can generate code that holds temporaries of its own.
+  const auto held = ctx->Pending->Held;
+  for (auto i = held.size(); i > from; --i) {
+    const auto block = ctx->Builder.GetInsertBlock();
+    if (block == nullptr or block->hasTerminator()) { return; }
+    EmitDrop(*held[i - 1uz].Type, held[i - 1uz].Ptr, sm, meta, ctx, held[i - 1uz].Moved);
+  }
+}
+
+auto spp::codegen::PopTemporaries(
+  const std::size_t to,
+  LlvmCtx *const ctx)
+  -> void {
+  if (ctx->Pending->Held.size() > to) { ctx->Pending->Held.resize(to); }
 }
