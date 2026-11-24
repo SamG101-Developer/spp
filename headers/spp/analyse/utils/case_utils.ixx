@@ -68,17 +68,14 @@ namespace spp::analyse::utils::case_utils {
     ScopeManager &sm, CompilerMetaData *meta)
     -> type_join::TypeJoin;
 
-  /// Similar to the type check validation, but for memory. This
-  /// is more complex as we must check every symbol, and reset
-  /// its status to the original snapshots. The final symbol
-  /// status is based off the consistent status's of every branch.
-  /// Errors are not thrown if one branch moves a symbol and
-  /// another doesn't; but the symbol mem-info is updated such
-  /// that *using* that symbol later in the function would
-  /// cause an error. A value of an enclosing scope that the paths
-  /// out disagree about is dropped on each path still holding it:
-  /// each branch is given its own ("SetDropsAtJoin"), and what the
-  /// path falling through every branch drops is returned.
+  /// Check each branch's memory from the state before the "case"
+  /// (carrying a guard's moves past its branch), then join the
+  /// paths out into the state after it: what the paths disagree
+  /// about is no error until it is used ("maybe" states). A value
+  /// of an enclosing scope held on only some paths is dropped on
+  /// each path still holding it: each branch is given its own
+  /// ("AddDropsAtJoin"), and what the path falling through every
+  /// branch drops is returned.
   SPP_EXP_FUN auto ValidateInconsistentMemory(
     Ast *parent, Vec<CaseExpressionBranchAst*> const &branches,
     CaseCoverage const &coverage,

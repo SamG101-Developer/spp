@@ -48,19 +48,13 @@ use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
 namespace spp::analyse::utils::destructure_utils {
-  /// When we have a pattern like "let Self(fd) = self", we
-  /// mark "self" as moved, because every owned field was
-  /// taken: nothing is left to drop, not even through the
+  /// The value a destructure names ("let Self(fd) = self") taken
+  /// apart ("mem_utils::TakeApart"): binding every owned part moves
+  /// it whole, so nothing is left to drop, not even through the
   /// type's own "drop" (how a type's method disarms it).
   static auto ConsumeDestructureSource(
-    Ast const &owner, const bool from_case_pattern, const bool any_binding_is_moving,
+    Ast const &owner, bool from_case_pattern, bool accounts_for_parts,
     ScopeManager &sm, CompilerMetaData const *meta) -> void;
-
-  /// When we have a temporary materialization, mark it as
-  /// consumed by getting the symbol and setting the memory
-  /// fields on it to mark as "moved".
-  static auto ConsumeDestructureTemp(
-    IdentifierAst const &tmp_name, ScopeManager const &sm) -> void;
 
   /// Run uniform stage 8 memory analysis on the destructure
   /// temporary materialization, should it exist (this won't
@@ -85,7 +79,7 @@ namespace spp::analyse::utils::destructure_utils {
 }
 
 auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
-  Ast const &owner, const bool from_case_pattern, const bool any_binding_is_moving,
+  Ast const &owner, const bool from_case_pattern, const bool accounts_for_parts,
   ScopeManager &sm, CompilerMetaData const *meta) -> void {
   // A case pattern only answers for the parts of a subject its
   // "case" can take ("meta->CaseSubject"); the "case" itself takes
@@ -113,16 +107,6 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
   // already moved away was consumed a second time unnoticed.
   if (val->To<IdentifierAst>() != nullptr) { mem_utils::RaiseIfMoved(*sym, *val, sm.CurrentScope); }
 
-  // A destructure binding every owned part takes the value apart
-  // whole: nothing is left to drop, not even through the type's own
-  // "drop" (how a type's method disarms its destructor). One that
-  // skips an owned part leaves the value partly moved, so its
-  // owner drops what is left, where it ends.
-  if (any_binding_is_moving) {
-    const auto region = regions::PlaceOf(*val, *sm.CurrentScope);
-    if (region.has_value() and not regions::FirstUnaccountedPart(*sym, *region, sm).empty()) { return; }
-  }
-
   // The "case" subject itself is taken on the branch's
   // match edge; a part nested inside it is taken here. The
   // pattern's "let" holds a copy of the condition, so the
@@ -131,21 +115,7 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
     and regions::PlaceOf(*val, *sm.CurrentScope) == regions::PlaceOf(*meta->CaseCondition, *sm.CurrentScope)) {
     return;
   }
-  if (val->To<IdentifierAst>() != nullptr) {
-    memory_state::StateOf(*sm.CurrentScope, *sym).MovedBy(owner);
-  }
-  else {
-    memory_state::StateOf(*sm.CurrentScope, *sym).PartMovedBy(regions::PlaceAtOf(*val, *sm.CurrentScope));
-  }
-}
-
-auto spp::analyse::utils::destructure_utils::ConsumeDestructureTemp(
-  IdentifierAst const &tmp_name, ScopeManager const &sm) -> void {
-  // Every part the bindings read came off the temporary, so
-  // between them they took all of it.
-  const auto sym = sm.CurrentScope->FindVarSymbol(&tmp_name);
-  if (sym == nullptr) { Ice(tmp_name, *sm.CurrentScope, "destructure temporary has no symbol"); }
-  memory_state::StateOf(*sm.CurrentScope, *sym).MovedBy(tmp_name);
+  mem_utils::TakeApart(*sym, *val, owner, accounts_for_parts, sm);
 }
 
 auto spp::analyse::utils::destructure_utils::DestructureTempStage8(
@@ -242,11 +212,12 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
   const auto uid = "." + spp::utils::Uid();
   const auto sym = DeclareDestructureTemp(*tmp_name, sm);
 
-  const auto no_tmp_msg = Str(
-    "The hidden temporary for this destructure has no symbol in the scope being generated. Its binding was introduced "
-    "during semantic analysis, so the destructure is being generated against a different scope to the one it was "
-    "analysed in");
-  if (sym == nullptr) { Ice(*tmp_name, *sm.CurrentScope, no_tmp_msg); }
+  if (sym == nullptr) {
+    Ice(*tmp_name, *sm.CurrentScope,
+      "The hidden temporary for this destructure has no symbol in the scope being generated. Its binding was "
+      "introduced during semantic analysis, so the destructure is being generated against a different scope to the "
+      "one it was analysed in");
+  }
 
   const auto llvm_type = GetLlvmTypeOf(
     sym->TypeRefIn(*sm.CurrentScope).WithoutConvention(), ctx);
@@ -303,22 +274,14 @@ auto spp::analyse::utils::destructure_utils::DestructureStage8(
   const auto accounts_for_parts = destructure.BindsByMove()
     and not genex::any_of(elems, [](auto const &elem) { return elem->TakesRest(); });
 
-  // A value made on the spot ("let P(a, ..) = mk()") is held
-  // by the hidden temporary, which answers for its parts as
-  // a named value does: one the bindings left behind would be
-  // dropped with nothing to drop it. Otherwise taking every
-  // element off it takes it, so it is left moved rather than
-  // partly moved. Todo: Clean this
+  // A value made on the spot ("let P(a, ..) = mk()") is held by
+  // the hidden temporary, taken apart as a named value is: what the
+  // bindings skipped stays with it, and it drops that where its
+  // scope ends.
   if (tmp_name != nullptr) {
-    // What the bindings skipped stays with the temporary, which
-    // drops it where its scope ends.
-    if (accounts_for_parts and not (from_case_pattern and not destructure.BindsByMove())) {
-      if (auto *const tmp_sym = sm.CurrentScope->FindVarSymbol(tmp_name.get()); tmp_sym != nullptr) {
-        const auto region = regions::Place{.Root = tmp_sym, .Steps = {}};
-        if (not regions::FirstUnaccountedPart(*tmp_sym, region, sm).empty()) { return; }
-      }
-    }
-    ConsumeDestructureTemp(*tmp_name, sm);
+    auto const *const tmp_sym = sm.CurrentScope->FindVarSymbol(tmp_name.get());
+    if (tmp_sym == nullptr) { Ice(*tmp_name, *sm.CurrentScope, "destructure temporary has no symbol"); }
+    mem_utils::TakeApart(*tmp_sym, *tmp_name, *tmp_name, accounts_for_parts, sm);
     return;
   }
   if (from_case_pattern and not destructure.BindsByMove()) { return; }

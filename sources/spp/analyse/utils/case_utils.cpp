@@ -10,9 +10,9 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.comp_time_intrinsics;
 import spp.analyse.utils.drop_utils;
+import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.pattern_solver;
-import spp.analyse.utils.regions;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -55,7 +55,6 @@ use_alias(spp::asts, AstClone);
 use_alias(spp::asts, BooleanLiteralAst);
 use_alias(spp::asts, CaseExpressionBranchAst);
 use_alias(spp::asts, CasePatternVariantElseAst);
-use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, ObjectInitializerAst);
 use_alias(spp::asts, TupleLiteralAst);
 use_alias(spp::asts, TypeAst);
@@ -120,7 +119,8 @@ llvm::Value * {
         "case.pattern.elem_ptr" + uid);
     }
     else if (std::isdigit(static_cast<unsigned char>(step.Name->Val[0]))) {
-      ptr = ctx->Builder.CreateStructGEP(llvm_of_ty, ptr, index, "case.pattern.elem_ptr" + uid);
+      const auto field_index = codegen::GetPhysicalFieldIndex(*step.Of.Symbol->LlvmInfo, index);
+      ptr = ctx->Builder.CreateStructGEP(llvm_of_ty, ptr, field_index, "case.pattern.elem_ptr" + uid);
     }
     else {
       const auto decl_index = type_members::GetFieldIndexInType(*step.Of.Symbol, *step.Name);
@@ -364,13 +364,11 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
     }
   }
 
-  // The state before any branch has run. Each branch starts
-  // from it, and it stands in as the path that falls through
-  // every branch, where there is one. Each branch's state
-  // is kept to be joined.
-  // A guard that moves a value moves it on every path past its
-  // branch as well ("CarryGuardMoves"), so the state a branch
-  // starts from is the one the branches before it left.
+  // The state each branch starts from, and the path that falls
+  // through every branch, where there is one: the state before
+  // the "case", with the moves of the guards passed over carried
+  // on ("CarryGuardMoves"). Each branch's state is kept to be
+  // joined.
   const auto owners = drop_utils::OwnersAround(*sm->CurrentScope, meta);
   auto pre_analysis = memory_state::SnapshotSymbols(var_syms, *sm->CurrentScope);
   auto paths = Vec<Pair<CaseExpressionBranchAst*, memory_state::ScopeSnapshot>>();
@@ -389,32 +387,37 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
 
   // On the fall-through path, the subject holds whichever
   // members no branch matched.
-  const auto falls_through = coverage.FallsThrough;
   paths.emplace_back(nullptr, pre_analysis);
 
-  // A branch that never finishes leaves no state behind to
-  // agree with. Worked out once per branch, not per symbol:
-  // it infers the body's type.
+  // The paths out of the "case": each branch that finishes (one
+  // that diverges leaves no state behind to agree with; worked out
+  // once per branch, as it infers the body's type), is reachable
+  // (not after every value was matched), and is not an iterable
+  // loop's exit "else"; and the fall-through path, where there is
+  // one.
   auto diverging = Set<CaseExpressionBranchAst const*>();
   for (auto branch : branches) {
     if (branch->Body->Diverges(sm, meta)) { diverging.insert(branch); }
   }
-
-  // A branch diverges if it in the set of diverging case
-  // expression asts.
-  const auto diverges = [&](CaseExpressionBranchAst const *branch) {
-    return diverging.contains(branch);
-  };
-
-  // A branch after every value was matched, is never taken.
-  const auto reachable = [&](CaseExpressionBranchAst const *branch) {
-    const auto at = genex::position(branches, genex::operations::eq_fixed{branch});
-    return not at.has_value() or coverage.Reachable[*at];
+  auto const *const else_pattern = not branches.empty()
+    ? branches.back()->Patterns[0]->To<CasePatternVariantElseAst>()
+    : nullptr;
+  auto const *const loop_exit_else = else_pattern != nullptr and else_pattern->MarkedForIterLoopExit()
+    ? branches.back()
+    : nullptr;
+  auto leaving = Set<CaseExpressionBranchAst const*>();
+  for (auto const &[i, branch] : branches | genex::views::enumerate) {
+    if (not diverging.contains(branch) and coverage.Reachable[i] and branch != loop_exit_else) {
+      leaving.insert(branch);
+    }
+  }
+  const auto leaves = [&](CaseExpressionBranchAst const *branch) {
+    return branch == nullptr ? coverage.FallsThrough : leaving.contains(branch);
   };
 
   // The first branch that finishes is the path carried on.
   const auto non_terminating_branch = genex::find_if(
-    branches, [&](auto const &x) { return not diverges(x); });
+    branches, [&](auto const &x) { return not diverging.contains(x); });
 
   // A path is named by its branch, or by the "case" itself
   // where the branch was generated (a lowered "is" builds an
@@ -433,56 +436,43 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
     ? paths.at(static_cast<std::size_t>(genex::iterators::distance(branches.begin(), non_terminating_branch))).second
     : paths.back().second;
 
-  const auto has_else_branch = not branches.empty()
-    ? branches.back()->Patterns[0]->To<CasePatternVariantElseAst>()
-    : nullptr;
-  const auto skip_else = has_else_branch and has_else_branch->MarkedForIterLoopExit();
-
-  // The state after the "case" is every path's state out of
-  // it, joined: the branches that finish, and without an
-  // "else" (when no branch may run at all) the state the
-  // "case" was entered with (the null entry).
-  const auto leaves = [&](CaseExpressionBranchAst const *branch) {
-    return not((branch == nullptr and not falls_through) or (branch != nullptr and diverges(branch))
-      or (branch != nullptr and not reachable(branch))
-      or (skip_else and not branches.empty() and branch == branches.back()));
-  };
-  const auto state_on = [](memory_state::ScopeSnapshot const &path, VariableSymbol const &sym) {
-    return memory_state::StateIn(path, sym);
-  };
-  // A value of a scope around the "case" held on only some of the
-  // paths out is dropped on each path still holding it, at its end,
-  // so after the join it is held on none. A branch's own symbols
-  // exist only in that branch.
+  // What each path out drops at its end (the branch's, or the
+  // "case"'s for falling through).
   auto path_drops = Map<CaseExpressionBranchAst const*, Vec<drop_utils::OwnedValue>>();
-  for (auto sym : var_syms) {
-    auto states = Vec<Pair<memory_state::MemoryState, Ast*>>();
-    states.emplace_back(state_on(first_path, *sym), first_branch);
-    for (auto const &[branch_or_null, path] : paths) {
-      if (leaves(branch_or_null)) { states.emplace_back(state_on(path, *sym), path_of(branch_or_null)); }
-    }
-    auto joined = memory_state::JoinAll(std::move(states), *sym, *sm->CurrentScope);
+  const auto drop_on_each_path = [&](auto &&owned_on) {
     for (auto const &[branch_or_null, path] : paths) {
       if (not leaves(branch_or_null)) { continue; }
       auto const &end = branch_or_null != nullptr ? static_cast<Ast const&>(*branch_or_null) : *parent;
-      if (auto value = drop_utils::OwnedOnJoinPath(*sym, joined, state_on(path, *sym), owners, end, *sm, meta)) {
-        path_drops[branch_or_null].emplace_back(std::move(*value));
-      }
+      if (auto value = owned_on(path, end)) { path_drops[branch_or_null].emplace_back(std::move(*value)); }
     }
+  };
+
+  // The state after the "case" is every path's state out of it,
+  // joined. A value of a scope around the "case" held on only some
+  // of them is dropped on each path still holding it, so after the
+  // join it is held on none. A branch's own symbols exist only in
+  // that branch.
+  for (auto sym : var_syms) {
+    auto states = Vec<Pair<memory_state::MemoryState, Ast*>>();
+    states.emplace_back(memory_state::StateIn(first_path, *sym), first_branch);
+    for (auto const &[branch_or_null, path] : paths) {
+      if (leaves(branch_or_null)) { states.emplace_back(memory_state::StateIn(path, *sym), path_of(branch_or_null)); }
+    }
+    auto joined = memory_state::JoinAll(std::move(states), *sym, *sm->CurrentScope);
+    drop_on_each_path([&](memory_state::ScopeSnapshot const &path, Ast const &end) {
+      return drop_utils::OwnedOnJoinPath(*sym, joined, memory_state::StateIn(path, *sym), owners, end, *sm, meta);
+    });
     memory_state::StateOf(*sm->CurrentScope, *sym) = std::move(joined);
   }
+
   // The temporaries the condition made in the "case"'s own scope
   // ("a < f() < b") are held on every path out, and nothing after
   // the "case" names them: each path drops what it still holds.
   for (auto *const sym : sm->CurrentScope->GetOwners()) {
     if (sym->Kind != VariableKind::Temporary or sym->ExpiresWithStatement) { continue; }
-    for (auto const &[branch_or_null, path] : paths) {
-      if (not leaves(branch_or_null)) { continue; }
-      auto const &end = branch_or_null != nullptr ? static_cast<Ast const&>(*branch_or_null) : *parent;
-      if (auto value = drop_utils::OwnedOnPath(*sym, state_on(path, *sym), *sm->CurrentScope, end, *sm, meta)) {
-        path_drops[branch_or_null].emplace_back(std::move(*value));
-      }
-    }
+    drop_on_each_path([&](memory_state::ScopeSnapshot const &path, Ast const &end) {
+      return drop_utils::OwnedOnPath(*sym, memory_state::StateIn(path, *sym), *sm->CurrentScope, end, *sm, meta);
+    });
   }
   for (auto *const branch : branches) {
     auto drops = std::move(path_drops[branch]);
@@ -494,12 +484,9 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
 
   // The loans held after the "case", likewise.
   auto &loans = memory_state::LoansOf(*sm->CurrentScope);
-  const auto loans_on = [](memory_state::ScopeSnapshot const &path) { return path.Loans; };
-  loans = loans_on(first_path);
+  loans = first_path.Loans;
   for (auto const &[branch_or_null, path] : paths) {
-    if (leaves(branch_or_null)) {
-      memory_state::JoinLoans(loans, loans_on(path), first_branch, path_of(branch_or_null));
-    }
+    if (leaves(branch_or_null)) { memory_state::JoinLoans(loans, path.Loans, first_branch, path_of(branch_or_null)); }
   }
   return fall_through_drops;
 }
@@ -508,33 +495,11 @@ auto spp::analyse::utils::case_utils::ApplySubjectOnMatch(
   ScopeManager &sm,
   CompilerMetaData const &meta)
   -> void {
-  // "case x of" takes the symbol itself; "case x.inner of"
-  // takes one region of it, a partial move like any other.
-  const auto subject = meta.CaseSubject;
-  auto const *const cond = meta.CaseCondition;
-  if (subject == nullptr or cond == nullptr) { return; }
-  const auto whole = cond->To<IdentifierAst>() != nullptr;
-
-  // The patterns took it apart. A part they left unbound stays
-  // with the subject, which is left partly moved for its owner to
-  // drop the rest of.
-  if (meta.CaseSubjectOnMatch == SubjectOnMatch::kTake) {
-    const auto taken = regions::PlaceOf(*cond, *sm.CurrentScope);
-    if (taken.has_value() and not regions::FirstUnaccountedPart(*subject, *taken, sm).empty()) { return; }
-  }
-
-  // If we are moving an identifier part, then mark the state
-  // as "moved by", so it cannot be used until initialized
-  // again.
-  if (meta.CaseSubjectOnMatch == SubjectOnMatch::kTake and whole) {
-    memory_state::StateOf(*sm.CurrentScope, *subject).MovedBy(*cond);
-  }
-
-  // If we are moving a non-identifier part, then this is a
-  // partial move, so get its place, and mark the partial
-  // move.
-  else if (meta.CaseSubjectOnMatch == SubjectOnMatch::kTake) {
-    memory_state::StateOf(*sm.CurrentScope, *subject).PartMovedBy(regions::PlaceAtOf(*cond, *sm.CurrentScope));
-  }
-
+  // "case x of" takes the symbol itself; "case x.inner of" takes
+  // one region of it, a partial move like any other. A part the
+  // patterns left unbound stays with the subject, which is left
+  // partly moved for its owner to drop the rest of.
+  if (meta.CaseSubject == nullptr or meta.CaseCondition == nullptr) { return; }
+  if (meta.CaseSubjectOnMatch != SubjectOnMatch::kTake) { return; }
+  mem_utils::TakeApart(*meta.CaseSubject, *meta.CaseCondition, *meta.CaseCondition, true, sm);
 }
