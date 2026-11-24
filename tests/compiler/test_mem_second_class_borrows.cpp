@@ -49,7 +49,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 // Taking every non-copyable part off a value consumes it: nothing owned is left, just as after destructuring it.
 // Case patterns rely on this, as they record the parts they bind rather than consuming the subject.
-// FIXED (the test expected E94; moving the only field out is equivalent to the destructure below)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestMemSecondClassBorrows,
   test_valid_partial_move_of_every_part_out_of_a_consumed_self, R"(
