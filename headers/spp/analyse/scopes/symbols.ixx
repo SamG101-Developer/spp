@@ -439,35 +439,21 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// represents be re-assigned a new value.
   bool IsMutable = false;
 
-  /// Whether this is an "is" binding, which names its value only
-  /// to the end of the statement it is written in: the binding of
-  /// its name it displaced is put back there, and a scope read
-  /// outside a walk means that one, not this.
-  bool ExpiresWithStatement = false;
-
-  /// For an "is" binding, the binding of its name its scope held
-  /// when the walk now declared it, put back at the end of its
-  /// statement ("Scope::EndStatement"): none for a name its scope
-  /// did not hold, which then reads outwards again.
-  Shared<VariableSymbol> Displaced;
-
   /// For a "use" import, the symbol it names (its target). This
   /// is nullptr for anything not imported, and for an import
   /// before stage 3 - whose kind is "Import" until then.
   Shared<VariableSymbol> AliasSymbol;
 
-  /// For flow typing, store the variable that this symbol has
-  /// narrowed down from. If this is a variable of "Some[S32]",
-  /// the "NarrowsSymbol" might be the "Opt[S32]" type variable.
-  Shared<VariableSymbol> NarrowsSymbol;
-
-  /// A pattern's binding records the place it is read off ("let y =
-  /// o.val": "o", then "val"). Once an "is" exposes it, the binding is
-  /// a view of that part of the subject, owning nothing (its kind is
-  /// "FlowNarrowing"): "ViewRoot" is the owner and "ViewSteps" the
-  /// field path to the part, none for the whole (a part reached
-  /// through a variant's payload is taken with the whole). Moving the
-  /// binding moves that part out of "ViewRoot".
+  /// A view ("regions::IsView", its kind "FlowNarrowing"): a name for
+  /// a part of another value, owning nothing. "ViewRoot" is the value
+  /// and "ViewSteps" the path to the part: field names, and a variant
+  /// member's step ("type_members::VariantMemberStep") where it is
+  /// known to hold that member. A subject narrowed by a pattern is a
+  /// view of it, held as the member ("o.<Some[T]>"); an "is" binding
+  /// is a view of the place it was read off. A place rooted at a view
+  /// is that place in its owner ("regions::PlaceOf"), so reading or
+  /// moving through one reads or moves the owner's part. A pattern's
+  /// binding records its place here before an "is" makes it a view.
   VariableSymbol *ViewRoot = nullptr;
   Vec<spp::utils::InternedId> ViewSteps;
 

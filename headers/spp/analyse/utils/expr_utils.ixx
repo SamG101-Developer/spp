@@ -8,6 +8,7 @@ import sys;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
@@ -38,6 +39,14 @@ namespace spp::analyse::utils::expr_utils {
   SPP_EXP_FUN auto IsPrimaryExprTypeValid(
     ExpressionAst const &expr, ScopeManager const &sm,
     PrimaryExpressionOptions &&options = {}) -> bool;
+
+  /// What the condition "cond" binds where it is true, for what it leads
+  /// into to declare (an "and"'s right operand, a body): an "is"'s bindings
+  /// and the subject it narrows ("IsExpressionAst::Bound"), both operands'
+  /// of an "and", through parentheses. Nothing else's: an "or" is true where
+  /// either side may have failed to match, a "not" where it did not match.
+  SPP_EXP_FUN auto BoundWhenTrue(
+    ExpressionAst const &cond) -> Vec<Shared<VariableSymbol>>;
 
   /// Whether an expression names existing storage: a variable, or a field path
   /// off one ("t", "t.items"). Anything else ("g()", "x?") makes a new value.

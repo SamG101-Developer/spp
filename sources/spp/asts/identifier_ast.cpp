@@ -166,13 +166,6 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
     member_lookup::RaiseMissingIdentifierAndClosestOptions(*this, sm->CurrentScope->GetAllVarSymbols(), {});
   }
 
-  // A binding from an "is" read where the match is not known to
-  // have succeeded (after the statement, in an "else", on the
-  // right of an "or") names nothing there.
-  if (sym != nullptr and genex::contains(meta->ExpiredIsBindings, sym)) {
-    member_lookup::RaiseMissingIdentifierAndClosestOptions(*this, {}, {});
-  }
-
   // A pack, a function's or a comp one, is no value: it is named whole only
   // where it is spread, folded or forwarded ("AllowPackWhole"), and "(..xs)"
   // is its tuple.

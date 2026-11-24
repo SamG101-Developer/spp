@@ -33,7 +33,6 @@ MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, CompilerMetaData);
-use_alias(spp::asts::meta, IsBindingsScope);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
@@ -103,10 +102,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
     meta->ClosureRetJoin = nullptr;
     meta->EnclosingFnScope = sm->CurrentScope;
     meta->EnclosingFnCmp = TokCmp.get();
-    {
-      const auto _is_bindings = IsBindingsScope(meta);
-      Impl->Stage7_AnalyseSemantics(sm, meta);
-    }
+    Impl->Stage7_AnalyseSemantics(sm, meta);
 
     // Check for a void return type.
     const auto is_void = type_predicates::IsTypeVoid(

@@ -160,7 +160,6 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), nullptr);
   Ast::Stage2_GenTopLvlScopes(sm, meta);
 
-  const auto cond_declared_before = sm->CurrentScope->Declarations.size();
 
   // The condition is never what the "case" is assigned to, so it
   // does not see that target: a lowered "is" as the condition has
@@ -197,11 +196,9 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
     Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Cond, *cond_ty, "case"));
   }
 
-  // What an "is" in the condition binds only holds in the branch
-  // taken when it matched - the first, for the form without "of".
-  const auto cond_bindings = tests_condition_directly
-    ? sm->CurrentScope->IsBindingsSince(cond_declared_before)
-    : Vec<VariableSymbol*>();
+  // What a condition tested directly binds where it is true holds in
+  // the branch taken then: the first.
+  if (tests_condition_directly) { Branches[0]->Body->SetBoundOnEntry(expr_utils::BoundWhenTrue(*Cond)); }
 
   // What each branch drops at its end. A lowered "is" hands its
   // pattern's bindings on to the statement it is in instead.
@@ -215,8 +212,6 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
     if (ValueDiscarded) { expr_utils::MarkValueDiscarded(*branch->Body); }
   }
   for (auto const &branch : Branches) {
-    const auto expired_before = meta->ExpiredIsBindings.size();
-    if (branch != Branches[0]) { meta->ExpiredIsBindings.append_range(cond_bindings); }
     // Check the "else" branch is the last branch (also checks
     // there is only 1 "else" branch).
     RaiseIf<SppCaseBranchElseNotLastError>(
@@ -229,7 +224,6 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
       meta->CaseCondition = Cond.get();
       branch->Stage7_AnalyseSemantics(sm, meta);
     }
-    meta->ExpiredIsBindings.resize(expired_before);
   }
 
   // Enforce consistent branch type return values; either the

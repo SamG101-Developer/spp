@@ -158,6 +158,13 @@ public:
   /// ("drop_utils::TemporaryRegion", "EndStatement").
   Vec<VariableSymbol*> Declarations;
 
+  /// The scope of a logical operator's right operand, which runs on a
+  /// path of its own: an "and"'s holds what its left operand's "is"
+  /// bound (where the match is known to hold). It is part of the
+  /// condition around it, so it holds no temporaries of its own
+  /// ("TemporaryHome").
+  bool IsOperandScope = false;
+
   /// Whether this scope's super scopes have been attached: they
   /// are attached once. Not carried by a copy, as a clone is a
   /// scope of its own.
@@ -282,17 +289,16 @@ public:
   /// ("Reached").
   auto DeclareLetBinding(Shared<VariableSymbol> const &sym) -> void;
 
-  /// The "is" bindings ("VariableSymbol::ExpiresWithStatement")
-  /// declared here since "from" in "Declarations", each once.
-  SPP_ATTR_NODISCARD auto IsBindingsSince(std::size_t from) const -> Vec<VariableSymbol*>;
+  /// The scope a hidden temporary made here lives in: this one, or
+  /// the nearest around it that is not a logical operator's right
+  /// operand's ("IsOperandScope"), so the condition it is part of
+  /// ends it.
+  SPP_ATTR_NODISCARD auto TemporaryHome() -> Scope*;
 
-  /// The end of a statement that began at "from" in "Declarations":
-  /// each "is" binding declared here since gives its name back to the
-  /// binding it displaced ("VariableSymbol::Displaced"), or to the
-  /// scopes further out, the latest first, so a name taken twice
-  /// ends with its first holder. Returns those bindings, no longer
-  /// in force.
-  auto EndStatement(std::size_t from) -> Vec<VariableSymbol*>;
+  /// Declare bindings an "is" made where its match is known to hold,
+  /// on entering the scope that holds them (an "and"'s right operand,
+  /// the body a condition leads into), in every walk.
+  auto DeclareBoundWhenTrue(Vec<Shared<VariableSymbol>> const &bindings) -> void;
 
   /// Take every recorded "let" binding out of the table, for a
   /// walk entering the scope: each "let" declares its own again

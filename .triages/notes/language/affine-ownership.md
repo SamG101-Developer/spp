@@ -51,14 +51,22 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
 - **A pattern guard may move** an outer value (2026-11-24): the move holds on every path past its branch, so the no-match
   edge (where the guard never ran) drops it, and later branches see it held on none (E8). E114 is left only for a guard
   moving the branch's own non-borrow bindings, which are still parts of the subject.
-- **An `is` binding is a view** (2026-11-24): `o is Some(val as y)` binds `y` as a view of the part of `o` it names
-  (`VariableKind::FlowNarrowing`, `VariableSymbol::ViewRoot`/`ViewSteps`, recorded from the pattern binding's source
-  place). The subject's owner keeps owning it, so nothing drops an `is` binding; moving `y` moves that part out of `o`
-  (`mem_utils::ValidateSymbolMemory`), the whole of it through a variant's payload. A subject that is no place is held
-  by a hidden `$is` temporary to the statement's end. The lowered `case` never takes its subject. So there are no
-  statement-end drops of `is` bindings at all (the old `kIsBindings` / `_DropsConditionBindings` are gone), and a
-  name an `is` binding shadowed, from this scope or further out, is put back after the statement.
-  `case o is P { .. }` is not this: it is rewritten to `case o of { is P { .. } }`, whose bindings own as any branch's.
+- **Views** (2026-11-24): a name for a part of another value, owning nothing (`regions::IsView`:
+  `VariableKind::FlowNarrowing` with `VariableSymbol::ViewRoot`/`ViewSteps`). A subject a pattern narrows is a view of
+  it held as that member (`o.<Some[T]>`, a member step: `type_members::VariantMemberStep`); an `is` binding is a view
+  of the place it was read off (`o.<Some[T]>.val.a`). `regions::PlaceOf` resolves a place rooted at a view to the
+  owner's place, so every check and mark (`mem_utils::ValidateSymbolMemory` marks the owner) sees through it with no
+  forwarding: moving `y.a` partly moves `o` through its member, and `EmitDrop` hands paths under a member to that
+  member. Binding a view takes nothing (`LocalVariableSingleIdentifierAst::Stage8`). A path into a variant naming no
+  member uses the variant whole. `NarrowsSymbol`, its move/loan chains and the narrowed symbol's copied state are gone.
+- **`is` bindings are scoped where the match holds** (2026-11-24): an `is` declares nothing where it stands
+  (`IsExpressionAst::Bound`). A logical operator's right operand has a scope of its own (`Scope::IsOperandScope`); an
+  `and`'s declares what its left operand bound (`expr_utils::BoundWhenTrue`), as does the body of a loop, a guard's
+  branch and a boolean `case`'s first branch (`InnerScopeExpressionAst::SetBoundOnEntry`), in every walk. Nothing is
+  retracted: no statement end, no `or` or `else` hiding (the old `ExpiresWithStatement`, `ExpiredIsBindings`,
+  `EndStatement` are gone). A hidden temporary made in an operand scope lives in the condition around it
+  (`Scope::TemporaryHome`, `LocalVariableSingleIdentifierAst::DeclareIn`). `case o is P { .. }` is not this: it is
+  rewritten to `case o of { is P { .. } }`, whose bindings own as any branch's.
 - **A logical operator's right operand is a path of its own:** a move in it (`flag and take(x)`) is joined with the
   short circuit, which drops what it still holds. A hidden temporary it declares (`flag and mk() is Some(..)`'s `$is`)
   is ended at the operand's end and left out of the join, as the short circuit never made it. A chain of one operator

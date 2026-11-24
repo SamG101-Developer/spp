@@ -572,6 +572,19 @@ auto spp::analyse::utils::type_members::VariantMembers(
 }
 
 /// [CHECKED]
+auto spp::analyse::utils::type_members::VariantMemberStep(
+  TypeRef const &member) -> spp::utils::InternedId {
+  return spp::utils::Intern("<" + member.Symbol->AsBound()->FqName()->ToString() + ">");
+}
+
+auto spp::analyse::utils::type_members::VariantMemberAt(
+  TypeRef const &ref, const spp::utils::InternedId step, Scope const &scope) -> Opt<TypeRef> {
+  for (auto const &member : VariantMemberRefs(ref, scope)) {
+    if (member.Symbol != nullptr and VariantMemberStep(member) == step) { return member; }
+  }
+  return Nullopt;
+}
+
 auto spp::analyse::utils::type_members::VariantMemberRefs(
   TypeRef const &ref, Scope const &scope) -> Vec<TypeRef> {
   // Never types won't have variant members so guard against

@@ -23,16 +23,10 @@ binding declared in the scope. Until 2026-10-10 that was patched per-ast (`_Prev
   value is checked (Stage 8), and before use in comp-time and Stage 11. Unrecorded (before 2026-11-21) it sat in the
   scope from Stage 7, initialized, so every `ret` or `?` before `let (a, b) = mk()` raised E94 "Return reached with
   `$_dst_$N` still holding it" (under affine ownership it would drop an uninitialised slot instead).
-- An `is` binding (`VariableSymbol::ExpiresWithStatement`) lasts to the end of its statement only. When it takes a
-  name already held, `IsExpressionAst::_DeclareExposed` notes this scope's holder on the binding
-  (`VariableSymbol::Displaced`) in every walk, and `InnerScopeExpressionAst` ends each member with
-  `Scope::EndStatement`, which reads the `is` bindings the statement declared off `Scope::Declarations` and puts each
-  holder back, latest first; a name held further out (a parameter, the subject a flow-typed name narrows) has the
-  binding removed, so it reads outward and the scope adopts no owner. Stage 7 also marks them expired
-  (`meta->ExpiredIsBindings`), as an `or` and a `case`'s later branches do (`Scope::IsBindingsSince`). An `is`
-  binding owns nothing (a view, see [[affine-ownership]]), so a statement's end drops none. `RevealLetBindings` and
-  `_Binding` pass `is` bindings over for a name that has another binding. Before 2026-11-22 the `let` stayed displaced: it could not be named
-  afterwards (E26), and its value was never checked at scope end.
+- An `is` binding never shadows anything in the scope the `is` stands in: it is declared only in the scopes where its
+  match holds (an `and`'s right operand, the body a condition leads into; see [[affine-ownership]]), so a name means
+  what it did again once those scopes end. (Until 2026-11-24 it was declared where it stood and put back at the
+  statement's end, in every walk, which kept breaking.)
 - A displaced binding is still an owner. `Scope::Reached` lists the recorded bindings the walk has declared
   (cleared by `HideLetBindings`, filled by `RevealLetBindings`); every recorded binding goes into the table through
   `Scope::DeclareLetBinding`, which notes it. `Scope::GetOwners()` is the table, then the reached bindings it no

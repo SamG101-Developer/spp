@@ -6,6 +6,7 @@ module spp.asts.binary_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
@@ -43,6 +44,7 @@ import genex;
 import llvm;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeBlockName);
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
@@ -278,28 +280,29 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
     if (IsLogicalOperator()) {
       _NestChainRight();
 
-      // What an "is" on the left binds holds on the right of an
-      // "and" (the match succeeded), but not of an "or" - the right
-      // only runs when it failed.
-      const auto declared_before = sm->CurrentScope->Declarations.size();
-      Lhs->Stage7_AnalyseSemantics(sm, meta);
-      if (TokOp->TokenType == lex::SppTokenType::KW_OR) {
-        meta->ExpiredIsBindings.append_range(sm->CurrentScope->IsBindingsSince(declared_before));
-      }
-      Rhs->Stage7_AnalyseSemantics(sm, meta);
-
-      const auto what = Str("\"") + TokOp->TokenData + "\" expression";
       // An owned "Bool" each (a borrow is not one); the type is only spelled out for the error.
       // Held, not passed through: the error's arguments are bound as references, and these types are nobody
       // else's - the temporary they came back in would be gone before the error was built.
+      const auto what = Str("\"") + TokOp->TokenData + "\" expression";
+      Lhs->Stage7_AnalyseSemantics(sm, meta);
       if (not type_predicates::IsTypeBool(Lhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
         const auto lhs_ty = Lhs->InferType(sm, meta);
         Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Lhs, *lhs_ty, what));
       }
+
+      // The right operand runs on a path of its own, in a scope of
+      // its own: where an "and"'s left operand is true, what it bound
+      // holds there; an "or"'s runs where it was false.
+      auto scope_name = ScopeBlockName::FromParts("logical-rhs", {}, Rhs->PosStart());
+      sm->CreateAndMoveIntoNewScope(std::move(scope_name), nullptr);
+      sm->CurrentScope->IsOperandScope = true;
+      _DeclareLhsBound(*sm);
+      Rhs->Stage7_AnalyseSemantics(sm, meta);
       if (not type_predicates::IsTypeBool(Rhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
         const auto rhs_ty = Rhs->InferType(sm, meta);
         Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Rhs, *rhs_ty, what));
       }
+      sm->MoveOutOfCurrentScope();
 
       _LogicalAnalysed = true;
       return;
@@ -309,6 +312,12 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
     _MappedFn = operator_desugaring::ConvertBinExprToFnCall(*this, sm, meta);
     _MappedFn->Stage7_AnalyseSemantics(sm, meta);
   }
+}
+
+auto spp::asts::BinaryExpressionAst::_DeclareLhsBound(
+  ScopeManager &sm) const -> void {
+  if (TokOp->TokenType != lex::SppTokenType::KW_AND) { return; }
+  sm.CurrentScope->DeclareBoundWhenTrue(analyse::utils::expr_utils::BoundWhenTrue(*Lhs));
 }
 
 auto spp::asts::BinaryExpressionAst::MarkCondition(
@@ -361,9 +370,12 @@ auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
     if (held_when_true) { MarkCondition(*Rhs); }
 
     const auto short_circuit = memory_state::SnapshotFlow(*sm->CurrentScope);
-    const auto rhs_region = drop_utils::TemporaryRegion(*sm->CurrentScope);
+    const auto rhs_region = drop_utils::TemporaryRegion(*sm->CurrentScope->TemporaryHome());
+    sm->MoveToNextScope();
+    _DeclareLhsBound(*sm);
     Rhs->Stage8_CheckMemory(sm, meta);
     mem_utils::ValidateSymbolMemory(*Rhs, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
+    sm->MoveOutOfCurrentScope();
 
     // A temporary the right operand declared was never made on the
     // short-circuit path, so the join never sees it. It ends with the
@@ -491,21 +503,25 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   // its value being a "Bool" that borrows none of them.
   ctx->Builder.SetInsertPoint(rhs_bb);
   const auto temporaries = codegen::TemporaryDepth(ctx);
+  sm->MoveToNextScope();
+  _DeclareLhsBound(*sm);
   const auto llvm_rhs = Rhs->Stage11_CodeGen(sm, meta, ctx);
+  sm->MoveOutOfCurrentScope();
   SPP_ASSERT(llvm_rhs->getType()->isIntegerTy(1));
+  auto &home = *sm->CurrentScope->TemporaryHome();
   if (_HeldWhenTrue.empty()) {
-    codegen::EndTemporaryRegion(temporaries, *sm->CurrentScope, _DropsRhsTemporaries, Rhs.get(), sm, meta, ctx);
+    codegen::EndTemporaryRegion(temporaries, home, _DropsRhsTemporaries, Rhs.get(), sm, meta, ctx);
   }
   else {
     // Held where the "and" is true: dropped on the right operand's
     // false edge only.
-    codegen::EndTemporaryRegion(temporaries, *sm->CurrentScope, {}, Rhs.get(), sm, meta, ctx);
+    codegen::EndTemporaryRegion(temporaries, home, {}, Rhs.get(), sm, meta, ctx);
     if (not _DropsRhsTemporaries.empty() and not ctx->Builder.GetInsertBlock()->hasTerminator()) {
       const auto false_bb = llvm::BasicBlock::Create(*ctx->Context, "logical.rhs_false" + uid, func);
       const auto done_bb = llvm::BasicBlock::Create(*ctx->Context, "logical.rhs_done" + uid, func);
       ctx->Builder.CreateCondBr(llvm_rhs, done_bb, false_bb);
       ctx->Builder.SetInsertPoint(false_bb);
-      codegen::EmitOwnedDrops(*sm->CurrentScope, _DropsRhsTemporaries, Rhs.get(), sm, meta, ctx);
+      codegen::EmitOwnedDrops(home, _DropsRhsTemporaries, Rhs.get(), sm, meta, ctx);
       ctx->Builder.CreateBr(done_bb);
       ctx->Builder.SetInsertPoint(done_bb);
     }
@@ -536,8 +552,15 @@ auto spp::asts::BinaryExpressionAst::EvaluateCompTime(
   if (IsLogicalOperator()) {
     Lhs->EvaluateCompTime(sm, meta);
     const auto lhs_is_true = meta->CompTimeResult->As<BooleanLiteralAst>()->IsTrue();
-    if (lhs_is_true != (TokOp->TokenType == lex::SppTokenType::KW_AND)) { return; }
-    Rhs->EvaluateCompTime(sm, meta);
+    sm->MoveToNextScope();
+    if (lhs_is_true != (TokOp->TokenType == lex::SppTokenType::KW_AND)) {
+      ignore = sm->SkipSubtree(sm->CurrentScope);
+    }
+    else {
+      _DeclareLhsBound(*sm);
+      Rhs->EvaluateCompTime(sm, meta);
+    }
+    sm->MoveOutOfCurrentScope();
     return;
   }
 

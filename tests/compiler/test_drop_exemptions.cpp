@@ -1,8 +1,9 @@
 #include "test_macros.hpp"
 
-// Implicit drops are only as good as the set of things they deliberately do not apply to. Each of these exemptions was
-// added for a specific reason, and each one is a silent hole if it ever widens - so they are pinned here alongside a
-// case that is still dropped, to catch an exemption that has started swallowing too much.
+// Implicit drops are only as good as the set of things they deliberately do not apply to. Each exemption here was added
+// for a specific reason, and these tests pin that its cases still compile. A missing drop is no compile error, so they
+// cannot see an exemption widening: where that can be observed, a run-time case in "tests/codegen/check-drops.sh"
+// does (the "&mut"-capturing closure's). An "!intrinsic" or "!abstract_method" body runs nothing to observe.
 
 // A function whose body is not written in S++ has no body that could have consumed its parameters.
 SPP_TEST_SHOULD_PASS_SEMANTIC(

@@ -101,7 +101,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
   auto sym = MakeShared<VariableSymbol>(
     sym_name,
     meta->LetStatementExplicitType != nullptr ? meta->LetStatementExplicitType : val_type,
-    sm->CurrentScope,
+    _Home(sm),
     sym_name->Val.starts_with("$") ? VariableKind::Temporary : VariableKind::Local,
     TokMut != nullptr or (Conv and *Conv == ConventionTag::MUT));
 
@@ -140,8 +140,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
   // it again here, rather than finding whichever binding
   // of the name the scope declared last (shadowing issues).
   _Symbol = sym;
-  sm->CurrentScope->RecordLetBinding(sym);
-  sm->CurrentScope->DeclareLetBinding(sym);
+  _Home(sm)->RecordLetBinding(sym);
+  _Home(sm)->DeclareLetBinding(sym);
 }
 
 auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
@@ -164,14 +164,16 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
     meta->LetStatementValue->Stage8_CheckMemory(sm, meta);
   }
 
-  const auto borrows = Conv != nullptr;
+  // An "is" binding is a view of the part it is read off (its owner keeps it, "regions::IsView"): binding it takes
+  // nothing, so the part only has to be there to read.
+  const auto takes = Conv == nullptr and not regions::IsView(*_Symbol);
   mem_utils::ValidateSymbolMemory(
     *meta->LetStatementValue, *this, *sm, meta,
-    {.CheckMove = not borrows, .CheckMoveFromBorrowedCtx = not borrows, .MarkMoves = not borrows});
+    {.CheckMove = takes, .CheckMoveFromBorrowedCtx = takes, .MarkMoves = takes});
 
   // A holder moved in whole by name hands its loans to this binding (a borrow a generator yielded, moved on). Found
   // before this binding is declared, which may shadow it.
-  auto const *const moved_from = not borrows and meta->LetStatementValue->To<IdentifierAst>() != nullptr
+  auto const *const moved_from = takes and meta->LetStatementValue->To<IdentifierAst>() != nullptr
     ? sm->CurrentScope->FindVarSymbolOutermost(*meta->LetStatementValue).first
     : nullptr;
 
@@ -300,26 +302,31 @@ auto spp::asts::LocalVariableSingleIdentifierAst::EvaluateCompTime(
   }
 }
 
+auto spp::asts::LocalVariableSingleIdentifierAst::_Home(
+  ScopeManager const *sm) const -> Scope* {
+  return DeclareIn != nullptr ? DeclareIn : sm->CurrentScope;
+}
+
 auto spp::asts::LocalVariableSingleIdentifierAst::_Own(
   ScopeManager const *sm) const -> VariableSymbol* {
   // A binding only ever analysed as a clone of another has no symbol of its own; the one its name finds is it.
   if (_Symbol != nullptr) { return _Symbol.get(); }
-  return sm->CurrentScope->FindVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
+  return _Home(sm)->FindVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
 }
 
 auto spp::asts::LocalVariableSingleIdentifierAst::_Binding(
   ScopeManager const *sm) const -> VariableSymbol* {
   // A clone walked over its original's scope has no symbol of its own, and its binding is hidden until declared: it is
   // the one its original recorded there, the first of its name not already visible (the next, for a "let" shadowing
-  // another of its name in the same scope). An "is" binding of the name is no "let"'s, so it is passed over.
+  // another of its name in the same scope).
   if (_Symbol != nullptr) { return _Symbol.get(); }
-  auto const &scope = *sm->CurrentScope;
+  auto const &scope = *_Home(sm);
   auto const *const name = Alias != nullptr ? Alias->Name.get() : Name.get();
   auto const *const visible = scope.FindVarSymbol(name, true);
   auto past_visible = visible == nullptr;
   for (auto const &recorded : scope.LetBindings) {
     if (recorded->Name->NameId() != name->NameId()) { continue; }
-    if (past_visible and not recorded->ExpiresWithStatement) { return recorded.get(); }
+    if (past_visible) { return recorded.get(); }
     past_visible = recorded.get() == visible;
   }
   return _Own(sm);
@@ -330,7 +337,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::_Declare(
   // Put this binding back under its name, from here on in the scope.
   auto *const sym = _Binding(sm);
   if (sym != nullptr) {
-    sm->CurrentScope->DeclareLetBinding(sym->SharedFromThis<VariableSymbol>());
+    _Home(sm)->DeclareLetBinding(sym->SharedFromThis<VariableSymbol>());
   }
   return sym;
 }

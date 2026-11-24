@@ -232,14 +232,4 @@ spp::asts::meta::MetaGuard::~MetaGuard() {
   _Meta->Restore(_Heavy);
 }
 
-spp::asts::meta::IsBindingsScope::IsBindingsScope(
-  CompilerMetaData *const meta) :
-  _Meta(meta),
-  _Expired(meta->ExpiredIsBindings.size()) {
-}
-
-spp::asts::meta::IsBindingsScope::~IsBindingsScope() {
-  _Meta->ExpiredIsBindings.resize(_Expired);
-}
-
 SPP_MOD_END

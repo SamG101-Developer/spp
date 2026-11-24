@@ -47,7 +47,6 @@ MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, CompilerMetaData);
-use_alias(spp::asts::meta, IsBindingsScope);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
@@ -180,10 +179,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
 
     // Analyse the semantics of the function body, and move
     // out the scope.
-    {
-      const auto _is_bindings = IsBindingsScope(meta);
-      Impl->Stage7_AnalyseSemantics(sm, meta);
-    }
+    Impl->Stage7_AnalyseSemantics(sm, meta);
     sm->MoveOutOfCurrentScope();
   }
   meta->LoopJoins.clear();

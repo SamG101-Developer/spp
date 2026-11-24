@@ -162,6 +162,14 @@ cls Both { }
 sup Both ext BaseB { }
 sup Both ext BaseC { }
 
+# A closure capturing by mutable borrow is dropped at its scope's end like any other value (it was once exempt): what
+# it also captured by value is dropped with it.
+fun mut_capture_scope_end() -> Void {
+    let mut m = 0_u64
+    let f = Noisy(n=12_u64)
+    let c7 = |y: U64 caps &mut m, f| y
+}
+
 fun main() -> Void {
     std::console::println("closure dropped uncalled")
     let a = Noisy(n=1_u64)
@@ -184,6 +192,9 @@ fun main() -> Void {
     let c4 = |caps &e| -> U64 { 7_u64 }
     std::mem::ops::drop(c4)
     std::mem::ops::drop(e)
+
+    std::console::println("mutable-borrow capture, dropped at its scope's end")
+    mut_capture_scope_end()
 
     std::console::println("copied capture")
     let k = 9_u64
@@ -329,6 +340,8 @@ closure called, its body consumes
 dropped 4
 borrowed capture
 dropped 5
+mutable-borrow capture, dropped at its scope's end
+dropped 12
 copied capture
 captured vector, dropped uncalled
 dropped 8
@@ -696,6 +709,20 @@ sup Guarded2 ext std::ops::drop::Drop {
 
 fun look(x: &Noisy) -> Void { }
 
+# A destructor of its own: at its end "self" is dropped field by field, so the field's container needs its destructor
+# though nothing else in the program drops a "Vec[Guarded2]".
+cls HoldsVec { !public v: Vec[Guarded2] }
+
+sup HoldsVec ext std::ops::drop::Drop {
+    fun drop(self) -> Void { std::console::println("HoldsVec.drop") }
+}
+
+fun container_in_own_drop() -> Void {
+    let mut v = Vec[Guarded2]::new()
+    v.append(Guarded2(a=Noisy(n=800_u64)))
+    let h = HoldsVec(v=v)
+}
+
 fun borrowed_field_of_temporary() -> Void {
     look(&Guarded2(a=Noisy(n=730_u64)).a)
     std::console::println("after borrow")
@@ -856,6 +883,8 @@ fun main() -> Void {
     is_on_the_right_read_in_a_case_branch(false, 791_u64)
     is_on_the_right_read_in_a_case_branch(true, 790_u64)
     is_on_the_right_read_in_a_case_branch(true, 792_u64)
+    std::console::println("a container field of a type with its own drop")
+    container_in_own_drop()
     std::console::println("is in a guard, its temporary on each edge")
     guard_temporary(770_u64)
     guard_temporary(771_u64)
@@ -1041,6 +1070,10 @@ dropped 790
 case false
 case true
 dropped 792
+a container field of a type with its own drop
+HoldsVec.drop
+Guarded2.drop
+dropped 800
 is in a guard, its temporary on each edge
 dropped 770
 guard false

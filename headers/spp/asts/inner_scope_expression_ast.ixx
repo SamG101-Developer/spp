@@ -16,6 +16,7 @@ use_common(InnerScopeExpressionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct VariableSymbol);
 
 use_alias(spp::asts, Ast);
 
@@ -75,6 +76,12 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
 
   SPP_ATTR_NODISCARD auto FinalMember() const -> Ast*;
 
+  /// What the condition leading into this block bound where it is
+  /// true ("expr_utils::BoundWhenTrue"): a loop's, a guard's, a
+  /// boolean "case"'s. Set by it in Stage 7; the block declares them
+  /// on entering its scope, in every walk.
+  auto SetBoundOnEntry(Vec<Shared<VariableSymbol>> bound) -> void;
+
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
   /// Member "i" makes a temporary whose value goes nowhere: it is
@@ -90,6 +97,9 @@ protected:
   /// dropped there ("drop_utils::TemporaryRegion"), one entry per
   /// member.
   Vec<Vec<analyse::utils::drop_utils::OwnedValue>> _StatementDrops;
+
+  /// See "SetBoundOnEntry".
+  Vec<Shared<VariableSymbol>> _BoundOnEntry;
 
   /// Per member, whether its value is a temporary dropped once made.
   Vec<bool> _DropsDiscarded;

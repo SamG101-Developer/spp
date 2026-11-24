@@ -290,8 +290,8 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
 }
 
 auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
-  TypeRef const &type, ScopeManager &sm,
-  CompilerMetaData *meta) -> void {
+  TypeRef const &type, ScopeManager &sm, CompilerMetaData *meta,
+  Vec<Vec<spp::utils::InternedId>> const &taken_apart) -> void {
   //
   auto seen = Set<TypeSymbol const*>();
 
@@ -333,8 +333,19 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
     }
   };
 
-  // Recursive drop search.
-  walk(walk, type);
+  // Recursive drop search. A place taken apart is destroyed part by
+  // part, its own destructor not run, so its parts are searched
+  // (and, a part further in being taken apart too, theirs).
+  const auto apart = [&](auto const &self, TypeRef const &ref, Vec<spp::utils::InternedId> &path) -> void {
+    if (not genex::contains(taken_apart, path)) { walk(walk, ref); return; }
+    for (auto const &part : type_members::GetAllParts(ref, *sm.CurrentScope, true)) {
+      path.emplace_back(part.Step->NameId());
+      self(self, part.Ref, path);
+      path.pop_back();
+    }
+  };
+  auto path = Vec<spp::utils::InternedId>();
+  apart(apart, type, path);
 }
 
 auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
@@ -468,7 +479,7 @@ auto spp::analyse::utils::drop_utils::OwnedOnPath(
 
   // Nothing written calls this drop, so its destructor may never have been instantiated, and destroying it without
   // one would go field by field: a "Vec" frees its buffer without dropping the elements in it.
-  EnsureDropInstantiated(ref, sm, meta);
+  EnsureDropInstantiated(ref, sm, meta, taken_apart);
   return OwnedValue{
     .Name = sym.Name, .Moved = std::move(*moved), .DeclaredAt = sym.Name->PosStart(),
     .TakenApart = std::move(taken_apart)};
@@ -716,8 +727,9 @@ auto spp::analyse::utils::drop_utils::OwnedBeforeWrite(
   // What a destructure took apart in it is dropped field by field.
   auto moved = MovedPathsUnder(state.PartialMoves, place->Steps);
   if (not moved.has_value()) { return Nullopt; }
-  EnsureDropInstantiated(ref, sm, meta);
-  return OwnedValue{.Moved = std::move(*moved), .TakenApart = TakenApartPathsUnder(state.TakenApart, place->Steps)};
+  auto taken_apart = TakenApartPathsUnder(state.TakenApart, place->Steps);
+  EnsureDropInstantiated(ref, sm, meta, taken_apart);
+  return OwnedValue{.Moved = std::move(*moved), .TakenApart = std::move(taken_apart)};
 }
 
 auto spp::analyse::utils::drop_utils::FieldReadOffTemporary(

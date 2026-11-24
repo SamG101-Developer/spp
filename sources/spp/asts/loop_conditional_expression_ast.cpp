@@ -134,7 +134,9 @@ auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     // code generation already treats it.
     meta->ClearAssignmentTarget();
 
+    // What the condition bound where it is true holds in the body.
     expr_utils::MarkValueDiscarded(*Body);
+    Body->SetBoundOnEntry(expr_utils::BoundWhenTrue(*Cond));
     Body->Stage7_AnalyseSemantics(sm, meta);
   }
 

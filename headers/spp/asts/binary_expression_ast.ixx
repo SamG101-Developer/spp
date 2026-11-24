@@ -144,6 +144,10 @@ private:
   /// c" as "a and (b and c)").
   auto _NestChainRight() -> void;
 
+  /// On entering an "and"'s right operand's scope, in every walk,
+  /// declare what its left operand bound where it is true.
+  auto _DeclareLhsBound(ScopeManager &sm) const -> void;
+
   /// Stage 8 for a logical operator: join the state the left operand
   /// left ("short_circuit") with the right operand's, filling the two
   /// drop lists above.

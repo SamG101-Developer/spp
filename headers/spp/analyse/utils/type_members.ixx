@@ -5,6 +5,7 @@ export module spp.analyse.utils.type_members;
 import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
+import spp.utils.interner;
 import spp.utils.ptr;
 import spp.utils.types;
 import std;
@@ -198,4 +199,16 @@ namespace spp::analyse::utils::type_members {
   /// reader that needs the members' symbols, not their names, asks.
   SPP_EXP_FUN auto VariantMemberRefs(
     TypeRef const &ref, Scope const &scope) -> Vec<TypeRef>;
+
+  /// A step of a place into a variant, as one of its members (what
+  /// an "is" narrowed it to): "o.<Some[Pair]>.val" is the payload
+  /// of "o", held as "Some[Pair]". Valid only where the variant is
+  /// known to hold that member.
+  SPP_EXP_FUN auto VariantMemberStep(
+    TypeRef const &member) -> spp::utils::InternedId;
+
+  /// The member of the variant "ref" that "step" names
+  /// ("VariantMemberStep"), if it names one.
+  SPP_EXP_FUN auto VariantMemberAt(
+    TypeRef const &ref, spp::utils::InternedId step, Scope const &scope) -> Opt<TypeRef>;
 }

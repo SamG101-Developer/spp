@@ -191,11 +191,13 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
     _FlowSymbol = MakeShared<VariableSymbol>(*_CondSymbol);
     _FlowSymbol->LlvmInfo = _CondSymbol->LlvmInfo;
 
-    // What this narrows, so that moving through the
-    // narrowed name moves the value itself.
-    _FlowSymbol->NarrowsSymbol = _CondSymbol;
+    // A view of the subject, held as the member it narrows to
+    // ("regions::IsView", "o.<Some[T]>"): using the narrowed name
+    // uses that part of the subject, which keeps owning it.
     _FlowSymbol->Type = Type;
     _FlowSymbol->Kind = VariableKind::FlowNarrowing;
+    _FlowSymbol->ViewRoot = _CondSymbol.get();
+    _FlowSymbol->ViewSteps = {type_members::VariantMemberStep(TypeRef::Of(*Type, *sm->CurrentScope))};
 
     if (Type->GetConvention() != nullptr) { _FlowSymbol->MemInfo->AstBorrowed = Type.get(); }
     _DeclareFlowSymbol(*sm);
@@ -207,13 +209,6 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
 auto spp::asts::CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
-
-  // Snapshot the case condition memory info into the
-  // flow symbol.
-  if (_FlowSymbol != nullptr and _CondSymbol != nullptr) {
-    auto cond_state = memory_state::StateOf(*sm->CurrentScope, *_CondSymbol);
-    memory_state::StateOf(*sm->CurrentScope, *_FlowSymbol) = std::move(cond_state);
-  }
 
   // The narrowed subject is declared here, before the
   // bindings (which may reuse its name: "is Some(val)"

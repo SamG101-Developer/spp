@@ -231,9 +231,13 @@ namespace spp::analyse::utils::drop_utils {
   /// reached it yet when needed. Banning recursive types in
   /// semantic analysis means we will never get a cycle here
   /// either.
+  /// The places in "taken_apart" (paths of field names, the empty
+  /// path the value itself: "OwnedValue::TakenApart") are destroyed
+  /// field by field without their type's own "drop", so it is their
+  /// parts' destructors that have to exist.
   SPP_EXP_FUN auto EnsureDropInstantiated(
-    TypeRef const &type, ScopeManager &sm,
-    CompilerMetaData *meta) -> void;
+    TypeRef const &type, ScopeManager &sm, CompilerMetaData *meta,
+    Vec<Vec<spp::utils::InternedId>> const &taken_apart = {}) -> void;
 
   /// The field read ending "expr" when "expr" is a chain of field reads
   /// that starts at a temporary ("mk().a", "mk().a.b"), or none. The

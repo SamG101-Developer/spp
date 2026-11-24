@@ -29,7 +29,6 @@ use(spp::asts::meta, struct CompilerMetaData);
 use(spp::asts::meta, struct CompilerMetaDataState);
 use(spp::asts::meta, struct CompTimeCallArgs);
 use(spp::asts::meta, struct LlvmLoopInfo);
-use(spp::asts::meta, struct IsBindingsScope);
 use(spp::asts::meta, struct MetaGuard);
 use(spp::codegen, struct LlvmCtx);
 
@@ -185,16 +184,6 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// calls that leave it out, so it cannot name a parameter.
   Scope const *ParameterDefaultScope = nullptr;
 
-  /// "is" bindings no longer in force: an identifier resolving to
-  /// one is reported as unknown. An "is" binding only exists where
-  /// the match is known to have succeeded (on the right of an
-  /// "and", in the branch it conditions), so its statement's end,
-  /// an "or" and a "case"'s other branches add it here
-  /// ("Scope::IsBindingsSince"). They stay in their scope, as later
-  /// stages still find them by name for the code that could use
-  /// them. Not restored by "MetaGuard": a function body bounds it
-  /// ("IsBindingsScope").
-  Vec<VariableSymbol*> ExpiredIsBindings;
 
   /// The actual "current scope" of the program, which has been
   /// hidden by the isolated closure scope being set to the
@@ -470,20 +459,4 @@ private:
 
   /// Whether to restore the "heavy" fields too.
   bool _Heavy;
-};
-
-/// Bounds "ExpiredIsBindings" to a function body: no "is" binding
-/// outlives the function it is written in. It is cut back to its
-/// length at construction when this is destroyed - on an error too,
-/// so a body abandoned midway leaves nothing behind.
-SPP_EXP_CLS struct spp::asts::meta::IsBindingsScope {
-  explicit IsBindingsScope(CompilerMetaData *meta);
-  ~IsBindingsScope();
-
-  IsBindingsScope(IsBindingsScope const &) = delete;
-  auto operator=(IsBindingsScope const &) -> IsBindingsScope& = delete;
-
-private:
-  CompilerMetaData *_Meta;
-  std::size_t _Expired;
 };

@@ -1187,24 +1187,18 @@ auto spp::analyse::scopes::Scope::DeclareLetBinding(Shared<VariableSymbol> const
   Declarations.emplace_back(sym.get());
 }
 
-auto spp::analyse::scopes::Scope::IsBindingsSince(
-  const std::size_t from) const -> Vec<VariableSymbol*> {
-  auto bindings = Vec<VariableSymbol*>();
-  for (auto *const sym : Declarations | genex::views::drop(std::min(from, Declarations.size()))) {
-    if (sym->ExpiresWithStatement and not genex::contains(bindings, sym)) { bindings.emplace_back(sym); }
-  }
-  return bindings;
+auto spp::analyse::scopes::Scope::TemporaryHome() -> Scope* {
+  auto *home = this;
+  while (home->IsOperandScope and home->Parent != nullptr) { home = home->Parent; }
+  return home;
 }
 
-auto spp::analyse::scopes::Scope::EndStatement(
-  const std::size_t from) -> Vec<VariableSymbol*> {
-  auto bindings = IsBindingsSince(from);
-  for (auto *const binding : bindings | genex::views::reverse) {
-    if (FindVarSymbol(binding->Name.get(), true) != binding) { continue; }
-    if (binding->Displaced != nullptr) { AddVarSymbol(binding->Displaced); }
-    else { ignore = InternalTable.VarTable.Rem(binding->Name.get()); }
+auto spp::analyse::scopes::Scope::DeclareBoundWhenTrue(
+  Vec<Shared<VariableSymbol>> const &bindings) -> void {
+  for (auto const &binding : bindings) {
+    RecordLetBinding(binding);
+    DeclareLetBinding(binding);
   }
-  return bindings;
 }
 
 /// [CHECKED]
@@ -1227,21 +1221,16 @@ auto spp::analyse::scopes::Scope::RevealLetBindings() -> void {
   // the last binding is put back, earlier ones of the same
   // name are skipped). A name is free when it is empty or held
   // by one of this scope's own bindings: a walk that left
-  // between two shadows of it filed the earlier one. An "is"
-  // binding is over by its statement's end, so it is put back
-  // only for a name no other binding has.
+  // between two shadows of it filed the earlier one.
   const auto own = [this](VariableSymbol const *held) {
     return genex::any_of(LetBindings, [held](auto const &b) { return b.get() == held; });
   };
   Reached = LetBindings | genex::views::transform([](auto const &b) { return b.get(); }) | genex::to<Vec>();
   auto placed = Set<spp::utils::InternedId>();
-  for (const auto expiring : {false, true}) {
-    for (auto const &sym : LetBindings | genex::views::reverse) {
-      if (sym->ExpiresWithStatement != expiring) { continue; }
-      if (not placed.insert(sym->Name->NameId()).second) { continue; }
-      if (const auto held = InternalTable.VarTable.Find(sym->Name.get()); held == nullptr or own(held)) {
-        InternalTable.VarTable.Add(sym->Name.get(), sym);
-      }
+  for (auto const &sym : LetBindings | genex::views::reverse) {
+    if (not placed.insert(sym->Name->NameId()).second) { continue; }
+    if (const auto held = InternalTable.VarTable.Find(sym->Name.get()); held == nullptr or own(held)) {
+      InternalTable.VarTable.Add(sym->Name.get(), sym);
     }
   }
 }

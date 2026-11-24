@@ -14,6 +14,7 @@ import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
+import spp.asts.binary_expression_ast;
 import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.expression_ast;
@@ -24,9 +25,11 @@ import spp.asts.function_call_argument_positional_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
+import spp.asts.is_expression_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.parenthesised_expression_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
@@ -36,6 +39,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.lexer;
+import spp.lex.tokens;
 import spp.parse.parser_spp;
 import spp.utils.ice;
 import spp.utils.uid;
@@ -98,6 +102,19 @@ auto spp::analyse::utils::expr_utils::ExpandTupleSpread(
   return spread;
 }
 
+auto spp::analyse::utils::expr_utils::BoundWhenTrue(
+  ExpressionAst const &cond) -> Vec<Shared<VariableSymbol>> {
+  if (auto const *const is_expr = cond.To<asts::IsExpressionAst>(); is_expr != nullptr) { return is_expr->Bound(); }
+  if (auto const *const paren = cond.To<asts::ParenthesisedExpressionAst>(); paren != nullptr) {
+    return BoundWhenTrue(*paren->Expr);
+  }
+  auto const *const binary = cond.To<asts::BinaryExpressionAst>();
+  if (binary == nullptr or binary->TokOp->TokenType != lex::SppTokenType::KW_AND) { return {}; }
+  auto bound = BoundWhenTrue(*binary->Lhs);
+  bound.append_range(BoundWhenTrue(*binary->Rhs));
+  return bound;
+}
+
 auto spp::analyse::utils::expr_utils::IsPlace(
   ExpressionAst const &value, Scope const &scope) -> bool {
   return scope.FindVarSymbolOutermost(value).first != nullptr;
@@ -108,7 +125,9 @@ auto spp::analyse::utils::expr_utils::HoistOnce(
   -> Hoisted {
   if (IsPlace(value, *sm->CurrentScope)) { return {}; }
   auto name = MakeShared<asts::IdentifierAst>(value.PosStart(), Str(uid_prefix) + "." + spp::utils::Uid());
+  // Held by the condition around an "and"'s right operand, if it is made in one ("Scope::TemporaryHome").
   auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(nullptr, name, nullptr);
+  var->DeclareIn = sm->CurrentScope->TemporaryHome();
   auto let = MakeUnique<asts::LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, AstClone(&value));
   if (analyse) { let->Stage7_AnalyseSemantics(sm, meta); }
   return {.Let = std::move(let), .Name = std::move(name)};

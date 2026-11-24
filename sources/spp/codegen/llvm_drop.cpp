@@ -117,10 +117,9 @@ auto spp::codegen::EmitDrop(
   }
 
   // A variant holds one member at a time, behind its tag, so the payload is destroyed as whichever member the
-  // tag names; a member that owns nothing goes straight to the end. It has no parts to take out one by one, so
-  // it is only ever moved out whole, which returned above.
+  // tag names; a member that owns nothing goes straight to the end. A part moved out of it was moved through the
+  // member it held there ("type_members::VariantMemberStep"), so the paths under a member go to that member.
   if (IsTypeVariant(type, *sm->CurrentScope)) {
-    if (not moved.empty()) { spp::Ice("a variant is destroyed with a part missing"); }
     const auto variant_ty = GetLlvmTypeOf(type.WithoutConvention(), ctx);
     const auto func = ctx->Builder.GetInsertBlock()->getParent();
     const auto done_bb = llvm::BasicBlock::Create(*ctx->Context, "drop.var.done" + uid);
@@ -133,7 +132,12 @@ auto spp::codegen::EmitDrop(
       dispatch->addCase(llvm::ConstantInt::get(GetVariantTagType(ctx), i), member_bb);
       ctx->Builder.SetInsertPoint(member_bb);
       const auto payload = GetVariantPayloadPtr(ptr, variant_ty, "drop.var.payload" + uid, ctx);
-      EmitDrop(members[i], payload, sm, meta, ctx);
+      const auto step = analyse::utils::type_members::VariantMemberStep(members[i]);
+      auto member_moved = Vec<Vec<spp::utils::InternedId>>();
+      for (auto const &path : moved) {
+        if (not path.empty() and path.front() == step) { member_moved.emplace_back(path.begin() + 1, path.end()); }
+      }
+      EmitDrop(members[i], payload, sm, meta, ctx, member_moved);
       ctx->Builder.CreateBr(done_bb);
     }
     done_bb->insertInto(func);

@@ -132,30 +132,21 @@ auto spp::asts::InnerScopeExpressionAst::Stage7_AnalyseSemantics(
     "inner-scope-expression", {}, PosStart());
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
   _Scope = sm->CurrentScope;
+  sm->CurrentScope->DeclareBoundWhenTrue(_BoundOnEntry);
 
   // Analyse the members of the inner scope. Only the final one
   // is the block's value, so only it sees what the block is
   // being assigned to; a "case" statement before it would be
   // checked against that type otherwise.
   for (auto const &[i, x] : this->Members | genex::views::ptr | genex::views::enumerate) {
-    // What an "is" in this statement bound does not outlive the
-    // statement ("let b = o is Some(val)" leaves no "val").
-    // Whatever such a binding took the name of has it back.
-    const auto declared_before = sm->CurrentScope->Declarations.size();
-    const auto expire_is_bindings = [&] {
-      meta->ExpiredIsBindings.append_range(sm->CurrentScope->EndStatement(declared_before));
-    };
-
     if (i + 1 < Members.size() or DiscardsFinalMember()) { expr_utils::MarkValueDiscarded(*x); }
     if (i + 1 == Members.size()) {
       x->Stage7_AnalyseSemantics(sm, meta);
-      expire_is_bindings();
       continue;
     }
     const auto _meta_guard = MetaGuard(meta);
     meta->ClearAssignmentTarget();
     x->Stage7_AnalyseSemantics(sm, meta);
-    expire_is_bindings();
 
     // Nothing may follow a statement that never finishes. Checked
     // before the next statement is analysed, so the dead code is
@@ -189,17 +180,15 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
   // Move into the next scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  sm->CurrentScope->DeclareBoundWhenTrue(_BoundOnEntry);
 
   // Check the memory of each member. The hidden temporaries a
-  // statement made end with it, and a name an "is" binding took
-  // is put back.
+  // statement made end with it.
   _StatementDrops.assign(Members.size(), {});
   for (auto const &[i, m] : Members | genex::views::ptr | genex::views::enumerate) {
-    const auto declared_before = sm->CurrentScope->Declarations.size();
     const auto statement = drop_utils::TemporaryRegion(*sm->CurrentScope);
     m->Stage8_CheckMemory(sm, meta);
     _StatementDrops[i] = statement.End(*m, *sm, meta, OwnLetName(*m));
-    ignore = sm->CurrentScope->EndStatement(declared_before);
   }
 
   // The final statement is the scope's value, so unless nothing
@@ -240,6 +229,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   // Add all the expressions/statements into the current scope.
   sm->MoveToNextScope();
   // SPP_ASSERT(sm->CurrentScope == _Scope);
+  sm->CurrentScope->DeclareBoundWhenTrue(_BoundOnEntry);
 
   // Nothing has been reached in this scope yet. Reset on entry
   // rather than left from a previous walk, because a generic
@@ -262,12 +252,10 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   for (auto const &[i, m] : this->Members | genex::views::ptr | genex::views::enumerate) {
     // Each member at its own line, for the debug info.
     codegen::SetDebugLocation(*ctx, m->PosStart());
-    const auto declared_before = sm->CurrentScope->Declarations.size();
     auto const &statement_drops = i < _StatementDrops.size() ? _StatementDrops[i] : NoDrops;
     const auto temporaries = codegen::TemporaryDepth(ctx);
     const auto end_statement = [&] {
       codegen::EndTemporaryRegion(temporaries, *sm->CurrentScope, statement_drops, m, sm, meta, ctx);
-      ignore = sm->CurrentScope->EndStatement(declared_before);
     };
     const auto drop_discarded = [&](llvm::Value *val) {
       if (val == nullptr or i >= _DropsDiscarded.size() or not _DropsDiscarded[i]) { return val; }
@@ -315,14 +303,18 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   return ret_val;
 }
 
+auto spp::asts::InnerScopeExpressionAst::SetBoundOnEntry(
+  Vec<Shared<VariableSymbol>> bound) -> void {
+  _BoundOnEntry = std::move(bound);
+}
+
 auto spp::asts::InnerScopeExpressionAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Comptime resolve each member of the inner scope.
   sm->MoveToNextScope();
+  sm->CurrentScope->DeclareBoundWhenTrue(_BoundOnEntry);
   for (auto const &m : this->Members) {
-    const auto declared_before = sm->CurrentScope->Declarations.size();
     m->EvaluateCompTime(sm, meta);
-    ignore = sm->CurrentScope->EndStatement(declared_before);
     if (meta->CompTimeReturned) { break; }
   }
 

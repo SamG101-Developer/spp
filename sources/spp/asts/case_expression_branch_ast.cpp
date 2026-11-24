@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.case_utils;
 import spp.analyse.utils.drop_utils;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.pattern_solver;
 import spp.asts.binary_expression_ast;
@@ -129,8 +130,12 @@ auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
     }
   }
 
-  // Analyse the guard and body.
-  if (Guard) { Guard->Stage7_AnalyseSemantics(sm, meta); }
+  // Analyse the guard and body: what the guard bound where it is true
+  // holds in the body.
+  if (Guard) {
+    Guard->Stage7_AnalyseSemantics(sm, meta);
+    Body->SetBoundOnEntry(analyse::utils::expr_utils::BoundWhenTrue(*Guard->Expr));
+  }
   Body->Stage7_AnalyseSemantics(sm, meta);
 
   // Exit the scope.
