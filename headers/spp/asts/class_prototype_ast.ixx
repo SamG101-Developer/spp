@@ -38,7 +38,7 @@ SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, Su
 
   /// Optional "!zero_type" annotation, indicating the class is
   /// guaranteed to occupy no storage. Layout only: the class
-  /// is still linear unless it is also "Copy".
+  /// still moves unless it is also "Copy".
   AnnotationAst *ZeroTypeAnnotation;
 
   /// Optional "!ffi" annotation: the class mirrors a C struct, so
