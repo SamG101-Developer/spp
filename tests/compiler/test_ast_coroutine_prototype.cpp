@@ -4,225 +4,225 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CoroutinePrototypeAst,
   test_invalid_return_type,
   SppExpressionNotGeneratorError, R"(
-    cor c() -> Void { }
+  cor c() -> Void { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CoroutinePrototypeAst,
   test_invalid_convention_mismatch_1,
   SppYieldedTypeMismatchError, R"(
-    cor c() -> Gen[&mut S32] {
-        gen 1
-    }
+  cor c() -> Gen[&mut S32] {
+    gen 1
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CoroutinePrototypeAst,
   test_invalid_convention_mismatch_2,
   SppYieldedTypeMismatchError, R"(
-    cor c() -> Gen[&S32] {
-        gen 1
-    }
+  cor c() -> Gen[&S32] {
+    gen 1
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CoroutinePrototypeAst,
   test_invalid_convention_mismatch_3,
   SppYieldedTypeMismatchError, R"(
-    cor c() -> Gen[S32] {
-        gen &mut 1
-    }
+  cor c() -> Gen[S32] {
+    gen &mut 1
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_return_type_ref_with_mut_coercion, R"(
-    cor c() -> Gen[&S32] {
-        gen &mut 1
-    }
+  cor c() -> Gen[&S32] {
+    gen &mut 1
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_return_type_mov, R"(
-    cor c() -> Gen[S32] {
-        gen 1
-    }
+  cor c() -> Gen[S32] {
+    gen 1
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_return_type_mut, R"(
-    cor c() -> Gen[&mut S32] {
-        gen &mut 1
-    }
+  cor c() -> Gen[&mut S32] {
+    gen &mut 1
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_return_type_ref, R"(
-    cor c() -> Gen[&S32] {
-        gen &1
-    }
+  cor c() -> Gen[&S32] {
+    gen &1
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_pinned_borrows, R"(
-    cor c(a: &mut Bool, b: &S32) -> Gen[S32] { }
-    fun f() -> Void {
-        let (mut x, y) = (false, 123)
-        std::mem::ops::drop(c(&mut x, &y))
-    }
+  cor c(a: &mut Bool, b: &S32) -> Gen[S32] { }
+  fun f() -> Void {
+    let (mut x, y) = (false, 123)
+    std::mem::ops::drop(c(&mut x, &y))
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_return_type_gen_once, R"(
-    cor c() -> GenOnce[S32] {
-        gen 1
-    }
+  cor c() -> GenOnce[S32] {
+    gen 1
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_return_type_gen_with_send_type, R"(
-    cor c() -> Gen[S32, Bool] {
-        let recv = gen 1
-    }
+  cor c() -> Gen[S32, Bool] {
+    let recv = gen 1
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_coroutine_method, R"(
-    cls MyType { }
-    sup MyType {
-        cor iter(&self) -> Gen[S32] {
-            gen 1
-        }
+  cls MyType { }
+  sup MyType {
+    cor iter(&self) -> Gen[S32] {
+      gen 1
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_generic_coroutine, R"(
-    cor c[T](x: T) -> Gen[T] {
-        gen x
-    }
+  cor c[T](x: T) -> Gen[T] {
+    gen x
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CoroutinePrototypeAst,
   test_invalid_non_generator_class_return_type,
   SppExpressionNotGeneratorError, R"(
-    cls MyType { }
-    cor c() -> MyType {
-        gen 1
-    }
+  cls MyType { }
+  cor c() -> MyType {
+    gen 1
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_return_type_inheriting_generator, R"(
-    cls MyType { }
+  cls MyType { }
 
-    sup MyType ext Gen[&S32] { }
+  sup MyType ext Gen[&S32] { }
 
-    cor c() -> MyType {
-        gen &1
-    }
+  cor c() -> MyType {
+    gen &1
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CoroutinePrototypeAst,
   test_invalid_return_type_inheriting_multiple_generators,
   SppExpressionAmbiguousGeneratorError, R"(
-    cls MyType { }
+  cls MyType { }
 
-    sup MyType ext Gen[&S32] { }
+  sup MyType ext Gen[&S32] { }
 
-    sup MyType ext Gen[&Str] { }
+  sup MyType ext Gen[&Str] { }
 
-    cor c() -> MyType {
-        gen &1
-    }
+  cor c() -> MyType {
+    gen &1
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CoroutinePrototypeAst,
   test_invalid_contains_ret_statement_with_val,
   SppCoroutineContainsReturnStatementError, R"(
-    cor c() -> Gen[&S32] {
-        ret 123
-    }
+  cor c() -> Gen[&S32] {
+    ret 123
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_contains_ret_statement_no_val, R"(
-    cor c() -> Gen[&S32] {
-        ret
-    }
+  cor c() -> Gen[&S32] {
+    ret
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_auto_unwrap_vector, R"(
-    fun f() -> Void {
-        let mut vec = Vec[Str]()
-        vec.append(Str::from("hello"))
-        vec.append(Str::from("world"))
+  fun f() -> Void {
+    let mut vec = Vec[Str]()
+    vec.append(Str::from("hello"))
+    vec.append(Str::from("world"))
 
-        {
-            let mut elem1 = vec.index_ref(0_uz)
-            let mut elem2 = vec.index_ref(1_uz)
-            elem2 = elem1
-        }
+    {
+      let mut elem1 = vec.index_ref(0_uz)
+      let mut elem2 = vec.index_ref(1_uz)
+      elem2 = elem1
     }
+  }
 )");
 
 // Resuming a generator that reached the caller through a plain function, rather than straight from the "cor", emits
 // a GEP with invalid indices on the handle slot.
 // FIXED
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    CoroutinePrototypeAst,
-    test_valid_resume_a_generator_returned_by_a_function, R"(
-    cor g() -> Gen[S32] { gen 1 }
+  CoroutinePrototypeAst,
+  test_valid_resume_a_generator_returned_by_a_function, R"(
+  cor g() -> Gen[S32] { gen 1 }
 
-    fun f() -> Gen[S32] {
-        ret g()
-    }
+  fun f() -> Gen[S32] {
+    ret g()
+  }
 
-    fun h() -> Void {
-        let mut c = f()
-        let v = c.res()
-    }
+  fun h() -> Void {
+    let mut c = f()
+    let v = c.res()
+  }
 )");
 
 // A generator holding a borrow of a parameter can be returned, and the caller never learns it holds a borrow of its
 // argument - so it can drop the owner and then resume the generator.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    CoroutinePrototypeAst,
-    test_invalid_return_a_generator_borrowing_a_parameter,
-    SppSecondClassBorrowViolationError, R"(
-    cor g(a: &Str) -> Gen[S32] { gen 1 }
+  CoroutinePrototypeAst,
+  test_invalid_return_a_generator_borrowing_a_parameter,
+  SppSecondClassBorrowViolationError, R"(
+  cor g(a: &Str) -> Gen[S32] { gen 1 }
 
-    fun f(x: &Str) -> Gen[S32] {
-        ret g(x)
-    }
+  fun f(x: &Str) -> Gen[S32] {
+    ret g(x)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_ret_after_gen_in_gen_once, R"(
-    cor f() -> GenOnce[S32] {
-        gen 1
-        ret
-    }
+  cor f() -> GenOnce[S32] {
+    gen 1
+    ret
+  }
 
-    fun g() -> S32 {
-        ret f()
-    }
+  fun g() -> S32 {
+    ret f()
+  }
 )");
 
 // A lowered "GenOnce" reads its "gen" as the return, so nothing after one is generated. Only a "ret" straight after it
@@ -231,59 +231,59 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_let_after_gen_in_gen_once, R"(
-    cor f() -> GenOnce[S32] {
-        gen 1
-        let x = 2
-    }
+  cor f() -> GenOnce[S32] {
+    gen 1
+    let x = 2
+  }
 
-    fun g() -> S32 {
-        ret f()
-    }
+  fun g() -> S32 {
+    ret f()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_statement_after_a_block_that_gens_in_gen_once, R"(
-    cor f() -> GenOnce[S32] {
-        { gen 1 }
-        let y = 3
-    }
+  cor f() -> GenOnce[S32] {
+    { gen 1 }
+    let y = 3
+  }
 
-    fun g() -> S32 {
-        ret f()
-    }
+  fun g() -> S32 {
+    ret f()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_ret_after_a_case_whose_branches_all_gen_in_gen_once, R"(
-    cor f(c: Bool) -> GenOnce[S32] {
-        case c { gen 1 }
-        else { gen 2 }
-        ret
-    }
+  cor f(c: Bool) -> GenOnce[S32] {
+    case c { gen 1 }
+    else { gen 2 }
+    ret
+  }
 
-    fun g() -> S32 {
-        ret f(true)
-    }
+  fun g() -> S32 {
+    ret f(true)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CoroutinePrototypeAst,
   test_valid_scoped_statements_after_gen_in_gen_once, R"(
-    cor f(c: Bool) -> GenOnce[S32] {
-        { gen 1 }
-        case c { let a = 1 }
-        else { let b = { let q = 2
-        q } }
-        loop c { exit }
-    }
+  cor f(c: Bool) -> GenOnce[S32] {
+    { gen 1 }
+    case c { let a = 1 }
+    else { let b = { let q = 2
+    q } }
+    loop c { exit }
+  }
 
-    fun g(c: Bool) -> S32 {
-        let x = case c { let p = 3
-        p } else { 4 }
-        let y = f(c)
-        ret { let r = x
-        r }
-    }
+  fun g(c: Bool) -> S32 {
+    let x = case c { let p = 3
+    p } else { 4 }
+    let y = f(c)
+    ret { let r = x
+    r }
+  }
 )");

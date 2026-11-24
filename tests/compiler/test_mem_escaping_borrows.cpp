@@ -4,270 +4,270 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestMemoryEscapingBorrows,
   test_invalid_memory_escaping_borrows_conflicting_borrow_mut_mut,
   SppMemoryOverlapUsageError, R"(
-    cor c(a: &mut Str) -> Gen[&StrView] {
-        gen "0"
-    }
+  cor c(a: &mut Str) -> Gen[&StrView] {
+    gen "0"
+  }
 
-    fun f() -> Void {
-        let mut x = Str::from("123")
-        let coro1 = c(&mut x)
-        let coro2 = c(&mut x)
-        std::hints::black_box(&coro1)
-    }
+  fun f() -> Void {
+    let mut x = Str::from("123")
+    let coro1 = c(&mut x)
+    let coro2 = c(&mut x)
+    std::hints::black_box(&coro1)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestMemoryEscapingBorrows,
   test_invalid_memory_escaping_borrows_conflicting_borrow_mut_ref,
   SppMemoryOverlapUsageError, R"(
-    cor c1(a: &mut Str) -> Gen[&StrView] {
-        gen "0"
-    }
+  cor c1(a: &mut Str) -> Gen[&StrView] {
+    gen "0"
+  }
 
-    cor c2(a: &Str) -> Gen[&StrView] {
-        gen "1"
-    }
+  cor c2(a: &Str) -> Gen[&StrView] {
+    gen "1"
+  }
 
-    fun f() -> Void {
-        let mut x = Str::from("123")
-        let coro1 = c1(&mut x)
-        let coro2 = c2(&x)
-        std::hints::black_box(&coro1)
-    }
+  fun f() -> Void {
+    let mut x = Str::from("123")
+    let coro1 = c1(&mut x)
+    let coro2 = c2(&x)
+    std::hints::black_box(&coro1)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestMemoryEscapingBorrows,
   test_invalid_memory_escaping_borrows_conflicting_borrow_ref_mut,
   SppMemoryOverlapUsageError, R"(
-    cor c1(a: &Str) -> Gen[&StrView] {
-        gen "0"
-    }
+  cor c1(a: &Str) -> Gen[&StrView] {
+    gen "0"
+  }
 
-    cor c2(a: &mut Str) -> Gen[&StrView] {
-        gen "1"
-    }
+  cor c2(a: &mut Str) -> Gen[&StrView] {
+    gen "1"
+  }
 
-    fun f() -> Void {
-        let mut x = Str::from("123")
-        let coro1 = c1(&x)
-        let coro2 = c2(&mut x)
-        std::hints::black_box(&coro1)
-    }
+  fun f() -> Void {
+    let mut x = Str::from("123")
+    let coro1 = c1(&x)
+    let coro2 = c2(&mut x)
+    std::hints::black_box(&coro1)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestMemoryEscapingBorrows,
   test_valid_memory_escaping_borrows_conflicting_borrow_ref_ref, R"(
-    cor c(a: &Str) -> Gen[&StrView] {
-        gen "0"
-    }
+  cor c(a: &Str) -> Gen[&StrView] {
+    gen "0"
+  }
 
-    fun f() -> Void {
-        let mut x = Str::from("123")
-        {
-            let coro1 = c(&x)
-            let coro2 = c(&x)
-        }
+  fun f() -> Void {
+    let mut x = Str::from("123")
+    {
+      let coro1 = c(&x)
+      let coro2 = c(&x)
     }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstEscapingBorrows,
   test_invalid_memory_moving_pinned_borrow_let,
   SppMovingEscapingBorrowedMemoryError, R"(
-    cor g(a: &Str) -> Gen[Str, Bool] { }
+  cor g(a: &Str) -> Gen[Str, Bool] { }
 
-    fun f() -> Void {
-        let x = Str::from("hello world")
-        let coroutine = g(&x)
-        let y = x
-        std::hints::black_box(&coroutine)
-    }
+  fun f() -> Void {
+    let x = Str::from("hello world")
+    let coroutine = g(&x)
+    let y = x
+    std::hints::black_box(&coroutine)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstEscapingBorrows,
   test_invalid_memory_moving_pinned_borrow_assign_variable,
   SppMovingEscapingBorrowedMemoryError, R"(
-    cor g(a: &Str) -> Gen[Str, Bool] { }
+  cor g(a: &Str) -> Gen[Str, Bool] { }
 
-    fun f() -> Void {
-        let y: Str
-        let x = Str::from("hello world")
-        let coroutine = g(&x)
-        y = x
-        std::hints::black_box(&coroutine)
-    }
+  fun f() -> Void {
+    let y: Str
+    let x = Str::from("hello world")
+    let coroutine = g(&x)
+    y = x
+    std::hints::black_box(&coroutine)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstEscapingBorrows,
   test_invalid_memory_moving_pinned_borrow_assign_attribute,
   SppMovingEscapingBorrowedMemoryError, R"(
-    cor g(a: &Str) -> Gen[Str, Bool] { }
+  cor g(a: &Str) -> Gen[Str, Bool] { }
 
-    cls A {
-        !public a: Str
-    }
+  cls A {
+    !public a: Str
+  }
 
-    fun f(mut a: A) -> Void {
-        let y: Str
-        let x = Str::from("hello world")
-        let coroutine = g(&x)
-        std::mem::ops::drop(a.a)
-        a.a = x
-        std::hints::black_box(&coroutine)
-    }
+  fun f(mut a: A) -> Void {
+    let y: Str
+    let x = Str::from("hello world")
+    let coroutine = g(&x)
+    std::mem::ops::drop(a.a)
+    a.a = x
+    std::hints::black_box(&coroutine)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstEscapingBorrows,
   test_invalid_memory_moving_pinned_borrow_func_call,
   SppMovingEscapingBorrowedMemoryError, R"(
-    cor g(a: &Str) -> Gen[Str, Bool] { }
+  cor g(a: &Str) -> Gen[Str, Bool] { }
 
-    fun f(x: Str) -> Void { }
+  fun f(x: Str) -> Void { }
 
-    fun h() -> Void {
-        let x = Str::from("hello world")
-        let coroutine = g(&x)
-        f(x)
-        std::hints::black_box(&coroutine)
-    }
+  fun h() -> Void {
+    let x = Str::from("hello world")
+    let coroutine = g(&x)
+    f(x)
+    std::hints::black_box(&coroutine)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstEscapingBorrows,
   test_invalid_memory_moving_pinned_borrow_object_init,
   SppMovingEscapingBorrowedMemoryError, R"(
-    cor g(a: &Str) -> Gen[Str, Bool] { }
+  cor g(a: &Str) -> Gen[Str, Bool] { }
 
-    cls A {
-        !public a: Str
-    }
+  cls A {
+    !public a: Str
+  }
 
-    fun h() -> Void {
-        let x = Str::from("hello world")
-        let coroutine = g(&x)
-        let a = A(a=x)
-        std::hints::black_box(&coroutine)
-    }
+  fun h() -> Void {
+    let x = Str::from("hello world")
+    let coroutine = g(&x)
+    let a = A(a=x)
+    std::hints::black_box(&coroutine)
+  }
 )");
 
 // The generator holding the borrow ends where the value leaves its scope, so it is never used after the move (M9.2).
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstEscapingBorrows,
   test_valid_memory_moving_borrowed_value_as_its_holder_ends_inner_scope_return, R"(
-    cor g(a: &Str) -> Gen[Str, Bool] { }
+  cor g(a: &Str) -> Gen[Str, Bool] { }
 
-    fun h() -> Void {
-        let y = {
-            let x = Str::from("hello world")
-            let coroutine = g(&x)
-            std::mem::ops::drop(coroutine)
-            x
-        }
+  fun h() -> Void {
+    let y = {
+      let x = Str::from("hello world")
+      let coroutine = g(&x)
+      std::mem::ops::drop(coroutine)
+      x
     }
+  }
 )");
 
 // The generator holding the borrow ends where the value leaves its scope, so it is never used after the move (M9.2).
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstEscapingBorrows,
   test_valid_memory_moving_borrowed_value_as_its_holder_ends_loop_escape, R"(
-    cor g(a: &Str) -> Gen[Str, Bool] { }
+  cor g(a: &Str) -> Gen[Str, Bool] { }
 
-    fun h() -> Void {
-        let looped = loop true {
-            let x = Str::from("hello world")
-            let coroutine = g(&x)
-            exit x
-        }
+  fun h() -> Void {
+    let looped = loop true {
+      let x = Str::from("hello world")
+      let coroutine = g(&x)
+      exit x
     }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstEscapingBorrows,
   test_invalid_memory_moving_pinned_borrow_gen,
   SppMovingEscapingBorrowedMemoryError, R"(
-    cor g(a: &Str) -> Gen[Str, Bool] { }
+  cor g(a: &Str) -> Gen[Str, Bool] { }
 
-    cor h() -> Gen[Str, Bool] {
-        let x = Str::from("hello world")
-        let coroutine = g(&x)
-        let sent = gen x
-        std::hints::black_box(&coroutine)
-    }
+  cor h() -> Gen[Str, Bool] {
+    let x = Str::from("hello world")
+    let coroutine = g(&x)
+    let sent = gen x
+    std::hints::black_box(&coroutine)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstEscapingBorrows,
   test_invalid_memory_moving_pinned_borrow_ret,
   SppMovingEscapingBorrowedMemoryError, R"(
-    cor g(a: &Str) -> Gen[Str, Bool] { }
+  cor g(a: &Str) -> Gen[Str, Bool] { }
 
-    fun h() -> Gen[Str, Bool] {
-        let x = Str::from("hello world")
-        let coroutine = g(&x)
-        ret coroutine
-    }
+  fun h() -> Gen[Str, Bool] {
+    let x = Str::from("hello world")
+    let coroutine = g(&x)
+    ret coroutine
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstEscapingBorrows,
   test_valid_memory_move_value_not_pinned, R"(
-    cor g(a: &Str) -> Gen[Str, Bool] { }
+  cor g(a: &Str) -> Gen[Str, Bool] { }
 
-    fun f() -> Void {
-        let x = Str::from("hello world")
-        let y = Str::from("other")
-        {
-            let coroutine = g(&x)
-            let z = y
-        }
+  fun f() -> Void {
+    let x = Str::from("hello world")
+    let y = Str::from("other")
+    {
+      let coroutine = g(&x)
+      let z = y
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstEscapingBorrows,
   test_valid_memory_move_after_pinned_borrow_scope_released, R"(
-    cor g(a: &Str) -> Gen[Str, Bool] { }
+  cor g(a: &Str) -> Gen[Str, Bool] { }
 
-    fun f() -> Void {
-        let x = Str::from("hello world")
-        {
-            let coroutine = g(&x)
-        }
-        let y = x
+  fun f() -> Void {
+    let x = Str::from("hello world")
+    {
+      let coroutine = g(&x)
     }
+    let y = x
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstEscapingBorrows,
   test_invalid_memory_move_after_pinned_borrow_held_by_outer_handle,
   SppMovingEscapingBorrowedMemoryError, R"(
-    cor g(a: &Str) -> Gen[Str, Bool] { }
+  cor g(a: &Str) -> Gen[Str, Bool] { }
 
-    fun f() -> Void {
-        let x = Str::from("hello world")
-        let coroutine: Gen[Str, Bool]
-        {
-            coroutine = g(&x)
-        }
-        let y = x
-        std::hints::black_box(&coroutine)
+  fun f() -> Void {
+    let x = Str::from("hello world")
+    let coroutine: Gen[Str, Bool]
+    {
+      coroutine = g(&x)
     }
+    let y = x
+    std::hints::black_box(&coroutine)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstEscapingBorrows,
   test_valid_memory_deref_of_indexed_element_holds_no_escaping_borrow, R"(
-    fun f() -> Void {
-        let mut xs = Vec[U32]()
-        xs.append(1_u32)
-        let a = xs[0_uz]@
-        let b = xs
-    }
+  fun f() -> Void {
+    let mut xs = Vec[U32]()
+    xs.append(1_u32)
+    let a = xs[0_uz]@
+    let b = xs
+  }
 )");
 
 // Moving a value an iterator or future borrows is caught, but assigning over it is not.
@@ -276,13 +276,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstEscapingBorrows,
   test_invalid_memory_assign_over_iterated_vector,
   SppMovingEscapingBorrowedMemoryError, R"(
-    fun f() -> Void {
-        let mut v = Vec[S32]()
-        loop x in v.iter_ref() {
-            v = Vec[S32]()
-        }
-        std::mem::ops::drop(v)
+  fun f() -> Void {
+    let mut v = Vec[S32]()
+    loop x in v.iter_ref() {
+      v = Vec[S32]()
     }
+    std::mem::ops::drop(v)
+  }
 )");
 
 // FIXED
@@ -290,14 +290,14 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstEscapingBorrows,
   test_invalid_memory_assign_while_borrowed_by_a_future,
   SppMovingEscapingBorrowedMemoryError, R"(
-    fun g(a: &mut S32) -> S32 { ret 1 }
+  fun g(a: &mut S32) -> S32 { ret 1 }
 
-    fun f() -> Void {
-        let mut v = 1
-        let x = async g(&mut v)
-        v = 5
-        let r = x.await
-    }
+  fun f() -> Void {
+    let mut v = 1
+    let x = async g(&mut v)
+    v = 5
+    let r = x.await
+  }
 )");
 
 // Borrowing a value a future holds "&mut" was caught, but copying it out was not.
@@ -306,25 +306,25 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstEscapingBorrows,
   test_invalid_memory_read_while_mutably_borrowed_by_a_future,
   SppMemoryOverlapUsageError, R"(
-    fun g(a: &mut S32) -> S32 { ret 1 }
+  fun g(a: &mut S32) -> S32 { ret 1 }
 
-    fun f() -> Void {
-        let mut v = 1
-        let x = async g(&mut v)
-        let y = v
-        let r = x.await
-    }
+  fun f() -> Void {
+    let mut v = 1
+    let x = async g(&mut v)
+    let y = v
+    let r = x.await
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstEscapingBorrows,
   test_valid_memory_read_while_immutably_borrowed_by_a_future, R"(
-    fun g(a: &S32) -> S32 { ret 1 }
+  fun g(a: &S32) -> S32 { ret 1 }
 
-    fun f() -> Void {
-        let v = 1
-        let x = async g(&v)
-        let y = v
-        let r = x.await
-    }
+  fun f() -> Void {
+    let v = 1
+    let x = async g(&v)
+    let y = v
+    let r = x.await
+  }
 )");

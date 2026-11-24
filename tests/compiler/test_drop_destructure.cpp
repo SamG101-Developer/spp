@@ -3,159 +3,159 @@
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_destructure_consumes_whole_value, R"(
-    cls Handle { !public fd: S32 }
+  cls Handle { !public fd: S32 }
 
-    fun f() -> Void {
-        let h = Handle(fd=1)
-        let Handle(fd) = h
-    }
+  fun f() -> Void {
+    let h = Handle(fd=1)
+    let Handle(fd) = h
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_tuple_destructure_consumes, R"(
-    cls Handle { !public fd: S32 }
+  cls Handle { !public fd: S32 }
 
-    fun f() -> Void {
-        let t = (Handle(fd=1), Handle(fd=2))
-        let (a, b) = t
-        let Handle(fd as fd_a) = a
-        let Handle(fd as fd_b) = b
-    }
+  fun f() -> Void {
+    let t = (Handle(fd=1), Handle(fd=2))
+    let (a, b) = t
+    let Handle(fd as fd_a) = a
+    let Handle(fd as fd_b) = b
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_fieldless_value_destructured, R"(
-    cls Marker { }
+  cls Marker { }
 
-    fun f() -> Void {
-        let m = Marker()
-        let Marker() = m
-    }
+  fun f() -> Void {
+    let m = Marker()
+    let Marker() = m
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_fieldless_value_left_live, R"(
-    cls Marker { }
+  cls Marker { }
 
-    fun f() -> Void {
-        let m = Marker()
-    }
+  fun f() -> Void {
+    let m = Marker()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_copy_attribute_read_does_not_consume, R"(
-    cls Handle { !public fd: S32 }
+  cls Handle { !public fd: S32 }
 
-    fun f() -> Void {
-        let h = Handle(fd=1)
-        let fd = h.fd
-    }
+  fun f() -> Void {
+    let h = Handle(fd=1)
+    let fd = h.fd
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_reading_through_a_borrow_does_not_consume, R"(
-    cls Handle { !public fd: S32 }
+  cls Handle { !public fd: S32 }
 
-    fun peek(h: &Handle) -> S32 {
-        ret h.fd
-    }
+  fun peek(h: &Handle) -> S32 {
+    ret h.fd
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestDropDestructure,
   test_invalid_destructure_through_a_borrow,
   SppTypeMismatchError, R"(
-    cls Handle { !public fd: S32 }
+  cls Handle { !public fd: S32 }
 
-    fun peek(h: &Handle) -> S32 {
-        let Handle(fd) = h
-        ret fd
-    }
+  fun peek(h: &Handle) -> S32 {
+    let Handle(fd) = h
+    ret fd
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_destructure_skips_an_owned_attribute, R"(
-    cls Point {
-        !public x: Str
-        !public y: Str
-    }
+  cls Point {
+    !public x: Str
+    !public y: Str
+  }
 
-    fun f(p: Point) -> Void {
-        let Point(x, ..) = p
-    }
+  fun f(p: Point) -> Void {
+    let Point(x, ..) = p
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_tuple_destructure_skips_an_owned_element, R"(
-    fun f(t: (Str, Str)) -> Void {
-        let (a, ..) = t
-    }
+  fun f(t: (Str, Str)) -> Void {
+    let (a, ..) = t
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_case_branch_skips_an_owned_attribute, R"(
-    cls Point {
-        !public x: Str
-        !public y: Str
-    }
+  cls Point {
+    !public x: Str
+    !public y: Str
+  }
 
-    fun f(p: Point) -> Void {
-        case p of {
-            is Point(x, ..) { }
-        }
+  fun f(p: Point) -> Void {
+    case p of {
+      is Point(x, ..) { }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_destructure_skips_a_copyable_attribute, R"(
-    cls Point {
-        !public x: Str
-        !public y: U32
-    }
+  cls Point {
+    !public x: Str
+    !public y: U32
+  }
 
-    fun f(p: Point) -> Void {
-        let Point(x, ..) = p
-    }
+  fun f(p: Point) -> Void {
+    let Point(x, ..) = p
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_shape_test_takes_nothing_apart, R"(
-    cls Point {
-        !public x: Str
-        !public y: Str
-    }
+  cls Point {
+    !public x: Str
+    !public y: Str
+  }
 
-    fun f(p: Point) -> Void {
-        let b = p is Point(..)
-    }
+  fun f(p: Point) -> Void {
+    let b = p is Point(..)
+  }
 )");
 
 // A destructure binding nothing reads no part, and the parts are all the old check looked at, so a value that had
 // already been moved was consumed again.
 // FIXED
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestDropDestructure,
-    test_invalid_empty_destructure_of_a_moved_value,
-    SppUninitializedMemoryUseError, R"(
-    cls DsEmpty { }
+  TestDropDestructure,
+  test_invalid_empty_destructure_of_a_moved_value,
+  SppUninitializedMemoryUseError, R"(
+  cls DsEmpty { }
 
-    fun eat(l: DsEmpty) -> Void { let DsEmpty() = l }
+  fun eat(l: DsEmpty) -> Void { let DsEmpty() = l }
 
-    fun f() -> Void {
-        let l = DsEmpty()
-        eat(l)
-        let DsEmpty() = l
-    }
+  fun f() -> Void {
+    let l = DsEmpty()
+    eat(l)
+    let DsEmpty() = l
+  }
 )");
 
 // A value made on the spot is held by a hidden temporary, which keeps the skipped parts as a named value does, and
@@ -163,78 +163,78 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_destructure_of_a_temporary_skips_an_owned_attribute, R"(
-    cls Point {
-        !public x: Str
-        !public y: Str
-    }
+  cls Point {
+    !public x: Str
+    !public y: Str
+  }
 
-    fun mk() -> Point { ret Point(x=Str::from("x"), y=Str::from("y")) }
+  fun mk() -> Point { ret Point(x=Str::from("x"), y=Str::from("y")) }
 
-    fun f() -> Void {
-        let Point(x, ..) = mk()
-    }
+  fun f() -> Void {
+    let Point(x, ..) = mk()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_tuple_destructure_of_a_temporary_skips_an_owned_element, R"(
-    fun mk() -> (Str, Str) { ret (Str::from("x"), Str::from("y")) }
+  fun mk() -> (Str, Str) { ret (Str::from("x"), Str::from("y")) }
 
-    fun f() -> Void {
-        let (x, ..) = mk()
-    }
+  fun f() -> Void {
+    let (x, ..) = mk()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_destructure_of_a_temporary_skips_only_copy_parts, R"(
-    cls Point {
-        !public x: Str
-        !public y: S32
-    }
+  cls Point {
+    !public x: Str
+    !public y: S32
+  }
 
-    fun mk() -> Point { ret Point(x=Str::from("x"), y=1) }
+  fun mk() -> Point { ret Point(x=Str::from("x"), y=1) }
 
-    fun f() -> Void {
-        let Point(x, ..) = mk()
-    }
+  fun f() -> Void {
+    let Point(x, ..) = mk()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_ret_before_tuple_destructure_of_a_temporary, R"(
-    fun mk() -> (Str, Str) { ret (Str::from("x"), Str::from("y")) }
+  fun mk() -> (Str, Str) { ret (Str::from("x"), Str::from("y")) }
 
-    fun f(b: Bool) -> Void {
-        case b { ret }
-        let (x, y) = mk()
-    }
+  fun f(b: Bool) -> Void {
+    case b { ret }
+    let (x, y) = mk()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_ret_before_object_destructure_of_a_temporary, R"(
-    cls Point {
-        !public x: Str
-        !public y: Str
-    }
+  cls Point {
+    !public x: Str
+    !public y: Str
+  }
 
-    fun mk() -> Point { ret Point(x=Str::from("x"), y=Str::from("y")) }
+  fun mk() -> Point { ret Point(x=Str::from("x"), y=Str::from("y")) }
 
-    fun f(b: Bool) -> Void {
-        case b { ret }
-        let Point(x, y) = mk()
-    }
+  fun f(b: Bool) -> Void {
+    case b { ret }
+    let Point(x, y) = mk()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropDestructure,
   test_valid_ret_after_tuple_destructure_of_a_temporary_leaves_a_binding_live, R"(
-    fun mk() -> (Str, Str) { ret (Str::from("x"), Str::from("y")) }
+  fun mk() -> (Str, Str) { ret (Str::from("x"), Str::from("y")) }
 
-    fun f(b: Bool) -> Void {
-        let (x, y) = mk()
-        drop(x)
-        case b { ret }
-    }
+  fun f(b: Bool) -> Void {
+    let (x, y) = mk()
+    drop(x)
+    case b { ret }
+  }
 )");

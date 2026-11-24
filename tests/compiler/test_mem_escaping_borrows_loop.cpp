@@ -1,101 +1,101 @@
 #include "test_macros.hpp"
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstMemoryPinsLoop,
-    test_valid_memory_mov_iterator_no_modifications, R"(
-    fun f(mut v: Vec[Str]) -> Void {
-        loop x in v.iter_mov() {
-        }
+  TestAstMemoryPinsLoop,
+  test_valid_memory_mov_iterator_no_modifications, R"(
+  fun f(mut v: Vec[Str]) -> Void {
+    loop x in v.iter_mov() {
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstMemoryPinsLoop,
-    test_valid_memory_mut_iterator_no_modifications, R"(
-    fun f(mut v: Vec[Str]) -> Void {
-        loop x in v.iter_mut() { }
-    }
+  TestAstMemoryPinsLoop,
+  test_valid_memory_mut_iterator_no_modifications, R"(
+  fun f(mut v: Vec[Str]) -> Void {
+    loop x in v.iter_mut() { }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstMemoryPinsLoop,
-    test_valid_memory_ref_iterator_no_modifications, R"(
-    fun f(mut v: Vec[Str]) -> Void {
-        loop x in v.iter_ref() { }
-    }
+  TestAstMemoryPinsLoop,
+  test_valid_memory_ref_iterator_no_modifications, R"(
+  fun f(mut v: Vec[Str]) -> Void {
+    loop x in v.iter_ref() { }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstMemoryPinsLoop,
-    test_invalid_memory_mov_iterator_modify_owned_object,
-    SppUninitializedMemoryUseError, R"(
-    fun f(mut v: Vec[Str]) -> Void {
-        loop x in v.iter_mov() {
-            v.append(Str::from("hello"))
-        }
+  TestAstMemoryPinsLoop,
+  test_invalid_memory_mov_iterator_modify_owned_object,
+  SppUninitializedMemoryUseError, R"(
+  fun f(mut v: Vec[Str]) -> Void {
+    loop x in v.iter_mov() {
+      v.append(Str::from("hello"))
     }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstMemoryPinsLoop,
-    test_invalid_memory_mut_iterator_mut_owned_object,
-    SppMemoryOverlapUsageError, R"(
-    fun f(mut v: Vec[Str]) -> Void {
-        loop x in v.iter_mut() {
-            v.append(Str::from("hello"))
-        }
+  TestAstMemoryPinsLoop,
+  test_invalid_memory_mut_iterator_mut_owned_object,
+  SppMemoryOverlapUsageError, R"(
+  fun f(mut v: Vec[Str]) -> Void {
+    loop x in v.iter_mut() {
+      v.append(Str::from("hello"))
     }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstMemoryPinsLoop,
-    test_invalid_memory_mut_iterator_ref_owned_object,
-    SppMemoryOverlapUsageError, R"(
-    fun f(mut v: Vec[Str]) -> Void {
-        loop x in v.iter_mut() {
-            v.append(Str::from("hello"))
-        }
+  TestAstMemoryPinsLoop,
+  test_invalid_memory_mut_iterator_ref_owned_object,
+  SppMemoryOverlapUsageError, R"(
+  fun f(mut v: Vec[Str]) -> Void {
+    loop x in v.iter_mut() {
+      v.append(Str::from("hello"))
     }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstMemoryPinsLoop,
-    test_invalid_memory_ref_iterator_mut_owned_object,
-    SppMemoryOverlapUsageError, R"(
-    fun f(mut v: Vec[Str]) -> Void {
-        loop x in v.iter_ref() {
-            v.append(Str::from("hello"))
-        }
+  TestAstMemoryPinsLoop,
+  test_invalid_memory_ref_iterator_mut_owned_object,
+  SppMemoryOverlapUsageError, R"(
+  fun f(mut v: Vec[Str]) -> Void {
+    loop x in v.iter_ref() {
+      v.append(Str::from("hello"))
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstMemoryPinsLoop,
-    test_valid_memory_mut_iterator_modify_owned_object_after_loop, R"(
-    fun f(mut v: Vec[Str]) -> Void {
-        loop x in v.iter_mut() {
-        }
-        v.append(Str::from("hello"))
+  TestAstMemoryPinsLoop,
+  test_valid_memory_mut_iterator_modify_owned_object_after_loop, R"(
+  fun f(mut v: Vec[Str]) -> Void {
+    loop x in v.iter_mut() {
     }
+    v.append(Str::from("hello"))
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstMemoryPinsLoop,
-    test_valid_memory_mut_iterator_modify_owned_object_clone, R"(
-    fun f(mut v: Vec[Str]) -> Void {
-        let mut copy = v.clone()
-        loop x in copy.iter_mut() {
-            v.append(Str::from("hello world"))
-        }
+  TestAstMemoryPinsLoop,
+  test_valid_memory_mut_iterator_modify_owned_object_clone, R"(
+  fun f(mut v: Vec[Str]) -> Void {
+    let mut copy = v.clone()
+    loop x in copy.iter_mut() {
+      v.append(Str::from("hello world"))
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstMemoryPinsLoop,
-    test_valid_memory_ref_iterator_use_ref, R"(
-    fun f(mut v: Vec[Str]) -> Void {
-        loop x in v.iter_ref() {
-            let l = v.len()
-        }
+  TestAstMemoryPinsLoop,
+  test_valid_memory_ref_iterator_use_ref, R"(
+  fun f(mut v: Vec[Str]) -> Void {
+    loop x in v.iter_ref() {
+      let l = v.len()
     }
+  }
 )");

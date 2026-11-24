@@ -21,9 +21,9 @@ namespace {
 
 TEST(TestErrorMessages, test_written_type_shown_with_its_qualified_form) {
   const auto text = TypeMismatchText(R"(
-    fun f() -> Void {
-        let x: S32 = false
-    }
+  fun f() -> Void {
+    let x: S32 = false
+  }
 )");
   EXPECT_NE(text.find("Expected type S32 (aka std::num::sized_integer::SizedInteger[w=32_u32, signed=true])"),
     std::string::npos) << text;
@@ -31,10 +31,10 @@ TEST(TestErrorMessages, test_written_type_shown_with_its_qualified_form) {
 
 TEST(TestErrorMessages, test_alias_shown_by_its_own_name) {
   const auto text = TypeMismatchText(R"(
-    type Num = S32
-    fun f() -> Void {
-        let x: Num = false
-    }
+  type Num = S32
+  fun f() -> Void {
+    let x: Num = false
+  }
 )");
   EXPECT_NE(text.find("Expected type Num (aka std::num::sized_integer::SizedInteger[w=32_u32, signed=true])"),
     std::string::npos) << text;
@@ -44,9 +44,9 @@ TEST(TestErrorMessages, test_alias_shown_by_its_own_name) {
 
 TEST(TestErrorMessages, test_fully_qualified_type_has_no_aka) {
   const auto text = TypeMismatchText(R"(
-    fun f() -> Void {
-        let x: std::boolean::Bool = 1
-    }
+  fun f() -> Void {
+    let x: std::boolean::Bool = 1
+  }
 )");
   EXPECT_NE(text.find("Expected type std::boolean::Bool"), std::string::npos) << text;
   EXPECT_EQ(text.find("(aka"), std::string::npos) << text;
@@ -56,28 +56,28 @@ TEST(TestErrorMessages, test_fully_qualified_type_has_no_aka) {
 
 TEST(TestErrorMessages, test_self_shown_with_its_class) {
   const auto text = TypeMismatchText(R"(
-    cls A { }
-    sup A {
-        !public fun m(&self) -> Void {
-            let x: Self = false
-        }
+  cls A { }
+  sup A {
+    !public fun m(&self) -> Void {
+      let x: Self = false
     }
+  }
 )");
   EXPECT_NE(text.find("Expected type Self (aka "), std::string::npos) << text;
 }
 
 TEST(TestErrorMessages, test_self_generic_argument_shown_as_written) {
   const auto text = TypeMismatchText(R"(
-    cls Box[T] { !public v: T }
-    sup [T] Box[T] {
-        !public fun m(&self) -> Void {
-            let x: Vec[Self] = false
-        }
+  cls Box[T] { !public v: T }
+  sup [T] Box[T] {
+    !public fun m(&self) -> Void {
+      let x: Vec[Self] = false
     }
-    fun f() -> Void {
-        let b = Box(v=1)
-        b.m()
-    }
+  }
+  fun f() -> Void {
+    let b = Box(v=1)
+    b.m()
+  }
 )");
   EXPECT_NE(text.find("Expected type Vec[Self] (aka "), std::string::npos) << text;
 }
@@ -88,8 +88,8 @@ TEST(TestErrorMessages, test_reimporting_a_prelude_name_points_at_the_authors_im
   auto text = spp::Str();
   try {
     build_temp_project(R"(
-    use std::annotations::abstract_method
-    fun f() -> Void { }
+  use std::annotations::abstract_method
+  fun f() -> Void { }
 )");
   }
   catch (spp::analyse::errors::SppIdentifierDuplicateError const &e) {
@@ -108,8 +108,8 @@ TEST(TestErrorMessages, test_an_unclosed_brace_is_reported_at_the_end_of_the_fil
   auto text = spp::Str();
   try {
     build_temp_project(R"(
-    fun f() -> Void {
-        let x = 1
+  fun f() -> Void {
+    let x = 1
 )");
   }
   catch (spp::parse::errors::SppSyntaxError const &e) {
@@ -128,11 +128,11 @@ TEST(TestErrorMessages, test_move_from_borrowed_memory_shows_the_borrow_before_t
   auto text = spp::Str();
   try {
     build_temp_project(R"(
-    cls T { }
-    cls A { !public v: T }
-    fun f(a: &A) -> Void {
-        let t = a.v
-    }
+  cls T { }
+  cls A { !public v: T }
+  fun f(a: &A) -> Void {
+    let t = a.v
+  }
 )");
   }
   catch (spp::analyse::errors::SppMoveFromBorrowedMemoryError const &e) {
@@ -154,9 +154,9 @@ TEST(TestErrorMessages, test_type_inferred_off_part_of_an_argument_shown_as_itse
   auto text = spp::Str();
   try {
     build_temp_project(R"(
-    cls NotCopy { }
-    fun h[T: std::copy::Copy](a: Vec[T]) -> Void { }
-    fun g() -> Void { h(Vec[NotCopy]::new()) }
+  cls NotCopy { }
+  fun h[T: std::copy::Copy](a: Vec[T]) -> Void { }
+  fun g() -> Void { h(Vec[NotCopy]::new()) }
 )");
   }
   catch (spp::analyse::errors::SppFunctionCallNoValidSignaturesError const &e) {
@@ -187,14 +187,14 @@ namespace {
 
 TEST(TestErrorMessages, test_unknown_namespace_function_suggests_its_own) {
   const auto text = UnknownIdentifierText(R"(
-    fun f() -> Void { std::console::printn("x") }
+  fun f() -> Void { std::console::printn("x") }
 )");
   EXPECT_NE(text.find("did you mean 'println'?"), std::string::npos) << text;
 }
 
 TEST(TestErrorMessages, test_unknown_use_target_suggests_the_namespaces_own) {
   const auto text = UnknownIdentifierText(R"(
-    use std::console::printn
+  use std::console::printn
 )");
   EXPECT_NE(text.find("did you mean 'println'?"), std::string::npos) << text;
 }
@@ -202,9 +202,9 @@ TEST(TestErrorMessages, test_unknown_use_target_suggests_the_namespaces_own) {
 // A "cmp" constant is reached with "::", so it is no suggestion for a "." access, however close.
 TEST(TestErrorMessages, test_unknown_attribute_suggests_only_what_dot_reaches) {
   const auto text = UnknownIdentifierText(R"(
-    cls A { !public value: S32 }
-    sup A { !public cmp valuz: S32 = 1 }
-    fun f(a: A) -> Void { let x = a.valuzz }
+  cls A { !public value: S32 }
+  sup A { !public cmp valuz: S32 = 1 }
+  fun f(a: A) -> Void { let x = a.valuzz }
 )");
   EXPECT_NE(text.find("did you mean 'value'?"), std::string::npos) << text;
   EXPECT_EQ(text.find("'valuz'"), std::string::npos) << text;
@@ -212,10 +212,10 @@ TEST(TestErrorMessages, test_unknown_attribute_suggests_only_what_dot_reaches) {
 
 TEST(TestErrorMessages, test_unknown_identifier_with_nothing_close_suggests_nothing) {
   const auto text = UnknownIdentifierText(R"(
-    fun f() -> Void {
-        let count = 1
-        let y = cxyz
-    }
+  fun f() -> Void {
+    let count = 1
+    let y = cxyz
+  }
 )");
   EXPECT_EQ(text.find("did you mean"), std::string::npos) << text;
 }
@@ -223,13 +223,13 @@ TEST(TestErrorMessages, test_unknown_identifier_with_nothing_close_suggests_noth
 // A member reached through forwarding is a suggestion too: "Wrapper" forwards to "Inner", which has "value".
 TEST(TestErrorMessages, test_unknown_attribute_suggests_through_forwarding) {
   const auto text = UnknownIdentifierText(R"(
-    use std::ops::fwd::FwdRef
-    cls Inner { !public value: S32 }
-    cls Wrapper { !public inner: Inner }
-    sup Wrapper ext FwdRef[Inner] {
-        cor fwd_ref(&self) -> GenOnce[&Inner] { gen &self.inner }
-    }
-    fun f(w: &Wrapper) -> Void { let x = w.valu }  # spellchecker:disable-line
+  use std::ops::fwd::FwdRef
+  cls Inner { !public value: S32 }
+  cls Wrapper { !public inner: Inner }
+  sup Wrapper ext FwdRef[Inner] {
+    cor fwd_ref(&self) -> GenOnce[&Inner] { gen &self.inner }
+  }
+  fun f(w: &Wrapper) -> Void { let x = w.valu }  # spellchecker:disable-line
 )");
   EXPECT_NE(text.find("did you mean 'value'?"), std::string::npos) << text;
 }

@@ -12,6 +12,7 @@ use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::analyse::utils::memory_state, struct MemoryState);
+use(spp::analyse::utils::regions, struct PlaceStep);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
@@ -69,6 +70,15 @@ namespace spp::analyse::utils::drop_utils {
     VariableSymbol const &sym, MemoryState const &joined, MemoryState const &path,
     Map<VariableSymbol const*, Scope const*> const &owners, Ast const &at,
     ScopeManager &sm, CompilerMetaData *meta) -> Opt<OwnedValue>;
+
+  /// The part at "steps" taken out of a value of type "root" (by "move")
+  /// leaves a hole in every value the path runs through, the root
+  /// included: E106 if one of them has its own "drop", which could not
+  /// run on what is left. The part the path ends on hands its own
+  /// "drop" to whoever took it. "exit_point" is where the rest ends.
+  SPP_EXP_FUN auto RaiseIfPathStrandsDestructor(
+    TypeRef const &root, Vec<regions::PlaceStep> const &steps, Ast const &move,
+    Ast const &exit_point, ScopeManager &sm, CompilerMetaData *meta) -> void;
 
   /// Sort a path's drops newest first, by where each is declared.
   SPP_EXP_FUN auto SortNewestFirst(

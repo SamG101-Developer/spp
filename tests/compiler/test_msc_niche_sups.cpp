@@ -12,13 +12,13 @@
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestNicheSuperimpositions,
   test_blanket_sup_with_constraint, R"(
-    sup [T: Copy] T {
-        !public fun copy_only(&self) -> S32 { ret 1 }
-    }
+  sup [T: Copy] T {
+    !public fun copy_only(&self) -> S32 { ret 1 }
+  }
 
-    fun f() -> Void {
-        let x = 1.copy_only()
-    }
+  fun f() -> Void {
+    let x = 1.copy_only()
+  }
 )");
 
 // The constraint has to gate the blanket, not decorate it: a type that does not satisfy "Copy" never gets the method.
@@ -26,130 +26,130 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestNicheSuperimpositions,
   test_blanket_sup_with_constraint_excludes_non_conforming,
   SppIdentifierUnknownError, R"(
-    cls NotCopy { }
+  cls NotCopy { }
 
-    sup [T: Copy] T {
-        !public fun copy_only(&self) -> S32 { ret 1 }
-    }
+  sup [T: Copy] T {
+    !public fun copy_only(&self) -> S32 { ret 1 }
+  }
 
-    fun f() -> Void {
-        let x = NotCopy()
-        let y = x.copy_only()
-    }
+  fun f() -> Void {
+    let x = NotCopy()
+    let y = x.copy_only()
+  }
 )");
 
 // A blanket extension confers the extended type's methods on everything, so the method is reached through the "ext".
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestNicheSuperimpositions,
   test_blanket_sup_extension, R"(
-    cls Other { }
+  cls Other { }
 
-    sup Other {
-        !public fun from_other(&self) -> S32 { ret 7 }
-    }
+  sup Other {
+    !public fun from_other(&self) -> S32 { ret 7 }
+  }
 
-    sup [T] T ext Other { }
+  sup [T] T ext Other { }
 
-    fun f() -> Void {
-        let x = 1.from_other()
-    }
+  fun f() -> Void {
+    let x = 1.from_other()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestNicheSuperimpositions,
   test_blanket_sup_extension_with_constraint, R"(
-    cls Other { }
+  cls Other { }
 
-    sup Other {
-        !public fun from_other(&self) -> S32 { ret 7 }
-    }
+  sup Other {
+    !public fun from_other(&self) -> S32 { ret 7 }
+  }
 
-    sup [T: Copy] T ext Other { }
+  sup [T: Copy] T ext Other { }
 
-    fun f() -> Void {
-        let x = 1.from_other()
-    }
+  fun f() -> Void {
+    let x = 1.from_other()
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestNicheSuperimpositions,
   test_blanket_sup_extension_with_constraint_excludes_non_conforming,
   SppIdentifierUnknownError, R"(
-    cls Other { }
+  cls Other { }
 
-    sup Other {
-        !public fun from_other(&self) -> S32 { ret 7 }
-    }
+  sup Other {
+    !public fun from_other(&self) -> S32 { ret 7 }
+  }
 
-    cls NotCopy { }
+  cls NotCopy { }
 
-    sup [T: Copy] T ext Other { }
+  sup [T: Copy] T ext Other { }
 
-    fun f() -> Void {
-        let x = NotCopy()
-        let y = x.from_other()
-    }
+  fun f() -> Void {
+    let x = NotCopy()
+    let y = x.from_other()
+  }
 )");
 
 // The extended type names the very parameter the blanket binds, so every type is extended by a different instantiation.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestNicheSuperimpositions,
   test_blanket_sup_extension_generic_of_itself, R"(
-    cls Other[T] { }
+  cls Other[T] { }
 
-    sup [T] T ext Other[T] { }
+  sup [T] T ext Other[T] { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestNicheSuperimpositions,
   test_blanket_sup_extension_generic_of_itself_with_constraint, R"(
-    cls Other[T] { }
+  cls Other[T] { }
 
-    sup [T: Copy] T ext Other[T] { }
+  sup [T: Copy] T ext Other[T] { }
 )");
 
 // One pack, named on both sides: the elements bound by the pattern are the ones the extension is instantiated over.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestNicheSuperimpositions,
   test_variadic_sup_same_pack_on_both_sides, R"(
-    cls Type1[..T] { }
-    cls Type2[..T] { }
+  cls Type1[..T] { }
+  cls Type2[..T] { }
 
-    sup [..T] Type2[T] {
-        !public fun tagged(&self) -> S32 { ret 3 }
-    }
+  sup [..T] Type2[T] {
+    !public fun tagged(&self) -> S32 { ret 3 }
+  }
 
-    sup [..T] Type1[T] ext Type2[T] { }
+  sup [..T] Type1[T] ext Type2[T] { }
 
-    fun f() -> Void {
-        let x = Type1[S32, Bool]()
-        let y = x.tagged()
-    }
+  fun f() -> Void {
+    let x = Type1[S32, Bool]()
+    let y = x.tagged()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestNicheSuperimpositions,
   test_variadic_sup_same_pack_on_both_sides_with_constraint, R"(
-    cls Type1[..T] { }
-    cls Type2[..T] { }
+  cls Type1[..T] { }
+  cls Type2[..T] { }
 
-    sup [..T: Copy] Type1[T] ext Type2[T] { }
+  sup [..T: Copy] Type1[T] ext Type2[T] { }
 )");
 
 // Two packs, only one of which the pattern binds: "U" is fixed by the extension rather than by the type matched.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestNicheSuperimpositions,
   test_variadic_sup_two_distinct_packs, R"(
-    cls Type1[..T] { }
-    cls Type2[..U] { }
+  cls Type1[..T] { }
+  cls Type2[..U] { }
 
-    sup [..U] Type2[U] {
-        !public fun tagged(&self) -> S32 { ret 5 }
-    }
+  sup [..U] Type2[U] {
+    !public fun tagged(&self) -> S32 { ret 5 }
+  }
 
-    sup [..T, ..U] Type1[T] ext Type2[U] { }
+  sup [..T, ..U] Type1[T] ext Type2[U] { }
 
-    fun f() -> Void {
-        let x = Type1[S32]()
-    }
+  fun f() -> Void {
+    let x = Type1[S32]()
+  }
 )");

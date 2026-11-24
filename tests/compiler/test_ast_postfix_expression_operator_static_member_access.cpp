@@ -3,396 +3,396 @@
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_field_on_type, R"(
-    cls Point {
-        x: S32
-        y: S32
-    }
+  cls Point {
+    x: S32
+    y: S32
+  }
 
-    sup Point {
-        !public
-        fun f() -> Void { }
-    }
+  sup Point {
+    !public
+    fun f() -> Void { }
+  }
 
-    fun f() -> Void {
-        Point::f()
-    }
+  fun f() -> Void {
+    Point::f()
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_field_on_type,
   SppIdentifierUnknownError, R"(
-    cls Point {
-        x: S32
-        y: S32
-    }
+  cls Point {
+    x: S32
+    y: S32
+  }
 
-    fun f(p: Point) -> Void {
-        Point::f()
-    }
+  fun f(p: Point) -> Void {
+    Point::f()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_method_on_type_with_explicit_self, R"(
-    cls Point {
-        x: S32
-        y: S32
-    }
+  cls Point {
+    x: S32
+    y: S32
+  }
 
-    sup Point {
-        !public
-        fun m(&self) -> Void { }
-    }
+  sup Point {
+    !public
+    fun m(&self) -> Void { }
+  }
 
-    fun f(p: Point) -> Void {
-        Point::m(&p)
-    }
+  fun f(p: Point) -> Void {
+    Point::m(&p)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_method_on_type_without_self,
   SppFunctionCallNoValidSignaturesError, R"(
-    cls Point {
-        x: S32
-        y: S32
-    }
+  cls Point {
+    x: S32
+    y: S32
+  }
 
-    sup Point {
-        !public
-        fun m(&self) -> Void { }
-    }
+  sup Point {
+    !public
+    fun m(&self) -> Void { }
+  }
 
-    fun f() -> Void {
-        Point::m()
-    }
+  fun f() -> Void {
+    Point::m()
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_std_method_on_type_without_self,
   SppFunctionCallNoValidSignaturesError, R"(
-    fun f() -> Void {
-        let next = std::random::Rng::next_u64()
-    }
+  fun f() -> Void {
+    let next = std::random::Rng::next_u64()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_field_on_namespace, R"(
-    fun f() -> Void {
-        std::console::print("hello")
-    }
+  fun f() -> Void {
+    std::console::print("hello")
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_field_on_namespace,
   SppIdentifierUnknownError, R"(
-    fun f() -> Void {
-        std::console::ppp(&"hello")
-    }
+  fun f() -> Void {
+    std::console::ppp(&"hello")
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_static_operator_application_on_variable,
   SppMemberAccessRuntimeOperatorExpectedError, R"(
-    cls Point {
-        x: S32
-        y: S32
-    }
+  cls Point {
+    x: S32
+    y: S32
+  }
 
-    fun f(p: Point) -> Void {
-        let x = p::x
-    }
+  fun f(p: Point) -> Void {
+    let x = p::x
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_static_operator_application_on_call_result,
   SppMemberAccessRuntimeOperatorExpectedError, R"(
-    fun f() -> Void {
-        let x = Str::from("hello")::bytes()
-    }
+  fun f() -> Void {
+    let x = Str::from("hello")::bytes()
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_static_operator_application_on_attribute,
   SppMemberAccessRuntimeOperatorExpectedError, R"(
-    cls Point {
-        !public x: S32
-        !public y: S32
-    }
+  cls Point {
+    !public x: S32
+    !public y: S32
+  }
 
-    fun f(p: Point) -> Void {
-        let x = p.x::y
-    }
+  fun f(p: Point) -> Void {
+    let x = p.x::y
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_private_static_member_on_type_diff_ctx,
   SppAccessViolationError, R"(
-    cls MyType { }
-    sup MyType {
-        !private cmp n: S32 = 123
-    }
+  cls MyType { }
+  sup MyType {
+    !private cmp n: S32 = 123
+  }
 
-    fun f() -> Void {
-        let x = MyType::n
-    }
+  fun f() -> Void {
+    let x = MyType::n
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_private_static_member_on_type_same_ctx, R"(
-    cls MyType { }
-    sup MyType {
-        !private cmp n: S32 = 123
+  cls MyType { }
+  sup MyType {
+    !private cmp n: S32 = 123
 
-        fun f() -> Void {
-            let x = MyType::n
-        }
+    fun f() -> Void {
+      let x = MyType::n
     }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_private_static_function_on_type_diff_ctx,
   SppAccessViolationError, R"(
-    cls MyType { }
-    sup MyType {
-        !private
-        fun make() -> S32 { ret 1 }
-    }
+  cls MyType { }
+  sup MyType {
+    !private
+    fun make() -> S32 { ret 1 }
+  }
 
-    fun f() -> Void {
-        let x = MyType::make()
-    }
+  fun f() -> Void {
+    let x = MyType::make()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_private_static_function_on_type_same_ctx, R"(
-    cls MyType { }
-    sup MyType {
-        !private
-        fun make() -> S32 { ret 1 }
+  cls MyType { }
+  sup MyType {
+    !private
+    fun make() -> S32 { ret 1 }
 
-        !public
-        fun f() -> S32 { ret MyType::make() }
-    }
+    !public
+    fun f() -> S32 { ret MyType::make() }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_protected_static_function_on_type_diff_ctx,
   SppAccessViolationError, R"(
-    cls MyType { }
-    sup MyType {
-        !protected
-        fun make() -> S32 { ret 1 }
-    }
+  cls MyType { }
+  sup MyType {
+    !protected
+    fun make() -> S32 { ret 1 }
+  }
 
-    fun f() -> Void {
-        let x = MyType::make()
-    }
+  fun f() -> Void {
+    let x = MyType::make()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_package_static_function_in_its_package, R"(
-    cls MyType { }
-    sup MyType {
-        !package
-        fun make() -> S32 { ret 1 }
-    }
+  cls MyType { }
+  sup MyType {
+    !package
+    fun make() -> S32 { ret 1 }
+  }
 
-    fun f() -> Void {
-        let x = MyType::make()
-    }
+  fun f() -> Void {
+    let x = MyType::make()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_attribute_and_constant_of_one_name_coexist, R"(
-    cls Point {
-        !public x: U32
-    }
+  cls Point {
+    !public x: U32
+  }
 
-    sup Point {
-        !public cmp x: Bool = true
-    }
+  sup Point {
+    !public cmp x: Bool = true
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_constant_read_through_the_type, R"(
-    cls Point { }
+  cls Point { }
 
-    sup Point {
-        !public cmp x: Bool = true
-    }
+  sup Point {
+    !public cmp x: Bool = true
+  }
 
-    fun f() -> Void {
-        let a: Bool = Point::x
-    }
+  fun f() -> Void {
+    let a: Bool = Point::x
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_constant_read_through_the_type_over_an_attribute_of_one_name, R"(
-    cls Point {
-        !public x: U32
-    }
+  cls Point {
+    !public x: U32
+  }
 
-    sup Point {
-        !public cmp x: Bool = true
-    }
+  sup Point {
+    !public cmp x: Bool = true
+  }
 
-    fun f() -> Void {
-        let a: Bool = Point::x
-    }
+  fun f() -> Void {
+    let a: Bool = Point::x
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_attribute_read_through_the_type,
   SppMemberAccessRuntimeOperatorExpectedError, R"(
-    cls Point {
-        !public x: U32
-    }
+  cls Point {
+    !public x: U32
+  }
 
-    fun f() -> Void {
-        let a = Point::x
-    }
+  fun f() -> Void {
+    let a = Point::x
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_constant_on_a_base_and_attribute_on_the_derived_type, R"(
-    cls Base { }
+  cls Base { }
 
-    sup Base {
-        !public cmp x: Bool = true
-    }
+  sup Base {
+    !public cmp x: Bool = true
+  }
 
-    cls Point {
-        !public x: U32
-    }
+  cls Point {
+    !public x: U32
+  }
 
-    sup Point ext Base { }
+  sup Point ext Base { }
 
-    fun f() -> Void {
-        let p = Point(x=1_u32)
-        let a: U32 = p.x
-        let b: Bool = Point::x
-    }
+  fun f() -> Void {
+    let p = Point(x=1_u32)
+    let a: U32 = p.x
+    let b: Bool = Point::x
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_attribute_on_a_base_and_constant_on_the_derived_type, R"(
-    cls Base {
-        !public x: U32
-    }
+  cls Base {
+    !public x: U32
+  }
 
-    cls Point { }
+  cls Point { }
 
-    sup Point ext Base { }
+  sup Point ext Base { }
 
-    sup Point {
-        !public cmp x: Bool = true
-    }
+  sup Point {
+    !public cmp x: Bool = true
+  }
 
-    fun f() -> Void {
-        let p = Point(x=1_u32)
-        let a: U32 = p.x
-        let b: Bool = Point::x
-    }
+  fun f() -> Void {
+    let p = Point(x=1_u32)
+    let a: U32 = p.x
+    let b: Bool = Point::x
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_two_inherited_constants_of_one_name,
   SppAmbiguousMemberAccessError, R"(
-    cls B { }
+  cls B { }
 
-    sup B {
-        !public cmp x: Bool = true
-    }
+  sup B {
+    !public cmp x: Bool = true
+  }
 
-    cls C { }
+  cls C { }
 
-    sup C {
-        !public cmp x: Bool = false
-    }
+  sup C {
+    !public cmp x: Bool = false
+  }
 
-    cls A { }
+  cls A { }
 
-    sup A ext B { }
-    sup A ext C { }
+  sup A ext B { }
+  sup A ext C { }
 
-    fun f() -> Void {
-        let a = A::x
-    }
+  fun f() -> Void {
+    let a = A::x
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_method_as_value_through_a_generic_parameter, R"(
-    cls Counter {
-        n: S32
-    }
+  cls Counter {
+    n: S32
+  }
 
-    sup Counter {
-        !public fun bump(&self, x: S32) -> S32 { ret self.n + x }
-    }
+  sup Counter {
+    !public fun bump(&self, x: S32) -> S32 { ret self.n + x }
+  }
 
-    fun apply[F: std::function::FunRef[(&Counter, S32), S32]](f: F, c: &Counter, x: S32) -> S32 { ret f(c, x) }
+  fun apply[F: std::function::FunRef[(&Counter, S32), S32]](f: F, c: &Counter, x: S32) -> S32 { ret f(c, x) }
 
-    fun f(c: Counter) -> Void {
-        let r = apply(Counter::bump, &c, 2)
-    }
+  fun f(c: Counter) -> Void {
+    let r = apply(Counter::bump, &c, 2)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_method_as_value_through_a_function_type, R"(
-    cls Counter {
-        n: S32
-    }
+  cls Counter {
+    n: S32
+  }
 
-    sup Counter {
-        !public fun bump(&self, x: S32) -> S32 { ret self.n + x }
-    }
+  sup Counter {
+    !public fun bump(&self, x: S32) -> S32 { ret self.n + x }
+  }
 
-    fun apply(f: std::function::FunRef[(&Counter, S32), S32], c: &Counter, x: S32) -> S32 { ret f(c, x) }
+  fun apply(f: std::function::FunRef[(&Counter, S32), S32], c: &Counter, x: S32) -> S32 { ret f(c, x) }
 
-    fun f(c: Counter) -> Void {
-        let r = apply(Counter::bump, &c, 2)
-    }
+  fun f(c: Counter) -> Void {
+    let r = apply(Counter::bump, &c, 2)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_static_method_as_value, R"(
-    cls Counter {
-        n: S32
-    }
+  cls Counter {
+    n: S32
+  }
 
-    sup Counter {
-        !public fun make(n: S32) -> Counter { ret Counter(n=n) }
-    }
+  sup Counter {
+    !public fun make(n: S32) -> Counter { ret Counter(n=n) }
+  }
 
-    fun apply(f: std::function::FunRef[(S32,), Counter], n: S32) -> Counter { ret f(n) }
+  fun apply(f: std::function::FunRef[(S32,), Counter], n: S32) -> Counter { ret f(n) }
 
-    fun f() -> Void {
-        std::mem::ops::drop(apply(Counter::make, 42))
-    }
+  fun f() -> Void {
+    std::mem::ops::drop(apply(Counter::make, 42))
+  }
 )");
 
 // A function named through its namespace is its mock's constant, as a method named through its type is. Its codegen
@@ -400,51 +400,51 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_namespaced_function_as_value, R"(
-    fun apply(f: std::function::FunRef[(), Void]) -> Void { f() }
+  fun apply(f: std::function::FunRef[(), Void]) -> Void { f() }
 
-    fun f() -> Void {
-        apply(std::debug::breakpoint)
-    }
+  fun f() -> Void {
+    apply(std::debug::breakpoint)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_namespaced_overloaded_generic_function_as_value, R"(
-    fun apply(f: std::function::FunRef[(S32,), S32], x: S32) -> S32 { ret f(x) }
+  fun apply(f: std::function::FunRef[(S32,), S32], x: S32) -> S32 { ret f(x) }
 
-    fun f() -> S32 {
-        ret apply(std::hints::black_box, 41)
-    }
+  fun f() -> S32 {
+    ret apply(std::hints::black_box, 41)
+  }
 )");
 
 // "likely" is lowered in place at a direct call; called through a value it is its wrapper, which passes the value on.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_namespaced_call_site_intrinsic_as_value, R"(
-    fun apply(f: std::function::FunRef[(Bool,), Bool], b: Bool) -> Bool { ret f(b) }
+  fun apply(f: std::function::FunRef[(Bool,), Bool], b: Bool) -> Bool { ret f(b) }
 
-    fun f() -> Bool {
-        ret apply(std::hints::likely, true)
-    }
+  fun f() -> Bool {
+    ret apply(std::hints::likely, true)
+  }
 )");
 
 // A method value on a generic owner is named through the instantiated owner ("Box[S32]::$get").
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_method_as_value_on_a_generic_owner, R"(
-    cls Box[T] {
-        val: T
-    }
+  cls Box[T] {
+    val: T
+  }
 
-    sup [T: Copy] Box[T] {
-        !public fun get(&self) -> T { ret self.val }
-    }
+  sup [T: Copy] Box[T] {
+    !public fun get(&self) -> T { ret self.val }
+  }
 
-    fun apply(f: std::function::FunRef[(&Box[S32],), S32], b: &Box[S32]) -> S32 { ret f(b) }
+  fun apply(f: std::function::FunRef[(&Box[S32],), S32], b: &Box[S32]) -> S32 { ret f(b) }
 
-    fun f(b: Box[S32]) -> Void {
-        let r = apply(Box[S32]::get, &b)
-    }
+  fun f(b: Box[S32]) -> Void {
+    let r = apply(Box[S32]::get, &b)
+  }
 )");
 
 // Each instantiation of the owner has its own mock, typed in its own terms: "Box[S32]::$get" and "Box[Bool]::$get"
@@ -452,21 +452,21 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_method_as_value_on_two_instances_of_a_generic_owner, R"(
-    cls Box[T] {
-        val: T
-    }
+  cls Box[T] {
+    val: T
+  }
 
-    sup [T: Copy] Box[T] {
-        !public fun get(&self) -> T { ret self.val }
-    }
+  sup [T: Copy] Box[T] {
+    !public fun get(&self) -> T { ret self.val }
+  }
 
-    fun apply_s(f: std::function::FunRef[(&Box[S32],), S32], b: &Box[S32]) -> S32 { ret f(b) }
-    fun apply_b(f: std::function::FunRef[(&Box[Bool],), Bool], b: &Box[Bool]) -> Bool { ret f(b) }
+  fun apply_s(f: std::function::FunRef[(&Box[S32],), S32], b: &Box[S32]) -> S32 { ret f(b) }
+  fun apply_b(f: std::function::FunRef[(&Box[Bool],), Bool], b: &Box[Bool]) -> Bool { ret f(b) }
 
-    fun f(a: Box[S32], b: Box[Bool]) -> Void {
-        let r = apply_s(Box[S32]::get, &a)
-        let s = apply_b(Box[Bool]::get, &b)
-    }
+  fun f(a: Box[S32], b: Box[Bool]) -> Void {
+    let r = apply_s(Box[S32]::get, &a)
+    let s = apply_b(Box[Bool]::get, &b)
+  }
 )");
 
 // Overloads written in two "sup" blocks of a generic owner coalesce with the instantiation's own blocks, so each is
@@ -474,25 +474,25 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_method_as_value_overloaded_across_sup_blocks_of_a_generic_owner, R"(
-    cls Box[T] {
-        val: T
-    }
+  cls Box[T] {
+    val: T
+  }
 
-    sup [T: Copy] Box[T] {
-        !public fun get(&self) -> T { ret self.val }
-    }
+  sup [T: Copy] Box[T] {
+    !public fun get(&self) -> T { ret self.val }
+  }
 
-    sup [T: Copy] Box[T] {
-        !public fun get(&self, x: Bool) -> T { ret self.val }
-    }
+  sup [T: Copy] Box[T] {
+    !public fun get(&self, x: Bool) -> T { ret self.val }
+  }
 
-    fun apply1(f: std::function::FunRef[(&Box[S32],), S32], b: &Box[S32]) -> S32 { ret f(b) }
-    fun apply2(f: std::function::FunRef[(&Box[S32], Bool), S32], b: &Box[S32]) -> S32 { ret f(b, true) }
+  fun apply1(f: std::function::FunRef[(&Box[S32],), S32], b: &Box[S32]) -> S32 { ret f(b) }
+  fun apply2(f: std::function::FunRef[(&Box[S32], Bool), S32], b: &Box[S32]) -> S32 { ret f(b, true) }
 
-    fun f(b: Box[S32]) -> Void {
-        let r = apply1(Box[S32]::get, &b)
-        let s = apply2(Box[S32]::get, &b)
-    }
+  fun f(b: Box[S32]) -> Void {
+    let r = apply1(Box[S32]::get, &b)
+    let s = apply2(Box[S32]::get, &b)
+  }
 )");
 
 // The owner written is checked: "Box[Bool]::get" is not a function of "&Box[S32]".
@@ -500,20 +500,20 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_method_as_value_on_the_wrong_instance_of_a_generic_owner,
   SppFunctionCallNoValidSignaturesError, R"(
-    cls Box[T] {
-        val: T
-    }
+  cls Box[T] {
+    val: T
+  }
 
-    sup [T: Copy] Box[T] {
-        !public fun get(&self) -> T { ret self.val }
-    }
+  sup [T: Copy] Box[T] {
+    !public fun get(&self) -> T { ret self.val }
+  }
 
-    fun apply(f: std::function::FunRef[(&Box[S32],), S32], b: &Box[S32]) -> S32 { ret f(b) }
+  fun apply(f: std::function::FunRef[(&Box[S32],), S32], b: &Box[S32]) -> S32 { ret f(b) }
 
-    fun f(b: Box[S32]) -> Void {
-        let r = apply(Box[Bool]::get, &b)
-        std::mem::ops::drop(b)
-    }
+  fun f(b: Box[S32]) -> Void {
+    let r = apply(Box[Bool]::get, &b)
+    std::mem::ops::drop(b)
+  }
 )");
 
 // Overloads written in two "sup" blocks get a mock each, and each mock is given the other's overloads, so naming
@@ -522,129 +522,129 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_method_as_value_overloaded_across_sup_blocks, R"(
-    cls Counter {
-        n: S32
-    }
+  cls Counter {
+    n: S32
+  }
 
-    sup Counter {
-        !public fun make(n: S32) -> Counter { ret Counter(n=n) }
-    }
+  sup Counter {
+    !public fun make(n: S32) -> Counter { ret Counter(n=n) }
+  }
 
-    sup Counter {
-        !public fun make(flag: Bool) -> Counter { ret Counter(n=0) }
-    }
+  sup Counter {
+    !public fun make(flag: Bool) -> Counter { ret Counter(n=0) }
+  }
 
-    fun apply(f: std::function::FunRef[(Bool,), Counter]) -> Counter { ret f(true) }
+  fun apply(f: std::function::FunRef[(Bool,), Counter]) -> Counter { ret f(true) }
 
-    fun f() -> Void {
-        std::mem::ops::drop(apply(Counter::make))
-    }
+  fun f() -> Void {
+    std::mem::ops::drop(apply(Counter::make))
+  }
 )");
 
 // FIXED
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_method_as_value_overloaded_across_sup_blocks_through_a_generic_parameter, R"(
-    cls Counter {
-        n: S32
-    }
+  cls Counter {
+    n: S32
+  }
 
-    sup Counter {
-        !public fun make(n: S32) -> Counter { ret Counter(n=n) }
-    }
+  sup Counter {
+    !public fun make(n: S32) -> Counter { ret Counter(n=n) }
+  }
 
-    sup Counter {
-        !public fun make(flag: Bool) -> Counter { ret Counter(n=0) }
-    }
+  sup Counter {
+    !public fun make(flag: Bool) -> Counter { ret Counter(n=0) }
+  }
 
-    fun apply[F: std::function::FunRef[(Bool,), Counter]](f: F) -> Counter { ret f(true) }
+  fun apply[F: std::function::FunRef[(Bool,), Counter]](f: F) -> Counter { ret f(true) }
 
-    fun f() -> Void {
-        std::mem::ops::drop(apply(Counter::make))
-    }
+  fun f() -> Void {
+    std::mem::ops::drop(apply(Counter::make))
+  }
 )");
 
 // A method's function type follows its "self": "&mut self" is a "FunMut", called through a "mut" binding.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_mut_self_method_as_value, R"(
-    cls Counter {
-        !public n: S32
-    }
+  cls Counter {
+    !public n: S32
+  }
 
-    sup Counter {
-        !public fun add(&mut self, x: S32) -> Void { self.n += x }
-    }
+  sup Counter {
+    !public fun add(&mut self, x: S32) -> Void { self.n += x }
+  }
 
-    fun apply(mut f: std::function::FunMut[(&mut Counter, S32), Void], c: &mut Counter) -> Void {
-        f(c, 5)
-    }
+  fun apply(mut f: std::function::FunMut[(&mut Counter, S32), Void], c: &mut Counter) -> Void {
+    f(c, 5)
+  }
 
-    fun f() -> Void {
-        let mut c = Counter(n=1)
-        apply(Counter::add, &mut c)
-    }
+  fun f() -> Void {
+    let mut c = Counter(n=1)
+    apply(Counter::add, &mut c)
+  }
 )");
 
 // A by-value "self" is a "FunMov".
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_value_self_method_as_value, R"(
-    cls Counter {
-        !public n: S32
-    }
+  cls Counter {
+    !public n: S32
+  }
 
-    sup Counter {
-        !public fun take(self) -> S32 {
-            let Counter(n) = self
-            ret n
-        }
+  sup Counter {
+    !public fun take(self) -> S32 {
+      let Counter(n) = self
+      ret n
     }
+  }
 
-    fun apply(f: std::function::FunMov[(Counter,), S32], c: Counter) -> S32 { ret f(c) }
+  fun apply(f: std::function::FunMov[(Counter,), S32], c: Counter) -> S32 { ret f(c) }
 
-    fun f() -> S32 {
-        ret apply(Counter::take, Counter(n=7))
-    }
+  fun f() -> S32 {
+    ret apply(Counter::take, Counter(n=7))
+  }
 )");
 
 // A static and a "&self" method of a type in another module, named through the type's full path.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_namespaced_type_methods_as_values, R"(
-    fun make(f: std::function::FunRef[(U64,), std::time::duration::Duration], x: U64) -> std::time::duration::Duration {
-        ret f(x)
-    }
+  fun make(f: std::function::FunRef[(U64,), std::time::duration::Duration], x: U64) -> std::time::duration::Duration {
+    ret f(x)
+  }
 
-    fun read(f: std::function::FunRef[(&std::time::duration::Duration,), U64], d: &std::time::duration::Duration) -> U64 {
-        ret f(d)
-    }
+  fun read(f: std::function::FunRef[(&std::time::duration::Duration,), U64], d: &std::time::duration::Duration) -> U64 {
+    ret f(d)
+  }
 
-    fun f() -> U64 {
-        let d = make(std::time::duration::Duration::from_millis, 1500_u64)
-        ret read(std::time::duration::Duration::as_millis, &d)
-    }
+  fun f() -> U64 {
+    let d = make(std::time::duration::Duration::from_millis, 1500_u64)
+    ret read(std::time::duration::Duration::as_millis, &d)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_method_values_held_in_lets, R"(
-    cls Counter {
-        n: S32
-    }
+  cls Counter {
+    n: S32
+  }
 
-    sup Counter {
-        !public fun new(n: S32) -> Counter { ret Counter(n=n) }
-        !public fun get(&self) -> S32 { ret self.n }
-    }
+  sup Counter {
+    !public fun new(n: S32) -> Counter { ret Counter(n=n) }
+    !public fun get(&self) -> S32 { ret self.n }
+  }
 
-    fun f() -> S32 {
-        let g = Counter::get
-        let h: std::function::FunRef[(S32,), Counter] = Counter::new
-        let c = h(3)
-        let n = g(&c)
-        ret n
-    }
+  fun f() -> S32 {
+    let g = Counter::get
+    let h: std::function::FunRef[(S32,), Counter] = Counter::new
+    let c = h(3)
+    let n = g(&c)
+    ret n
+  }
 )");
 
 // "Box[S32]" is first named in a body, after the sweep that attaches every mock's function types, so its mock for
@@ -653,18 +653,18 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_generic_owner_static_method_held_in_a_typed_let, R"(
-    cls Box[T] {
-        val: T
-    }
+  cls Box[T] {
+    val: T
+  }
 
-    sup [T: Copy] Box[T] {
-        !public fun new(val: T) -> Box[T] { ret Box[T](val=val) }
-    }
+  sup [T: Copy] Box[T] {
+    !public fun new(val: T) -> Box[T] { ret Box[T](val=val) }
+  }
 
-    fun f() -> Void {
-        let h: std::function::FunRef[(S32,), Box[S32]] = Box[S32]::new
-        std::mem::ops::drop(h(9))
-    }
+  fun f() -> Void {
+    let h: std::function::FunRef[(S32,), Box[S32]] = Box[S32]::new
+    std::mem::ops::drop(h(9))
+  }
 )");
 
 // Calling a "Self"-returning method through a method value segfaulted the compiler.
@@ -672,137 +672,137 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   MethodAsValueSelfReturn,
   test_valid_method_value_returning_self, R"(
-    cls A { }
-    sup A ext std::copy::Copy { }
-    sup A {
-        !public fun make() -> Self { ret A() }
-    }
-    fun f() -> Void {
-        let g = A::make
-        let a: A = g()
-    }
+  cls A { }
+  sup A ext std::copy::Copy { }
+  sup A {
+    !public fun make() -> Self { ret A() }
+  }
+  fun f() -> Void {
+    let g = A::make
+    let a: A = g()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_namespace_member_in_default_from_other_module, R"(
-    fun f() -> Void {
-        std::time::time::sleep(std::time::duration::Duration::from_millis(5_u64))
-    }
+  fun f() -> Void {
+    std::time::time::sleep(std::time::duration::Duration::from_millis(5_u64))
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_self_type_member_in_default_from_outside_the_sup, R"(
-    cls A { }
+  cls A { }
 
-    sup A {
-        !public cmp k: S32 = 1
-        !public fun f(n: S32 = Self::k) -> Void { }
-    }
+  sup A {
+    !public cmp k: S32 = 1
+    !public fun f(n: S32 = Self::k) -> Void { }
+  }
 
-    fun g() -> Void {
-        A::f()
-    }
+  fun g() -> Void {
+    A::f()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_sup_alias_type_member_in_default_from_outside_the_sup, R"(
-    cls A { }
-    cls B { }
+  cls A { }
+  cls B { }
 
-    sup B {
-        !public cmp k: S32 = 1
-    }
+  sup B {
+    !public cmp k: S32 = 1
+  }
 
-    sup A {
-        type Inner = B
-        !public fun f(n: S32 = Inner::k) -> Void { }
-    }
+  sup A {
+    type Inner = B
+    !public fun f(n: S32 = Inner::k) -> Void { }
+  }
 
-    fun g() -> Void {
-        A::f()
-    }
+  fun g() -> Void {
+    A::f()
+  }
 )");
 
 // A method called in the static form takes its receiver as an ordinary argument, but the "self" argument was never
 // type checked - "the receiver chose the overload" only holds for "x.m()".
 // FIXED
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstPostfixExpressionOperatorStaticMemberAccessAst,
-    test_invalid_static_method_call_with_a_receiver_of_another_class,
-    SppFunctionCallNoValidSignaturesError, R"(
-    cls RecvA { !public v: S64 }
-    cls RecvB { !public w: U8 }
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_invalid_static_method_call_with_a_receiver_of_another_class,
+  SppFunctionCallNoValidSignaturesError, R"(
+  cls RecvA { !public v: S64 }
+  cls RecvB { !public w: U8 }
 
-    sup RecvA ext std::copy::Copy { }
-    sup RecvB ext std::copy::Copy { }
+  sup RecvA ext std::copy::Copy { }
+  sup RecvB ext std::copy::Copy { }
 
-    sup RecvA {
-        !public fun m(&self) -> S64 { ret self.v }
-    }
+  sup RecvA {
+    !public fun m(&self) -> S64 { ret self.v }
+  }
 
-    fun f() -> S64 {
-        let b = RecvB(w=1_u8)
-        ret RecvA::m(&b)
-    }
+  fun f() -> S64 {
+    let b = RecvB(w=1_u8)
+    ret RecvA::m(&b)
+  }
 )");
 
 // FIXED
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstPostfixExpressionOperatorStaticMemberAccessAst,
-    test_invalid_static_method_call_with_a_primitive_receiver,
-    SppFunctionCallNoValidSignaturesError, R"(
-    cls RecvC { !public v: S64 }
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_invalid_static_method_call_with_a_primitive_receiver,
+  SppFunctionCallNoValidSignaturesError, R"(
+  cls RecvC { !public v: S64 }
 
-    sup RecvC ext std::copy::Copy { }
+  sup RecvC ext std::copy::Copy { }
 
-    sup RecvC {
-        !public fun m(&self) -> S64 { ret self.v }
-    }
+  sup RecvC {
+    !public fun m(&self) -> S64 { ret self.v }
+  }
 
-    fun f() -> S64 {
-        let x = true
-        ret RecvC::m(&x)
-    }
+  fun f() -> S64 {
+    let x = true
+    ret RecvC::m(&x)
+  }
 )");
 
 // FIXED
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstPostfixExpressionOperatorStaticMemberAccessAst,
-    test_invalid_static_method_call_with_an_owned_receiver_of_another_class,
-    SppFunctionCallNoValidSignaturesError, R"(
-    cls RecvD { !public v: S64 }
-    cls RecvE { !public w: U8 }
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_invalid_static_method_call_with_an_owned_receiver_of_another_class,
+  SppFunctionCallNoValidSignaturesError, R"(
+  cls RecvD { !public v: S64 }
+  cls RecvE { !public w: U8 }
 
-    sup RecvD ext std::copy::Copy { }
-    sup RecvE ext std::copy::Copy { }
+  sup RecvD ext std::copy::Copy { }
+  sup RecvE ext std::copy::Copy { }
 
-    sup RecvD {
-        !public fun m(self) -> S64 { ret self.v }
-    }
+  sup RecvD {
+    !public fun m(self) -> S64 { ret self.v }
+  }
 
-    fun f() -> S64 {
-        ret RecvD::m(RecvE(w=1_u8))
-    }
+  fun f() -> S64 {
+    ret RecvD::m(RecvE(w=1_u8))
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AstPostfixExpressionOperatorStaticMemberAccessAst,
-    test_valid_static_method_call_with_its_own_receiver, R"(
-    cls RecvF { !public v: S64 }
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_static_method_call_with_its_own_receiver, R"(
+  cls RecvF { !public v: S64 }
 
-    sup RecvF ext std::copy::Copy { }
+  sup RecvF ext std::copy::Copy { }
 
-    sup RecvF {
-        !public fun m(&self) -> S64 { ret self.v }
-    }
+  sup RecvF {
+    !public fun m(&self) -> S64 { ret self.v }
+  }
 
-    fun f() -> S64 {
-        let a = RecvF(v=1_s64)
-        ret RecvF::m(&a)
-    }
+  fun f() -> S64 {
+    let a = RecvF(v=1_s64)
+    ret RecvF::m(&a)
+  }
 )");
 
 // A constant a generic "sup" block declares is read in that block, where its own parameters are bound - not in the
@@ -811,80 +811,80 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_sup_constant_read_in_its_declaring_block, R"(
-    cls Wrap[cmp n: USize] { }
+  cls Wrap[cmp n: USize] { }
 
-    sup [cmp k: USize] Wrap[k] {
-        !public cmp doubled: USize = k + k
-    }
+  sup [cmp k: USize] Wrap[k] {
+    !public cmp doubled: USize = k + k
+  }
 
-    fun g(w: Wrap[6_uz]) -> Void { }
+  fun g(w: Wrap[6_uz]) -> Void { }
 
-    fun f(w: Wrap[Wrap[3_uz]::doubled]) -> Void {
-        g(w)
-    }
+  fun f(w: Wrap[Wrap[3_uz]::doubled]) -> Void {
+    g(w)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_invalid_sup_constant_read_in_its_declaring_block,
   SppFunctionCallNoValidSignaturesError, R"(
-    cls Wrap[cmp n: USize] { }
+  cls Wrap[cmp n: USize] { }
 
-    sup [cmp k: USize] Wrap[k] {
-        !public cmp doubled: USize = k + k
-    }
+  sup [cmp k: USize] Wrap[k] {
+    !public cmp doubled: USize = k + k
+  }
 
-    fun g(w: Wrap[7_uz]) -> Void { }
+  fun g(w: Wrap[7_uz]) -> Void { }
 
-    fun f(w: Wrap[Wrap[3_uz]::doubled]) -> Void {
-        g(w)
-    }
+  fun f(w: Wrap[Wrap[3_uz]::doubled]) -> Void {
+    g(w)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_sup_constant_codegen_read_in_its_declaring_block, R"(
-    cls Wrap[cmp n: USize] { }
+  cls Wrap[cmp n: USize] { }
 
-    sup [cmp k: USize] Wrap[k] {
-        !public cmp doubled: USize = k + k
-    }
+  sup [cmp k: USize] Wrap[k] {
+    !public cmp doubled: USize = k + k
+  }
 
-    fun f() -> USize {
-        ret Wrap[3_uz]::doubled
-    }
+  fun f() -> USize {
+    ret Wrap[3_uz]::doubled
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AstPostfixExpressionOperatorStaticMemberAccessAst,
-    test_valid_static_call_returning_a_type_naming_self_in_a_template, R"(
-    cls K[A] { !public n: U32 }
-    sup [A] K[A] {
-        !public
-        fun make(n: U32) -> Res[Self, Bool] { ret Pass(val=Self(n)) }
-    }
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_static_call_returning_a_type_naming_self_in_a_template, R"(
+  cls K[A] { !public n: U32 }
+  sup [A] K[A] {
+    !public
+    fun make(n: U32) -> Res[Self, Bool] { ret Pass(val=Self(n)) }
+  }
 
-    fun g[A]() -> K[A] {
-        let k = K[A]::make(1_u32).expect("x")
-        ret k
-    }
+  fun g[A]() -> K[A] {
+    let k = K[A]::make(1_u32).expect("x")
+    ret k
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AstPostfixExpressionOperatorStaticMemberAccessAst,
-    test_valid_static_call_returning_a_type_naming_self_in_an_instantiated_template, R"(
-    cls K[A] { !public n: U32 }
-    sup [A] K[A] {
-        !public
-        fun make(n: U32) -> Res[Self, Bool] { ret Pass(val=Self(n)) }
-    }
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_static_call_returning_a_type_naming_self_in_an_instantiated_template, R"(
+  cls K[A] { !public n: U32 }
+  sup [A] K[A] {
+    !public
+    fun make(n: U32) -> Res[Self, Bool] { ret Pass(val=Self(n)) }
+  }
 
-    fun g[A]() -> K[A] {
-        let k = K[A]::make(1_u32).expect("x")
-        ret k
-    }
+  fun g[A]() -> K[A] {
+    let k = K[A]::make(1_u32).expect("x")
+    ret k
+  }
 
-    fun f() -> Void {
-        let k = g[Bool]()
-    }
+  fun f() -> Void {
+    let k = g[Bool]()
+  }
 )");

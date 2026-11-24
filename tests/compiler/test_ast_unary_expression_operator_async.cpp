@@ -4,96 +4,96 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_unknown_target,
   SppIdentifierUnknownError, R"(
-    fun g() -> Void {
-        async x()
-    }
+  fun g() -> Void {
+    async x()
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_bad_target_1,
   SppInvalidPrimaryExpressionError, R"(
-    fun g() -> Void {
-        async Bool
-    }
+  fun g() -> Void {
+    async Bool
+  }
 )")
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_bad_target_2,
   SppAsyncTargetNotFunctionCallError, R"(
-    fun g() -> Void {
-        async 123
-    }
+  fun g() -> Void {
+    async 123
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_moving_pinned_borrow,
   SppMovingEscapingBorrowedMemoryError, R"(
-    fun f(a: &StrView) -> Str { ret Str::from(a) }
-    fun g() -> Void {
-        let x = Str::from("hello")
-        let future = async f(&x)
-        let y = x
-    }
+  fun f(a: &StrView) -> Str { ret Str::from(a) }
+  fun g() -> Void {
+    let x = Str::from("hello")
+    let future = async f(&x)
+    let y = x
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_moving_future_with_pins_ret,
   SppMovingEscapingBorrowedMemoryError, R"(
-    fun f(a: &StrView) -> Str { ret Str::from(a) }
-    fun g() -> Fut[Str] {
-        let x = Str::from("hello")
-        let future = async f(&x)
-        ret future
-    }
+  fun f(a: &StrView) -> Str { ret Str::from(a) }
+  fun g() -> Fut[Str] {
+    let x = Str::from("hello")
+    let future = async f(&x)
+    ret future
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_postfix_not_a_call,
   SppAsyncTargetNotFunctionCallError, R"(
-    cls A { !public x: Bool }
-    fun g() -> Void {
-        let a = A(x=true)
-        async a.x
-    }
+  cls A { !public x: Bool }
+  fun g() -> Void {
+    let a = A(x=true)
+    async a.x
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_method_call, R"(
-    cls A { }
-    sup A {
-        !public
-        fun method(&self) -> Str { ret Str::from("hello") }
-    }
-    fun g() -> Void {
-        let a = A()
-        let x = async a.method()
-        let s = x.await
-    }
+  cls A { }
+  sup A {
+    !public
+    fun method(&self) -> Str { ret Str::from("hello") }
+  }
+  fun g() -> Void {
+    let a = A()
+    let x = async a.method()
+    let s = x.await
+  }
 )");
 
 // "self" moves the receiver into the future, which then holds no borrow, so it can be thrown away unawaited.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_overwriting_a_future_that_owns_its_receiver, R"(
-    cls A { }
-    sup A {
-        !public
-        fun method(self) -> Str {
-            ret Str::from("hello")
-        }
+  cls A { }
+  sup A {
+    !public
+    fun method(self) -> Str {
+      ret Str::from("hello")
     }
-    fun g() -> Void {
-        let a = A()
-        let mut x = async a.method()
-        std::mem::ops::drop(x)
-        x = Fut[Str]()
-    }
+  }
+  fun g() -> Void {
+    let a = A()
+    let mut x = async a.method()
+    std::mem::ops::drop(x)
+    x = Fut[Str]()
+  }
 )");
 
 // "&self" borrows the receiver, so the future holds a borrow. Writing over it drops the old future before the write,
@@ -101,70 +101,70 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_overwriting_a_future_that_borrows_its_receiver, R"(
-    cls A { }
-    sup A {
-        !public
-        fun method(&self) -> Str { ret Str::from("hello") }
-    }
-    fun g() -> Void {
-        let a = A()
-        let mut x = async a.method()
-        x = Fut[Str]()
-    }
+  cls A { }
+  sup A {
+    !public
+    fun method(&self) -> Str { ret Str::from("hello") }
+  }
+  fun g() -> Void {
+    let a = A()
+    let mut x = async a.method()
+    x = Fut[Str]()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_good_target, R"(
-    fun f() -> Str { ret Str::from("hello") }
-    fun g() -> Void {
-        let mut x = async f()
-        std::mem::ops::drop(x)
-        x = Fut[Str]()
-    }
+  fun f() -> Str { ret Str::from("hello") }
+  fun g() -> Void {
+    let mut x = async f()
+    std::mem::ops::drop(x)
+    x = Fut[Str]()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_good_target_with_args, R"(
-    fun f(a: &StrView) -> Void { }
-    fun g() -> Void {
-        let mut x = async f("hello")
-        std::mem::ops::drop(x)
-        x = Fut[Void]()
-    }
+  fun f(a: &StrView) -> Void { }
+  fun g() -> Void {
+    let mut x = async f("hello")
+    std::mem::ops::drop(x)
+    x = Fut[Void]()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_compound_argument_naming_a_local, R"(
-    fun ident(n: S32) -> S32 { ret n }
-    fun take(n: S32) -> S32 { ret n + 1 }
-    fun g() -> Void {
-        let x = 5
-        let f = async take(ident(x))
-    }
+  fun ident(n: S32) -> S32 { ret n }
+  fun take(n: S32) -> S32 { ret n + 1 }
+  fun g() -> Void {
+    let x = 5
+    let f = async take(ident(x))
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_borrowed_argument_released_after_await, R"(
-    fun f(a: &StrView) -> Str { ret Str::from(a) }
-    fun g() -> Void {
-        let x = Str::from("hello")
-        let future = async f(&x)
-        let s = future.await
-    }
+  fun f(a: &StrView) -> Str { ret Str::from(a) }
+  fun g() -> Void {
+    let x = Str::from("hello")
+    let future = async f(&x)
+    let s = future.await
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_await_target_not_a_future,
   SppAwaitTargetNotFutureError, R"(
-    fun g() -> Void {
-        let x = 123
-        let y = x.await
-    }
+  fun g() -> Void {
+    let x = 123
+    let y = x.await
+  }
 )");
 
 // Dropping a future waits for its task ("Fut::drop"), so the borrows it holds end with the drop: what it borrowed is
@@ -172,11 +172,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_dropping_a_future_ends_its_pinned_borrow, R"(
-    fun f(a: &StrView) -> Str { ret Str::from(a) }
-    fun g() -> Void {
-        let x = Str::from("hello")
-        let future = async f(&x)
-    }
+  fun f(a: &StrView) -> Str { ret Str::from(a) }
+  fun g() -> Void {
+    let x = Str::from("hello")
+    let future = async f(&x)
+  }
 )");
 
 // Todo: DISABLED - "await" chained straight onto an "async" expression does not work, though binding the future to a
@@ -191,81 +191,81 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   DISABLED_test_valid_async_awaited_inline, R"(
-    fun f(n: S32) -> S32 { ret n }
-    fun g() -> Void {
-        let x = (async f(1)).await
-    }
+  fun f(n: S32) -> S32 { ret n }
+  fun g() -> Void {
+    let x = (async f(1)).await
+  }
 )");
 
 // A borrow of a place is taken through its outermost variable, so that variable is what the closure captures.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_borrowed_compound_argument, R"(
-    cls Holder {
-        !public
-        s: Str
-    }
+  cls Holder {
+    !public
+    s: Str
+  }
 
-    fun take(s: &Str) -> Void { }
-    fun g() -> Void {
-        let h = Holder(s=Str::from("hello"))
-        let f = async take(&h.s)
-        f.await
-    }
+  fun take(s: &Str) -> Void { }
+  fun g() -> Void {
+    let h = Holder(s=Str::from("hello"))
+    let f = async take(&h.s)
+    f.await
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_mut_borrowed_compound_argument, R"(
-    cls Holder {
-        !public
-        s: Str
-    }
+  cls Holder {
+    !public
+    s: Str
+  }
 
-    fun take(s: &mut Str) -> Void { }
-    fun g() -> Void {
-        let mut h = Holder(s=Str::from("hello"))
-        let f = async take(&mut h.s)
-        f.await
-    }
+  fun take(s: &mut Str) -> Void { }
+  fun g() -> Void {
+    let mut h = Holder(s=Str::from("hello"))
+    let f = async take(&mut h.s)
+    f.await
+  }
 )");
 
 // Two borrows through one variable capture it once.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_two_borrows_through_one_variable, R"(
-    cls Holder {
-        !public
-        a: Str
-        !public
-        b: Str
-    }
+  cls Holder {
+    !public
+    a: Str
+    !public
+    b: Str
+  }
 
-    fun take(a: &Str, b: &Str) -> Void { }
-    fun g() -> Void {
-        let h = Holder(a=Str::from("a"), b=Str::from("b"))
-        let f = async take(&h.a, &h.b)
-        f.await
-    }
+  fun take(a: &Str, b: &Str) -> Void { }
+  fun g() -> Void {
+    let h = Holder(a=Str::from("a"), b=Str::from("b"))
+    let f = async take(&h.a, &h.b)
+    f.await
+  }
 )");
 
 // A "&" and a "&mut" through one variable capture it once, as "&mut".
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_ref_and_mut_borrows_through_one_variable, R"(
-    cls Holder {
-        !public
-        a: Str
-        !public
-        b: Str
-    }
+  cls Holder {
+    !public
+    a: Str
+    !public
+    b: Str
+  }
 
-    fun take(a: &Str, b: &mut Str) -> Void { }
-    fun g() -> Void {
-        let mut h = Holder(a=Str::from("a"), b=Str::from("b"))
-        let f = async take(&h.a, &mut h.b)
-        f.await
-    }
+  fun take(a: &Str, b: &mut Str) -> Void { }
+  fun g() -> Void {
+    let mut h = Holder(a=Str::from("a"), b=Str::from("b"))
+    let f = async take(&h.a, &mut h.b)
+    f.await
+  }
 )");
 
 // Moving a variable and borrowing through it in one call captures it once, by move, so the call in the body reports
@@ -274,308 +274,308 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_moving_and_borrowing_one_variable,
   SppUninitializedMemoryUseError, R"(
-    cls Holder {
-        !public
-        s: Str
-    }
+  cls Holder {
+    !public
+    s: Str
+  }
 
-    fun take(h: Holder, s: &Str) -> Void { }
-    fun g() -> Void {
-        let h = Holder(s=Str::from("hello"))
-        let f = async take(h, &h.s)
-        f.await
-    }
+  fun take(h: Holder, s: &Str) -> Void { }
+  fun g() -> Void {
+    let h = Holder(s=Str::from("hello"))
+    let f = async take(h, &h.s)
+    f.await
+  }
 )");
 
 // A method's receiver is used the way its "self" says: "&self" borrows it, so it is still there after the call.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_method_borrowing_its_receiver, R"(
-    cls Holder {
-        !public
-        s: Str
-    }
+  cls Holder {
+    !public
+    s: Str
+  }
 
-    sup Holder {
-        !public
-        fun read(&self) -> Void { }
-    }
+  sup Holder {
+    !public
+    fun read(&self) -> Void { }
+  }
 
-    fun g() -> Void {
-        let h = Holder(s=Str::from("hello"))
-        let f = async h.read()
-        f.await
-    }
+  fun g() -> Void {
+    let h = Holder(s=Str::from("hello"))
+    let f = async h.read()
+    f.await
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_method_mutably_borrowing_a_compound_receiver, R"(
-    cls Holder {
-        !public
-        s: Str
-    }
+  cls Holder {
+    !public
+    s: Str
+  }
 
-    cls Outer {
-        !public
-        inner: Holder
-    }
+  cls Outer {
+    !public
+    inner: Holder
+  }
 
-    sup Holder {
-        !public
-        fun write(&mut self) -> Void { }
-    }
+  sup Holder {
+    !public
+    fun write(&mut self) -> Void { }
+  }
 
-    fun g() -> Void {
-        let mut o = Outer(inner=Holder(s=Str::from("hello")))
-        let f = async o.inner.write()
-        f.await
-    }
+  fun g() -> Void {
+    let mut o = Outer(inner=Holder(s=Str::from("hello")))
+    let f = async o.inner.write()
+    f.await
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_method_borrowing_its_receiver_and_an_argument_through_it, R"(
-    cls Holder {
-        !public
-        s: Str
-    }
+  cls Holder {
+    !public
+    s: Str
+  }
 
-    sup Holder {
-        !public
-        fun read(&self, s: &Str) -> Void { }
-    }
+  sup Holder {
+    !public
+    fun read(&self, s: &Str) -> Void { }
+  }
 
-    fun g() -> Void {
-        let h = Holder(s=Str::from("hello"))
-        let f = async h.read(&h.s)
-        f.await
-    }
+  fun g() -> Void {
+    let h = Holder(s=Str::from("hello"))
+    let f = async h.read(&h.s)
+    f.await
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_method_consuming_its_receiver, R"(
-    cls Holder {
-        !public
-        s: Str
-    }
+  cls Holder {
+    !public
+    s: Str
+  }
 
-    sup Holder {
-        !public
-        fun consume(self) -> Void {
-        }
+  sup Holder {
+    !public
+    fun consume(self) -> Void {
     }
+  }
 
-    fun g() -> Void {
-        let h = Holder(s=Str::from("hello"))
-        let f = async h.consume()
-        f.await
-    }
+  fun g() -> Void {
+    let h = Holder(s=Str::from("hello"))
+    let f = async h.consume()
+    f.await
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_method_on_self, R"(
-    cls Holder {
-        !public
-        s: Str
-    }
+  cls Holder {
+    !public
+    s: Str
+  }
 
-    sup Holder {
-        !public
-        fun read(&self) -> Void { }
+  sup Holder {
+    !public
+    fun read(&self) -> Void { }
 
-        !public
-        fun run(&self) -> Void {
-            let f = async self.read()
-            f.await
-        }
+    !public
+    fun run(&self) -> Void {
+      let f = async self.read()
+      f.await
     }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_moving_a_receiver_borrowed_by_a_pending_method,
   SppMovingEscapingBorrowedMemoryError, R"(
-    cls Holder {
-        !public
-        s: Str
-    }
+  cls Holder {
+    !public
+    s: Str
+  }
 
-    sup Holder {
-        !public
-        fun read(&self) -> Void { }
-    }
+  sup Holder {
+    !public
+    fun read(&self) -> Void { }
+  }
 
-    fun g() -> Void {
-        let h = Holder(s=Str::from("hello"))
-        let f = async h.read()
-        let y = h
-        f.await
-        std::mem::ops::drop(y)
-    }
+  fun g() -> Void {
+    let h = Holder(s=Str::from("hello"))
+    let f = async h.read()
+    let y = h
+    f.await
+    std::mem::ops::drop(y)
+  }
 )");
 
 // A temporary has no variable to capture, so it is bound to a local the closure owns, and the borrow is of that.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_borrowed_temporary_argument, R"(
-    fun make() -> Str { ret Str::from("hello") }
-    fun take(s: &Str) -> Void { }
-    fun g() -> Void {
-        let f = async take(&make())
-        f.await
-    }
+  fun make() -> Str { ret Str::from("hello") }
+  fun take(s: &Str) -> Void { }
+  fun g() -> Void {
+    let f = async take(&make())
+    f.await
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_moving_the_root_of_a_pinned_compound_borrow,
   SppMovingEscapingBorrowedMemoryError, R"(
-    cls Holder {
-        !public
-        s: Str
-    }
+  cls Holder {
+    !public
+    s: Str
+  }
 
-    fun take(s: &Str) -> Void { }
-    fun g() -> Void {
-        let h = Holder(s=Str::from("hello"))
-        let f = async take(&h.s)
-        let y = h
-        f.await
-        std::mem::ops::drop(y)
-    }
+  fun take(s: &Str) -> Void { }
+  fun g() -> Void {
+    let h = Holder(s=Str::from("hello"))
+    let f = async take(&h.s)
+    let y = h
+    f.await
+    std::mem::ops::drop(y)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_gen_once_coroutine_target, R"(
-    cor c() -> GenOnce[S32] { gen 1 }
-    fun g() -> Void {
-        let f = async c()
-        let v = f.await
-    }
+  cor c() -> GenOnce[S32] { gen 1 }
+  fun g() -> Void {
+    let f = async c()
+    let v = f.await
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_gen_once_coroutine_is_a_future_of_the_yield_type, R"(
-    cor c() -> GenOnce[S32] { gen 1 }
-    fun g() -> Void {
-        let f: Fut[S32] = async c()
-        let v: S32 = f.await
-    }
+  cor c() -> GenOnce[S32] { gen 1 }
+  fun g() -> Void {
+    let f: Fut[S32] = async c()
+    let v: S32 = f.await
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_gen_once_coroutine_is_not_a_future_of_the_generator,
   SppTypeMismatchError, R"(
-    cor c() -> GenOnce[S32] { gen 1 }
-    fun g() -> Void {
-        let f: Fut[GenOnce[S32]] = async c()
-        let v = f.await
-    }
+  cor c() -> GenOnce[S32] { gen 1 }
+  fun g() -> Void {
+    let f: Fut[GenOnce[S32]] = async c()
+    let v = f.await
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_gen_coroutine_is_a_future_of_the_generator, R"(
-    cor c() -> Gen[S32] { gen 1 }
-    fun g() -> Void {
-        let f: Fut[Gen[S32]] = async c()
-        let coro: Gen[S32] = f.await
-    }
+  cor c() -> Gen[S32] { gen 1 }
+  fun g() -> Void {
+    let f: Fut[Gen[S32]] = async c()
+    let coro: Gen[S32] = f.await
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_gen_once_coroutine_with_arguments, R"(
-    cor c(a: S32, b: Str) -> GenOnce[Str] { gen b }
-    fun g() -> Void {
-        let s = Str::from("hello")
-        let f = async c(1, s)
-        let r: Str = f.await
-    }
+  cor c(a: S32, b: Str) -> GenOnce[Str] { gen b }
+  fun g() -> Void {
+    let s = Str::from("hello")
+    let f = async c(1, s)
+    let r: Str = f.await
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_coroutine_argument_used_after_move,
   SppUninitializedMemoryUseError, R"(
-    cor c(s: Str) -> GenOnce[Str] { gen s }
-    fun g() -> Void {
-        let s = Str::from("hello")
-        let f = async c(s)
-        let t = s
-    }
+  cor c(s: Str) -> GenOnce[Str] { gen s }
+  fun g() -> Void {
+    let s = Str::from("hello")
+    let f = async c(s)
+    let t = s
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_coroutine_moving_pinned_borrow,
   SppMovingEscapingBorrowedMemoryError, R"(
-    cor c(s: &Str) -> GenOnce[Bool] { gen true }
-    fun g() -> Void {
-        let x = Str::from("hello")
-        let f = async c(&x)
-        let y = x
-    }
+  cor c(s: &Str) -> GenOnce[Bool] { gen true }
+  fun g() -> Void {
+    let x = Str::from("hello")
+    let f = async c(&x)
+    let y = x
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_coroutine_borrow_released_after_await, R"(
-    cor c(s: &Str) -> GenOnce[Bool] { gen true }
-    fun g() -> Void {
-        let x = Str::from("hello")
-        let f = async c(&x)
-        let b = f.await
-        let y = x
-    }
+  cor c(s: &Str) -> GenOnce[Bool] { gen true }
+  fun g() -> Void {
+    let x = Str::from("hello")
+    let f = async c(&x)
+    let b = f.await
+    let y = x
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_coroutine_method_borrowing_its_receiver, R"(
-    cls A { }
-    sup A {
-        !public
-        cor items(&self) -> GenOnce[S32] { gen 1 }
-    }
-    fun g() -> Void {
-        let a = A()
-        let f = async a.items()
-        let v: S32 = f.await
-    }
+  cls A { }
+  sup A {
+    !public
+    cor items(&self) -> GenOnce[S32] { gen 1 }
+  }
+  fun g() -> Void {
+    let a = A()
+    let f = async a.items()
+    let v: S32 = f.await
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_coroutine_method_moving_its_pending_receiver,
   SppMovingEscapingBorrowedMemoryError, R"(
-    cls A { }
-    sup A {
-        !public
-        cor items(&self) -> GenOnce[S32] { gen 1 }
-    }
-    fun g() -> Void {
-        let a = A()
-        let f = async a.items()
-        let b = a
-    }
+  cls A { }
+  sup A {
+    !public
+    cor items(&self) -> GenOnce[S32] { gen 1 }
+  }
+  fun g() -> Void {
+    let a = A()
+    let f = async a.items()
+    let b = a
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_gen_once_coroutine_yielding_a_borrow,
   SppSecondClassBorrowViolationError, R"(
-    cor c() -> GenOnce[&S32] { gen &1 }
-    fun g() -> Void {
-        let f = async c()
-        let v = f.await
-    }
+  cor c() -> GenOnce[&S32] { gen &1 }
+  fun g() -> Void {
+    let f = async c()
+    let v = f.await
+  }
 )");
 
 // The awaited "Gen" still borrows "x", so the pin must outlive the await and cover the generator: resuming it after
@@ -585,142 +585,142 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_gen_coroutine_borrow_outlives_the_await,
   SppMovingEscapingBorrowedMemoryError, R"(
-    cor c(s: &Str) -> Gen[S32] { gen 1 }
-    fun g() -> Void {
-        let x = Str::from("hello")
-        let f = async c(&x)
-        let mut coro = f.await
-        let y = x
-        let r = coro.res()
-        std::mem::ops::drop(coro)
-        std::mem::ops::drop(y)
-    }
+  cor c(s: &Str) -> Gen[S32] { gen 1 }
+  fun g() -> Void {
+    let x = Str::from("hello")
+    let f = async c(&x)
+    let mut coro = f.await
+    let y = x
+    let r = coro.res()
+    std::mem::ops::drop(coro)
+    std::mem::ops::drop(y)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_await_on_an_async_expression, R"(
-    fun h() -> Str { ret Str::from("x") }
-    fun g() -> Void {
-        let s = (async h()).await
-    }
+  fun h() -> Str { ret Str::from("x") }
+  fun g() -> Void {
+    let s = (async h()).await
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_await_on_a_block, R"(
-    fun h() -> Str { ret Str::from("x") }
-    fun g() -> Void {
-        let s = { async h() }.await
-    }
+  fun h() -> Str { ret Str::from("x") }
+  fun g() -> Void {
+    let s = { async h() }.await
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_await_on_an_early_return, R"(
-    fun g(o: Opt[std::future::Fut[Str]]) -> Opt[Str] {
-        let s = o?.await
-        ret Some(val=s)
-    }
+  fun g(o: Opt[std::future::Fut[Str]]) -> Opt[Str] {
+    let s = o?.await
+    ret Some(val=s)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_with_an_early_return_in_an_argument, R"(
-    fun h(x: U64) -> U64 { ret x }
-    fun g(o: Opt[U64]) -> Opt[U64] {
-        let fut = async h(o?)
-        let v = fut.await
-        ret Some(val=v)
-    }
+  fun h(x: U64) -> U64 { ret x }
+  fun g(o: Opt[U64]) -> Opt[U64] {
+    let fut = async h(o?)
+    let v = fut.await
+    ret Some(val=v)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_call_of_a_computed_callable, R"(
-    fun inc(n: S32) -> S32 { ret n + 1 }
-    fun pick() -> FunRef[(S32,), S32] { ret inc }
-    fun g() -> Void {
-        let f = async (pick())(1)
-    }
+  fun inc(n: S32) -> S32 { ret n + 1 }
+  fun pick() -> FunRef[(S32,), S32] { ret inc }
+  fun g() -> Void {
+    let f = async (pick())(1)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_two_borrowed_arguments, R"(
-    fun f(a: &StrView, b: &StrView) -> Str { ret Str::from(a) }
-    fun g() -> Void {
-        let x = Str::from("hello")
-        let y = Str::from("world")
-        let future = async f(&x, &y)
-        let s = future.await
-    }
+  fun f(a: &StrView, b: &StrView) -> Str { ret Str::from(a) }
+  fun g() -> Void {
+    let x = Str::from("hello")
+    let y = Str::from("world")
+    let future = async f(&x, &y)
+    let s = future.await
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_consuming_method_on_a_temporary, R"(
-    cls A { }
-    sup A {
-        !public
-        fun consume(self) -> Str {
-            ret Str::from("hello")
-        }
+  cls A { }
+  sup A {
+    !public
+    fun consume(self) -> Str {
+      ret Str::from("hello")
     }
-    fun make() -> A { ret A() }
-    fun g() -> Void {
-        let future = async make().consume()
-        let s = future.await
-    }
+  }
+  fun make() -> A { ret A() }
+  fun g() -> Void {
+    let future = async make().consume()
+    let s = future.await
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_consuming_method_on_an_attribute, R"(
-    cls A { }
-    sup A {
-        !public
-        fun consume(self) -> Str {
-            ret Str::from("hello")
-        }
+  cls A { }
+  sup A {
+    !public
+    fun consume(self) -> Str {
+      ret Str::from("hello")
     }
-    cls B { !public a: A }
-    fun g() -> Void {
-        let b = B(a=A())
-        let future = async b.a.consume()
-        let s = future.await
-    }
+  }
+  cls B { !public a: A }
+  fun g() -> Void {
+    let b = B(a=A())
+    let future = async b.a.consume()
+    let s = future.await
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_valid_async_static_constant_as_argument_and_receiver, R"(
-    cls C { }
-    sup C ext Copy { }
-    sup C {
-        !public
-        fun eat(self) -> S32 { ret 1 }
-    }
-    cls M { }
-    sup M {
-        !public cmp c: C = C()
-    }
-    fun f(a: &C) -> S32 { ret 2 }
-    fun g() -> Void {
-        let f1 = async f(&M::c)
-        let x = f1.await
-        let f2 = async M::c.eat()
-        let y = f2.await
-    }
+  cls C { }
+  sup C ext Copy { }
+  sup C {
+    !public
+    fun eat(self) -> S32 { ret 1 }
+  }
+  cls M { }
+  sup M {
+    !public cmp c: C = C()
+  }
+  fun f(a: &C) -> S32 { ret 2 }
+  fun g() -> Void {
+    let f1 = async f(&M::c)
+    let x = f1.await
+    let f2 = async M::c.eat()
+    let y = f2.await
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_direct_await_method_call,
   SppAccessViolationError, R"(
-    fun f() -> U64 { ret 1_u64 }
-    fun g() -> Void {
-        let future = async f()
-        let x = future.await_()
-    }
+  fun f() -> U64 { ret 1_u64 }
+  fun g() -> Void {
+    let future = async f()
+    let x = future.await_()
+  }
 )");

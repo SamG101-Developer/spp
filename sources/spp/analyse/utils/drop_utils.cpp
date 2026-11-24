@@ -332,26 +332,28 @@ auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
 
   const auto root = TypeRef::Of(*sym.Type, *sm.CurrentScope);
   for (auto const &move : state.PartialMoves) {
-    // A move leaves a hole in every place it reached *through*, so each of those is asked in turn: the symbol's
-    // own type first, then one step further in for each name the path passes on its way. The place the move
-    // landed on is not one of them - taking a whole field out hands that field's destructor to whoever received
-    // it, and only taking something from inside a value strands the value's own. That is what stops the last
-    // step being walked, and what makes "let x = o.inner" fine where "let x = o.inner.val" is not.
-    auto const &path = move.Of->Steps;
+    RaiseIfPathStrandsDestructor(root, move.Of->Steps, *move.Site, exit_point, sm, meta);
+  }
+}
 
-    for (auto i = 0uz; i < path.size(); ++i) {
-      const auto [part_ref, part_scope] = regions::DescendToPart(root, *sm.CurrentScope, path, i);
-      if (part_ref.Symbol == nullptr or part_scope == nullptr) { break; }
+auto spp::analyse::utils::drop_utils::RaiseIfPathStrandsDestructor(
+  TypeRef const &root, Vec<regions::PlaceStep> const &steps, Ast const &move,
+  Ast const &exit_point, ScopeManager &sm, CompilerMetaData *meta) -> void {
+  // Each value the path reaches *through* is asked in turn: the root first, then one step further in for each name
+  // the path passes on its way. The place it lands on is not one of them - taking a whole field out hands that
+  // field's destructor to whoever received it, and only taking something from inside a value strands the value's
+  // own. That is what stops the last step being walked, and what makes "let x = o.inner" fine where
+  // "let x = o.inner.val" is not.
+  for (auto i = 0uz; i < steps.size(); ++i) {
+    const auto [part_ref, part_scope] = regions::DescendToPart(root, *sm.CurrentScope, steps, i);
+    if (part_ref.Symbol == nullptr or part_scope == nullptr) { break; }
+    const auto destructor = FindDropOverload(*part_ref.Symbol, sm, meta);
+    if (destructor == nullptr) { continue; }
 
-      const auto destructor = FindDropOverload(*part_ref.Symbol, sm, meta);
-      if (destructor == nullptr) { continue; }
-
-      // Held in a local so the view handed to the error
-      // outlives it.
-      const auto owner_name = part_ref.Symbol->FqName()->WithoutGns()->ToString();
-      Raise<errors::SppPartialMoveOfDestructibleValueError>(
-        ERR_ARGS(exit_point, *move.Site, *destructor->Name, StrView(owner_name)));
-    }
+    // Held in a local so the view handed to the error outlives it.
+    const auto owner_name = part_ref.Symbol->FqName()->WithoutGns()->ToString();
+    Raise<errors::SppPartialMoveOfDestructibleValueError>(
+      ERR_ARGS(exit_point, move, *destructor->Name, StrView(owner_name)));
   }
 }
 

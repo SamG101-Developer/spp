@@ -6,72 +6,72 @@
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   GenericTypeAliasAst,
   test_valid_generic_alias_as_a_generic_constraint, R"(
-    type ZzClosure[Ts: std::tuple::TupLike, R] = std::function::FunMov[Ts, R]
+  type ZzClosure[Ts: std::tuple::TupLike, R] = std::function::FunMov[Ts, R]
 
-    fun g[F: ZzClosure[(), Void]](f: F) -> Void {
-        f()
-    }
+  fun g[F: ZzClosure[(), Void]](f: F) -> Void {
+    f()
+  }
 
-    fun f() -> Void {
-        g(|| -> Void { })
-    }
+  fun f() -> Void {
+    g(|| -> Void { })
+  }
 )");
 
 // FIXED (the test itself wrote "(S32)", which is a parenthesised "S32", not a one-element tuple)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   GenericTypeAliasAst,
   test_valid_generic_alias_with_a_non_empty_argument_tuple, R"(
-    type ZzClosure[Ts: std::tuple::TupLike, R] = std::function::FunMov[Ts, R]
+  type ZzClosure[Ts: std::tuple::TupLike, R] = std::function::FunMov[Ts, R]
 
-    fun g[F: ZzClosure[(S32,), S32]](f: F) -> S32 {
-        ret f(1)
-    }
+  fun g[F: ZzClosure[(S32,), S32]](f: F) -> S32 {
+    ret f(1)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   GenericTypeAliasAst,
   test_valid_generic_alias_constraint_called_through_an_instantiation, R"(
-    type ZzClosure[Ts: std::tuple::TupLike, R] = std::function::FunMov[Ts, R]
+  type ZzClosure[Ts: std::tuple::TupLike, R] = std::function::FunMov[Ts, R]
 
-    fun g[F: ZzClosure[(S32,), S32]](f: F) -> S32 {
-        ret f(1)
-    }
+  fun g[F: ZzClosure[(S32,), S32]](f: F) -> S32 {
+    ret f(1)
+  }
 
-    fun h() -> Void {
-        let x = g(|a: S32| -> S32 { ret a })
-    }
+  fun h() -> Void {
+    let x = g(|a: S32| -> S32 { ret a })
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   GenericTypeAliasAst,
   test_invalid_generic_alias_constraint_argument_violates_the_alias_constraint,
   SppGenericConstraintError, R"(
-    type ZzClosure[Ts: std::tuple::TupLike, R] = std::function::FunMov[Ts, R]
+  type ZzClosure[Ts: std::tuple::TupLike, R] = std::function::FunMov[Ts, R]
 
-    fun g[F: ZzClosure[(S32), S32]](f: F) -> S32 {
-        ret f(1)
-    }
+  fun g[F: ZzClosure[(S32), S32]](f: F) -> S32 {
+    ret f(1)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   GenericTypeAliasAst,
   test_invalid_class_constraint_argument_violates_the_class_constraint,
   SppGenericConstraintError, R"(
-    cls ZzK[Ts: std::tuple::TupLike] { }
+  cls ZzK[Ts: std::tuple::TupLike] { }
 
-    fun g[F: ZzK[S32]](f: F) -> Void {
-        std::mem::ops::drop(f)
-    }
+  fun g[F: ZzK[S32]](f: F) -> Void {
+    std::mem::ops::drop(f)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   GenericTypeAliasAst,
   test_valid_generic_alias_as_a_parameter_type, R"(
-    type ZzBox[T] = std::single::Single[T]
+  type ZzBox[T] = std::single::Single[T]
 
-    fun g(b: ZzBox[S32]) -> S32 {
-        ret b.read()
-    }
+  fun g(b: ZzBox[S32]) -> S32 {
+    ret b.read()
+  }
 )");
 
 // Todo: Commented out - this crashes the compiler rather than failing.
@@ -89,27 +89,27 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   GenericTypeAliasAst,
   test_invalid_generic_alias_parameter_violates_the_target_constraint,
   SppGenericConstraintError, R"(
-    type ZzClosure[Ts, R] = std::function::FunMov[Ts, R]
+  type ZzClosure[Ts, R] = std::function::FunMov[Ts, R]
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   GenericTypeAliasAst,
   test_valid_alias_constraint_binding_both_a_method_and_a_block_generic, R"(
-    !public
-    cls ZzA[T] { }
-    !public
-    cls ZzB[E] { }
-    !public
-    type ZzR[T, E] = ZzA[T] or ZzB[E]
+  !public
+  cls ZzA[T] { }
+  !public
+  cls ZzB[E] { }
+  !public
+  type ZzR[T, E] = ZzA[T] or ZzB[E]
 
-    sup [T, E] ZzR[T, E] {
-        !public
-        fun and_then[U, F: std::function::FunMov[(T,), ZzR[U, E]]](self, mut pred: F) -> Void {
-        }
+  sup [T, E] ZzR[T, E] {
+    !public
+    fun and_then[U, F: std::function::FunMov[(T,), ZzR[U, E]]](self, mut pred: F) -> Void {
     }
+  }
 
-    fun f() -> Void {
-        let r: ZzR[S32, Bool] = ZzA[S32]()
-        r.and_then(|x: S32| -> ZzR[S32, Bool] { ret ZzA[S32]() })
-    }
+  fun f() -> Void {
+    let r: ZzR[S32, Bool] = ZzA[S32]()
+    r.and_then(|x: S32| -> ZzR[S32, Bool] { ret ZzA[S32]() })
+  }
 )");

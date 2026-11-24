@@ -1,129 +1,129 @@
 #include "test_macros.hpp"
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstSupCmpStatementAst,
-    test_invalid_type_mismatch,
-    SppTypeMismatchError, R"(
-    cls MyType { }
-    sup MyType {
-        !public cmp n: USize = 123_uz
-    }
+  AstSupCmpStatementAst,
+  test_invalid_type_mismatch,
+  SppTypeMismatchError, R"(
+  cls MyType { }
+  sup MyType {
+    !public cmp n: USize = 123_uz
+  }
 
-    fun f() -> Void {
-        let mut local_n = MyType::n
-        local_n = "hello world"
-    }
+  fun f() -> Void {
+    let mut local_n = MyType::n
+    local_n = "hello world"
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstSupCmpStatementAst,
-    test_invalid_direct_type_mismatch,
-    SppTypeMismatchError, R"(
-    cls MyType { }
-    sup MyType {
-        !public cmp n: USize = "hello world"
-    }
+  AstSupCmpStatementAst,
+  test_invalid_direct_type_mismatch,
+  SppTypeMismatchError, R"(
+  cls MyType { }
+  sup MyType {
+    !public cmp n: USize = "hello world"
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstSupCmpStatementAst,
-    test_invalid_void_value,
-    SppInvalidVoidValueError, R"(
-    cmp fun nothing() -> Void { }
+  AstSupCmpStatementAst,
+  test_invalid_void_value,
+  SppInvalidVoidValueError, R"(
+  cmp fun nothing() -> Void { }
 
-    cls MyType { }
-    sup MyType {
-        !public cmp n: Void = nothing()
-    }
+  cls MyType { }
+  sup MyType {
+    !public cmp n: Void = nothing()
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstSupCmpStatementAst,
-    test_invalid_duplicate_name_in_sup,
-    SppIdentifierDuplicateError, R"(
-    cls MyType { }
-    sup MyType {
-        !public cmp n: USize = 123_uz
-        !public cmp n: USize = 456_uz
-    }
+  AstSupCmpStatementAst,
+  test_invalid_duplicate_name_in_sup,
+  SppIdentifierDuplicateError, R"(
+  cls MyType { }
+  sup MyType {
+    !public cmp n: USize = 123_uz
+    !public cmp n: USize = 456_uz
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstSupCmpStatementAst,
-    test_invalid_moving_non_copy_cmp,
-    SppMovingCompTimeConstantMemoryError, R"(
-    cls X { }
+  AstSupCmpStatementAst,
+  test_invalid_moving_non_copy_cmp,
+  SppMovingCompTimeConstantMemoryError, R"(
+  cls X { }
 
-    cls MyType { }
-    sup MyType {
-        !public cmp n: (X, X) = (X(), X())
-    }
+  cls MyType { }
+  sup MyType {
+    !public cmp n: (X, X) = (X(), X())
+  }
 
-    fun f() -> Void {
-        let mut local_n = MyType::n
-        local_n = (X(), X())
-    }
+  fun f() -> Void {
+    let mut local_n = MyType::n
+    local_n = (X(), X())
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstSupCmpStatementAst,
-    test_invalid_type_mismatch_with_generic,
-    SppTypeMismatchError, R"(
-    cls MyType[T, cmp m: T] { }
-    sup [T, cmp m: T] MyType[T, m] {
-        !public cmp n: T = m
-    }
+  AstSupCmpStatementAst,
+  test_invalid_type_mismatch_with_generic,
+  SppTypeMismatchError, R"(
+  cls MyType[T, cmp m: T] { }
+  sup [T, cmp m: T] MyType[T, m] {
+    !public cmp n: T = m
+  }
 
-    fun f() -> Void {
-        let mut x = MyType[USize, 123_uz]::n
-        x = "hello world"
-    }
+  fun f() -> Void {
+    let mut x = MyType[USize, 123_uz]::n
+    x = "hello world"
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AstSupCmpStatementAst,
-    test_valid_simple, R"(
-    cls MyType { }
-    sup MyType {
-        !public cmp n: USize = 123_uz
-    }
+  AstSupCmpStatementAst,
+  test_valid_simple, R"(
+  cls MyType { }
+  sup MyType {
+    !public cmp n: USize = 123_uz
+  }
 
-    fun f() -> Void {
-        let mut local_n = MyType::n
-        local_n = 456_uz
-    }
+  fun f() -> Void {
+    let mut local_n = MyType::n
+    local_n = 456_uz
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstSupCmpStatementAst,
-    test_invalid_with_generic_move,
-    SppMovingCompTimeConstantMemoryError, R"(
-    cls Token { }
-    sup Token ext std::ops::drop::Drop {
-        fun drop(self) -> Void { }
-    }
+  AstSupCmpStatementAst,
+  test_invalid_with_generic_move,
+  SppMovingCompTimeConstantMemoryError, R"(
+  cls Token { }
+  sup Token ext std::ops::drop::Drop {
+    fun drop(self) -> Void { }
+  }
 
-    cls MyType[T, cmp m: T] { }
-    sup [T, cmp m: T] MyType[T, m] {
-        !public cmp n: T = m
-    }
+  cls MyType[T, cmp m: T] { }
+  sup [T, cmp m: T] MyType[T, m] {
+    !public cmp n: T = m
+  }
 
-    fun f() -> Void {
-        let mut x = MyType[Token, Token()]::n
-    }
+  fun f() -> Void {
+    let mut x = MyType[Token, Token()]::n
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AstSupCmpStatementAst,
-    test_valid_with_generic_copy, R"(
-    cls MyType[T, cmp m: T] { }
-    sup [T: Copy, cmp m: T] MyType[T, m] {
-        !public cmp n: T = m
-    }
+  AstSupCmpStatementAst,
+  test_valid_with_generic_copy, R"(
+  cls MyType[T, cmp m: T] { }
+  sup [T: Copy, cmp m: T] MyType[T, m] {
+    !public cmp n: T = m
+  }
 
-    fun f() -> Void {
-        let mut x = MyType[S32, 123]::n
-    }
+  fun f() -> Void {
+    let mut x = MyType[S32, 123]::n
+  }
 )");
 
 // Todo: red - a generic sup "cmp" of a class type gets a global typed with the unbound "Unit[T=T]", which LLVM
@@ -131,60 +131,60 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   SupCmpStatementGeneric,
   test_valid_class_typed_cmp_in_a_generic_sup, R"(
-    cls Unit[T] { }
-    sup [T] Unit[T] ext std::copy::Copy { }
-    sup [T] Unit[T] {
-        !public cmp empty: Unit[T] = Unit[T]()
-    }
-    fun f() -> Void {
-        let u: Unit[S32] = Unit[S32]::empty
-    }
+  cls Unit[T] { }
+  sup [T] Unit[T] ext std::copy::Copy { }
+  sup [T] Unit[T] {
+    !public cmp empty: Unit[T] = Unit[T]()
+  }
+  fun f() -> Void {
+    let u: Unit[S32] = Unit[S32]::empty
+  }
 )");
 
 // Constants defined through each other have no value: E3, not a stack overflow.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstSupCmpStatementAst,
-    test_invalid_cyclic_constants,
-    SppCompTimeConstantError, R"(
-    cls M { }
-    sup M {
-        !public cmp a: S32 = Self::b
-        !public cmp b: S32 = Self::a
-    }
+  AstSupCmpStatementAst,
+  test_invalid_cyclic_constants,
+  SppCompTimeConstantError, R"(
+  cls M { }
+  sup M {
+    !public cmp a: S32 = Self::b
+    !public cmp b: S32 = Self::a
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstSupCmpStatementAst,
-    test_invalid_constant_defined_as_itself,
-    SppCompTimeConstantError, R"(
-    cls M { }
-    sup M {
-        !public cmp a: S32 = Self::a
-    }
+  AstSupCmpStatementAst,
+  test_invalid_constant_defined_as_itself,
+  SppCompTimeConstantError, R"(
+  cls M { }
+  sup M {
+    !public cmp a: S32 = Self::a
+  }
 )");
 
 // A cycle through a name and through "Self" is one cycle: both are checked against one stack.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstSupCmpStatementAst,
-    test_invalid_cyclic_constants_through_a_name_and_self,
-    SppCompTimeConstantError, R"(
-    cls M { }
-    sup M {
-        !public cmp a: S32 = Self::b
-        !public cmp b: S32 = a
-    }
+  AstSupCmpStatementAst,
+  test_invalid_cyclic_constants_through_a_name_and_self,
+  SppCompTimeConstantError, R"(
+  cls M { }
+  sup M {
+    !public cmp a: S32 = Self::b
+    !public cmp b: S32 = a
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AstSupCmpStatementAst,
-    test_valid_sup_constant_read_by_a_stage_7_fold_before_it, R"(
-    fun f() -> Void {
-        let x: [S32; 6_uz] = [1; K::k]
-    }
+  AstSupCmpStatementAst,
+  test_valid_sup_constant_read_by_a_stage_7_fold_before_it, R"(
+  fun f() -> Void {
+    let x: [S32; 6_uz] = [1; K::k]
+  }
 
-    cls K { }
-    sup K {
-        !public cmp k: USize = j * 3_uz
-        !public cmp j: USize = 1_uz + 1_uz
-    }
+  cls K { }
+  sup K {
+    !public cmp k: USize = j * 3_uz
+    !public cmp j: USize = 1_uz + 1_uz
+  }
 )");

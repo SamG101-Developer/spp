@@ -6,47 +6,47 @@
 
 // A pattern that binds takes the subject, so it is not still owned at the end of the scope.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDropCaseSubject,
-    test_valid_binding_pattern_consumes_the_subject, R"(
-    cls T { }
-    cls A { !public v: T }
-    cls B { }
-    type AB = A or B
+  TestDropCaseSubject,
+  test_valid_binding_pattern_consumes_the_subject, R"(
+  cls T { }
+  cls A { !public v: T }
+  cls B { }
+  type AB = A or B
 
-    fun consume(t: T) -> Void {
-        let T() = t
-    }
+  fun consume(t: T) -> Void {
+    let T() = t
+  }
 
-    fun f(x: AB) -> Void {
-        case x of {
-            is A(v) { consume(v) }
-            else { }
-        }
+  fun f(x: AB) -> Void {
+    case x of {
+      is A(v) { consume(v) }
+      else { }
     }
+  }
 )");
 
 // The subject is taken at the "case", before the branches, so a branch that leaves early has none of it left to drop.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDropCaseSubject,
-    test_valid_return_inside_a_consuming_branch, R"(
-    cls T { }
-    cls A { !public v: T }
-    cls B { }
-    type AB = A or B
+  TestDropCaseSubject,
+  test_valid_return_inside_a_consuming_branch, R"(
+  cls T { }
+  cls A { !public v: T }
+  cls B { }
+  type AB = A or B
 
-    fun consume(t: T) -> Void {
-        let T() = t
-    }
+  fun consume(t: T) -> Void {
+    let T() = t
+  }
 
-    fun f(x: AB) -> Void {
-        case x of {
-            is A(v) {
-                consume(v)
-                ret
-            }
-            else { }
-        }
+  fun f(x: AB) -> Void {
+    case x of {
+      is A(v) {
+        consume(v)
+        ret
+      }
+      else { }
     }
+  }
 )");
 
 // A case whose patterns only test does not take its subject, so the value is still there afterwards, and dropped at
@@ -54,87 +54,87 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropCaseSubject,
   test_valid_testing_pattern_leaves_the_subject_owed, R"(
-    cls Point {
-        !public x: S32
-        !public y: S32
-    }
+  cls Point {
+    !public x: S32
+    !public y: S32
+  }
 
-    fun f(p: Point) -> Void {
-        case p of {
-            is Point(x=0, y=0) { }
-            else { }
-        }
+  fun f(p: Point) -> Void {
+    case p of {
+      is Point(x=0, y=0) { }
+      else { }
     }
+  }
 )");
 
 // ...and because it was not taken, it is still usable after the case.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDropCaseSubject,
-    test_valid_subject_still_usable_after_a_testing_case, R"(
-    cls Point {
-        !public x: S32
-        !public y: S32
-    }
+  TestDropCaseSubject,
+  test_valid_subject_still_usable_after_a_testing_case, R"(
+  cls Point {
+    !public x: S32
+    !public y: S32
+  }
 
-    fun consume(p: Point) -> Void {
-        let Point(x, y) = p
-    }
+  fun consume(p: Point) -> Void {
+    let Point(x, y) = p
+  }
 
-    fun f(p: Point) -> Void {
-        case p of {
-            is Point(x=0, y=0) { }
-            else { }
-        }
-        consume(p)
+  fun f(p: Point) -> Void {
+    case p of {
+      is Point(x=0, y=0) { }
+      else { }
     }
+    consume(p)
+  }
 )");
 
 // A copyable subject is never taken, however its patterns bind - copying leaves the original in place.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDropCaseSubject,
-    test_valid_copyable_subject_is_not_consumed, R"(
-    cls Point {
-        !public x: S32
-        !public y: S32
-    }
-    sup Point ext Copy { }
+  TestDropCaseSubject,
+  test_valid_copyable_subject_is_not_consumed, R"(
+  cls Point {
+    !public x: S32
+    !public y: S32
+  }
+  sup Point ext Copy { }
 
-    fun f(p: Point) -> Void {
-        case p of {
-            is Point(x, y) { }
-        }
-        case p of {
-            is Point(x, y) { }
-        }
+  fun f(p: Point) -> Void {
+    case p of {
+      is Point(x, y) { }
     }
+    case p of {
+      is Point(x, y) { }
+    }
+  }
 )");
 
 // A binary "is" is a test that can be re-evaluated - a loop condition runs it every iteration - so it never consumes
 // what it tests, even though it desugars to a "case" with a binding pattern. Bound by borrow, because it matches on
 // one path only: binding by value would partially move the subject there and leave it whole on the other.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDropCaseSubject,
-    test_valid_is_expression_does_not_consume, R"(
-    cls T { }
-    cls A { !public v: T }
-    cls B { }
-    type AB = A or B
+  TestDropCaseSubject,
+  test_valid_is_expression_does_not_consume, R"(
+  cls T { }
+  cls A { !public v: T }
+  cls B { }
+  type AB = A or B
 
-    fun consume(x: AB) -> Void {
-        case x of {
-            is A(v) { let T() = v }
-            else { }
-        }
+  fun consume(x: AB) -> Void {
+    case x of {
+      is A(v) { let T() = v }
+      else { }
     }
+  }
 
-    fun f(x: AB) -> Void {
-        let mut i = 0
-        loop x is A(&v) {
-            i += 1
-            exit
-        }
-        consume(x)
+  fun f(x: AB) -> Void {
+    let mut i = 0
+    loop x is A(&v) {
+      i += 1
+      exit
     }
+    consume(x)
+  }
 )");
 
 // The subject is taken by symbol, not by name: a closure parameter spelled like the subject is its own value, dropped
@@ -142,38 +142,38 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestDropCaseSubject,
   test_valid_closure_parameter_named_like_the_subject_is_still_owed, R"(
-    cls T { }
-    cls A { !public v: T }
-    cls B { }
-    type AB = A or B
+  cls T { }
+  cls A { !public v: T }
+  cls B { }
+  type AB = A or B
 
-    fun consume(t: T) -> Void {
-        let T() = t
-    }
+  fun consume(t: T) -> Void {
+    let T() = t
+  }
 
-    fun f(x: AB) -> Void {
-        case x of {
-            is A(v) {
-                consume(v)
-                let c = |x: T| -> Void { }
-                c(T())
-            }
-            else { }
-        }
+  fun f(x: AB) -> Void {
+    case x of {
+      is A(v) {
+        consume(v)
+        let c = |x: T| -> Void { }
+        c(T())
+      }
+      else { }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestDropCaseSubject,
-    test_valid_case_on_attribute_takes_that_part, R"(
-    cls Holder {
-        !public inner: Opt[Str]
-        !public other: Str
+  TestDropCaseSubject,
+  test_valid_case_on_attribute_takes_that_part, R"(
+  cls Holder {
+    !public inner: Opt[Str]
+    !public other: Str
+  }
+  fun f(h: Holder) -> Void {
+    case h.inner of {
+      is Some[Str](val) { }
+      else { }
     }
-    fun f(h: Holder) -> Void {
-        case h.inner of {
-            is Some[Str](val) { }
-            else { }
-        }
-    }
+  }
 )");

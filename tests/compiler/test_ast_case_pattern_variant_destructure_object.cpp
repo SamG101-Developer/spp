@@ -4,373 +4,373 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_invalid_multiple_multi_skip,
   SppMultipleRestPatternsError, R"(
-    cls Point {
-        x: Str
-        y: Str
-    }
+  cls Point {
+    x: Str
+    y: Str
+  }
 
-    fun f(p: Point) -> Void {
-        case p is Point(.., ..) { }
-    }
+  fun f(p: Point) -> Void {
+    case p is Point(.., ..) { }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_invalid_bound_multi_skip,
   SppVariableObjectDestructureWithBoundRestPatternError, R"(
-    cls Point {
-        x: Str
-        y: Str
-    }
+  cls Point {
+    x: Str
+    y: Str
+  }
 
-    fun f(p: Point) -> Void {
-        case p is Point(..x) { }
-    }
+  fun f(p: Point) -> Void {
+    case p is Point(..x) { }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_invalid_missing_attribute,
   SppArgumentMissingError, R"(
-    cls Point {
-        x: Str
-        y: Str
-    }
+  cls Point {
+    x: Str
+    y: Str
+  }
 
-    fun f(p: Point) -> Void {
-        case p is Point(x) { }
-    }
+  fun f(p: Point) -> Void {
+    case p is Point(x) { }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_invalid_invalid_attribute,
   SppIdentifierUnknownError, R"(
-    cls Point {
-        !public x: Str
-        !public y: Str
-    }
+  cls Point {
+    !public x: Str
+    !public y: Str
+  }
 
-    fun f(p: Point) -> Void {
-        case p is Point(x, y, z) { }
-    }
+  fun f(p: Point) -> Void {
+    case p is Point(x, y, z) { }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_invalid_aliasing_attributes_use_old_name,
   SppIdentifierUnknownError, R"(
-    cls Point1 {
-        !public x: Str
-        !public y: Str
-    }
+  cls Point1 {
+    !public x: Str
+    !public y: Str
+  }
 
-    fun f(p: Point1) -> Void {
-        case p is Point1(x as x_value, ..) { let xxx = x }
-    }
+  fun f(p: Point1) -> Void {
+    case p is Point1(x as x_value, ..) { let xxx = x }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_invalid_type_not_in_variant,
   SppTypeMismatchError, R"(
-    cls Point1 {
-        x: Str
-    }
+  cls Point1 {
+    x: Str
+  }
 
-    cls Point2 {
-        x: Str
-    }
+  cls Point2 {
+    x: Str
+  }
 
-    cls Point3 {
-        x: Str
-    }
+  cls Point3 {
+    x: Str
+  }
 
-    fun f(p: Point1 or Point2) -> Void {
-        case p of {
-            is Point3(x) { }
-        }
+  fun f(p: Point1 or Point2) -> Void {
+    case p of {
+      is Point3(x) { }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_value_only, R"(
-    cls Point {
-        !public x: Str
-        !public y: Str
-    }
+  cls Point {
+    !public x: Str
+    !public y: Str
+  }
 
-    fun f(p: Point) -> Void {
-        case p is Point(x, y) {
-        }
+  fun f(p: Point) -> Void {
+    case p is Point(x, y) {
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_value_and_unbound_multi_skip, R"(
-    cls Point {
-        !public x: Str
-        !public y: Str
-    }
+  cls Point {
+    !public x: Str
+    !public y: Str
+  }
 
-    fun f(p: Point) -> Void {
-        # Bound by borrow: a binary "is" matches on one path only, so binding by value would leave "p" partially
-        # moved on that path and intact on the other, which is not a state it can be discarded from.
-        case p is Point(&x, ..) { }
-    }
+  fun f(p: Point) -> Void {
+    # Bound by borrow: a binary "is" matches on one path only, so binding by value would leave "p" partially
+    # moved on that path and intact on the other, which is not a state it can be discarded from.
+    case p is Point(&x, ..) { }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_multiple_branches, R"(
-    cls Point1 {
-        !public x: Str
-        !public y: Str
-    }
+  cls Point1 {
+    !public x: Str
+    !public y: Str
+  }
 
-    cls Point2 {
-        !public x: Str
-        !public y: Str
-    }
+  cls Point2 {
+    !public x: Str
+    !public y: Str
+  }
 
-    fun f(p: Point1 or Point2) -> Void {
-        case p of {
-            is Point1(x, y) {
-            }
-            is Point2(x, y) {
-            }
-        }
+  fun f(p: Point1 or Point2) -> Void {
+    case p of {
+      is Point1(x, y) {
+      }
+      is Point2(x, y) {
+      }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_valid_value_and_alias, R"(
-    cls Point1 {
-        !public x: Str
-        !public y: Str
-    }
+  cls Point1 {
+    !public x: Str
+    !public y: Str
+  }
 
-    fun f(p: Point1) -> Void {
-        case p of {
-            is Point1(x as x_value, y as y_unused) {
-                let xxx = x_value
-            }
-        }
+  fun f(p: Point1) -> Void {
+    case p of {
+      is Point1(x as x_value, y as y_unused) {
+        let xxx = x_value
+      }
     }
+  }
 
-    fun g(p: Point1) -> Void {
-        case p of {
-            is Point1(y as y_value, x as x_unused) {
-                let yyy = y_value
-            }
-        }
+  fun g(p: Point1) -> Void {
+    case p of {
+      is Point1(y as y_value, x as x_unused) {
+        let yyy = y_value
+      }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_nested_array_in_object, R"(
-    cls Point {
-        !public x: std::array::Arr[Str, 2_uz]
-        !public y: Str
+  cls Point {
+    !public x: std::array::Arr[Str, 2_uz]
+    !public y: Str
+  }
+  fun f(p: Point) -> Void {
+    case p is Point(x=[a, b], y) {
     }
-    fun f(p: Point) -> Void {
-        case p is Point(x=[a, b], y) {
-        }
-    }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_nested_tuple_in_object, R"(
-    cls Point {
-        !public x: (Str, Str)
-        !public y: Str
+  cls Point {
+    !public x: (Str, Str)
+    !public y: Str
+  }
+  fun f(p: Point) -> Void {
+    case p is Point(x=(a, b), y) {
     }
-    fun f(p: Point) -> Void {
-        case p is Point(x=(a, b), y) {
-        }
-    }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_nested_class_in_object_all_bound, R"(
-    # The same, one class inside another, where the parts are attributes rather than indexed elements.
-    cls Inner {
-        !public a: Str
-        !public b: Str
-    }
+  # The same, one class inside another, where the parts are attributes rather than indexed elements.
+  cls Inner {
+    !public a: Str
+    !public b: Str
+  }
 
-    cls Outer {
-        !public i: Inner
-        !public y: Str
-    }
+  cls Outer {
+    !public i: Inner
+    !public y: Str
+  }
 
-    fun f(p: Outer) -> Void {
-        case p is Outer(i=Inner(a, b), y) {
-        }
+  fun f(p: Outer) -> Void {
+    case p is Outer(i=Inner(a, b), y) {
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_nested_tuple_in_object_partially_bound, R"(
-    # Only the first element of the tuple is bound, so "p.x.1" stays with "p", which drops it at the end of "f".
-    cls Point {
-        !public x: (Str, Str)
-        !public y: Str
-    }
-    fun f(p: Point) -> Void {
-        case p is Point(x=(a, ..), y) { }
-    }
+  # Only the first element of the tuple is bound, so "p.x.1" stays with "p", which drops it at the end of "f".
+  cls Point {
+    !public x: (Str, Str)
+    !public y: Str
+  }
+  fun f(p: Point) -> Void {
+    case p is Point(x=(a, ..), y) { }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_nested_class_in_object_partially_bound, R"(
-    cls Inner {
-        !public a: Str
-        !public b: Str
-    }
+  cls Inner {
+    !public a: Str
+    !public b: Str
+  }
 
-    cls Outer {
-        !public i: Inner
-        !public y: Str
-    }
+  cls Outer {
+    !public i: Inner
+    !public y: Str
+  }
 
-    fun f(p: Outer) -> Void {
-        case p is Outer(i=Inner(a, ..), y) { }
-    }
+  fun f(p: Outer) -> Void {
+    case p is Outer(i=Inner(a, ..), y) { }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_nested_object_in_object, R"(
-    # A pattern that cannot fail, binding by value, takes "p" on its match edge, and there is no other edge. What this
-    # pins is the shape of the nested pattern, which the attribute type is incidental to.
-    cls Point {
-        !public x: S32
-        !public y: S32
-    }
+  # A pattern that cannot fail, binding by value, takes "p" on its match edge, and there is no other edge. What this
+  # pins is the shape of the nested pattern, which the attribute type is incidental to.
+  cls Point {
+    !public x: S32
+    !public y: S32
+  }
 
-    cls Line {
-        !public start: Point
-        !public end: Point
-    }
+  cls Line {
+    !public start: Point
+    !public end: Point
+  }
 
-    fun f(p: Line) -> Void {
-        case p is Line(start=Point(x as x1, y as y1), end=Point(x as x2, y as y2)) { }
-    }
+  fun f(p: Line) -> Void {
+    case p is Line(start=Point(x as x1, y as y1), end=Point(x as x2, y as y2)) { }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_variant_narrowing_opt, R"(
-    fun f(p: Opt[Str]) -> Void {
-        case p of {
-            is Some[Str](val) {
-            }
-            is None() { }
-        }
+  fun f(p: Opt[Str]) -> Void {
+    case p of {
+      is Some[Str](val) {
+      }
+      is None() { }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_variant_narrowing_res, R"(
-    fun f(p: Res[Str, Bool]) -> Void {
-        case p of {
-            is Pass[Str](val) {
-            }
-            is Fail[Bool](err) { }
-        }
+  fun f(p: Res[Str, Bool]) -> Void {
+    case p of {
+      is Pass[Str](val) {
+      }
+      is Fail[Bool](err) { }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_variant_narrowing_distinct_attributes, R"(
-    cls A {
-        !public a: Str
-    }
+  cls A {
+    !public a: Str
+  }
 
-    cls B {
-        !public b: Str
-    }
+  cls B {
+    !public b: Str
+  }
 
-    fun f(p: A or B) -> Void {
-        case p of {
-            is A(a) {
-            }
-            is B(b) {
-            }
-        }
+  fun f(p: A or B) -> Void {
+    case p of {
+      is A(a) {
+      }
+      is B(b) {
+      }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_variant_narrowing_bind_and_use, R"(
-    fun f(p: Opt[Str]) -> Str {
-        ret case p of {
-            is Some[Str](val) { val }
-            else { Str::from("none") }
-        }
+  fun f(p: Opt[Str]) -> Str {
+    ret case p of {
+      is Some[Str](val) { val }
+      else { Str::from("none") }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_invalid_variant_wrong_generic_argument,
   SppTypeMismatchError, R"(
-    fun f(p: Opt[Str]) -> Void {
-        case p of {
-            is Some[Bool](val) { }
-            is None() { }
-        }
+  fun f(p: Opt[Str]) -> Void {
+    case p of {
+      is Some[Bool](val) { }
+      is None() { }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_bind_by_mut_borrow_and_write_through_it, R"(
-    cls Point {
-        !public x: S32
-        !public y: S32
-    }
-    sup Point ext Copy { }
+  cls Point {
+    !public x: S32
+    !public y: S32
+  }
+  sup Point ext Copy { }
 
-    fun f() -> Void {
-        let p = Point(x=10, y=20)
-        let a = 123
-        case p of {
-            is Point(&mut x, ..) { x@ = a }
-        }
+  fun f() -> Void {
+    let p = Point(x=10, y=20)
+    let a = 123
+    case p of {
+      is Point(&mut x, ..) { x@ = a }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_invalid_write_through_an_immutable_borrow_binding,
   SppInvalidMutationError, R"(
-    cls Point {
-        !public x: S32
-        !public y: S32
-    }
-    sup Point ext Copy { }
+  cls Point {
+    !public x: S32
+    !public y: S32
+  }
+  sup Point ext Copy { }
 
-    fun f() -> Void {
-        let p = Point(x=10, y=20)
-        let a = 123
-        case p of {
-            is Point(&x, ..) { x@ = a }
-            else { }
-        }
+  fun f() -> Void {
+    let p = Point(x=10, y=20)
+    let a = 123
+    case p of {
+      is Point(&x, ..) { x@ = a }
+      else { }
     }
+  }
 )");
 
 // A literal in the payload of a subject that is not a name: it is checked at its path in the subject, not through a
@@ -378,118 +378,118 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_literal_in_the_payload_of_a_subject_that_is_not_a_name, R"(
-    fun make(n: S32) -> Opt[S32] {
-        ret Some[S32](val=n)
-    }
+  fun make(n: S32) -> Opt[S32] {
+    ret Some[S32](val=n)
+  }
 
-    fun f(n: S32) -> S32 {
-        ret case make(n) of {
-            is Some[S32](val=5) { 1 }
-            is Some[S32](val) { 2 }
-            is None() { 3 }
-        }
+  fun f(n: S32) -> S32 {
+    ret case make(n) of {
+      is Some[S32](val=5) { 1 }
+      is Some[S32](val) { 2 }
+      is None() { 3 }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_refined_nested_pattern_meets_inner_destructure, R"(
-    fun f(z: Opt[Opt[S32]]) -> S32 {
-        case z of {
-            is Some[Some[S32]](val=Some[S32](val=3)) { ret 1 }
-            is Some[Some[S32]](..) { ret 2 }
-            else { ret 3 }
-        }
+  fun f(z: Opt[Opt[S32]]) -> S32 {
+    case z of {
+      is Some[Some[S32]](val=Some[S32](val=3)) { ret 1 }
+      is Some[Some[S32]](..) { ret 2 }
+      else { ret 3 }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectGeneric,
   test_valid_generic_arguments_inferred_from_an_option_subject, R"(
-    fun f(o: Opt[S32]) -> Void {
-        case o is Some(val) { let x: S32 = val }
-    }
+  fun f(o: Opt[S32]) -> Void {
+    case o is Some(val) { let x: S32 = val }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CasePatternVariantDestructureObjectGeneric,
   test_invalid_binding_of_an_inferred_pattern_has_the_member_type,
   SppTypeMismatchError, R"(
-    fun f(o: Opt[S32]) -> Void {
-        case o is Some(val) { let x: Bool = val }
-    }
+  fun f(o: Opt[S32]) -> Void {
+    case o is Some(val) { let x: Bool = val }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectGeneric,
   test_valid_generic_arguments_inferred_from_a_result_subject, R"(
-    fun f(r: Res[S32, Bool]) -> Void {
-        case r of {
-            is Pass(val) { let x: S32 = val }
-            is Fail(err) { let y: Bool = err }
-        }
+  fun f(r: Res[S32, Bool]) -> Void {
+    case r of {
+      is Pass(val) { let x: S32 = val }
+      is Fail(err) { let y: Bool = err }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectGeneric,
   test_valid_generic_arguments_inferred_in_a_nested_pattern, R"(
-    fun f(z: Opt[Opt[S32]]) -> Void {
-        case z of {
-            is Some(val=Some(val)) { let x: S32 = val }
-            else { }
-        }
+  fun f(z: Opt[Opt[S32]]) -> Void {
+    case z of {
+      is Some(val=Some(val)) { let x: S32 = val }
+      else { }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectGeneric,
   test_valid_written_generic_argument_picks_a_variant_member, R"(
-    cls A[T] { !public v: T }
+  cls A[T] { !public v: T }
 
-    fun f(a: A[S32] or A[Bool]) -> Void {
-        case a of {
-            is A[S32](v) { let x: S32 = v }
-            is A[Bool](v) { let y: Bool = v }
-        }
+  fun f(a: A[S32] or A[Bool]) -> Void {
+    case a of {
+      is A[S32](v) { let x: S32 = v }
+      is A[Bool](v) { let y: Bool = v }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CasePatternVariantDestructureObjectGeneric,
   test_invalid_generic_arguments_ambiguous_over_two_variant_members,
   SppDestructureGenericAmbiguousError, R"(
-    cls A[T] { !public v: T }
+  cls A[T] { !public v: T }
 
-    fun f(a: A[S32] or A[Bool]) -> Void {
-        case a of {
-            is A(v) { }
-            else { }
-        }
+  fun f(a: A[S32] or A[Bool]) -> Void {
+    case a of {
+      is A(v) { }
+      else { }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectGeneric,
   test_valid_generic_arguments_inferred_inside_a_tuple_pattern, R"(
-    fun f(t: (Opt[S32], Opt[Bool])) -> Void {
-        case t of {
-            is (Some(val as a), Some(val as b)) {
-                let x: S32 = a
-                let y: Bool = b
-            }
-            else { }
-        }
+  fun f(t: (Opt[S32], Opt[Bool])) -> Void {
+    case t of {
+      is (Some(val as a), Some(val as b)) {
+        let x: S32 = a
+        let y: Bool = b
+      }
+      else { }
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectGeneric,
   test_valid_generic_arguments_inferred_inside_an_array_pattern, R"(
-    fun f(a: Arr[Opt[S32], 2_uz]) -> Void {
-        case a of {
-            is [Some(val as x), ..] { let y: S32 = x }
-            else { }
-        }
+  fun f(a: Arr[Opt[S32], 2_uz]) -> Void {
+    case a of {
+      is [Some(val as x), ..] { let y: S32 = x }
+      else { }
     }
+  }
 )");

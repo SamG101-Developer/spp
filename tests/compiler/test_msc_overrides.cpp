@@ -3,169 +3,169 @@
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverrides,
   test_valid_overrides, R"(
-    cls A { }
-    cls B { }
+  cls A { }
+  cls B { }
 
-    sup A {
-        !virtual_method
-        !public
-        fun f(&self) -> Void { }
+  sup A {
+    !virtual_method
+    !public
+    fun f(&self) -> Void { }
 
-        !virtual_method
-        !public
-        fun f(&self, a: A) -> Void {
-        }
-
-        !virtual_method
-        !public
-        fun f(&self, a: Bool, b: S32) -> Void { }
+    !virtual_method
+    !public
+    fun f(&self, a: A) -> Void {
     }
 
-    sup B ext A {
-        fun f(&self) -> Void { }
-    }
+    !virtual_method
+    !public
+    fun f(&self, a: Bool, b: S32) -> Void { }
+  }
 
-    fun test_fn() -> Void {
-        let b = B()
-        b.f()
-        b.f(A())
-        b.f(true, 1)
-    }
+  sup B ext A {
+    fun f(&self) -> Void { }
+  }
+
+  fun test_fn() -> Void {
+    let b = B()
+    b.f()
+    b.f(A())
+    b.f(true, 1)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverrides,
   test_valid_overrides_with_generics, R"(
-    cls A[T] { }
-    cls B[T] { }
+  cls A[T] { }
+  cls B[T] { }
 
-    sup [T] A[T] {
-        !virtual_method
-        !public
-        fun f(&self) -> Void { }
+  sup [T] A[T] {
+    !virtual_method
+    !public
+    fun f(&self) -> Void { }
 
-        !virtual_method
-        !public
-        fun f(&self, a: T) -> T { ret a }
+    !virtual_method
+    !public
+    fun f(&self, a: T) -> T { ret a }
 
-        !virtual_method
-        !public
-        fun f(&self, a: Bool, b: S32) -> Void { }
-    }
+    !virtual_method
+    !public
+    fun f(&self, a: Bool, b: S32) -> Void { }
+  }
 
-    sup [T] B[T] ext A[T] {
-        fun f(&self) -> Void { }
-    }
+  sup [T] B[T] ext A[T] {
+    fun f(&self) -> Void { }
+  }
 
-    fun test_fn() -> Void {
-        let b = B[S32]()
-        b.f()
-        let mut x = b.f(1)
-        x = 123
-        b.f(true, 1)
-    }
+  fun test_fn() -> Void {
+    let b = B[S32]()
+    b.f()
+    let mut x = b.f(1)
+    x = 123
+    b.f(true, 1)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverrides,
   test_valid_overrides_with_generics_complex, R"(
-    cls A[T] { }
-    cls B[T] { }
+  cls A[T] { }
+  cls B[T] { }
 
-    sup [T] A[T] {
-        !virtual_method
-        !public
-        fun f(&self) -> Void { }
+  sup [T] A[T] {
+    !virtual_method
+    !public
+    fun f(&self) -> Void { }
 
-        !virtual_method
-        !public
-        fun f(&self, a: T) -> Vec[T] {
-            ret Vec[T]()
-        }
-
-        !virtual_method
-        !public
-        fun f(&self, a: Bool, b: S32) -> Void { }
+    !virtual_method
+    !public
+    fun f(&self, a: T) -> Vec[T] {
+      ret Vec[T]()
     }
 
-    sup [T] B[T] ext A[T] {
-        fun f(&self) -> Void { }
-    }
+    !virtual_method
+    !public
+    fun f(&self, a: Bool, b: S32) -> Void { }
+  }
 
-    fun test_fn() -> Void {
-        let b = B[S32]()
-        b.f()
-        let mut x = b.f(1)
-        std::mem::ops::drop(x)
-        x = Vec[S32]()
-        b.f(true, 1)
+  sup [T] B[T] ext A[T] {
+    fun f(&self) -> Void { }
+  }
 
-    }
+  fun test_fn() -> Void {
+    let b = B[S32]()
+    b.f()
+    let mut x = b.f(1)
+    std::mem::ops::drop(x)
+    x = Vec[S32]()
+    b.f(true, 1)
+
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverrides,
   test_valid_coroutine_overrides_with_generics, R"(
-    cls A[T] { }
-    cls B[T] { }
+  cls A[T] { }
+  cls B[T] { }
 
-    sup [T] A[T] {
-        !virtual_method
-        !public
-        cor c(&self) -> Gen[&T, Bool] { }
+  sup [T] A[T] {
+    !virtual_method
+    !public
+    cor c(&self) -> Gen[&T, Bool] { }
 
-        !virtual_method
-        !public
-        cor c(&self, a: T) -> Gen[&T, Bool] {
-        }
-
-        !virtual_method
-        !public
-        cor c(&self, a: Bool, b: S32) -> Gen[&T, Bool] { }
+    !virtual_method
+    !public
+    cor c(&self, a: T) -> Gen[&T, Bool] {
     }
 
-    sup [T] B[T] ext A[T] {
-        cor c(&self) -> Gen[&T, Bool] { }
-    }
+    !virtual_method
+    !public
+    cor c(&self, a: Bool, b: S32) -> Gen[&T, Bool] { }
+  }
 
-    fun test_fn() -> Void {
-        let b = B[S32]()
-        {
-            let mut coroutine = b.c(123)
-            let v = coroutine.res(false)
-        }
+  sup [T] B[T] ext A[T] {
+    cor c(&self) -> Gen[&T, Bool] { }
+  }
+
+  fun test_fn() -> Void {
+    let b = B[S32]()
+    {
+      let mut coroutine = b.c(123)
+      let v = coroutine.res(false)
     }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverrides,
   test_invalid_override_call,
   SppFunctionCallNoValidSignaturesError, R"(
-    cls A { }
-    cls B { }
+  cls A { }
+  cls B { }
 
-    sup A {
-        !virtual_method
-        !public
-        fun f(&self) -> Void { }
+  sup A {
+    !virtual_method
+    !public
+    fun f(&self) -> Void { }
 
-        !virtual_method
-        !public
-        fun f(&self, a: A) -> Void { }
+    !virtual_method
+    !public
+    fun f(&self, a: A) -> Void { }
 
-        !virtual_method
-        !public
-        fun f(&self, a: Bool, b: S32) -> Void { }
-    }
+    !virtual_method
+    !public
+    fun f(&self, a: Bool, b: S32) -> Void { }
+  }
 
-    sup B ext A {
-        fun f(&self) -> Void { }
-    }
+  sup B ext A {
+    fun f(&self) -> Void { }
+  }
 
-    fun test_fn() -> Void {
-        let b = B()
-        b.f("a")
-    }
+  fun test_fn() -> Void {
+    let b = B()
+    b.f("a")
+  }
 )");
 
 // A base method that is neither `virtual_method` nor `abstract_method` cannot be overridden.
@@ -173,17 +173,17 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverrides,
   test_invalid_override_non_virtual_method,
   SppSuperimpositionExtensionNonVirtualMethodOverriddenError, R"(
-    cls A { }
-    cls B { }
+  cls A { }
+  cls B { }
 
-    sup A {
-        !public
-        fun f(&self) -> Void { }
-    }
+  sup A {
+    !public
+    fun f(&self) -> Void { }
+  }
 
-    sup B ext A {
-        fun f(&self) -> Void { }
-    }
+  sup B ext A {
+    fun f(&self) -> Void { }
+  }
 )");
 
 // A method defined in an `ext` block must correspond to a method on the base type; a brand-new
@@ -192,36 +192,36 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverrides,
   test_invalid_ext_method_not_on_base,
   SppSuperimpositionExtensionMethodInvalidError, R"(
-    cls A { }
-    cls B { }
+  cls A { }
+  cls B { }
 
-    sup A {
-        !virtual_method
-        !public
-        fun f(&self) -> Void { }
-    }
+  sup A {
+    !virtual_method
+    !public
+    fun f(&self) -> Void { }
+  }
 
-    sup B ext A {
-        fun g(&self) -> Void { }
-    }
+  sup B ext A {
+    fun g(&self) -> Void { }
+  }
 )");
 
 // An override may narrow what the method it overrides returns: whatever it returns is still what the base promises.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverrides,
   test_valid_override_narrows_the_return_type, R"(
-    cls A { }
-    cls B { }
+  cls A { }
+  cls B { }
 
-    sup A {
-        !virtual_method
-        !public
-        fun f(&self) -> S32 or Bool { ret true }
-    }
+  sup A {
+    !virtual_method
+    !public
+    fun f(&self) -> S32 or Bool { ret true }
+  }
 
-    sup B ext A {
-        fun f(&self) -> S32 { ret 1_s32 }
-    }
+  sup B ext A {
+    fun f(&self) -> S32 { ret 1_s32 }
+  }
 )");
 
 // An override may not widen it: a caller of the base's method would be handed what the base never returns.
@@ -229,18 +229,18 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverrides,
   test_invalid_override_widens_the_return_type,
   SppSuperimpositionExtensionMethodInvalidError, R"(
-    cls A { }
-    cls B { }
+  cls A { }
+  cls B { }
 
-    sup A {
-        !virtual_method
-        !public
-        fun f(&self) -> S32 { ret 1_s32 }
-    }
+  sup A {
+    !virtual_method
+    !public
+    fun f(&self) -> S32 { ret 1_s32 }
+  }
 
-    sup B ext A {
-        fun f(&self) -> S32 or Bool { ret 1_s32 }
-    }
+  sup B ext A {
+    fun f(&self) -> S32 or Bool { ret 1_s32 }
+  }
 )");
 
 // Nor widen it inside an argument ("Indexed[&T or None]" for "Indexed[&T]"), which the old check accepted by reading
@@ -249,18 +249,18 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverrides,
   test_invalid_override_widens_a_return_type_argument,
   SppSuperimpositionExtensionMethodInvalidError, R"(
-    cls A { }
-    cls B { }
+  cls A { }
+  cls B { }
 
-    sup A {
-        !virtual_method
-        !public
-        fun f(&self) -> Opt[S32] { ret None }
-    }
+  sup A {
+    !virtual_method
+    !public
+    fun f(&self) -> Opt[S32] { ret None }
+  }
 
-    sup B ext A {
-        fun f(&self) -> Opt[S32 or Bool] { ret None }
-    }
+  sup B ext A {
+    fun f(&self) -> Opt[S32 or Bool] { ret None }
+  }
 )");
 
 // An override that matches nothing leaves the abstract method unimplemented, so the type is abstract. The bad
@@ -270,41 +270,41 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
   TestOverrides,
   test_invalid_override_reported_before_the_abstract_use_it_causes,
   SppSuperimpositionExtensionMethodInvalidError, "get", R"(
-    cls Getter[T] { }
+  cls Getter[T] { }
 
-    sup [T] Getter[T] {
-        !abstract_method
-        !public
-        cor get(&self) -> std::generator::Gen[T] { }
-    }
+  sup [T] Getter[T] {
+    !abstract_method
+    !public
+    cor get(&self) -> std::generator::Gen[T] { }
+  }
 
-    fun use_it(h: Holder[S32]) -> Void { }
+  fun use_it(h: Holder[S32]) -> Void { }
 
-    cls Holder[T] {
-        v: T
-    }
+  cls Holder[T] {
+    v: T
+  }
 
-    sup [T] Holder[T] ext Getter[T] {
-        cor get(&self) -> std::generator::Gen[T or Bool] { }
-    }
+  sup [T] Holder[T] ext Getter[T] {
+    cor get(&self) -> std::generator::Gen[T or Bool] { }
+  }
 )");
 
 // A signature is the same up to renaming its own generics: the override's are the base's, by position.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverrides,
   test_valid_override_renames_its_generics, R"(
-    cls A { }
-    cls B { }
+  cls A { }
+  cls B { }
 
-    sup A {
-        !virtual_method
-        !public
-        fun f[G: Copy](&self, g: G) -> G { ret g }
-    }
+  sup A {
+    !virtual_method
+    !public
+    fun f[G: Copy](&self, g: G) -> G { ret g }
+  }
 
-    sup B ext A {
-        fun f[H: Copy](&self, g: H) -> H { ret g }
-    }
+  sup B ext A {
+    fun f[H: Copy](&self, g: H) -> H { ret g }
+  }
 )");
 
 // By position, so swapping what two generics stand for is another signature.
@@ -312,83 +312,83 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverrides,
   test_invalid_override_swaps_its_generics,
   SppSuperimpositionExtensionMethodInvalidError, R"(
-    cls A { }
-    cls B { }
+  cls A { }
+  cls B { }
 
-    sup A {
-        !virtual_method
-        !public
-        fun f[G: Copy, K: Copy](&self, g: G, k: K) -> G { ret g }
-    }
+  sup A {
+    !virtual_method
+    !public
+    fun f[G: Copy, K: Copy](&self, g: G, k: K) -> G { ret g }
+  }
 
-    sup B ext A {
-        fun f[G: Copy, K: Copy](&self, g: K, k: G) -> G { ret k }
-    }
+  sup B ext A {
+    fun f[G: Copy, K: Copy](&self, g: K, k: G) -> G { ret k }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverrides,
   test_valid_override_with_comp_generic, R"(
-    cls Base { }
-    sup Base {
-        !virtual_method
-        !public
-        fun f[cmp n: S32](&self) -> S32 { ret n }
-    }
-    cls Derived { }
-    sup Derived ext Base {
-        fun f[cmp m: S32](&self) -> S32 { ret m + 1 }
-    }
-    fun test_fn() -> Void {
-        let d = Derived()
-        let x = d.f[5]()
-    }
+  cls Base { }
+  sup Base {
+    !virtual_method
+    !public
+    fun f[cmp n: S32](&self) -> S32 { ret n }
+  }
+  cls Derived { }
+  sup Derived ext Base {
+    fun f[cmp m: S32](&self) -> S32 { ret m + 1 }
+  }
+  fun test_fn() -> Void {
+    let d = Derived()
+    let x = d.f[5]()
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverrides,
   test_invalid_override_generic_kind_differs,
   SppSuperimpositionExtensionMethodInvalidError, R"(
-    cls Base { }
-    sup Base {
-        !virtual_method
-        !public
-        fun f[T](&self) -> S32 { ret 1 }
-    }
-    cls Derived { }
-    sup Derived ext Base {
-        fun f[cmp n: S32](&self) -> S32 { ret n }
-    }
+  cls Base { }
+  sup Base {
+    !virtual_method
+    !public
+    fun f[T](&self) -> S32 { ret 1 }
+  }
+  cls Derived { }
+  sup Derived ext Base {
+    fun f[cmp n: S32](&self) -> S32 { ret n }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverrides,
   test_invalid_override_destructured_parameter_names_differ,
   SppSuperimpositionExtensionMethodInvalidError, R"(
-    cls Base { }
-    sup Base {
-        !virtual_method
-        !public
-        fun f(&self, (a, b): (S32, S32)) -> S32 { ret a }
-    }
-    cls Derived { }
-    sup Derived ext Base {
-        fun f(&self, (a, c): (S32, S32)) -> S32 { ret a }
-    }
+  cls Base { }
+  sup Base {
+    !virtual_method
+    !public
+    fun f(&self, (a, b): (S32, S32)) -> S32 { ret a }
+  }
+  cls Derived { }
+  sup Derived ext Base {
+    fun f(&self, (a, c): (S32, S32)) -> S32 { ret a }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestOverrides,
   test_invalid_override_destructured_parameter_arity_differs,
   SppSuperimpositionExtensionMethodInvalidError, R"(
-    cls Base { }
-    sup Base {
-        !virtual_method
-        !public
-        fun f(&self, (a, b): (S32, S32)) -> S32 { ret a }
-    }
-    cls Derived { }
-    sup Derived ext Base {
-        fun f(&self, (a, b, c): (S32, S32, S32)) -> S32 { ret a }
-    }
+  cls Base { }
+  sup Base {
+    !virtual_method
+    !public
+    fun f(&self, (a, b): (S32, S32)) -> S32 { ret a }
+  }
+  cls Derived { }
+  sup Derived ext Base {
+    fun f(&self, (a, b, c): (S32, S32, S32)) -> S32 { ret a }
+  }
 )");

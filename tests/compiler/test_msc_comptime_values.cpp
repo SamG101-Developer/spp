@@ -888,9 +888,9 @@ SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_case_with_guards_in_a_module_constant, R"(
   cmp a: S32 = case (1, 2) of {
-      is (x, y) and x == 2 { 10 }
-      is (x, y) and y == 2 { 20 }
-      else { 30 }
+    is (x, y) and x == 2 { 10 }
+    is (x, y) and y == 2 { 20 }
+    else { 30 }
   }
 )", {"a", "20_s32"});
 

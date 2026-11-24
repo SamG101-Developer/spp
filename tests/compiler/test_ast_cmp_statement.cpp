@@ -8,326 +8,326 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_type_mismatch,
   SppTypeMismatchError, R"(
-    cmp x: S32 = false
+  cmp x: S32 = false
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_void_value,
   SppInvalidVoidValueError, R"(
-    cmp fun nothing() -> Void { }
+  cmp fun nothing() -> Void { }
 
-    cmp x: Void = nothing()
+  cmp x: Void = nothing()
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_literal, R"(
-    cmp x: S32 = 1
+  cmp x: S32 = 1
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_strview_borrow, R"(
-    cmp x: &StrView = "hello"
+  cmp x: &StrView = "hello"
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_comp_identifier_copyanle, R"(
-    cmp x: S32 = 1
-    cmp y: S32 = x
+  cmp x: S32 = 1
+  cmp y: S32 = x
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_value_comp_identifier_noncopyanle,
   SppMovingCompTimeConstantMemoryError, R"(
-    cls MyClass {
-        !public x: Bool
-    }
-    cmp x: MyClass = MyClass(x=false)
-    cmp y: MyClass = x
+  cls MyClass {
+    !public x: Bool
+  }
+  cmp x: MyClass = MyClass(x=false)
+  cmp y: MyClass = x
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_duplicate_name,
   SppIdentifierDuplicateError, R"(
-    cmp x: S32 = 1
-    cmp x: S32 = 2
+  cmp x: S32 = 1
+  cmp x: S32 = 2
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_binary_expression, R"(
-    cmp x: S32 = 1 | 2
+  cmp x: S32 = 1 | 2
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_referencing_another_cmp_in_expression, R"(
-    cmp x: S32 = 1
-    cmp y: S32 = x + 1
+  cmp x: S32 = 1
+  cmp y: S32 = x + 1
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_array_literal, R"(
-    cmp x: Arr[S32, 3_uz] = [1, 2, 3]
+  cmp x: Arr[S32, 3_uz] = [1, 2, 3]
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_tuple_literal, R"(
-    cmp x: (S32, S32) = (1, 2)
+  cmp x: (S32, S32) = (1, 2)
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_visibility_annotation, R"(
-    !public cmp x: S32 = 1
+  !public cmp x: S32 = 1
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_circular_dependency,
   SppCompTimeConstantError, R"(
-    cmp x: S32 = y + 1
-    cmp y: S32 = x + 1
+  cmp x: S32 = y + 1
+  cmp y: S32 = x + 1
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_self_referential_dependency,
   SppCompTimeConstantError, R"(
-    cmp x: S32 = x + 1
+  cmp x: S32 = x + 1
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_circular_dependency_three_way,
   SppCompTimeConstantError, R"(
-    cmp a: S32 = b + 1
-    cmp b: S32 = c + 1
-    cmp c: S32 = a + 1
+  cmp a: S32 = b + 1
+  cmp b: S32 = c + 1
+  cmp c: S32 = a + 1
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_circular_dependency_through_array_element,
   SppCompTimeConstantError, R"(
-    cmp arr: Arr[S32, 2_uz] = [b, 2]
-    cmp b: S32 = arr.0
+  cmp arr: Arr[S32, 2_uz] = [b, 2]
+  cmp b: S32 = arr.0
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_circular_dependency_through_tuple_element,
   SppCompTimeConstantError, R"(
-    cmp tup: (S32, S32) = (b, 2)
-    cmp b: S32 = tup.0
+  cmp tup: (S32, S32) = (b, 2)
+  cmp b: S32 = tup.0
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_chain_of_cmp_references, R"(
-    cmp a: S32 = 1
-    cmp b: S32 = a + 1
-    cmp c: S32 = b + a
-    cmp d: S32 = c * b
+  cmp a: S32 = 1
+  cmp b: S32 = a + 1
+  cmp c: S32 = b + a
+  cmp d: S32 = c * b
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_array_literal_referencing_another_cmp, R"(
-    cmp a: S32 = 7
-    cmp arr: Arr[S32, 2_uz] = [a, a]
+  cmp a: S32 = 7
+  cmp arr: Arr[S32, 2_uz] = [a, a]
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_tuple_literal_referencing_another_cmp, R"(
-    cmp a: S32 = 7
-    cmp tup: (S32, S32) = (a, 2)
+  cmp a: S32 = 7
+  cmp tup: (S32, S32) = (a, 2)
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_case_of_literal_patterns, R"(
-    cmp a: S32 = case 1 of {
-        == 1 { 10 }
-        == 2 { 20 }
-        else { 30 }
-    }
+  cmp a: S32 = case 1 of {
+    == 1 { 10 }
+    == 2 { 20 }
+    else { 30 }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_case_followed_by_another_cmp, R"(
-    cmp a: S32 = case 1 of {
-        == 1 { 10 }
-        else { 30 }
-    }
+  cmp a: S32 = case 1 of {
+    == 1 { 10 }
+    else { 30 }
+  }
 
-    cmp b: S32 = 2
+  cmp b: S32 = 2
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_case_followed_by_function, R"(
-    cmp a: S32 = case 1 of {
-        == 1 { 10 }
-        else { 30 }
-    }
+  cmp a: S32 = case 1 of {
+    == 1 { 10 }
+    else { 30 }
+  }
 
-    fun f() -> S32 {
-        ret 1
-    }
+  fun f() -> S32 {
+    ret 1
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_case_followed_by_class_and_sup, R"(
-    cmp a: S32 = case 1 of {
-        == 1 { 10 }
-        else { 30 }
-    }
+  cmp a: S32 = case 1 of {
+    == 1 { 10 }
+    else { 30 }
+  }
 
-    cls MyClass {
-        !public x: S32
-    }
+  cls MyClass {
+    !public x: S32
+  }
 
-    sup MyClass {
-        !public fun f(&self) -> S32 { ret 1 }
-    }
+  sup MyClass {
+    !public fun f(&self) -> S32 { ret 1 }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_two_case_values_in_a_row, R"(
-    cmp a: S32 = case 1 of {
-        == 1 { 10 }
-        else { 30 }
-    }
+  cmp a: S32 = case 1 of {
+    == 1 { 10 }
+    else { 30 }
+  }
 
-    cmp b: S32 = case 2 of {
-        == 2 { 20 }
-        else { 40 }
-    }
+  cmp b: S32 = case 2 of {
+    == 2 { 20 }
+    else { 40 }
+  }
 
-    fun f() -> Void { }
+  fun f() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_nested_case, R"(
-    cmp a: S32 = case 1 of {
-        == 1 {
-            case 2 of {
-                == 2 { 20 }
-                else { 30 }
-            }
-        }
-        else { 40 }
+  cmp a: S32 = case 1 of {
+    == 1 {
+      case 2 of {
+        == 2 { 20 }
+        else { 30 }
+      }
     }
+    else { 40 }
+  }
 
-    fun f() -> Void { }
+  fun f() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_case_referencing_another_cmp, R"(
-    cmp a: S32 = 1
+  cmp a: S32 = 1
 
-    cmp b: S32 = case a of {
-        == 1 { 10 }
-        else { 30 }
-    }
+  cmp b: S32 = case a of {
+    == 1 { 10 }
+    else { 30 }
+  }
 
-    fun f() -> Void { }
+  fun f() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_case_of_tuple_destructure, R"(
-    cmp a: S32 = case (1, 5) of {
-        is (1, y) { y }
-        else { 0 }
-    }
+  cmp a: S32 = case (1, 5) of {
+    is (1, y) { y }
+    else { 0 }
+  }
 
-    fun f() -> Void { }
+  fun f() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_case_in_sup_block, R"(
-    cls MyClass { }
+  cls MyClass { }
 
-    sup MyClass {
-        cmp a: S32 = case 1 of {
-            == 1 { 10 }
-            else { 30 }
-        }
-
-        !public fun f(&self) -> S32 { ret 1 }
+  sup MyClass {
+    cmp a: S32 = case 1 of {
+      == 1 { 10 }
+      else { 30 }
     }
+
+    !public fun f(&self) -> S32 { ret 1 }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_value_case_type_mismatch,
   SppTypeMismatchError, R"(
-    cmp a: S32 = case 1 of {
-        == 1 { false }
-        else { true }
-    }
+  cmp a: S32 = case 1 of {
+    == 1 { false }
+    else { true }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_operator_constant_read_by_a_stage_7_fold, R"(
-    cmp b: USize = 1_uz + 2_uz
+  cmp b: USize = 1_uz + 2_uz
 
-    fun f() -> Void {
-        let x: [S32; 3_uz] = [1; b]
-    }
+  fun f() -> Void {
+    let x: [S32; 3_uz] = [1; b]
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_operator_constant_read_by_a_stage_7_fold_before_it, R"(
-    fun f() -> Void {
-        let x: [S32; 3_uz] = [1; b]
-    }
+  fun f() -> Void {
+    let x: [S32; 3_uz] = [1; b]
+  }
 
-    cmp b: USize = 1_uz + 2_uz
+  cmp b: USize = 1_uz + 2_uz
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_constant_chain_through_a_cmp_fun_read_by_a_stage_7_fold, R"(
-    cmp a: USize = b + 1_uz
-    cmp b: USize = ct()
-    cmp fun ct() -> USize { ret 3_uz }
+  cmp a: USize = b + 1_uz
+  cmp b: USize = ct()
+  cmp fun ct() -> USize { ret 3_uz }
 
-    fun f() -> Void {
-        let x: [S32; 4_uz] = [1; a]
-    }
+  fun f() -> Void {
+    let x: [S32; 4_uz] = [1; a]
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_constant_read_by_a_stage_7_fold_mismatching, SppTypeMismatchError, R"(
-    fun f() -> Void {
-        let x: [S32; 5_uz] = [1; b]
-    }
+  fun f() -> Void {
+    let x: [S32; 5_uz] = [1; b]
+  }
 
-    cmp b: USize = 1_uz + 2_uz
+  cmp b: USize = 1_uz + 2_uz
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_constant_reading_itself_through_an_operator, SppCompTimeConstantError, R"(
-    cmp a: USize = 1_uz + a
+  cmp a: USize = 1_uz + a
 )");

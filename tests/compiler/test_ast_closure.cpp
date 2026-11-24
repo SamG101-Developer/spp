@@ -4,58 +4,58 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_mutate_capture,
   SppInvalidMutationError, R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let x = |b: U32 caps a| { a = b }
-        x(123_u32)
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x = |b: U32 caps a| { a = b }
+    x(123_u32)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_accessing_out_of_scope,
   SppIdentifierUnknownError, R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let x = || a
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x = || a
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_different_return_types,
   SppTypeMismatchError, R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let x = |caps a| case a < 5_u32 { ret true } else { ret 123 }
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x = |caps a| case a < 5_u32 { ret true } else { ret 123 }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_move_pinned_by_ref,
   SppMovingEscapingBorrowedMemoryError, R"(
-    fun g(func: FunRef[(), U32]) -> Void { }
+  fun g(func: FunRef[(), U32]) -> Void { }
 
-    fun f() -> Void {
-        let a = Str::from("x")
-        let x = |caps &a| 123_u32
-        std::mem::ops::drop(a)
-        g(x)
-    }
+  fun f() -> Void {
+    let a = Str::from("x")
+    let x = |caps &a| 123_u32
+    std::mem::ops::drop(a)
+    g(x)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_move_pinned_by_mut,
   SppMovingEscapingBorrowedMemoryError, R"(
-    fun g(func: FunMut[(), U32]) -> Void { }
+  fun g(func: FunMut[(), U32]) -> Void { }
 
-    fun f() -> Void {
-        let mut a = 5_u32
-        let x = |caps &mut a| 123_u32
-        g(x)
-    }
+  fun f() -> Void {
+    let mut a = 5_u32
+    let x = |caps &mut a| 123_u32
+    g(x)
+  }
 )");
 
 // A copied capture still makes a FunMov: its environment is on the heap, and a FunRef is Copy and never dropped.
@@ -63,261 +63,261 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_copied_capture_is_not_fun_ref,
   SppFunctionCallNoValidSignaturesError, R"(
-    fun g(func: FunRef[(), U32]) -> Void { }
+  fun g(func: FunRef[(), U32]) -> Void { }
 
-    fun f() -> Void {
-        let a = 5_u32
-        let x = |caps a| a
-        g(x)
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x = |caps a| a
+    g(x)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_type_mut,
   SppInvalidMutationError, R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let x: FunMut[(), U32] = |caps &mut a| 123_u32
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x: FunMut[(), U32] = |caps &mut a| 123_u32
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_unknown_capture_variable,
   SppIdentifierUnknownError, R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let x = |b: U32 caps a, c| { b = a }
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x = |b: U32 caps a, c| { b = a }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_with_capture_mov,
   SppUninitializedMemoryUseError, R"(
-    fun f() -> Void {
-        let a = Str::from("test")
-        let x = |caps a| a
-        let b = a
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(b)
-    }
+  fun f() -> Void {
+    let a = Str::from("test")
+    let x = |caps a| a
+    let b = a
+    std::mem::ops::drop(x)
+    std::mem::ops::drop(b)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_simple,
   R"(
-    fun f() -> Void {
-        let x = || 5_u32
-    }
+  fun f() -> Void {
+    let x = || 5_u32
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_with_parameters,
   R"(
-    fun f() -> Void {
-        let x = |a: U32, b: U32| a + b
-    }
+  fun f() -> Void {
+    let x = |a: U32, b: U32| a + b
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_with_capture_mov,
   R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let x = |b: U32, c: U32 caps a| a + b + c
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x = |b: U32, c: U32 caps a| a + b + c
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_with_capture_ref,
   R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let x = |mut b: &U32 caps &a| { b = a }
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x = |mut b: &U32 caps &a| { b = a }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_with_capture_mut,
   R"(
-    fun f() -> Void {
-        let mut a = 5_u32
-        let x = |mut b: &mut U32 caps &mut a| { b = a }
-    }
+  fun f() -> Void {
+    let mut a = 5_u32
+    let x = |mut b: &mut U32 caps &mut a| { b = a }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_type_mov,
   R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let x: FunMov[(), U32] = |caps a| 123_u32
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x: FunMov[(), U32] = |caps a| 123_u32
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_type_mut,
   R"(
-    fun f() -> Void {
-        let mut a = 5_u32
-        let x: FunMut[(), U32] = |caps &mut a| 123_u32
-    }
+  fun f() -> Void {
+    let mut a = 5_u32
+    let x: FunMut[(), U32] = |caps &mut a| 123_u32
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_type_ref,
   R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let x: FunRef[(), U32] = |caps &a| 123_u32
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x: FunRef[(), U32] = |caps &a| 123_u32
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_no_capture_infers_fun_ref,
   R"(
-    fun f() -> Void {
-        let x: FunRef[(), U32] = || 5_u32
-    }
+  fun f() -> Void {
+    let x: FunRef[(), U32] = || 5_u32
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_multiple_mov_captures,
   R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let b = 6_u32
-        let x: FunMov[(), U32] = |caps a, b| 123_u32
-        let result = x()
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let b = 6_u32
+    let x: FunMov[(), U32] = |caps a, b| 123_u32
+    let result = x()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_mixed_mov_and_ref_captures_infers_fun_mov,
   R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let b = 6_u32
-        let x: FunMov[(), U32] = |caps a, &b| 123_u32
-        let result = x()
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let b = 6_u32
+    let x: FunMov[(), U32] = |caps a, &b| 123_u32
+    let result = x()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_mixed_ref_and_mut_captures_infers_fun_mut,
   R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let mut b = 6_u32
-        let x: FunMut[(), U32] = |caps &a, &mut b| 123_u32
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let mut b = 6_u32
+    let x: FunMut[(), U32] = |caps &a, &mut b| 123_u32
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_correct_return_type,
   R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let x = |caps a| a
-        let mut y = x()
-        y = 123_u32
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x = |caps a| a
+    let mut y = x()
+    y = 123_u32
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_with_capture_mov_use_capture,
   R"(
-    fun f() -> Void {
-        let a = "test"
-        let x = |caps a| a
-    }
+  fun f() -> Void {
+    let a = "test"
+    let x = |caps a| a
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_call_fun_mov_twice,
   SppUninitializedMemoryUseError, R"(
-    fun f() -> Void {
-        let a = "test"
-        let x = |caps a| a
+  fun f() -> Void {
+    let a = "test"
+    let x = |caps a| a
 
-        let z = x()
-        let z = x()
-    }
+    let z = x()
+    let z = x()
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_call_fun_mut_immutable,
   SppInvalidMutationError, R"(
-    fun f() -> Void {
-        let mut a = "test"
-        let x = |caps &mut a| { }
-        x()
-    }
+  fun f() -> Void {
+    let mut a = "test"
+    let x = |caps &mut a| { }
+    x()
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_move_borrowed_capture,
   SppMovingEscapingBorrowedMemoryError, R"(
-    fun f() -> Void {
-        let some_variable = Str::from("hello world")
-        let x = |caps &some_variable| 123_u32
-        let b = some_variable
-        std::hints::black_box(&x)
-    }
+  fun f() -> Void {
+    let some_variable = Str::from("hello world")
+    let x = |caps &some_variable| 123_u32
+    let b = some_variable
+    std::hints::black_box(&x)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_use_moved_capture_as_borrow,
   SppUninitializedMemoryUseError, R"(
-    fun g(x: &StrView) -> Void { }
+  fun g(x: &StrView) -> Void { }
 
-    fun f() -> Void {
-        let some_variable = Str::from("hello world")
-        let x = |caps some_variable| 123_u32
-        g(&some_variable)
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(some_variable)
-    }
+  fun f() -> Void {
+    let some_variable = Str::from("hello world")
+    let x = |caps some_variable| 123_u32
+    g(&some_variable)
+    std::mem::ops::drop(x)
+    std::mem::ops::drop(some_variable)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_containing_ret_statement,
   R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let x = |caps a| { ret a }
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x = |caps a| { ret a }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_containing_gen_expression,
   SppFunctionSubroutineContainsGenExpressionError, R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let x = |caps a| { gen a }
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x = |caps a| { gen a }
+  }
 )");
 
 // Todo: back to SHOULD_PASS once coroutine closures are supported.
@@ -325,11 +325,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_containing_gen_expression,
   SppFeatureNotYetSupportedError, R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let x = cor |caps a| { gen a }
-        std::mem::ops::drop(x)
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x = cor |caps a| { gen a }
+    std::mem::ops::drop(x)
+  }
 )");
 
 // Todo: back to SppCoroutineContainsReturnStatementError once
@@ -338,269 +338,269 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_closure_containing_ret_statement,
   SppFeatureNotYetSupportedError, R"(
-    fun f() -> Void {
-        let a = 5_u32
-        let x = cor |caps a| { ret a }
-    }
+  fun f() -> Void {
+    let a = 5_u32
+    let x = cor |caps a| { ret a }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_parameters_without_defaults,
   R"(
-    fun f() -> Void {
-        let x = |a: U32, b: U32| a
-        std::mem::ops::drop(x(1_u32, 2_u32))
-    }
+  fun f() -> Void {
+    let x = |a: U32, b: U32| a
+    std::mem::ops::drop(x(1_u32, 2_u32))
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_move_of_a_value_borrowed_by_a_closure_held_elsewhere,
   SppMovingEscapingBorrowedMemoryError, R"(
-    fun hold[F: FunRef[(), U32]](f: F) -> F { ret f }
+  fun hold[F: FunRef[(), U32]](f: F) -> F { ret f }
 
-    fun f() -> Void {
-        let a = Str::from("x")
-        let handle = hold(|caps &a| 123_u32)
-        std::mem::ops::drop(a)
-        std::hints::black_box(&handle)
-    }
+  fun f() -> Void {
+    let a = Str::from("x")
+    let handle = hold(|caps &a| 123_u32)
+    std::mem::ops::drop(a)
+    std::hints::black_box(&handle)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureExpressionAst,
   test_invalid_move_of_a_value_borrowed_by_a_closure_wrapped_in_the_result,
   SppMovingEscapingBorrowedMemoryError, R"(
-    fun wrap[F: FunRef[(), U32]](f: F) -> Opt[F] { ret Some(val=f) }
+  fun wrap[F: FunRef[(), U32]](f: F) -> Opt[F] { ret Some(val=f) }
 
-    fun f() -> Void {
-        let a = Str::from("x")
-        let handle = wrap(|caps &a| 123_u32)
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(handle)
-    }
+  fun f() -> Void {
+    let a = Str::from("x")
+    let handle = wrap(|caps &a| 123_u32)
+    std::mem::ops::drop(a)
+    std::mem::ops::drop(handle)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_move_of_an_owned_result_of_a_call_given_a_borrowing_closure, R"(
-    fun apply[R, F: FunMov[(), R]](f: F) -> R { ret f() }
+  fun apply[R, F: FunMov[(), R]](f: F) -> R { ret f() }
 
-    fun f() -> Void {
-        let k = 3_s32
-        let s = apply(|caps &k| { ret Str::from("s") })
-        let t = s
-    }
+  fun f() -> Void {
+    let k = 3_s32
+    let s = apply(|caps &k| { ret Str::from("s") })
+    let t = s
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_unwrap_of_a_res_result_of_a_call_given_a_borrowing_closure, R"(
-    fun apply_res[R, F: FunMov[(), R]](f: F) -> Res[R, Str] { ret Pass(val=f()) }
+  fun apply_res[R, F: FunMov[(), R]](f: F) -> Res[R, Str] { ret Pass(val=f()) }
 
-    fun f() -> Void {
-        let k = 3_s32
-        let r = apply_res(|caps &k| { ret k@ })
-        let v = r.expect("x")
-    }
+  fun f() -> Void {
+    let k = 3_s32
+    let r = apply_res(|caps &k| { ret k@ })
+    let v = r.expect("x")
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_move_of_a_value_a_finished_call_borrowed_through_a_closure, R"(
-    fun apply[R, F: FunMov[(), R]](f: F) -> R { ret f() }
+  fun apply[R, F: FunMov[(), R]](f: F) -> R { ret f() }
 
-    fun f() -> Void {
-        let a = Str::from("x")
-        let n = apply(|caps &a| { ret a.len() })
-    }
+  fun f() -> Void {
+    let a = Str::from("x")
+    let n = apply(|caps &a| { ret a.len() })
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_returning_a_closure_with_a_declared_function_return_type, R"(
-    fun f() -> Void {
-        let chooser = || -> std::function::FunMov[(), S32] { ret || -> S32 { ret 5 } }
-    }
+  fun f() -> Void {
+    let chooser = || -> std::function::FunMov[(), S32] { ret || -> S32 { ret 5 } }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_returning_a_closure_with_an_inferred_return_type, R"(
-    fun f() -> Void {
-        let chooser = || { ret || -> S32 { ret 5 } }
-    }
+  fun f() -> Void {
+    let chooser = || { ret || -> S32 { ret 5 } }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_nested_closure_captures_from_the_outer_closure, R"(
-    fun f() -> Void {
-        let n = 5
-        let outer = |caps n| -> S32 {
-            let inner = |caps n| -> S32 { ret n }
-            ret inner()
-        }
-        let r = outer()
+  fun f() -> Void {
+    let n = 5
+    let outer = |caps n| -> S32 {
+      let inner = |caps n| -> S32 { ret n }
+      ret inner()
     }
+    let r = outer()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_triply_nested_closures, R"(
-    fun f() -> Void {
-        let n = 3
-        let a = |caps n| -> S32 {
-            let b = |caps n| -> S32 {
-                let c = |caps n| -> S32 { ret n }
-                ret c()
-            }
-            ret b()
-        }
-        let r = a()
+  fun f() -> Void {
+    let n = 3
+    let a = |caps n| -> S32 {
+      let b = |caps n| -> S32 {
+        let c = |caps n| -> S32 { ret n }
+        ret c()
+      }
+      ret b()
     }
+    let r = a()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_nested_closure_inside_a_method_resolves_self, R"(
-    cls A { !public n: S32 }
-    sup A {
-        !public
-        fun m(&self) -> A {
-            let outer = || -> Self {
-                let inner = || -> Self { ret A(n=2) }
-                ret inner()
-            }
-            ret outer()
-        }
+  cls A { !public n: S32 }
+  sup A {
+    !public
+    fun m(&self) -> A {
+      let outer = || -> Self {
+        let inner = || -> Self { ret A(n=2) }
+        ret inner()
+      }
+      ret outer()
     }
-    fun f() -> Void {
-        let a = A(n=1)
-        let b = a.m()
-    }
+  }
+  fun f() -> Void {
+    let a = A(n=1)
+    let b = a.m()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_nested_closure_names_the_outer_closures_parameter, R"(
-    fun f() -> Void {
-        let outer = |x: S32| -> S32 {
-            let inner = |caps x| -> S32 { ret x }
-            ret inner()
-        }
-        let r = outer(7)
+  fun f() -> Void {
+    let outer = |x: S32| -> S32 {
+      let inner = |caps x| -> S32 { ret x }
+      ret inner()
     }
+    let r = outer(7)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_inside_a_method_resolves_self, R"(
-    cls A { !public n: S32 }
-    sup A {
-        !public
-        fun m(&self) -> A {
-            let f = || -> Self { ret A(n=2) }
-            ret f()
-        }
+  cls A { !public n: S32 }
+  sup A {
+    !public
+    fun m(&self) -> A {
+      let f = || -> Self { ret A(n=2) }
+      ret f()
     }
-    fun f() -> Void {
-        let a = A(n=1)
-        let b = a.m()
-    }
+  }
+  fun f() -> Void {
+    let a = A(n=1)
+    let b = a.m()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_owning_a_moved_capture_not_consumed, R"(
-    fun f() -> Void {
-        let s = Str::from("a")
-        let x = |caps s| 1_u32
-    }
+  fun f() -> Void {
+    let s = Str::from("a")
+    let x = |caps s| 1_u32
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_parameter_not_consumed_expression_body, R"(
-    fun f() -> Void {
-        let x = |a: Str| 1_u32
-    }
+  fun f() -> Void {
+    let x = |a: Str| 1_u32
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_parameter_not_consumed_braced_body, R"(
-    fun f() -> Void {
-        let x = |a: Str| { 1_u32 }
-    }
+  fun f() -> Void {
+    let x = |a: Str| { 1_u32 }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_parameter_not_consumed_ret_body, R"(
-    fun f() -> Void {
-        let x = |a: Str| { ret 1_u32 }
-    }
+  fun f() -> Void {
+    let x = |a: Str| { ret 1_u32 }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_parameter_consumed_before_ret, R"(
-    fun f() -> Void {
-        let x = |a: Str| {
-            ret 1_u32
-        }
+  fun f() -> Void {
+    let x = |a: Str| {
+      ret 1_u32
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_moved_capture_not_consumed_by_body, R"(
-    fun f() -> Void {
-        let s = Str::from("a")
-        let x = |caps s| 1_u32
-    }
+  fun f() -> Void {
+    let s = Str::from("a")
+    let x = |caps s| 1_u32
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureInGenericSup,
   test_valid_closure_reading_a_generic_field, R"(
-    cls Box[T] { !public v: T }
-    sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
-    sup [T: std::copy::Copy] Box[T] {
-        !public fun get(self) -> T {
-            let c = |x: Box[T]| -> T { ret x.v }
-            ret c(self)
-        }
+  cls Box[T] { !public v: T }
+  sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
+  sup [T: std::copy::Copy] Box[T] {
+    !public fun get(self) -> T {
+      let c = |x: Box[T]| -> T { ret x.v }
+      ret c(self)
     }
-    fun f() -> Void {
-        let a: S32 = Box(v=1).get()
-    }
+  }
+  fun f() -> Void {
+    let a: S32 = Box(v=1).get()
+  }
 )");
 
 // A closure held in an attribute is called as the value it is: the attribute names no method, so no receiver is added.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_call_a_closure_held_in_an_attribute, R"(
-    cls H {
-        !public f: std::function::FunRef[(S32,), S32]
-    }
+  cls H {
+    !public f: std::function::FunRef[(S32,), S32]
+  }
 
-    fun g(h: &H) -> S32 {
-        ret h.f(1_s32)
-    }
+  fun g(h: &H) -> S32 {
+    ret h.f(1_s32)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ClosureExpressionAst,
   test_valid_closure_reads_an_enclosing_comp_generic, R"(
-    fun f[cmp n: S32]() -> S32 {
-        let x = || -> S32 { ret n }
-        ret x()
-    }
+  fun f[cmp n: S32]() -> S32 {
+    let x = || -> S32 { ret n }
+    ret x()
+  }
 
-    fun g() -> S32 {
-        ret f[5]()
-    }
+  fun g() -> S32 {
+    ret f[5]()
+  }
 )");
