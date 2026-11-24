@@ -266,9 +266,10 @@ auto spp::analyse::utils::type_resolution::StampPrecompiledTypes(
     if (type != nullptr) { StampTypeParts(*type, global); }
   }
 
-  // The templates a reader with no scope (a substitution)
-  // compares against, read from "TEMPLATE_SYMBOLS".
-  for (auto const &tmpl : {TUP, VAR}) {
+  // The templates a reader with no scope (a substitution, a function type's key
+  // dropping its "Void" arguments) compares against, read from
+  // "TEMPLATE_SYMBOLS"; "Void" with them.
+  for (auto const &tmpl : {TUP, VAR, FUN_MOV, FUN_MUT, FUN_REF, VOID}) {
     if (tmpl != nullptr) {
       ignore = scopes::PrecompiledTemplate(*tmpl, global);
     }
