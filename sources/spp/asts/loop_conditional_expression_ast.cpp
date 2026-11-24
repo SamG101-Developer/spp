@@ -10,16 +10,16 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_join;
 import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
-import spp.asts.defer_statement_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
+import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.loop_else_statement_ast;
 import spp.asts.token_ast;
 import spp.asts.type_identifier_ast;
@@ -28,7 +28,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_coerce;
-import spp.codegen.llvm_defer;
+import spp.codegen.llvm_drop;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.ice;
@@ -73,11 +73,13 @@ auto spp::asts::LoopConditionalExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Cond),
     AstClone(Body),
     AstClone(ElseBlock));
-  cloned->LoopDefer = AstClone(LoopDefer);
+  cloned->EndsWithLoop = EndsWithLoop;
   cloned->LoweredFrom = LoweredFrom;
   cloned->_LoopExitTypeInfo = _LoopExitTypeInfo;
   cloned->_FirstExitSite = _FirstExitSite;
   cloned->_Scope = _Scope;
+  cloned->_DropsOnCondEnd = _DropsOnCondEnd;
+  cloned->_IterationDrops = _IterationDrops;
   return cloned;
 }
 
@@ -100,7 +102,6 @@ auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     "loop-cond-expr", {}, PosStart());
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
   Ast::Stage2_GenTopLvlScopes(sm, meta);
-  if (LoopDefer != nullptr) { LoopDefer->Stage7_AnalyseSemantics(sm, meta); }
 
   // Analyse the condition expression.
   Cond->Stage7_AnalyseSemantics(sm, meta);
@@ -132,8 +133,14 @@ auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     // code generation already treats it.
     meta->ClearAssignmentTarget();
 
+    if (not Body->Members.empty()) { expr_utils::MarkValueDiscarded(*Body->FinalMember()); }
     Body->Stage7_AnalyseSemantics(sm, meta);
   }
+
+  // A block leaves its final statement's value to whoever wrote
+  // the block, and the loop takes none: an iteration's value is
+  // discarded, as every other statement's is.
+  if (not Body->Members.empty()) { expr_utils::DiscardValue(*Body, Body->Members.size() - 1, *sm, meta); }
 
   // Analyse the else block if it exists: the loop's value when the
   // condition ends it, so one more value for a loop with "exit"s.
@@ -169,8 +176,11 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
   // Move into the loop scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
-  sm->CurrentScope->Deferred.clear();
-  if (LoopDefer != nullptr) { LoopDefer->Stage8_CheckMemory(sm, meta); }
+
+  // What the condition binds is the iteration's own, never an
+  // outer symbol the loop's head is over: an enclosing loop's
+  // earlier pass may have left a state for it.
+  drop_utils::ForgetIterationBindings(*sm->CurrentScope);
 
   // Where the body's walk starts, for each pass after the first.
   const auto body_start = sm->Position();
@@ -203,11 +213,23 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
   // state the symbols are in now. The "skip"s and "exit"s it meets
   // are its own: a later pass begins from more than this one did,
   // so its edges stand for this one's.
+  // The condition's "is" bindings are the iteration's: each
+  // iteration binds them afresh, so they have to be dead by its
+  // end (the body's end here, a "skip" where it is). A temporary
+  // the condition made is not: the condition consumes it, or the
+  // loop ends with it.
   const auto run_iteration = [&](ScopeManager &walk) {
     flow.Loops[frame_at].SkipStates.clear();
     flow.Loops[frame_at].ExitStates.clear();
+    flow.Loops[frame_at].ExitStmts.clear();
+    drop_utils::ForgetIterationBindings(*walk.CurrentScope);
     Cond->Stage8_CheckMemory(&walk, meta);
     Body->Stage8_CheckMemory(&walk, meta);
+    if (not Body->Diverges(&walk, meta)) {
+      auto const &end = Body->TokR != nullptr ? static_cast<Ast const&>(*Body->TokR) : static_cast<Ast const&>(*Body);
+      _IterationDrops = drop_utils::EndStatementBindings(
+        *walk.CurrentScope, walk.CurrentScope->GetOwners(), 0, end, drop_utils::StatementEnds::kBoth, walk, meta);
+    }
   };
 
   // The state the loop was entered with, for each outer symbol, and
@@ -255,17 +277,14 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
       }
       for (auto i = 0uz; i < next.size(); ++i) {
         auto *const sym = next[i].first;
-        const auto on = [&](Pair<Ast*, ScopeSnapshot const*> const &edge) {
-          const auto state = edge.second == nullptr
-            ? memory_state::StateOf(*sm->CurrentScope, *sym)
-            : memory_state::StateIn(*edge.second, *sym);
-          return memory_state::SettleFullyTaken(state, *sym, *sm->CurrentScope);
-        };
-        auto first = 0uz;
-        if (not back.has_value()) { next[i].second = on(edges[0]); first = 1; }
-        for (auto e = first; e < edges.size(); ++e) {
-          memory_state::Join(next[i].second, on(edges[e]), edges[0].first, edges[e].first);
+        auto states = Vec<Pair<MemoryState, Ast*>>();
+        if (back.has_value()) { states.emplace_back(next[i].second, edges[0].first); }
+        for (auto const &[edge, snapshot] : edges) {
+          states.emplace_back(
+            snapshot == nullptr ? memory_state::StateOf(*sm->CurrentScope, *sym) : memory_state::StateIn(*snapshot, *sym),
+            edge);
         }
+        next[i].second = memory_state::JoinAll(std::move(states), *sym, *sm->CurrentScope);
       }
       const auto loans_on = [&](Pair<Ast*, ScopeSnapshot const*> const &edge) {
         return edge.second == nullptr ? memory_state::LoansOf(*sm->CurrentScope) : edge.second->Loans;
@@ -303,9 +322,10 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
   if (cond_can_end) {
     for (auto i = 0uz; i < entry.size(); ++i) {
       auto *const sym = entry[i].first;
-      auto state = memory_state::SettleFullyTaken(entry[i].second, *sym, *sm->CurrentScope);
-      if (back.has_value()) { memory_state::Join(state, (*back)[i].second, TokLoop.get(), Body.get()); }
-      memory_state::StateOf(*sm->CurrentScope, *sym) = state;
+      auto states = Vec<Pair<MemoryState, Ast*>>();
+      states.emplace_back(entry[i].second, TokLoop.get());
+      if (back.has_value()) { states.emplace_back((*back)[i].second, Body.get()); }
+      memory_state::StateOf(*sm->CurrentScope, *sym) = memory_state::JoinAll(std::move(states), *sym, *sm->CurrentScope);
     }
     auto loans = entry_loans;
     if (back.has_value()) { memory_state::JoinLoans(loans, back_loans, TokLoop.get(), Body.get()); }
@@ -337,6 +357,12 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
     sm->MoveOutOfCurrentScope();
     return;
   }
+  // A value of a scope around the loop held on only some of the
+  // paths out is dropped on each path still holding it, at its end:
+  // the condition's (index 0, when it can end the loop) or an
+  // "exit"'s.
+  const auto owners = drop_utils::OwnersAround(*sm->CurrentScope, meta);
+  auto path_drops = Vec<Vec<drop_utils::OwnedValue>>(paths.size());
   for (auto *const sym : outer_syms) {
     const auto state_on = [&](auto const &path) -> MemoryState {
       if (path.second == nullptr) { return memory_state::StateOf(*sm->CurrentScope, *sym); }
@@ -345,14 +371,54 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
 
     // Every path's state, joined. An "exit" released what the
     // scopes it left held, on its own edge.
-    const auto settled = [&](auto const &path) {
-      return memory_state::SettleFullyTaken(state_on(path), *sym, *sm->CurrentScope);
-    };
-    auto joined = settled(paths[0]);
-    for (auto const &path : paths | genex::views::drop(1)) {
-      memory_state::Join(joined, settled(path), const_cast<Ast*>(paths[0].first), const_cast<Ast*>(path.first));
+    auto states = Vec<Pair<MemoryState, Ast*>>();
+    for (auto const &path : paths) { states.emplace_back(state_on(path), const_cast<Ast*>(path.first)); }
+    auto joined = memory_state::JoinAll(std::move(states), *sym, *sm->CurrentScope);
+    for (auto i = 0uz; i < paths.size(); ++i) {
+      if (auto value = drop_utils::OwnedOnJoinPath(*sym, joined, state_on(paths[i]), owners, *paths[i].first, *sm, meta)) {
+        path_drops[i].emplace_back(std::move(*value));
+      }
     }
-    memory_state::StateOf(*sm->CurrentScope, *sym) = joined;
+    memory_state::StateOf(*sm->CurrentScope, *sym) = std::move(joined);
+  }
+  // The value that ends with the loop is dropped on every way out, whatever else
+  // each path holds, and is gone after it: the loans it holds end here.
+  auto *const ends_with_loop = EndsWithLoop != nullptr ? sm->CurrentScope->FindVarSymbol(EndsWithLoop.get()) : nullptr;
+  if (ends_with_loop != nullptr) {
+    auto const *owner_scope = sm->CurrentScope->Parent;
+    while (owner_scope != nullptr and not genex::contains(owner_scope->GetOwners(), ends_with_loop)) {
+      owner_scope = owner_scope->Parent;
+    }
+    for (auto i = 0uz; owner_scope != nullptr and i < paths.size(); ++i) {
+      const auto state = paths[i].second == nullptr
+        ? memory_state::StateOf(*sm->CurrentScope, *ends_with_loop)
+        : memory_state::StateIn(*paths[i].second, *ends_with_loop);
+      if (auto value = drop_utils::OwnedOnPath(*ends_with_loop, state, *owner_scope, *paths[i].first, *sm, meta)) {
+        path_drops[i].emplace_back(std::move(*value));
+      }
+    }
+    memory_state::StateOf(*sm->CurrentScope, *ends_with_loop).MovedBy(*TokLoop);
+  }
+  for (auto &drops : path_drops) { drop_utils::SortNewestFirst(drops); }
+  const auto first_exit = cond_can_end ? 1uz : 0uz;
+  _DropsOnCondEnd = cond_can_end ? std::move(path_drops[0]) : Vec<drop_utils::OwnedValue>();
+
+  // The condition that ended the loop made its temporaries afresh and
+  // matched no "is": its temporaries (not its bindings) still hold
+  // what it made, a failed match's value included.
+  if (cond_can_end) {
+    drop_utils::ForgetIterationBindings(*sm->CurrentScope);
+    _DropsOnCondEnd.append_range(drop_utils::EndStatementBindings(
+      *sm->CurrentScope, sm->CurrentScope->GetOwners(), 0, *TokLoop, drop_utils::StatementEnds::kTemporaries, *sm,
+      meta));
+  }
+  if (first_exit + frame.ExitStmts.size() != paths.size()) {
+    Ice(*this, *sm->CurrentScope, "a loop's exit states and exit statements are out of step");
+  }
+  for (auto i = 0uz; i < frame.ExitStmts.size(); ++i) {
+    if (const auto stmt = frame.ExitStmts[i]->To<LoopControlFlowStatementAst>(); stmt != nullptr) {
+      stmt->SetDropsAtJoin(std::move(path_drops[first_exit + i]));
+    }
   }
 
   // The loans held after the loop: every path's out of it, joined, as for the symbols.
@@ -364,11 +430,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
       joined_loans, loans_on(path), const_cast<Ast*>(paths[0].first), const_cast<Ast*>(path.first));
   }
   loans = std::move(joined_loans);
-
-  // What the loop scope deferred runs on every way out of it, so
-  // it is checked once, against them all joined. A "ret" checks
-  // it where it leaves.
-  linear_utils::CheckDeferredForScope(*sm->CurrentScope, *TokLoop, "Loop end", *sm, meta);
+  if (ends_with_loop != nullptr) { memory_state::ReleaseLoans(loans, *ends_with_loop); }
 
   // Exit the loop scope.
   sm->MoveOutOfCurrentScope();
@@ -378,10 +440,8 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
 
-  // Move into the loop scope. Nothing it defers is reached yet.
+  // Move into the loop scope.
   sm->MoveToNextScope();
-  codegen::EnterDeferScope(*sm->CurrentScope, ctx);
-  if (LoopDefer != nullptr) { LoopDefer->Stage11_CodeGen(sm, meta, ctx); }
 
   // Determine if this loop will be yielding an expression.
   // A "Void" loop (used as a statement) and a "Never" loop
@@ -407,10 +467,10 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
 
   // The "else" block runs whenever the condition ends the loop,
   // however many iterations it took first: it is the loop's value
-  // when no "exit" gives one. Without one (or a "defer" of the
-  // loop's to run first), the condition ends the loop at its end
-  // block.
-  const auto loop_else_bb = ElseBlock != nullptr or LoopDefer != nullptr
+  // when no "exit" gives one. Without one (or drops to run on
+  // that path first, "_DropsOnCondEnd"), the condition ends the
+  // loop at its end block.
+  const auto loop_else_bb = ElseBlock != nullptr or not _DropsOnCondEnd.empty()
     ? llvm::BasicBlock::Create(*ctx->Context, "loop.else" + uid, func)
     : loop_end_bb;
   ctx->Builder.CreateBr(loop_cond_bb);
@@ -436,14 +496,19 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
     meta->LlvmPhi = phi;
     meta->LlvmLoopStack.emplace_back(
       loop_cond_bb, loop_end_bb, phi, sm->CurrentScope,
-      phi != nullptr ? MakeShared<TypeRef>(ret_ref) : nullptr);
+      phi != nullptr ? MakeShared<TypeRef>(ret_ref) : nullptr, codegen::TemporaryDepth(ctx));
     meta->AssignmentTargetType = ret_type;
 
     // Generate the condition. This block is branched back to
     // at the end of every iteration, so the condition is
     // re-evaluated each time round.
+    // The temporaries the condition makes ("loop f(&mk())") are its own: each evaluation drops them once its
+    // value is made, before either way out.
     ctx->Builder.SetInsertPoint(loop_cond_bb);
+    const auto cond_temporaries = codegen::TemporaryDepth(ctx);
     const auto llvm_cond = Cond->Stage11_CodeGen(sm, meta, ctx);
+    codegen::EmitTemporaryDrops(cond_temporaries, sm, meta, ctx);
+    codegen::PopTemporaries(cond_temporaries, ctx);
     const auto cond_end_bb = ctx->Builder.GetInsertBlock();
     ctx->Builder.CreateCondBr(llvm_cond, loop_body_bb, loop_else_bb);
 
@@ -458,6 +523,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
       meta->LlvmAssignmentTarget = nullptr;
       Body->Stage11_CodeGen(sm, meta, ctx);
     }
+    codegen::EmitOwnedDrops(*sm->CurrentScope, _IterationDrops, this, sm, meta, ctx);
     if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
       ctx->Builder.CreateBr(loop_cond_bb);
     }
@@ -473,6 +539,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
           else_val, ret_ref, ElseBlock->InferTypeRef(sm, meta), *sm, "loop.else.coerce" + uid, ctx);
       }
       codegen::EmitScopeExit(sm->CurrentScope->Parent, sm, meta, ctx);
+      codegen::EmitOuterDrops(_DropsOnCondEnd, *this, sm, meta, ctx);
       const auto else_end_bb = ctx->Builder.GetInsertBlock();
       if (not else_end_bb->hasTerminator()) {
         if (phi != nullptr) {
