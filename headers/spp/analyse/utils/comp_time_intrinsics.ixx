@@ -86,6 +86,7 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) GnTypeArgs;
     decltype(asts::meta::CompTimeCallArgs::GnCompArgs) GnCompArgs;
     ScopeManager *Sm;
+    asts::meta::CompilerMetaData *Meta;
 
     virtual ~CompTimeFn() = default;
 
@@ -95,10 +96,12 @@ namespace spp::analyse::utils::comp_time_intrinsics {
 
     auto PreloadGns(
       ScopeManager *sm,
+      asts::meta::CompilerMetaData *meta,
       decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) gn_type_args,
       decltype(asts::meta::CompTimeCallArgs::GnCompArgs) gn_comp_args)
       -> CompTimeFn& {
       Sm = sm;
+      Meta = meta;
       GnTypeArgs = std::move(gn_type_args);
       GnCompArgs = std::move(gn_comp_args);
       return *this;

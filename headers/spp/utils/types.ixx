@@ -15,8 +15,8 @@ namespace spp {
   SPP_EXP_CLS template <typename T>
   using Weak = std::weak_ptr<T>;
 
-  SPP_EXP_CLS template <typename T>
-  using Unique = std::unique_ptr<T>;
+  SPP_EXP_CLS template <typename T, typename D = std::default_delete<T>>
+  using Unique = std::unique_ptr<T, D>;
 
   SPP_EXP_CLS template <typename T, typename A = std::allocator<T>>
   using Vec = std::vector<T, A>;

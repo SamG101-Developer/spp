@@ -253,15 +253,16 @@ namespace spp::codegen::fn_impls {
     llvm::Type const *dst)
     -> bool;
 
-  /// The byte address "at" bytes into what parameter "param" (a
-  /// "&NonNull[T]" or "&mut NonNull[T]") points to: the borrow, the
-  /// pointer it borrows, then the offset.
+  /// The address "at" elements of "elem_ty" (bytes by default) into
+  /// what parameter "param" (a "&NonNull[T]" or "&mut NonNull[T]")
+  /// points to: the borrow, the pointer it borrows, then the offset.
   static auto MemOpsAddress(
     spp::analyse::scopes::ScopeManager *sm,
     spp::asts::FunctionParameterAst const &param,
     llvm::Value *at,
     spp::codegen::LlvmCtx *ctx,
-    const spp::StrView name)
+    const spp::StrView name,
+    llvm::Type *elem_ty = nullptr)
     -> llvm::Value*;
 
   /// The value of the by-value parameter "param", of LLVM type "ty".
@@ -272,6 +273,13 @@ namespace spp::codegen::fn_impls {
     spp::codegen::LlvmCtx *ctx,
     const spp::StrView name)
     -> llvm::Value*;
+
+  /// The value the comp generic parameter "name" is bound to in this
+  /// instantiation (an atomic ordering, a lane count, ...).
+  static auto CompParamU64(
+    spp::analyse::scopes::ScopeManager const *sm,
+    spp::Str const &name)
+    -> std::uint64_t;
 }
 
 /// [CHECKED]
@@ -754,13 +762,15 @@ auto spp::codegen::fn_impls::MemOpsAddress(
   spp::asts::FunctionParameterAst const &param,
   llvm::Value *at,
   spp::codegen::LlvmCtx *ctx,
-  const spp::StrView name)
+  const spp::StrView name,
+  llvm::Type *elem_ty)
   -> llvm::Value* {
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto sym = sm->CurrentScope->FindVarSymbol(param.ExtractName().get());
   const auto borrow = ctx->Builder.CreateLoad(ptr_ty, sym->LlvmInfo->Alloca, spp::Str(name) + ".borrow");
   const auto base = ctx->Builder.CreateLoad(ptr_ty, borrow, spp::Str(name) + ".base");
-  return ctx->Builder.CreateGEP(llvm::Type::getInt8Ty(*ctx->Context), base, at, spp::Str(name));
+  if (elem_ty == nullptr) { elem_ty = llvm::Type::getInt8Ty(*ctx->Context); }
+  return ctx->Builder.CreateGEP(elem_ty, base, at, spp::Str(name));
 }
 
 auto spp::codegen::fn_impls::MemOpsValue(
@@ -772,6 +782,21 @@ auto spp::codegen::fn_impls::MemOpsValue(
   -> llvm::Value* {
   const auto sym = sm->CurrentScope->FindVarSymbol(param.ExtractName().get());
   return ctx->Builder.CreateLoad(ty, sym->LlvmInfo->Alloca, name);
+}
+
+auto spp::codegen::fn_impls::CompParamU64(
+  spp::analyse::scopes::ScopeManager const *sm,
+  spp::Str const &name)
+  -> std::uint64_t {
+  const auto param_name = IdentifierAst(0uz, name);
+  const auto sym = sm->CurrentScope->FindVarSymbol(&param_name);
+  SPP_ASSERT(sym != nullptr);
+
+  // A template never reaches code generation, so the parameter is always bound to a value by the time this runs: read
+  // it off the binding's identity.
+  const auto value = U64Of(sm->CurrentScope->CompIdOfSymbol(*sym));
+  SPP_ASSERT(value.has_value());
+  return *value;
 }
 
 // =========================================================================================================
@@ -1087,15 +1112,7 @@ auto spp::codegen::fn_impls::ApplyAtomicRmwOp(
  */
 static auto AtomicOrderingOf(
   ScopeManager const *const sm, spp::Str const &name) -> llvm::AtomicOrdering {
-  const auto param_name = IdentifierAst(0uz, name);
-  const auto order_sym = sm->CurrentScope->FindVarSymbol(&param_name);
-  SPP_ASSERT(order_sym != nullptr);
-
-  // A template never reaches code generation, so the parameter is always bound to a value by the time this runs: read
-  // it off the binding's identity.
-  const auto order = U64Of(sm->CurrentScope->CompIdOfSymbol(*order_sym));
-  SPP_ASSERT(order.has_value());
-  return static_cast<llvm::AtomicOrdering>(*order);
+  return static_cast<llvm::AtomicOrdering>(spp::codegen::fn_impls::CompParamU64(sm, name));
 }
 
 /**
@@ -1355,6 +1372,92 @@ auto spp::codegen::fn_impls::SimpleFunnelShift(
   const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, {ty});
   ctx->Builder.CreateRet(ctx->Builder.CreateCall(
     intrinsic_fn, {fn->arg_begin(), fn->arg_begin() + 1, by}, "intrinsic.result" + uid));
+}
+
+auto spp::codegen::fn_impls::SimpleWideMul(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const bool is_signed) -> void {
+  // "ty" is "(T, T)": "T" is its first field. The product is taken at twice the width (sign- or zero-extended), so it
+  // never overflows, then split into its low half (field 0, the wrapping product) and high half (field 1). llvm
+  // lowers the "mul" of the extended operands to the target's widening multiply ("mul"/"imul" on x86-64, "umulh"/
+  // "smulh" on aarch64).
+  const auto uid = "." + utils::Uid();
+  const auto ret_ty = llvm::cast<llvm::StructType>(ty);
+  const auto elem_ty = ret_ty->getElementType(0);
+  const auto width = elem_ty->getIntegerBitWidth();
+  const auto wide_ty = llvm::IntegerType::get(*ctx->Context, width * 2);
+  const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ret_ty, Vec{elem_ty, elem_ty});
+  const auto extend = [&](llvm::Value *v) {
+    return is_signed
+      ? ctx->Builder.CreateSExt(v, wide_ty, "intrinsic.wide" + uid)
+      : ctx->Builder.CreateZExt(v, wide_ty, "intrinsic.wide" + uid);
+  };
+  const auto product = ctx->Builder.CreateMul(
+    extend(fn->arg_begin()), extend(fn->arg_begin() + 1), "intrinsic.product" + uid);
+  const auto low = ctx->Builder.CreateTrunc(product, elem_ty, "intrinsic.low" + uid);
+  const auto high = ctx->Builder.CreateTrunc(
+    ctx->Builder.CreateLShr(product, width, "intrinsic.shifted" + uid), elem_ty, "intrinsic.high" + uid);
+
+  auto packed = llvm::cast<llvm::Value>(llvm::PoisonValue::get(ret_ty));
+  packed = ctx->Builder.CreateInsertValue(packed, low, {0}, "intrinsic.packed" + uid);
+  packed = ctx->Builder.CreateInsertValue(packed, high, {1}, "intrinsic.packed" + uid);
+  ctx->Builder.CreateRet(packed);
+}
+
+auto spp::codegen::fn_impls::SimpleBytesMask(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const bool match_byte) -> void {
+  // "bytes_eq_mask[lanes](src, byte, index)" / "bytes_msb_mask[lanes](src, index)": the "lanes" bytes at "src +
+  // index" (unaligned), tested each (equal to "byte", or top bit set), as a mask whose bit "i" is byte "i"'s result -
+  // the layout of SSE2's "pmovmskb", which this lowers to on x86-64 for 16 lanes ("pcmpeqb" before it for the
+  // equality form). A hash table's group scan reads its control bytes this way.
+  const auto lanes = CompParamU64(sm, "lanes");
+  if (lanes == 0 or lanes > 64) {
+    Ice(std::format("bytes mask lane count must be 1 to 64 (a U64 mask), not {}", lanes));
+  }
+
+  const auto params = proto->FnParamGroup->GetAllParams();
+  const auto uid = "." + utils::Uid();
+  const auto i8_ty = llvm::Type::getInt8Ty(*ctx->Context);
+  const auto vec_ty = llvm::FixedVectorType::get(i8_ty, static_cast<unsigned>(lanes));
+  const auto size_ty = TargetSizeType(*ctx->Context);
+  const auto at = MemOpsValue(sm, *params[match_byte ? 2 : 1], size_ty, ctx, "bytes.mask.index");
+  const auto src = MemOpsAddress(sm, *params[0], at, ctx, "bytes.mask.src");
+  const auto bytes = ctx->Builder.CreateAlignedLoad(vec_ty, src, llvm::MaybeAlign(1), "bytes.mask.bytes" + uid);
+
+  const auto hits = match_byte
+    ? ctx->Builder.CreateICmpEQ(
+      bytes, ctx->Builder.CreateVectorSplat(
+        static_cast<unsigned>(lanes), MemOpsValue(sm, *params[1], i8_ty, ctx, "bytes.mask.byte")),
+      "bytes.mask.hits" + uid)
+    : ctx->Builder.CreateICmpSLT(bytes, llvm::Constant::getNullValue(vec_ty), "bytes.mask.hits" + uid);
+  const auto bits = ctx->Builder.CreateBitCast(
+    hits, llvm::IntegerType::get(*ctx->Context, static_cast<unsigned>(lanes)), "bytes.mask.bits" + uid);
+  ctx->Builder.CreateRet(ctx->Builder.CreateZExtOrTrunc(bits, ty, "bytes.mask" + uid));
+}
+
+auto spp::codegen::fn_impls::SimplePrefetch(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *, const bool for_write) -> void {
+  // "prefetch_read[T, locality](src, index)" / "prefetch_write": llvm's "prefetch" of the "T" at "src + index"
+  // (counted in "T"s), into the data cache. "locality" is llvm's own scale: 0 (no temporal locality, used once) to 3
+  // (keep in every cache level). A hint only: on a target without a prefetch it is dropped, and it never faults.
+  const auto locality = CompParamU64(sm, "locality");
+  if (locality > 3) {
+    Ice(std::format("prefetch locality must be 0 to 3, not {}", locality));
+  }
+
+  const auto params = proto->FnParamGroup->GetAllParams();
+  const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
+  const auto t_ast = TypeIdentifierAst::FromString("T");
+  const auto elem_ty = GetLlvmTypeOf(TypeRef::Of(*t_ast, *sm->CurrentScope), ctx);
+  const auto at = MemOpsValue(sm, *params[1], TargetSizeType(*ctx->Context), ctx, "prefetch.index");
+  const auto addr = MemOpsAddress(sm, *params[0], at, ctx, "prefetch.addr", elem_ty);
+  const auto prefetch_fn = llvm::Intrinsic::getOrInsertDeclaration(
+    ctx->Module.get(), llvm::Intrinsic::prefetch, {addr->getType()});
+  ctx->Builder.CreateCall(prefetch_fn, {
+    addr,
+    llvm::ConstantInt::get(i32_ty, for_write ? 1 : 0),
+    llvm::ConstantInt::get(i32_ty, locality),
+    llvm::ConstantInt::get(i32_ty, 1)});
+  ctx->Builder.CreateRetVoid();
 }
 
 auto spp::codegen::fn_impls::SimpleGetValue(
@@ -2675,6 +2778,15 @@ auto spp::codegen::fn_impls::StdMemOpsAlignOf(
   ctx->Builder.CreateRet(align_val);
 }
 
+auto spp::codegen::fn_impls::StdMemOpsNeedsDrop(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  // Whether destroying a "T" runs any code, the same answer the drop glue is emitted from ("NeedsDrop"), so a
+  // container's skipped drop loop can never disagree with the drops it skips.
+  const auto t_ast = TypeIdentifierAst::FromString("T");
+  const auto needs = analyse::utils::drop_utils::NeedsDrop(TypeRef::Of(*t_ast, *sm->CurrentScope), *sm, meta);
+  ctx->Builder.CreateRet(llvm::ConstantInt::getBool(*ctx->Context, needs));
+}
+
 auto spp::codegen::fn_impls::StdMemOpsSizeOfVal(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   // Todo: std documents this as counting what a value owns on the heap ("vectors or strings"), but it answers as
@@ -2788,6 +2900,28 @@ auto spp::codegen::fn_impls::StdMemOpsMemSet(
   const auto dest_at = MemOpsValue(sm, *params[3], size_ty, ctx, "mem.set.dest_index");
   const auto dest = MemOpsAddress(sm, *params[0], dest_at, ctx, "mem.set.dest");
   ctx->Builder.CreateMemSet(dest, value, n, llvm::MaybeAlign(1));
+  ctx->Builder.CreateRetVoid();
+}
+
+auto spp::codegen::fn_impls::StdIntrinsicsLoadUnaligned(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
+  // "load_unaligned[T](src, index)": the "T" whose bytes start "index" bytes into "src", in the target's byte order,
+  // at no alignment (one "mov" on x86-64 and aarch64; byte loads where unaligned access is not allowed).
+  const auto params = proto->FnParamGroup->GetAllParams();
+  const auto at = MemOpsValue(sm, *params[1], TargetSizeType(*ctx->Context), ctx, "load.unaligned.index");
+  const auto src = MemOpsAddress(sm, *params[0], at, ctx, "load.unaligned.src");
+  ctx->Builder.CreateRet(ctx->Builder.CreateAlignedLoad(ty, src, llvm::MaybeAlign(1), "load.unaligned"));
+}
+
+auto spp::codegen::fn_impls::StdIntrinsicsStoreUnaligned(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  // "store_unaligned[T](dest, value, index)": "load_unaligned"'s inverse.
+  const auto params = proto->FnParamGroup->GetAllParams();
+  const auto value_ty = GetLlvmTypeOf(TypeRef::Of(*params[1]->Type, *sm->CurrentScope).WithoutConvention(), ctx);
+  const auto value = MemOpsValue(sm, *params[1], value_ty, ctx, "store.unaligned.value");
+  const auto at = MemOpsValue(sm, *params[2], TargetSizeType(*ctx->Context), ctx, "store.unaligned.index");
+  const auto dest = MemOpsAddress(sm, *params[0], at, ctx, "store.unaligned.dest");
+  ctx->Builder.CreateAlignedStore(value, dest, llvm::MaybeAlign(1));
   ctx->Builder.CreateRetVoid();
 }
 
