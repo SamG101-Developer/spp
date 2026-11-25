@@ -107,7 +107,7 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
   }
 
   // For each part of the RHS, ensure it is semantically valid.
-  for (auto [i, rhs_expr] : Rhs | genex::views::ptr | genex::views::enumerate) {
+  for (auto [i, rhs_expr] : Rhs | genex::views::enumerate) {
     const auto _meta_guard = MetaGuard(meta);
 
     // Handle return type overloading matching from the lhs elem type. Todo: RHS
@@ -134,7 +134,7 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
   // immutable values, mutable/immutable borrows.
   for (
     auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] :
-    genex::views::zip(Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms) | genex::to<Vec>()) {
+    genex::views::zip(Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms)) {
 
     auto const &[lhs_sym, _] = lhs_sym_and_scope;
     const auto lhs_state = [&]() -> memory_state::MemoryState& {

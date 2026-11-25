@@ -76,7 +76,7 @@ namespace spp::codegen::mangle {
   /// A generic argument list, each argument printed by its
   /// identity ("MangleTypeArg", "MangleCompArg").
   static auto MangleGnArgs(
-    Vec<asts::GenericArgumentAst*> const &args,
+    Span<Unique<asts::GenericArgumentAst> const> args,
     analyse::scopes::Scope const *scope,
     analyse::scopes::TypeSymbol const *naming)
     -> Str;
@@ -192,13 +192,13 @@ auto spp::codegen::mangle::MangleCompArg(
 }
 
 auto spp::codegen::mangle::MangleGnArgs(
-  Vec<asts::GenericArgumentAst*> const &args,
+  const Span<Unique<asts::GenericArgumentAst> const> args,
   analyse::scopes::Scope const *scope,
   analyse::scopes::TypeSymbol const *naming)
   -> Str {
   auto out = Str("[");
   for (auto i = 0uz; i < args.size(); ++i) {
-    auto const *arg = args[i];
+    auto const *arg = args[i].get();
     if (i != 0) { out += ", "; }
     if (arg->KeywordName() != nullptr) { out += arg->KeywordName()->ToString() + "="; }
     out += arg->IsTypeArg() ? MangleTypeArg(*arg->TypeVal, scope, naming) : MangleCompArg(*arg->CompVal, scope);
@@ -216,14 +216,14 @@ auto spp::codegen::mangle::ShortTypeName(
   if (last == nullptr) { return out + bare->ToString(); }
 
   const auto args = last->GnArgGroup != nullptr
-    ? last->GnArgGroup->GetAllArgs()
-    : spp::Vec<asts::GenericArgumentAst*>();
-  const auto short_arg = [](asts::GenericArgumentAst const *arg) -> Str {
-    return arg->IsTypeArg() ? ShortTypeName(*arg->TypeVal) : arg->CompVal->ToString();
+    ? Span<Unique<asts::GenericArgumentAst> const>(last->GnArgGroup->Args)
+    : Span<Unique<asts::GenericArgumentAst> const>();
+  const auto short_arg = [](asts::GenericArgumentAst const &arg) -> Str {
+    return arg.IsTypeArg() ? ShortTypeName(*arg.TypeVal) : arg.CompVal->ToString();
   };
   const auto join = [&](auto const &list, Str const &sep) {
     auto joined = Str();
-    for (auto i = 0uz; i < list.size(); ++i) { joined += (i != 0 ? sep : Str()) + short_arg(list[i]); }
+    for (auto i = 0uz; i < list.size(); ++i) { joined += (i != 0 ? sep : Str()) + short_arg(*list[i]); }
     return joined;
   };
 
@@ -304,7 +304,7 @@ auto spp::codegen::mangle::MangleTypeName(
     return fq_name->ToString();
   }
   return fq_name->WithoutGns()->ToString()
-    + MangleGnArgs(last->GnArgGroup->GetAllArgs(), type_sym.LinkedScope, &type_sym);
+    + MangleGnArgs(last->GnArgGroup->Args, type_sym.LinkedScope, &type_sym);
 }
 
 auto spp::codegen::mangle::MangleModName(
@@ -371,9 +371,7 @@ auto spp::codegen::mangle::MangleFnName(
   // for mangling (was merging multiple generic implementations).
   // The owner's generics are printed by identity, as a type's
   // arguments are.
-  const auto owner_generic_args = owner_scope.GetGns();
-  auto owner_args = Vec<asts::GenericArgumentAst*>();
-  for (auto const &arg : owner_generic_args) { owner_args.emplace_back(arg.get()); }
+  const auto owner_args = owner_scope.GetGns();
   const auto owner_name = owner_args.empty() ? Str() : "#" + MangleGnArgs(owner_args, &owner_scope, nullptr);
   const auto full = mod_name + "#" + fun_proto.Name->Val + owner_name + "#" + fun_sig;
 
@@ -386,7 +384,7 @@ auto spp::codegen::mangle::MangleFnName(
   if (not owner_args.empty()) {
     readable += '[';
     for (auto i = 0uz; i < owner_args.size(); ++i) {
-      auto const *arg = owner_args[i];
+      auto const *arg = owner_args[i].get();
       if (i != 0) { readable += ", "; }
       if (arg->KeywordName() != nullptr) { readable += arg->KeywordName()->ToString() + "="; }
       if (arg->IsCompArg()) {

@@ -22,10 +22,10 @@ auto spp::asts::mixins::TypeInferrableAst::InferType(
   // The resolved type's name, placed at this expression rather
   // than where its class is declared, so a message pointing at
   // the type points here.
-  const auto type = InferTypeRef(sm, meta).AstIn(*sm->CurrentScope);
+  auto type = InferTypeRef(sm, meta).AstIn(*sm->CurrentScope);
   const auto site = dynamic_cast<Ast const*>(this);
   return type != nullptr and site != nullptr
-    ? type->WithSourceSpanAt(*site)
+    ? TypeAst::WithSourceSpanAt(std::move(type), *site)
     : type;
 }
 

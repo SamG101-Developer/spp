@@ -296,13 +296,15 @@ namespace spp::analyse::utils::pattern_solver {
 
   /// What "branches" cover, read from their nodes ("PatOf").
   static auto CoverageOf(
-    Vec<CaseExpressionBranchAst*> const &branches, Vec<Vec<PatternNode>> const &nodes, Column const &col,
+    Span<Unique<CaseExpressionBranchAst> const> branches,
+    Vec<Vec<PatternNode>> const &nodes, Column const &col,
     Scope const &scope) -> CaseCoverage;
 
   /// The subject's edges through "branches", given what they cover
   /// ("SubjectEdges").
   static auto EdgesOf(
-    Vec<CaseExpressionBranchAst*> const &branches, CaseCoverage const &coverage) -> SubjectEdges;
+    Span<Unique<CaseExpressionBranchAst> const> branches,
+    CaseCoverage const &coverage) -> SubjectEdges;
 
   // -- Checks -------------------------------------------------------------------------------------------------------
 
@@ -757,7 +759,7 @@ auto spp::analyse::utils::pattern_solver::Useful(Vec<Row> const &rows, Row const
 }
 
 auto spp::analyse::utils::pattern_solver::CoverageOf(
-  Vec<CaseExpressionBranchAst*> const &branches, Vec<Vec<PatternNode>> const &nodes, Column const &col,
+  const Span<Unique<CaseExpressionBranchAst> const> branches, Vec<Vec<PatternNode>> const &nodes, Column const &col,
   Scope const &scope) -> CaseCoverage {
   const auto cols = Vec{col};
   auto out = CaseCoverage();
@@ -829,7 +831,7 @@ auto spp::analyse::utils::pattern_solver::CoverageOf(
 }
 
 auto spp::analyse::utils::pattern_solver::EdgesOf(
-  Vec<CaseExpressionBranchAst*> const &branches, CaseCoverage const &coverage) -> SubjectEdges {
+  const Span<Unique<CaseExpressionBranchAst> const> branches, CaseCoverage const &coverage) -> SubjectEdges {
   // A reachable branch binding by move off the subject takes it; a
   // branch never reached does nothing to it.
   auto out = SubjectEdges();
@@ -951,9 +953,9 @@ auto spp::analyse::utils::pattern_solver::IsElseBranch(
 SPP_MOD_BEGIN
 /// [CHECKED]
 spp::analyse::utils::pattern_solver::PatternSolver::PatternSolver(
-  Vec<CaseExpressionBranchAst*> branches, TypeRef const &subject,
+  const Span<Unique<CaseExpressionBranchAst> const> branches, TypeRef const &subject,
   Shared<VariableSymbol> subject_value, Scope const &scope) :
-  _Branches(std::move(branches)),
+  _Branches(branches),
   _Subject(subject),
   _SubjectValue(std::move(subject_value)),
   _Scope(&scope) {
@@ -979,7 +981,7 @@ auto spp::analyse::utils::pattern_solver::PatternSolver::Solve(
   // The nodes are a 2d list of patterns (multiple patterns
   // on a branch, and multiple branches).
   auto nodes = Vec<Vec<PatternNode>>();
-  for (const auto branch : _Branches) {
+  for (auto const &branch : _Branches) {
     // Take the pattern asts on each branch and map them to
     // pattern nodes. Add this to the 2d nodes list.
     nodes.emplace_back(branch->Patterns

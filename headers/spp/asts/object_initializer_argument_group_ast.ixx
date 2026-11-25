@@ -49,8 +49,6 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : Ast {
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto GetAllArgs() -> Vec<ObjectInitializerArgumentAst*>;
-
   auto GetAutoFillArg() -> ObjectInitializerArgumentShorthandAst*;
 
   auto GetNonAutoFillArgs() -> Vec<ObjectInitializerArgumentAst*>;

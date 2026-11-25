@@ -82,12 +82,20 @@ auto spp::asts::TypePostfixExpressionAst::PosEnd() const -> std::size_t {
 
 auto spp::asts::TypePostfixExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  auto t = MakeUnique<TypePostfixExpressionAst>(
-    AstClone(Lhs),
-    AstClone(TokOp));
-  t->_StampedTypeId = _StampedTypeId;
-  CopySourceSpanTo(*t);
+  auto t = MakeUnique<TypePostfixExpressionAst>(AstClone(Lhs), AstClone(TokOp));
+  _CopyStateTo(*t);
   return t;
+}
+
+auto spp::asts::TypePostfixExpressionAst::CloneShared() const -> Shared<Ast> {
+  auto t = MakeShared<TypePostfixExpressionAst>(AstClone(Lhs), AstClone(TokOp));
+  _CopyStateTo(*t);
+  return t;
+}
+
+auto spp::asts::TypePostfixExpressionAst::_CopyStateTo(TypePostfixExpressionAst &t) const -> void {
+  t._StampedTypeId = _StampedTypeId;
+  CopySourceSpanTo(t);
 }
 
 auto spp::asts::TypePostfixExpressionAst::ToString() const -> Str {

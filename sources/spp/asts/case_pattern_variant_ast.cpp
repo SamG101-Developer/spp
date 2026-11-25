@@ -53,7 +53,7 @@ namespace spp::asts {
   /// which takes apart a "parent_type".
   static auto AnalyseNestedElems(
     CasePatternVariantAst const &parent, Shared<TypeAst> const &parent_type,
-    Vec<CasePatternVariantAst*> const &elems, ScopeManager &sm, CompilerMetaData &meta) -> void;
+    Span<Unique<CasePatternVariantAst> const> elems, ScopeManager &sm, CompilerMetaData &meta) -> void;
 
   /// The type of what element "index" of "parent" (taking apart a
   /// "parent_type") takes apart: an attribute binding's attribute, a
@@ -69,16 +69,15 @@ auto spp::asts::AnalyseNestedWrittenTypes(
   ScopeManager &sm, CompilerMetaData &meta) -> void {
   IMPORT_UTILS;
   using namespace spp::asts;
-  const auto ptrs = [](auto const &elems) { return elems | genex::views::ptr | genex::to<Vec>(); };
   if (const auto obj = pattern.To<CasePatternVariantDestructureObjectAst>()) {
     obj->Type = type_resolution::AnalyseInferredType(*obj->Type, {.Subject = subject}, sm, meta);
-    AnalyseNestedElems(*obj, obj->Type, ptrs(obj->Elems), sm, meta);
+    AnalyseNestedElems(*obj, obj->Type, obj->Elems, sm, meta);
   }
   else if (const auto tup = pattern.To<CasePatternVariantDestructureTupleAst>()) {
-    AnalyseNestedElems(*tup, subject, ptrs(tup->Elems), sm, meta);
+    AnalyseNestedElems(*tup, subject, tup->Elems, sm, meta);
   }
   else if (const auto arr = pattern.To<CasePatternVariantDestructureArrayAst>()) {
-    AnalyseNestedElems(*arr, subject, ptrs(arr->Elems), sm, meta);
+    AnalyseNestedElems(*arr, subject, arr->Elems, sm, meta);
   }
   else if (const auto binding = pattern.To<CasePatternVariantDestructureAttributeBindingAst>();
     binding != nullptr and binding->Val != nullptr) {
@@ -88,7 +87,7 @@ auto spp::asts::AnalyseNestedWrittenTypes(
 
 auto spp::asts::AnalyseNestedElems(
   CasePatternVariantAst const &parent, Shared<TypeAst> const &parent_type,
-  Vec<CasePatternVariantAst*> const &elems, ScopeManager &sm,
+  const Span<Unique<CasePatternVariantAst> const> elems, ScopeManager &sm,
   CompilerMetaData &meta) -> void {
 
   // For each binding within the destructure pattern, get the binding element's
@@ -165,7 +164,7 @@ auto spp::asts::CasePatternVariantAst::ConvToVar(
 }
 
 auto spp::asts::CasePatternVariantAst::AnalyseDestructure(
-  ExpressionAst const *cond, Vec<CasePatternVariantAst*> const &elems,
+  ExpressionAst const *cond, const Span<Unique<CasePatternVariantAst> const> elems,
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 

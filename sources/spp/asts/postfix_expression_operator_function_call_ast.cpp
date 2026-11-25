@@ -868,9 +868,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::EvaluateCompTime(
   // ParamsBoundByArgs"): its keyword's, or, given by position, the
   // next comp parameter. A variadic parameter takes several, so
   // none of them binds it by name.
-  const auto all_args = GnArgGroup->Args | genex::views::ptr | genex::to<Vec>();
-  const auto bound = type_resolution::ParamsBoundByArgs(
-    all_args, fn_proto->GnParamGroup->Params | genex::views::ptr | genex::to<Vec>());
+  auto const &all_args = GnArgGroup->Args;
+  const auto bound = type_resolution::ParamsBoundByArgs(all_args, fn_proto->GnParamGroup->Params);
   for (auto i = 0uz; i < all_args.size(); ++i) {
     if (not all_args[i]->IsCompArg()) { continue; }
     gn_arg_comp_map.emplace_back(sm->CurrentScope->CompIdOf(*all_args[i]->CompVal));
@@ -1018,7 +1017,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
       *Lhs, [&] { return ret_type; }, "function call"));
     // Read off the generator's identity, shared by every spelling of it, so it points at the return type the callee
     // wrote.
-    ret_type = yield_ref.AstIn(*sm->CurrentScope)->WithSourceSpanAt(*proto.ReturnType);
+    ret_type = TypeAst::WithSourceSpanAt(yield_ref.AstIn(*sm->CurrentScope), *proto.ReturnType);
   }
 
   _Inferred = AstCloneShared(ret_type);

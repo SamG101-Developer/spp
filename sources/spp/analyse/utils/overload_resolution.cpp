@@ -892,13 +892,13 @@ auto spp::analyse::utils::overload_resolution::BindSlots(
 
   auto taken = Vec<ParamSlot>();
   auto const *keyword_before = static_cast<FunctionCallArgumentAst const*>(nullptr);
-  for (auto const &[i, arg] : fn_args.Args | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, arg] : fn_args.Args | genex::views::enumerate) {
 
     // Take the keyword arguments by their name and matching
     // parameter. Index stored for LLVM.
     if (auto const *const kw_arg = arg->To<FunctionCallArgumentKeywordAst>(); kw_arg != nullptr) {
       taken.emplace_back(make_slot(param_named(*kw_arg->Name), kw_arg->Name, {i}, false));
-      keyword_before = arg;
+      keyword_before = arg.get();
       continue;
     }
 
@@ -1389,7 +1389,6 @@ auto spp::analyse::utils::overload_resolution::ManageMatchedOverloads(
   using namespace std::string_literals;
   const auto arg_usage_signature = [&arg_group, has_receiver, sm, meta] {
     return arg_group.Args
-      | genex::views::ptr
       | genex::views::enumerate
       | genex::views::transform([has_receiver, sm, meta](auto const &x) {
         auto const &[i, arg] = x;
@@ -1697,7 +1696,7 @@ auto spp::analyse::utils::overload_resolution::OverloadSolver::ExpectedArgTypes(
   // Cross-check for every argument, against every candidate;
   // can we get an agreement on the expected type for this
   // argument.
-  for (auto const &[i, arg] : fn_call.FnArgGroup->Args | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, arg] : fn_call.FnArgGroup->Args | genex::views::enumerate) {
     const auto kw_arg = arg->To<FunctionCallArgumentKeywordAst>();
     auto expected = Shared<TypeRef>(nullptr);
     auto expected_scope = static_cast<Scope const*>(nullptr);
@@ -1755,14 +1754,13 @@ auto spp::analyse::utils::overload_resolution::OverloadSolver::ExpectedCompArgTy
   // type, and have one of its own there ("cmp n: T" has none,
   // nor does a pack, whose type is its elements').
   using type_compare::TypeEq;
-  const auto args = _Call.GnArgGroup->Args | genex::views::ptr | genex::to<Vec>();
+  auto const &args = _Call.GnArgGroup->Args;
   auto out = Vec<Shared<TypeRef>>(args.size());
   if (_Candidates.Overloads.empty()) { return out; }
 
   auto bound = Vec<Vec<GenericParameterAst*>>();
   for (auto const &candidate : _Candidates.Overloads) {
-    const auto params = candidate.Proto->GnParamGroup->Params | genex::views::ptr | genex::to<Vec>();
-    bound.emplace_back(type_resolution::ParamsBoundByArgs(args, params));
+    bound.emplace_back(type_resolution::ParamsBoundByArgs(args, candidate.Proto->GnParamGroup->Params));
   }
   for (auto i = 0uz; i < args.size(); ++i) {
     if (not args[i]->IsCompArg()) { continue; }

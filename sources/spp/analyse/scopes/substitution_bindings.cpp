@@ -33,7 +33,7 @@ auto spp::analyse::scopes::ParamsDeclaredBy(
 }
 
 auto spp::analyse::scopes::BindArgs(
-  GenericParameterGroupAst const &params, Vec<GenericArgumentAst*> const &args,
+  GenericParameterGroupAst const &params, const Span<Unique<GenericArgumentAst> const> args,
   Scope const &scope) -> GenericSubst {
   const auto declared = ParamsDeclaredBy(params);
   return BindingsOfArgs(scope.ArgsIdOf(args, &params), &declared);

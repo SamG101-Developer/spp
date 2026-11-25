@@ -452,7 +452,7 @@ auto spp::analyse::scopes::NamedInstance(
 
   // Otherwise, return the template and the identity the
   // name's generic args give its instance here.
-  return {tmpl, scope.InstanceIdOf(*tmpl, name.GnArgGroup->GetAllArgs(), tmpl->GnParams())};
+  return {tmpl, scope.InstanceIdOf(*tmpl, name.GnArgGroup->Args, tmpl->GnParams())};
 }
 
 SPP_ATTR_HOT auto spp::analyse::scopes::AppendKeyId(
@@ -560,9 +560,8 @@ auto spp::analyse::scopes::KeyUnmade(
     if (keying.Inserted() and alias.Params != nullptr and alias.WrittenIn != nullptr) {
       const auto recorded = spp::analyse::utils::type_resolution::RecordedArgsFor(
         written_args, *alias.Params, scope, *alias.WrittenIn);
-      const auto recorded_args = recorded | genex::views::ptr | genex::to<spp::Vec>();
       if (not recorded.empty()) {
-        if (const auto id = named->AliasTargetId(scope.ArgsIdOf(recorded_args, alias.Params.get())); id !=
+        if (const auto id = named->AliasTargetId(scope.ArgsIdOf(recorded, alias.Params.get())); id !=
           nullptr) {
           AppendKeyId(out, id);
           return true;
@@ -579,7 +578,7 @@ auto spp::analyse::scopes::KeyUnmade(
   const auto recorded = spp::analyse::utils::type_resolution::RecordedArgsFor(
     written_args, *head->Type->GnParamGroup, scope, *head->LinkedScope);
   if (recorded.empty()) { return false; }
-  AppendKeyId(out, scope.InstanceIdOf(*head, recorded | genex::views::ptr | genex::to<spp::Vec>()));
+  AppendKeyId(out, scope.InstanceIdOf(*head, recorded));
   return true;
 }
 
@@ -1594,7 +1593,7 @@ auto spp::analyse::scopes::Scope::_BindingsOf(TypeIdParams const &params) const 
 
 /// [CHECKED]
 auto spp::analyse::scopes::Scope::ArgsIdOf(
-  Vec<GenericArgumentAst*> const &args,
+  const Span<Unique<GenericArgumentAst> const> args,
   GenericParameterGroupAst const *params) const -> TypeId {
   // Start with an empty instance key. This will get built upon
   // as the generics are considered.
@@ -1608,7 +1607,7 @@ auto spp::analyse::scopes::Scope::ArgsIdOf(
   // fills are one; an element that is a bound pack is spliced in. Anything past the parameters stays positional. A keyword naming no parameter is rejected before anything is keyed (E46), so reaching one here is a
   // bug. A comp argument is its value's identity: folded where closed, its parameters by identity where not.
   const auto targets = params != nullptr
-    ? utils::type_resolution::ParamsBoundByArgs(args, params->GetAllParams())
+    ? utils::type_resolution::ParamsBoundByArgs(args, params->Params)
     : Vec<GenericParameterAst*>();
   // The parameter a keyword names: the one its name records ("Self", 0, included), else the one of that name in
   // "params"; none for a name that is no parameter.
@@ -1618,7 +1617,7 @@ auto spp::analyse::scopes::Scope::ArgsIdOf(
       if (head.Kind == TypeKey::Tag::TypeParam) { return head.TypeParamId; }
     }
     if (params == nullptr) { return Nullopt; }
-    for (auto const *param : params->GetAllParams()) {
+    for (auto const &param : params->Params) {
       if (param->ParamId() != 0 and param->Name->As<TypeIdentifierAst>()->ToView() == name.ToView()) {
         return param->ParamId();
       }
@@ -1637,7 +1636,7 @@ auto spp::analyse::scopes::Scope::ArgsIdOf(
   auto comp_pack_unkeyed = false;
 
   for (auto i = 0uz; i < args.size(); ++i) {
-    const auto arg = args[i];
+    auto const *const arg = args[i].get();
     const auto param = arg->KeywordName() == nullptr and i < targets.size() ? targets[i] : nullptr;
 
     // An element of the type pack: gathered into its list, keyed below.
@@ -1709,7 +1708,7 @@ auto spp::analyse::scopes::Scope::PackIdOfElements(
 
 /// [CHECKED]
 auto spp::analyse::scopes::Scope::InstanceIdOf(
-  TypeSymbol const &named, Vec<GenericArgumentAst*> const &args,
+  TypeSymbol const &named, const Span<Unique<GenericArgumentAst> const> args,
   GenericParameterGroupAst const *params) const -> TypeId {
   // Keyed under the template its instances are filed under: through
   // a "use" of a class, that class, so the instance has one identity
@@ -1729,7 +1728,7 @@ auto spp::analyse::scopes::Scope::InstanceIdOf(
     // member that stands for all of them, as a pattern binds it,
     // or its list where it is bound ("VariantKey").
     auto members = Vec<TypeAst const*>();
-    for (const auto arg : args) {
+    for (auto const &arg : args) {
       if (arg->KeywordName() == nullptr and arg->IsTypeArg()) { members.emplace_back(arg->TypeVal.get()); }
     }
 
@@ -2167,7 +2166,7 @@ auto spp::analyse::scopes::Scope::GetSupScopes() const -> SupScopeList {
 
 /// [CHECKED]
 auto spp::analyse::scopes::Scope::FindNsScope(
-  Vec<IdentifierAst const*> const &parts) const -> Scope const* {
+  const Span<IdentifierAst const* const> parts) const -> Scope const* {
   // Starting from this scope (acting current scope), find each
   // part in the list, ["a", "b", "c"] from the below example,
   // moving towards the most nested scope.
@@ -2183,30 +2182,25 @@ auto spp::analyse::scopes::Scope::FindNsScope(
 /// [CHECKED]
 auto spp::analyse::scopes::Scope::FindNsScope(
   ExpressionAst const *postfix_ast) const -> Scope const* {
-  // For the static member access like "a::b::c", this is stored
-  // as "(a::b)::c", which is read as "c", "b", "a".
-  auto parts = Vec<IdentifierAst const*>();
-  auto lhs = postfix_ast;
-
-  // Any other postfix ("f()::c", "a.b::c") makes it a value, not a namespace
-  // path.
-  while (const auto postfix_lhs = lhs->To<PostfixExpressionAst>()) {
-    const auto ns_op = postfix_lhs->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>();
+  // A static member access like "a::b::c" is stored as "(a::b)::c": find
+  // the scope its left side names, then the last part in that. Any other
+  // postfix ("f()::c", "a.b::c") makes it a value, not a namespace path.
+  if (const auto postfix = postfix_ast->To<PostfixExpressionAst>()) {
+    const auto ns_op = postfix->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>();
     if (ns_op == nullptr) { return nullptr; }
-    parts.emplace_back(ns_op->Name.get());
-    lhs = postfix_lhs->Lhs.get();
+    const auto lhs_scope = FindNsScope(postfix->Lhs.get());
+    if (lhs_scope == nullptr) { return nullptr; }
+    const auto sym = lhs_scope->FindNsSymbol(ns_op->Name.get());
+    return sym != nullptr ? sym->LinkedScope : nullptr;
   }
 
-  // The final part isn't a postfix, but it is an identifier, so
-  // add it to the end of the list ("a").
-  if (const auto lhs_as_ident = lhs->To<IdentifierAst>(); lhs_as_ident != nullptr) {
-    parts.emplace_back(lhs_as_ident);
+  // The innermost left side names the first part ("a"), looked up here; a
+  // left side that is not an identifier starts the path here.
+  if (const auto ident = postfix_ast->To<IdentifierAst>()) {
+    const auto sym = FindNsSymbol(ident);
+    return sym != nullptr ? sym->LinkedScope : nullptr;
   }
-
-  // Reverse the list into the actual order "a", "b", "c", and then
-  // find the namespace scope.
-  parts |= genex::actions::reverse;
-  return FindNsScope(parts);
+  return this;
 }
 
 /// [CHECKED]

@@ -123,9 +123,9 @@ auto spp::analyse::scopes::CompPackParamOf(sc::CompId declared) -> std::uint64_t
 
 auto spp::analyse::scopes::UnifyArgs(
   sc::TypeKeyHeader const &given, sc::TypeKeyHeader const &declared, sc::TypeSymbol const &tmpl, Ctx &ctx) -> bool {
-  const auto declared_args = declared.Args != nullptr ? sc::ArgsOf(declared.Args) : spp::Vec<sc::TypeIdArg>();
+  const auto declared_args = sc::ArgsOf(declared.Args);
   const auto bare = given.Kind == sc::TypeKey::Tag::Symbol;
-  const auto given_args = not bare and given.Args != nullptr ? sc::ArgsOf(given.Args) : spp::Vec<sc::TypeIdArg>();
+  const auto given_args = sc::ArgsOf(bare ? nullptr : given.Args);
   const auto is_variadic = tmpl.Type != nullptr and tmpl.Type->GnParamGroup->GetVariadicParam() != nullptr;
 
   // A pattern with no arguments takes any instance of its class, of a fixed number of parameters.

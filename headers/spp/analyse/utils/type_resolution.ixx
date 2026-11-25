@@ -97,7 +97,14 @@ namespace spp::analyse::utils::type_resolution {
   /// parallel; a keyword arg for parameter names, the next
   /// type/comp available for positional.
   SPP_EXP_FUN auto ParamsBoundByArgs(
-    Vec<GenericArgumentAst*> const &args, Vec<GenericParameterAst*> const &params) -> Vec<GenericParameterAst*>;
+    Span<Unique<GenericArgumentAst> const> args,
+    Span<Unique<GenericParameterAst> const> params) -> Vec<GenericParameterAst*>;
+
+  /// "ParamsBoundByArgs" against a filtered list of parameters
+  /// ("GetCompParams").
+  SPP_EXP_FUN auto ParamsBoundByArgs(
+    Span<Unique<GenericArgumentAst> const> args,
+    Span<GenericParameterAst* const> params) -> Vec<GenericParameterAst*>;
 
   /// A type read with "sub" ("ExprSubst"): keyed where written,
   /// its bindings applied ("SubstituteTypeId"), and named from

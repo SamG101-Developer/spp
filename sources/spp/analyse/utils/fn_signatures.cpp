@@ -175,7 +175,8 @@ auto spp::analyse::utils::fn_signatures::IdTermsOf(
   };
 
   const auto own_params = [](FunctionPrototypeAst const &f) {
-    return f.GnParamGroup->GetAllParams()
+    return f.GnParamGroup->Params
+      | genex::views::ptr
       | genex::views::filter([](auto const *p) { return not p->IsInherited; })
       | genex::to<Vec>();
   };
@@ -296,12 +297,10 @@ auto spp::analyse::utils::fn_signatures::CheckForConflictingOverload(
 
     // If neither parameter list contains a required
     // parameter, throw an error.
-    const auto tmp = genex::views::concat(
-      params_new | genex::views::ptr,
-      params_old | genex::views::ptr) | genex::to<Vec>();
-    if (genex::operations::empty(tmp
-      | genex::views::cast_dynamic<FunctionParameterRequiredAst*>
-      | genex::to<Vec>())) {
+    const auto is_required = [](Unique<asts::FunctionParameterAst> const &param) {
+      return param->To<FunctionParameterRequiredAst>() != nullptr;
+    };
+    if (genex::none_of(params_new, is_required) and genex::none_of(params_old, is_required)) {
       return {old_fn, old_scope};
     }
   }

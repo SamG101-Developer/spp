@@ -31,6 +31,9 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
   SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TypeIdentifierAst);
 
+  /// "Clone" with the ast and its count in one allocation.
+  SPP_ATTR_NODISCARD auto CloneShared() const -> Shared<Ast> override;
+
   /// The name of the type, such as "Str" or "Vec[BigInt]".
   Str Name;
 
@@ -171,6 +174,9 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
   static auto ClearPendingVisibility() -> void;
 
 private:
+  /// Copy what a clone keeps beyond its constructor's arguments.
+  auto _CopyStateTo(TypeIdentifierAst &t) const -> void;
+
   /// A written name's visibility check, deferred: a copy of the
   /// name (for the error's position, the node read may be a
   /// temporary), what it named, and where it was named from.

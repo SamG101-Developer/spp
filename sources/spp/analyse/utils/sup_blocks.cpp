@@ -63,7 +63,8 @@ auto spp::analyse::utils::sup_blocks::CheckGnParams(
   RaiseIf<SppSuperimpositionOptionalGenericParameterError>(not optional.empty(), ERR_ARGS(*optional[0]));
   if (naming_types.empty()) { return; }
 
-  const auto unconstrained = params.GetAllParams()
+  const auto unconstrained = params.Params
+    | genex::views::ptr
     | genex::views::filter([&](auto const *param) {
       return not genex::any_of(naming_types, [&](auto const *type) {
         return type_predicates::DoesTypeNameAGnParam(*type, *param, *sm.CurrentScope);

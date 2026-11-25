@@ -26,6 +26,9 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
   SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TypeUnaryExpressionAst);
 
+  /// "Clone" with the ast and its count in one allocation.
+  SPP_ATTR_NODISCARD auto CloneShared() const -> Shared<Ast> override;
+
   /// The unary operator applied to the type.
   Shared<TypeUnaryExpressionOperatorAst> Op;
 
@@ -80,6 +83,10 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
   SPP_ATTR_NODISCARD auto WithoutGns() const -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto IsCompilerGeneratedType() const -> bool override;
+
+private:
+  /// Copy what a clone keeps beyond its constructor's arguments.
+  auto _CopyStateTo(TypeUnaryExpressionAst &t) const -> void;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeUnaryExpressionAst)

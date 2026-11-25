@@ -192,7 +192,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
   // This allows the body to remain unchanged as the variables
   // get loaded from the environment struct.
   const auto uid = "." + Uid();
-  for (auto const &[i, capture] : Captures | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, capture] : Captures | genex::views::enumerate) {
 
     // For the capture x, mock "let x = env.x".
     const auto cap_val = capture->Val->To<IdentifierAst>();

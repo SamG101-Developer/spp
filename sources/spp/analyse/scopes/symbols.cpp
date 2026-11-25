@@ -195,7 +195,7 @@ auto spp::analyse::scopes::IdArgNamed(
   auto const *const tmpl = HeaderOf(inst.Id).Symbol();
   auto const *const params = tmpl != nullptr ? tmpl->GnParams() : nullptr;
   if (params == nullptr) { return spp::Nullopt; }
-  for (auto const *param : params->GetAllParams()) {
+  for (auto const &param : params->Params) {
     if (param->Name->ToString() == name and param->ParamId() != 0) {
       return FindArgOf(HeaderOf(inst.Id).Args, param->ParamId());
     }

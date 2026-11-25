@@ -119,7 +119,7 @@ auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
   // ... of".
   _MappedPatFns = Vec<Unique<BinaryExpressionAst>>(Patterns.size());
   if (Op != nullptr and Op->TokenType != lex::SppTokenType::KW_IS) {
-    for (auto const &[i, p] : Patterns | genex::views::ptr | genex::views::enumerate) {
+    for (auto const &[i, p] : Patterns | genex::views::enumerate) {
       const auto pe = p->To<CasePatternVariantExpressionAst>();
       if (pe == nullptr) { continue; }
 
@@ -307,18 +307,18 @@ auto spp::asts::CaseExpressionBranchAst::EvaluateCompTime(
     and Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
 
   SPP_ASSERT(_MappedPatFns.size() == Patterns.size());
-  for (auto const &[i, pattern] : Patterns | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, pattern] : Patterns | genex::views::enumerate) {
     auto *tested = tests_condition_directly
       ? static_cast<Ast*>(meta->CaseCondition)
       : _MappedPatFns[i] != nullptr
       ? static_cast<Ast*>(_MappedPatFns[i].get())
-      : static_cast<Ast*>(pattern);
+      : static_cast<Ast*>(pattern.get());
 
     // Determine if this branch is not a match (false): the checks
     // the plan says the pattern makes, before the pattern binds
     // anything (a binding reads a payload only its tag says is
     // there), and then the pattern itself.
-    const auto checks_hold = tested != pattern
+    const auto checks_hold = tested != pattern.get()
       or case_utils::ResolvePatternChecks(
         *_CasePlan, _CasePlan->Branches[_CaseIndex].Checks[i], sm, meta);
     if (checks_hold) { tested->EvaluateCompTime(sm, meta); }

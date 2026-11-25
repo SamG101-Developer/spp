@@ -76,11 +76,20 @@ auto spp::asts::TypeUnaryExpressionAst::PosEnd() const -> std::size_t {
 
 auto spp::asts::TypeUnaryExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  auto t = MakeUnique<TypeUnaryExpressionAst>(
-    Op, AstCloneShared(Rhs));
-  t->_StampedTypeId = _StampedTypeId;
-  CopySourceSpanTo(*t);
+  auto t = MakeUnique<TypeUnaryExpressionAst>(Op, AstCloneShared(Rhs));
+  _CopyStateTo(*t);
   return t;
+}
+
+auto spp::asts::TypeUnaryExpressionAst::CloneShared() const -> Shared<Ast> {
+  auto t = MakeShared<TypeUnaryExpressionAst>(Op, AstCloneShared(Rhs));
+  _CopyStateTo(*t);
+  return t;
+}
+
+auto spp::asts::TypeUnaryExpressionAst::_CopyStateTo(TypeUnaryExpressionAst &t) const -> void {
+  t._StampedTypeId = _StampedTypeId;
+  CopySourceSpanTo(t);
 }
 
 auto spp::asts::TypeUnaryExpressionAst::ToString() const -> Str {

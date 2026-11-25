@@ -41,6 +41,11 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS using CompId = CompKey const*;
   SPP_EXP_CLS struct TypeIdArg;
 
+  /// The arguments an arguments key lists ("ArgsOf"): inline up to
+  /// four, which covers almost every instantiation, so decoding them
+  /// allocates nothing.
+  SPP_EXP_CLS using TypeIdArgs = SmallVec<TypeIdArg, 4>;
+
   /// Read the outermost part of "id" ("TypeKeyHeader"). Memoised.
   SPP_EXP_CLS SPP_ATTR_HOT auto HeaderOf(
     TypeKey const *id) -> TypeKeyHeader const&;
@@ -51,7 +56,7 @@ namespace spp::analyse::scopes {
     TypeKey const *id) -> TypeKey const*;
 
   /// The arguments an instantiation's arguments key lists, in order. Extract per part and
-  SPP_EXP_CLS auto ArgsOf(TypeKey const *args) -> Vec<TypeIdArg>;
+  SPP_EXP_CLS auto ArgsOf(TypeKey const *args) -> TypeIdArgs;
 
   /// The argument an instantiation's arguments key holds for the
   /// parameter "param_id", decoded as "ArgsOf" decodes it; read in
@@ -194,7 +199,7 @@ namespace spp::analyse::scopes {
   private:
     friend auto HeaderOf(TypeKey const *id) -> TypeKeyHeader const&;
     friend auto BareOf(TypeKey const *id) -> TypeKey const*;
-    friend auto ArgsOf(TypeKey const *args) -> Vec<TypeIdArg>;
+    friend auto ArgsOf(TypeKey const *args) -> TypeIdArgs;
     friend auto FindArgOf(TypeKey const *args, std::uint64_t param_id) -> Opt<TypeIdArg>;
 
     /// The raw appending function, which takes the word, adds

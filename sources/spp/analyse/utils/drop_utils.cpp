@@ -223,8 +223,7 @@ auto spp::analyse::utils::drop_utils::DropProtoFor(
   const auto sup_gns = overload.ReachedThrough != nullptr
     ? overload.ReachedThrough->GetGns()
     : Vec<Unique<GenericArgumentAst>>();
-  const auto args_id = tm.CurrentScope->ArgsIdOf(
-    sup_gns | genex::views::transform([](auto const &a) { return a.get(); }) | genex::to<Vec>(), nullptr);
+  const auto args_id = tm.CurrentScope->ArgsIdOf(sup_gns, nullptr);
   return instantiate
     ? monomorphization::RequireFnInstance(overload.Proto, overload.FnScope, args_id, &tm, meta)
     : monomorphization::FindRequiredFnInstance(overload.Proto, args_id);

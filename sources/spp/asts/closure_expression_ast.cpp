@@ -332,7 +332,7 @@ auto spp::asts::ClosureExpressionAst::_BuildDropCaptures(
   // owns nothing, and a value needing no drop leaves nothing to do. So a
   // closure with neither has no destructor at all.
   auto owned = Vec<Pair<unsigned, TypeRef>>();
-  for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::enumerate) {
     if (capture->Conv != nullptr) { continue; }
     const auto cap_ref = TypeRef::Of(*capture->InferType(sm, meta), *sm->CurrentScope);
     if (drop_utils::NeedsDrop(cap_ref, *sm, meta)) { owned.emplace_back(codegen::ClosureEnvCaptureIndex(i), cap_ref); }
@@ -523,7 +523,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     ? static_cast<llvm::Value*>(llvm::ConstantPointerNull::get(llvm::PointerType::get(*ctx->Context, 0)))
     : codegen::EmitNewClosureEnv(closure_env_ty, on_heap, drop_captures, "closure.env" + uid, ctx);
 
-  for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::enumerate) {
     const auto field_ptr = ctx->Builder.CreateStructGEP(
       closure_env_ty, env, codegen::ClosureEnvCaptureIndex(i), "closure.env.gep." + std::to_string(i));
 

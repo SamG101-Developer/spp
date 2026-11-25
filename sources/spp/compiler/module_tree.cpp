@@ -273,9 +273,9 @@ auto spp::compiler::ModuleTree::end()
   return _Modules.end();
 }
 
-auto spp::compiler::ModuleTree::GetModules()
-  -> Vec<Module*> {
-  return _Modules | genex::views::ptr | genex::to<Vec>();
+auto spp::compiler::ModuleTree::ViewModules() const
+  -> Span<Unique<Module> const> {
+  return _Modules;
 }
 
 auto spp::compiler::ModuleTree::RootPath() const

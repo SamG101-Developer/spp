@@ -64,7 +64,7 @@ namespace spp::analyse::utils::case_utils {
   /// by ("type_join::TypeJoin"): each branch's final member and
   /// type, read here, onto what the case is assigned to, if it is.
   SPP_EXP_FUN auto JoinBranches(
-    Vec<CaseExpressionBranchAst*> const &branches,
+    Span<Unique<CaseExpressionBranchAst> const> branches,
     ScopeManager &sm, CompilerMetaData *meta)
     -> type_join::TypeJoin;
 
@@ -81,7 +81,7 @@ namespace spp::analyse::utils::case_utils {
   /// those held only where a boolean condition is true
   /// ("held_in_first_branch") are held in its first branch alone.
   SPP_EXP_FUN auto ValidateInconsistentMemory(
-    Ast *parent, Vec<CaseExpressionBranchAst*> const &branches,
+    Ast *parent, Span<Unique<CaseExpressionBranchAst> const> branches,
     CaseCoverage const &coverage, SubjectEdges const *subject_edges,
     Vec<VariableSymbol*> const &condition_temporaries, Vec<VariableSymbol*> const &held_in_first_branch,
     ScopeManager *sm, CompilerMetaData *meta) -> Vec<drop_utils::OwnedValue>;

@@ -139,7 +139,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage7_AnalyseSemantics(
   // is the block's value, so only it sees what the block is
   // being assigned to; a "case" statement before it would be
   // checked against that type otherwise.
-  for (auto const &[i, x] : this->Members | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, x] : this->Members | genex::views::enumerate) {
     if (i + 1 < Members.size() or DiscardsFinalMember()) { expr_utils::MarkValueDiscarded(*x); }
     if (i + 1 == Members.size()) {
       x->Stage7_AnalyseSemantics(sm, meta);
@@ -185,7 +185,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
 
   // Check the memory of each member. The hidden temporaries a
   // statement made end with it.
-  for (auto const &[i, m] : Members | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, m] : Members | genex::views::enumerate) {
     const auto statement = drop_utils::TemporaryRegion(*sm->CurrentScope);
     m->Stage8_CheckMemory(sm, meta);
     SetDropsOn(*m, DropEdge::kStatementEnd, statement.End(*m, *sm, meta, OwnLetName(*m)));
@@ -249,13 +249,13 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   // generated towards what the scope is assigned to (as in
   // stage 7).
   auto ret_val = static_cast<llvm::Value*>(nullptr);
-  for (auto const &[i, m] : this->Members | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, m] : this->Members | genex::views::enumerate) {
     // Each member at its own line, for the debug info.
     codegen::SetDebugLocation(*ctx, m->PosStart());
     auto const &statement_drops = DropsOn(*m, DropEdge::kStatementEnd);
     const auto temporaries = codegen::TemporaryDepth(ctx);
     const auto end_statement = [&] {
-      codegen::EndTemporaryRegion(temporaries, *sm->CurrentScope, statement_drops, m, sm, meta, ctx);
+      codegen::EndTemporaryRegion(temporaries, *sm->CurrentScope, statement_drops, m.get(), sm, meta, ctx);
     };
     const auto drop_discarded = [&](llvm::Value *val) {
       if (val == nullptr or i >= _DropsDiscarded.size() or not _DropsDiscarded[i]) { return val; }

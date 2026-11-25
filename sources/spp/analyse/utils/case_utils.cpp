@@ -285,16 +285,16 @@ auto spp::analyse::utils::case_utils::ResolvePatternChecks(
 }
 
 auto spp::analyse::utils::case_utils::JoinBranches(
-  Vec<CaseExpressionBranchAst*> const &branches, ScopeManager &sm,
+  const Span<Unique<CaseExpressionBranchAst> const> branches, ScopeManager &sm,
   CompilerMetaData *meta) -> type_join::TypeJoin {
   // A branch that diverges ("ret" from a branch) passes no value
   // back to the binding, so it is no value for the others to agree
   // with. An error points at a branch's final member.
   auto join = type_join::TypeJoin(meta->AssignmentTargetType, sm.CurrentScope, meta->AssignmentTarget.get());
-  for (auto *const branch : branches) {
+  for (auto const &branch : branches) {
     auto const *const final_member = branch->Body->FinalMember();
     join.Give(
-      final_member != nullptr ? *static_cast<Ast const*>(final_member) : *static_cast<Ast const*>(branch),
+      final_member != nullptr ? *static_cast<Ast const*>(final_member) : *static_cast<Ast const*>(branch.get()),
       branch->InferType(&sm, meta), *sm.CurrentScope, branch->Body->Diverges(&sm, meta));
   }
   return join;
@@ -326,7 +326,7 @@ auto spp::analyse::utils::case_utils::CarryGuardMoves(
 }
 
 auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
-  Ast *parent, Vec<CaseExpressionBranchAst*> const &branches,
+  Ast *parent, const Span<Unique<CaseExpressionBranchAst> const> branches,
   CaseCoverage const &coverage, SubjectEdges const *subject_edges,
   Vec<VariableSymbol*> const &condition_temporaries, Vec<VariableSymbol*> const &held_in_first_branch,
   ScopeManager *sm, CompilerMetaData *meta) -> Vec<drop_utils::OwnedValue> {
@@ -368,7 +368,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
       ? subject_edges->OnMatch[i]
       : SubjectOnMatch::kKeep;
     branch->Stage8_CheckMemory(sm, meta);
-    paths.emplace_back(branch, memory_state::SnapshotSymbols(var_syms, *sm->CurrentScope));
+    paths.emplace_back(branch.get(), memory_state::SnapshotSymbols(var_syms, *sm->CurrentScope));
     memory_state::RestoreSnapshot(pre_analysis);
 
     // Past the first branch, a boolean condition answered false, so
@@ -393,19 +393,19 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
   // loop's exit "else"; and the fall-through path, where there is
   // one.
   auto diverging = Set<CaseExpressionBranchAst const*>();
-  for (auto branch : branches) {
-    if (branch->Body->Diverges(sm, meta)) { diverging.insert(branch); }
+  for (auto const &branch : branches) {
+    if (branch->Body->Diverges(sm, meta)) { diverging.insert(branch.get()); }
   }
   auto const *const else_pattern = not branches.empty()
     ? branches.back()->Patterns[0]->To<CasePatternVariantElseAst>()
     : nullptr;
   auto const *const loop_exit_else = else_pattern != nullptr and else_pattern->MarkedForIterLoopExit()
-    ? branches.back()
+    ? branches.back().get()
     : nullptr;
   auto leaving = Set<CaseExpressionBranchAst const*>();
   for (auto const &[i, branch] : branches | genex::views::enumerate) {
-    if (not diverging.contains(branch) and coverage.Reachable[i] and branch != loop_exit_else) {
-      leaving.insert(branch);
+    if (not diverging.contains(branch.get()) and coverage.Reachable[i] and branch.get() != loop_exit_else) {
+      leaving.insert(branch.get());
     }
   }
   const auto leaves = [&](CaseExpressionBranchAst const *branch) {
@@ -414,7 +414,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
 
   // The first branch that finishes is the path carried on.
   const auto non_terminating_branch = genex::find_if(
-    branches, [&](auto const &x) { return not diverging.contains(x); });
+    branches, [&](auto const &x) { return not diverging.contains(x.get()); });
 
   // A path is named by its branch, or by the "case" itself
   // where the branch was generated (a lowered "is" builds an
@@ -428,7 +428,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
   const auto path_of = [case_named](CaseExpressionBranchAst *branch) -> Ast* {
     return branch != nullptr and branch->PosStart() != 0 ? static_cast<Ast*>(branch) : case_named;
   };
-  const auto first_branch = non_terminating_branch == branches.end() ? case_named : path_of(*non_terminating_branch);
+  const auto first_branch = non_terminating_branch == branches.end() ? case_named : path_of(non_terminating_branch->get());
   auto const &first_path = non_terminating_branch != branches.end()
     ? paths.at(static_cast<std::size_t>(genex::iterators::distance(branches.begin(), non_terminating_branch))).second
     : paths.back().second;

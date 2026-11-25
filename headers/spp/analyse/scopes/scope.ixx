@@ -435,7 +435,7 @@ public:
   /// rather than how it is spelled. A function's instantiations
   /// are filed under it; a type's under "InstanceIdOf".
   SPP_ATTR_NODISCARD auto ArgsIdOf(
-    Vec<GenericArgumentAst*> const &args, GenericParameterGroupAst const *params = nullptr) const -> TypeId;
+    Span<Unique<GenericArgumentAst> const> args, GenericParameterGroupAst const *params = nullptr) const -> TypeId;
 
   /// The identity of a type pack's list ("PackIdOf") from the types
   /// written as its elements, read from this scope: an element that
@@ -448,7 +448,7 @@ public:
   /// the variant case specially too. This builds an "instantiation"
   /// for a type, as a type id.
   SPP_ATTR_NODISCARD auto InstanceIdOf(
-    TypeSymbol const &named, Vec<GenericArgumentAst*> const &args,
+    TypeSymbol const &named, Span<Unique<GenericArgumentAst> const> args,
     GenericParameterGroupAst const *params = nullptr) const -> TypeId;
 
   /// Get the type symbol of a type id, by getting its generic
@@ -538,7 +538,7 @@ public:
   /// The namespace scope "parts" names from here ("a::b::c" as
   /// "a", "b", "c"), each part looked up in the scope the one
   /// before it names.
-  SPP_ATTR_NODISCARD auto FindNsScope(Vec<IdentifierAst const*> const &parts) const -> Scope const*;
+  SPP_ATTR_NODISCARD auto FindNsScope(Span<IdentifierAst const* const> parts) const -> Scope const*;
 
   /// "FindNsScope" for a postfix chain of static member
   /// accesses ("a::b::c"), read outermost first.

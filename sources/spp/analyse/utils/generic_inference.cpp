@@ -97,7 +97,7 @@ namespace spp::analyse::utils::generic_inference {
   static auto NameArgs(
     Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
     CompilerMetaData &meta,
-    FuncRef<void(Vec<GenericArgumentAst*> const &)> elements,
+    FuncRef<void(Span<Unique<GenericArgumentAst> const>)> elements,
     FuncRef<void(GenericArgumentAst &, GenericArgumentAst const &)> bind) -> void;
 
   /// "NameArgs" for type arguments. A type pack's elements stay
@@ -223,7 +223,7 @@ auto spp::analyse::utils::generic_inference::CheckTypeArgConstraints(
 auto spp::analyse::utils::generic_inference::NameArgs(
   Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
   CompilerMetaData &meta,
-  FuncRef<void(Vec<GenericArgumentAst*> const &)> elements,
+  FuncRef<void(Span<Unique<GenericArgumentAst> const>)> elements,
   FuncRef<void(GenericArgumentAst &, GenericArgumentAst const &)> bind) -> void {
   const auto keyword_args = args
     | genex::views::ptr
@@ -250,7 +250,7 @@ auto spp::analyse::utils::generic_inference::NameArgs(
     }
   }
 
-  const auto targets = type_resolution::ParamsBoundByArgs(args | genex::views::ptr | genex::to<Vec>(), params);
+  const auto targets = type_resolution::ParamsBoundByArgs(args, params);
 
   const auto _meta_guard = MetaGuard(&meta);
   meta.TypeAnalysisTypeScope = nullptr;
@@ -274,7 +274,7 @@ auto spp::analyse::utils::generic_inference::NameArgs(
     auto named = MakeUnique<GenericArgumentAst>(name_of(*param), nullptr, nullptr, nullptr);
 
     if (param->IsVariadic()) {
-      elements(args | genex::views::ptr | genex::views::drop(i) | genex::to<Vec>());
+      elements(Span<Unique<GenericArgumentAst> const>(args).subspan(i));
       break;
     }
     bind(*named, *positional);
@@ -290,8 +290,8 @@ auto spp::analyse::utils::generic_inference::NameTypeArgs(
       named.TypeVal->Stage7_AnalyseSemantics(&sm, &meta);
     }
   };
-  const auto elements = [&](Vec<GenericArgumentAst*> const &rest) {
-    for (auto *const elem : rest) { analyse(*elem); }
+  const auto elements = [&](const Span<Unique<GenericArgumentAst> const> rest) {
+    for (auto const &elem : rest) { analyse(*elem); }
   };
   const auto bind = [&](GenericArgumentAst &named, GenericArgumentAst const &positional) {
     named.TypeVal = AstCloneShared(positional.TypeVal);
@@ -311,8 +311,8 @@ auto spp::analyse::utils::generic_inference::NameCompArgs(
       arg.AnalyseCompExpr(val, &sm, &meta);
     }
   };
-  const auto elements = [&](Vec<GenericArgumentAst*> const &rest) {
-    for (auto *const elem : rest) { analyse(*elem); }
+  const auto elements = [&](const Span<Unique<GenericArgumentAst> const> rest) {
+    for (auto const &elem : rest) { analyse(*elem); }
   };
   const auto bind = [&](GenericArgumentAst &named, GenericArgumentAst const &positional) {
     named.CompVal = AstCloneShared(positional.CompVal);
@@ -428,9 +428,9 @@ struct spp::analyse::utils::generic_inference::GenericSolver::_Equation {
 spp::analyse::utils::generic_inference::GenericSolver::GenericSolver(
   GenericParameterGroupAst const &params, Scope const &owner_scope, ScopeManager &sm, CompilerMetaData &meta) :
   _Params(&params), _OwnerScope(&owner_scope), _Sm(&sm), _Meta(&meta) {
-  for (auto const *param : params.GetAllParams()) {
+  for (auto const &param : params.Params) {
     auto entry = MakeUnique<_Entry>();
-    entry->Param = param;
+    entry->Param = param.get();
     entry->Id = param->ParamId();
     entry->Name = shared_cast<TypeIdentifierAst>(param->Name);
     _Entries.emplace_back(std::move(entry));
@@ -477,9 +477,11 @@ auto spp::analyse::utils::generic_inference::GenericSolver::_AstOf(
   // identity, on a copy, as the solution is analysed in place. A default is shown as the type it was declared as; an
   // inferred type at what it was read from, in its own spelling: "T" read off a "Vec[T]" is not that "Vec".
   if (val.Id == nullptr or (val.Written != nullptr and val.Site == nullptr)) { return val.Written; }
-  const auto type = _Sm->CurrentScope->TypeAstOf(val.Id);
+  auto type = _Sm->CurrentScope->TypeAstOf(val.Id);
   if (val.Site == nullptr) { return AstCloneShared(type); }
-  return val.Written != nullptr ? type->WithSourceSpanOf(*val.Site) : type->WithSourceSpanAt(*val.Site);
+  return val.Written != nullptr
+    ? TypeAst::WithSourceSpanOf(std::move(type), *val.Site)
+    : TypeAst::WithSourceSpanAt(std::move(type), *val.Site);
 }
 
 auto spp::analyse::utils::generic_inference::GenericSolver::_Bindings(
@@ -1242,8 +1244,7 @@ auto spp::analyse::utils::generic_inference::GenericSolver::SolvedArgsId() const
 
   // Nothing was solved, so the given arguments are the answer as given, keyed as written.
   if (_Trivial) {
-    const auto given = _Given | genex::views::transform([](auto const &arg) { return arg.get(); }) | genex::to<Vec>();
-    return _Sm->CurrentScope->ArgsIdOf(given, _Params);
+    return _Sm->CurrentScope->ArgsIdOf(_Given, _Params);
   }
   auto key = TypeKey();
   for (auto const &entry : _Entries) {
@@ -1345,7 +1346,7 @@ auto spp::analyse::utils::generic_inference::NamedGnArgs(
   }
   std::erase_if(named->Args, [](auto const &arg) { return arg == nullptr; });
   auto param_index = Map<std::uint64_t, std::size_t>();
-  for (auto [i, p] : p_group.GetAllParams() | genex::views::enumerate) { param_index[p->ParamId()] = i; }
+  for (auto i = 0uz; i < p_group.Params.size(); ++i) { param_index[p_group.Params[i]->ParamId()] = i; }
   for (auto const &arg : named->Args) {
     const auto stamped = arg->KeywordName()->StampedTypeId();
     if (stamped == nullptr or not param_index.contains(scopes::HeaderOf(stamped).TypeParamId)) {

@@ -236,7 +236,7 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
     const auto _meta_guard = MetaGuard(meta);
     meta->CaseCondition = Cond.get();
     meta->IgnoreMissingElseBranchForInference = true;
-    const auto join = case_utils::JoinBranches(Branches | genex::views::ptr | genex::to<Vec>(), *sm, meta);
+    const auto join = case_utils::JoinBranches(Branches, *sm, meta);
 
     // A function named as a branch's value stands for the
     // overload the case's type asks for.
@@ -250,7 +250,7 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
   // the author's to remove.
   _Plan = nullptr;
   auto const &coverage = Plan(sm, meta).Coverage;
-  for (auto const &[i, branch] : Branches | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, branch] : Branches | genex::views::enumerate) {
     if (coverage.Reachable[i] or branch->PosStart() == 0) { continue; }
     Raise<SppCaseBranchUnreachableError>(ERR_ARGS(*branch, *Branches[coverage.ShadowedBy[i].value_or(i)]));
   }
@@ -279,9 +279,9 @@ auto spp::asts::CaseExpressionAst::Plan(
   // Solve the patterns once, against the subject's type, and
   // hand each branch its part of the plan.
   auto solver = pattern_solver::PatternSolver(
-    Branches | genex::views::ptr | genex::to<Vec>(), subject, _SubjectValue, *sm->CurrentScope);
+    Branches, subject, _SubjectValue, *sm->CurrentScope);
   _Plan = MakeShared<pattern_solver::MatchPlan>(solver.Solve(*sm, *meta));
-  for (auto const &[i, branch] : Branches | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, branch] : Branches | genex::views::enumerate) {
     branch->UsePlan(_Plan.get(), i);
   }
   return *_Plan;
@@ -315,7 +315,7 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
 
   const auto subject = cond_sym != nullptr and not cond_sym->IsBorrow() ? cond_sym : nullptr;
 
-  const auto branches = Branches | genex::views::ptr | genex::to<Vec>();
+  auto const &branches = Branches;
   auto const &plan = Plan(sm, meta);
   auto const &coverage = plan.Coverage;
   // A temporary the "case" is over ("case mk() of") is held by
@@ -543,8 +543,7 @@ auto spp::asts::CaseExpressionAst::InferType(
   //  used as an expression that agreed type should be "Void" - "case x of { == 1 { 1 } else { 2 } }" discards an
   //  "S32" that nothing asked for. A case carries no signal for which of the two positions it is in, which is what
   //  the missing half needs; see the red test in "test_ast_case_expression.cpp".
-  const auto agreed = case_utils::JoinBranches(
-    Branches | genex::views::ptr | genex::to<Vec>(), *sm, meta).Solve();
+  const auto agreed = case_utils::JoinBranches(Branches, *sm, meta).Solve();
 
   // A "case" that can fall through every branch has no value on that path, so it needs an "else" to be one: either
   // written, or every value matched by the branches ("pattern_solver::PatternSolver").
@@ -597,7 +596,7 @@ auto spp::asts::CaseExpressionAst::Diverges(
     ? _Plan->Coverage.FallsThrough
     : not pattern_solver::IsElseBranch(*Branches.back());
   if (falls_through) { return false; }
-  for (auto const &[i, branch] : Branches | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, branch] : Branches | genex::views::enumerate) {
     if ((_Plan == nullptr or _Plan->Coverage.Reachable[i]) and not branch->Body->Diverges(sm, meta)) { return false; }
   }
   return true;

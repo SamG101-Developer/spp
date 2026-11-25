@@ -182,7 +182,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   // checks are deferred to Stage8, because the "self" argument's
   // convention (for method calls) is only applied after overload
   // resolution.
-  for (auto const &[i, arg] : Args | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, arg] : Args | genex::views::enumerate) {
     const auto _meta_guard = MetaGuard(meta);
     SPP_RETURN_TYPE_OVERLOAD_HELPER(arg->Val.get()) {
       meta->ReturnTypeOverloadResolverType = i < ExpectedTypes.size() ? ExpectedTypes[i] : nullptr;

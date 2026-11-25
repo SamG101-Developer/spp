@@ -511,7 +511,7 @@ auto spp::analyse::scopes::WithoutVoidFnArgs(
   // first positional): a tuple "Out" keeps its "Void"s, as the value the
   // function returns does.
   if (tmpl.Type == nullptr or tmpl.Type->GnParamGroup == nullptr) { return args; }
-  const auto params = tmpl.Type->GnParamGroup->GetAllParams();
+  auto const &params = tmpl.Type->GnParamGroup->Params;
   if (params.empty()) { return args; }
   const auto args_param = params.front()->ParamId();
   auto key = TypeKey();
@@ -587,10 +587,10 @@ auto spp::analyse::scopes::IsClosedTypeId(
 
 SPP_MOD_BEGIN
 /// [CHECKED]
-auto spp::analyse::scopes::ArgsOf(const TypeId args) -> Vec<TypeIdArg> {
-  // Create the empty list of what the arg ids will fill up, then decode each
-  // argument in turn.
-  auto out = Vec<TypeIdArg>();
+auto spp::analyse::scopes::ArgsOf(const TypeId args) -> TypeIdArgs {
+  // Decode each argument in turn, into a list held inline for the
+  // usual number of arguments.
+  auto out = TypeIdArgs();
   if (args == nullptr) { return out; }
   auto words = args->ViewWords();
   while (const auto arg = TypeKey::_DecodeArg(words)) {

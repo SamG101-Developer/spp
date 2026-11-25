@@ -145,17 +145,24 @@ auto spp::asts::TypeIdentifierAst::PosEnd() const -> std::size_t {
 
 auto spp::asts::TypeIdentifierAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  auto t = MakeUnique<TypeIdentifierAst>(
-    _Pos,
-    Str(Name),
-    AstClone(GnArgGroup));
-  t->_IsNeverType = _IsNeverType;
-  t->_IsSourceWritten = _IsSourceWritten;
-  t->_IsPackPosition = _IsPackPosition;
-  t->_StampedTypeId = _StampedTypeId;
-  t->_StampedTemplateId = _StampedTemplateId;
-  CopySourceSpanTo(*t);
+  auto t = MakeUnique<TypeIdentifierAst>(_Pos, Str(Name), AstClone(GnArgGroup));
+  _CopyStateTo(*t);
   return t;
+}
+
+auto spp::asts::TypeIdentifierAst::CloneShared() const -> Shared<Ast> {
+  auto t = MakeShared<TypeIdentifierAst>(_Pos, Str(Name), AstClone(GnArgGroup));
+  _CopyStateTo(*t);
+  return t;
+}
+
+auto spp::asts::TypeIdentifierAst::_CopyStateTo(TypeIdentifierAst &t) const -> void {
+  t._IsNeverType = _IsNeverType;
+  t._IsSourceWritten = _IsSourceWritten;
+  t._IsPackPosition = _IsPackPosition;
+  t._StampedTypeId = _StampedTypeId;
+  t._StampedTemplateId = _StampedTemplateId;
+  CopySourceSpanTo(t);
 }
 
 auto spp::asts::TypeIdentifierAst::ToString() const -> Str {
@@ -523,7 +530,7 @@ auto spp::asts::TypeIdentifierAst::_FindOrMakeInstance(
     if (instance == nullptr) {
       instance = monomorphization::FindOrMakeClsInstance(
         *this, type_sym.InstanceTemplate()->SharedFromThis<TypeSymbol>(),
-        sm->CurrentScope->InstanceIdOf(type_sym, GnArgGroup->GetAllArgs()), sm, meta);
+        sm->CurrentScope->InstanceIdOf(type_sym, GnArgGroup->Args), sm, meta);
     }
 
     // Stamped with it, so a lookup of this name from anywhere finds this instantiation, re-read through the bindings of

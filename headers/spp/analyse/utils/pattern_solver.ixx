@@ -166,7 +166,7 @@ namespace spp::analyse::utils::pattern_solver {
 SPP_EXP_CLS class spp::analyse::utils::pattern_solver::PatternSolver {
 public:
   PatternSolver(
-    Vec<CaseExpressionBranchAst*> branches, TypeRef const &subject,
+    Span<Unique<CaseExpressionBranchAst> const> branches, TypeRef const &subject,
     Shared<VariableSymbol> subject_value, Scope const &scope);
 
   PatternSolver(PatternSolver const &) = delete;
@@ -181,7 +181,7 @@ public:
 
 private:
   /// All the branches on the case being solved.
-  Vec<CaseExpressionBranchAst*> _Branches;
+  Span<Unique<CaseExpressionBranchAst> const> _Branches;
 
   /// The case's subject type, inferred from the case's condition.
   TypeRef _Subject;

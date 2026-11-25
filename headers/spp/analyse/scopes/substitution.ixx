@@ -73,7 +73,7 @@ namespace spp::analyse::scopes {
   /// "scope": what a type written in the terms of "params" is read
   /// with ("ReadType"). A parameter with no argument is left out.
   SPP_EXP_FUN auto BindArgs(
-    GenericParameterGroupAst const &params, Vec<GenericArgumentAst*> const &args,
+    GenericParameterGroupAst const &params, Span<Unique<GenericArgumentAst> const> args,
     Scope const &scope) -> GenericSubst;
 
   /// What the arguments whose identity is "args" ("Scope::ArgsIdOf")

@@ -113,13 +113,6 @@ auto spp::asts::GenericParameterGroupAst::GetTypeParams() const -> Vec<GenericPa
     | genex::to<Vec>();
 }
 
-auto spp::asts::GenericParameterGroupAst::GetAllParams() const -> Vec<GenericParameterAst*> {
-  // Return all parameters.
-  return Params
-    | genex::views::transform([](auto const &param) { return param.get(); })
-    | genex::to<Vec>();
-}
-
 auto spp::asts::GenericParameterGroupAst::OptionalToRequired() const -> Unique<GenericParameterGroupAst> {
   // Convert all optional parameters to required parameters.
   auto new_params = Vec<Unique<GenericParameterAst>>();

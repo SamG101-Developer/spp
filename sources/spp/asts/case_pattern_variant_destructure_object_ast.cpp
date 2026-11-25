@@ -203,7 +203,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
     _DeclareFlowSymbol(*sm);
   }
 
-  AnalyseDestructure(mapped_cond, Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
+  AnalyseDestructure(mapped_cond, Elems, sm, meta);
 }
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(

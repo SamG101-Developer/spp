@@ -120,11 +120,13 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
 
   auto const *const cls_sym = sm->CurrentScope->FindTypeSymbol(Type.get());
   const auto cls_proto = cls_sym->Type;
+  using Members = decltype(cls_proto->Impl->Members);
   const auto cls_attrs = cls_proto != nullptr
-    ? cls_proto->Impl->Members | genex::views::ptr | genex::to<Vec>()
-    : Vec<Ast*>{};
+    ? Span<typename Members::value_type const>(cls_proto->Impl->Members)
+    : Span<typename Members::value_type const>();
 
   const auto attributes = cls_attrs
+    | genex::views::ptr
     | genex::views::cast_dynamic<ClassAttributeAst*>
     | genex::to<Vec>();
 
