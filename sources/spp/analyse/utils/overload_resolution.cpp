@@ -970,13 +970,13 @@ auto spp::analyse::utils::overload_resolution::BindSlots(
   for (auto &slot : slots) {
     if (slot.Default != nullptr) { slot.Type = slot.Default->InferType(sm, meta); }
     else if (slot.IsPack) {
-      auto vals = slot.Args
-        | genex::views::transform([&](auto i) { return fn_args.Args[i]->Val.get(); })
-        | genex::to<Vec>();
       slot.Pack.Open = not slot.Args.empty() and IsOpenSpread(*fn_args.Args[slot.Args.back()]);
-      auto *const open = slot.Pack.Open ? vals.back() : nullptr;
-      if (open != nullptr) { vals.pop_back(); }
-      slot.Pack.Elems = TupleLiteralAst::ElementTypes(vals, sm, meta, true);
+      auto *const open = slot.Pack.Open ? fn_args.Args[slot.Args.back()]->Val.get() : nullptr;
+      const auto closed = slot.Args.size() - (open != nullptr ? 1uz : 0uz);
+      slot.Pack.Elems.clear();
+      for (auto k = 0uz; k < closed; ++k) {
+        TupleLiteralAst::AppendElementTypes(slot.Pack.Elems, *fn_args.Args[slot.Args[k]]->Val, sm, meta, true);
+      }
       if (open != nullptr) {
         for (auto const *const arg : open->InferType(sm, meta)->LastTypePart()->GnArgGroup->GetTypeArgs()) {
           slot.Pack.Elems.emplace_back(AstCloneShared(arg->TypeVal->WithoutConvention()));

@@ -4,7 +4,7 @@ module;
 
 export module spp.utils.types;
 import ankerl;
-import gch;
+export import gch;
 import std;
 import genex.span;
 
