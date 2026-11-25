@@ -119,9 +119,9 @@ sha256-linux-aarch64 = "4b0ecece7929cbaf548ff1ab9a24074b240132ab8176bc3865a27d88
 sha256-darwin = "764dd2a8100ff83e6bbd7b9a1e2016cc401be34bee8a70ea99698186622c34d5"
 
 [pin.sccache]
-version = "0.20.0"
-sha256-x86-64 = "5d8df6ca7eb421dd0782bd8dc283a2086a5efb2f975a6858e30fd00e763638c2"
-sha256-aarch64 = "e2513dcadb2093b1f49511f8203024d46a2cd46e42ca606d9bd3267695986977"
+version = "0.20.1"
+sha256-x86-64 = "d96117e04c04449151a84818596356df7887026809f6fb988817ff76460d1073"
+sha256-aarch64 = "5c6ccc53c310bbcfaf5909f1ca77ea0b8fe237c4c6c553ae342a7c88e23170c2"
 
 [pin.osv-scanner]
 version = "2.7.1"
@@ -180,7 +180,7 @@ commit = "bcc2bb5801fb920a1df06a2ee205b93b2514964e"
 [[library]]
 name = "mimalloc"
 repo = "https://github.com/microsoft/mimalloc.git"
-commit = "1d8fd85aa3abe719cd9c42c855f1fc27dbccf84d"
+commit = "bc44251a1198409399bca17e319914795e8903d1"
 cmake-flags = ["-DMI_SECURE=OFF", "-DMI_BUILD_TESTS=OFF"]
 cmake-flags-windows = ["-DMI_OVERRIDE=OFF"]
 
@@ -198,7 +198,7 @@ commit = "efd80e03356af65c7d4e61c56ffb326b34f8d0f4"
 [[library]]
 name = "magic_enum"
 repo = "https://github.com/Neargye/magic_enum.git"
-commit = "12daa6c9629ddc1beaf38e6f1284d969b9d69388"
+commit = "88121077cc81edad11798265d1feab8d985c18e7"
 cmake-flags = [
   "-DMAGIC_ENUM_OPT_BUILD_TESTS=OFF",
   "-DMAGIC_ENUM_OPT_BUILD_EXAMPLES=OFF",
@@ -216,7 +216,7 @@ cmake-flags = [
 [[library]]
 name = "CLI11"
 repo = "https://github.com/CLIUtils/CLI11.git"
-commit = "4fa080f70b6768d30e2fcf58ab5a9de162d5f8fd"
+commit = "e0081476ab5ce61a4efc2d8e7f3196a9cb3f137f"
 cmake-flags = ["-DCLI11_BUILD_TESTS=OFF", "-DCLI11_BUILD_EXAMPLES=OFF"]
 
 [[library]]

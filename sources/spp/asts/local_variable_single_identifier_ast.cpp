@@ -68,6 +68,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Clone() const -> Unique<Ast> {
     AstClone(Alias));
   l->Conv = AstClone(Conv);
   l->_FromCasePattern = _FromCasePattern;
+  l->DeclareIn = DeclareIn;
   return l;
 }
 

@@ -828,12 +828,17 @@ auto spp::analyse::utils::drop_utils::OwnedBeforeWrite(
   // Of a value this scope owns, only a part still standing is dropped, less what was taken out of it.
   auto const &state = memory_state::StateOf(*sm.CurrentScope, *sym);
   if (sym->Kind != scopes::VariableKind::Local or state.AstInitialization == nullptr) { return Nullopt; }
-  if (state.MaybeInit.has_value() or not state.MaybePartialMoves.empty()) { return Nullopt; }
+  if (state.MaybeInit.has_value()) { return Nullopt; }
   const auto place = regions::PlaceOf(target, *sm.CurrentScope);
   if (not place.has_value()) { return Nullopt; }
-  if (regions::RegionConsumed(*place, ref, *sm.CurrentScope, state.PartialMoves)) { return Nullopt; }
+
+  // A part moved on only some of the paths that met was dropped on the others where they met ("OwnedOnJoinPath"),
+  // so it is gone on every path, as a part moved on all of them is.
+  auto gone = state.PartialMoves;
+  for (auto const &maybe : state.MaybePartialMoves) { gone.emplace_back(maybe.Part); }
+  if (regions::RegionConsumed(*place, ref, *sm.CurrentScope, gone)) { return Nullopt; }
   // What a destructure took apart in it is dropped field by field.
-  auto moved = MovedPathsUnder(state.PartialMoves, place->Steps);
+  auto moved = MovedPathsUnder(gone, place->Steps);
   if (not moved.has_value()) { return Nullopt; }
   auto taken_apart = TakenApartPathsUnder(state.TakenApart, place->Steps);
 

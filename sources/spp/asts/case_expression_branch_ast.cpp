@@ -207,6 +207,12 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
   // always in-bounds regardless of which variant is selected).
   const auto cond = _CodegenCombinePatterns(sm, meta, ctx);
 
+  // A temporary subject this branch keeps is held from where its patterns matched: a way out of its guard ("?")
+  // drops it with the other temporaries, as a way out of its body does.
+  const auto temporaries = codegen::TemporaryDepth(ctx);
+  const auto keeps_temporary = _KeepsTemporary and meta->LlvmCaseTemporary != nullptr;
+  if (keeps_temporary) { codegen::PushTemporary(meta->LlvmCaseTemporary, *meta->LlvmCaseTemporaryType, {}, ctx); }
+
   if (Guard) {
     // The guard is user-written and may assume the pattern
     // actually matched (eg. "is Some(v) and v.foo()" reading
@@ -242,9 +248,6 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
 
   // Generate the body. As this is an expression, an llvm value
   // is returned, which can then be used in the PHI node system.
-  const auto temporaries = codegen::TemporaryDepth(ctx);
-  const auto keeps_temporary = _KeepsTemporary and meta->LlvmCaseTemporary != nullptr;
-  if (keeps_temporary) { codegen::PushTemporary(meta->LlvmCaseTemporary, *meta->LlvmCaseTemporaryType, {}, ctx); }
   auto llvm_val = Body->Stage11_CodeGen(sm, meta, ctx);
   const auto incoming_bb = ctx->Builder.GetInsertBlock();
 

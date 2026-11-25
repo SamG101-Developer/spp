@@ -763,6 +763,38 @@ fun forwarded_off_a_temporary() -> Void {
     std::console::println("after the statement")
 }
 
+# Overwriting one field while another was moved on one path only drops the field written over.
+fun overwrite_beside_a_maybe_moved_field(flag: Bool) -> Void {
+    let mut p = Three(x=Noisy(n=850_u64), y=Noisy(n=851_u64), z=Noisy(n=852_u64))
+    case flag { let t = takes(p.y) }
+    else { }
+    p.x = Noisy(n=853_u64)
+    std::console::println("after the write")
+}
+
+# A temporary "case" subject a variant pattern only tests is dropped once, by the branch keeping it.
+fun case_over_a_temporary_variant() -> Void {
+    case mk_opt(860_u64) of {
+        is Some(..) { std::console::println("matched") }
+        else { }
+    }
+    std::console::println("after the case")
+}
+
+fun guard_fails(ok: Bool) -> Res[Bool, Bool] {
+    case ok { ret Pass(val=true) }
+    ret Fail(err=false)
+}
+
+# A guard leaving through "?" drops the temporary subject its branch keeps.
+fun guard_leaves_early(ok: Bool) -> Res[Bool, Bool] {
+    case mk_opt(870_u64) of {
+        is Some(..) and guard_fails(ok)? { std::console::println("guard held") }
+        else { }
+    }
+    ret Pass(val=true)
+}
+
 fun is_on_the_right_in_a_loop() -> Void {
     let mut i = 0_u64
     loop i < 2_u64 and mk_opt(750_u64 + i) is Some(val as y) {
@@ -966,6 +998,14 @@ fun main() -> Void {
     one_field_disagreed(false)
     std::console::println("forwarded off a temporary")
     forwarded_off_a_temporary()
+    std::console::println("overwrite beside a maybe-moved field")
+    overwrite_beside_a_maybe_moved_field(true)
+    overwrite_beside_a_maybe_moved_field(false)
+    std::console::println("a temporary variant subject")
+    case_over_a_temporary_variant()
+    std::console::println("a guard leaving early")
+    let g1 = guard_leaves_early(true)
+    let g2 = guard_leaves_early(false)
     std::console::println("a container field of a type with its own drop")
     container_in_own_drop()
     std::console::println("is in a guard, its temporary on each edge")
@@ -1181,6 +1221,25 @@ dropped 842
 forwarded off a temporary
 Forwarder.drop
 after the statement
+overwrite beside a maybe-moved field
+dropped 851
+dropped 850
+after the write
+dropped 852
+dropped 853
+dropped 851
+dropped 850
+after the write
+dropped 852
+dropped 853
+a temporary variant subject
+matched
+dropped 860
+after the case
+a guard leaving early
+guard held
+dropped 870
+dropped 870
 a container field of a type with its own drop
 HoldsVec.drop
 Guarded2.drop

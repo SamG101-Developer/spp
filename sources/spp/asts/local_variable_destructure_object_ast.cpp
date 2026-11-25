@@ -11,7 +11,9 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.destructure_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.generic_inference;
+import spp.analyse.utils.regions;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.class_attribute_ast;
@@ -207,9 +209,24 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
       nullptr, std::move(uid_var), nullptr, nullptr, AstClone(effective_val));
     _CondLet->Stage7_AnalyseSemantics(sm, meta);
     _CondSymbol = sm->CurrentScope->FindVarSymbol(uid_name.get())->SharedFromThis<VariableSymbol>();
+
+    // The copy names the value it narrows, which keeps owning it: a view of that value ("regions::IsView"), and the
+    // narrowed symbol is it held as the member it narrows to ("o.<Some[T]>"). Binding it takes nothing, and nothing
+    // drops it (the value's owner does).
+    const auto viewed = regions::PlaceOf(*effective_val, *sm->CurrentScope);
+    const auto addressable = viewed.has_value()
+      and genex::none_of(viewed->Steps, [](auto const &step) { return step.Opaque; });
+    if (addressable) {
+      _CondSymbol->Kind = analyse::scopes::VariableKind::FlowNarrowing;
+      _CondSymbol->ViewRoot = viewed->Root;
+      _CondSymbol->ViewSteps = viewed->Steps | genex::views::transform(&regions::PlaceStep::Name) | genex::to<Vec>();
+    }
     _FlowSymbol = MakeShared<VariableSymbol>(*_CondSymbol);
     _FlowSymbol->LlvmInfo = _CondSymbol->LlvmInfo;
     _FlowSymbol->Type = Type;
+    if (addressable and type_predicates::IsTypeVariant(val_ref, *sm->CurrentScope)) {
+      _FlowSymbol->ViewSteps.emplace_back(type_members::VariantMemberStep(type_ref));
+    }
 
     if (Type->GetConvention() != nullptr) { _FlowSymbol->MemInfo->AstBorrowed = Type.get(); }
     _CondLet->Var->As<LocalVariableSingleIdentifierAst>()->Narrow(_FlowSymbol, *sm->CurrentScope);
