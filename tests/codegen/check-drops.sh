@@ -706,6 +706,28 @@ fun reassigned_then_moved_in_a_loop(n: U64) -> Void {
     std::console::println("after loop")
 }
 
+# An "exit exit" in an inner loop whose body is checked more than once is the outer loop's way out once.
+fun exit_two_loops(a: Bool, b: Bool, k: Bool) -> Void {
+    let s = Noisy(n=820_u64)
+    loop a {
+        loop b {
+            case k { exit exit }
+        }
+        let t = takes(s)
+        exit
+    }
+    std::console::println("after loops")
+}
+
+# "(x)" is "x": moved once.
+fun parenthesised_place() -> Void {
+    let x = Noisy(n=830_u64)
+    let y = (x)
+    let z = Noisy(n=831_u64)
+    let t = takes((z))
+    std::console::println("after parens")
+}
+
 fun is_on_the_right_in_a_loop() -> Void {
     let mut i = 0_u64
     loop i < 2_u64 and mk_opt(750_u64 + i) is Some(val as y) {
@@ -899,6 +921,11 @@ fun main() -> Void {
     std::console::println("reassigned then moved in a loop, two trips and none")
     reassigned_then_moved_in_a_loop(2_u64)
     reassigned_then_moved_in_a_loop(0_u64)
+    std::console::println("exit exit from an inner loop checked twice")
+    exit_two_loops(true, true, true)
+    exit_two_loops(true, false, false)
+    std::console::println("a parenthesised place")
+    parenthesised_place()
     std::console::println("a container field of a type with its own drop")
     container_in_own_drop()
     std::console::println("is in a guard, its temporary on each edge")
@@ -1093,6 +1120,15 @@ dropped 812
 after loop
 dropped 810
 after loop
+exit exit from an inner loop checked twice
+dropped 820
+after loops
+dropped 820
+after loops
+a parenthesised place
+dropped 831
+after parens
+dropped 830
 a container field of a type with its own drop
 HoldsVec.drop
 Guarded2.drop

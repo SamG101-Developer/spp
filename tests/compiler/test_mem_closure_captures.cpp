@@ -116,7 +116,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
   ClosureCaptures,
   test_invalid_move_capture_of_an_outer_value_inside_a_loop,
-  SppUninitializedMemoryUseError, "s", R"(
+  SppInconsistentlyInitializedMemoryUseError, "s", R"(
   fun run[F: std::function::FunMov[(), Void]](f: F) -> Void { f() }
 
   fun f() -> Void {
@@ -159,7 +159,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClosureCaptures,
   test_invalid_move_closure_called_on_every_iteration,
-  SppUninitializedMemoryUseError, R"(
+  SppInconsistentlyInitializedMemoryUseError, R"(
   fun f(b: Bool) -> Void {
     let s = Str::from("x")
     let c = |caps s| std::mem::ops::drop(s)

@@ -228,11 +228,28 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
   // condition ends the loop instead, what it left them holding is
   // dropped there (none of what a logical operator's right operand
   // made, ended there: "flag and next() is Some(v)").
+  // An "exit" or "skip" here aimed at an enclosing loop ("exit exit",
+  // "exit skip") files itself in that loop's frame, on every pass over
+  // this body: each pass begins from the frames as this loop found
+  // them, so only the last (settled) pass's stand.
+  auto outer_marks = Vec<Arr<std::size_t, 3>>();
+  for (auto i = 0uz; i < frame_at; ++i) {
+    auto const &outer = flow.Loops[i];
+    outer_marks.push_back({outer.SkipStates.size(), outer.ExitStates.size(), outer.ExitStmts.size()});
+  }
+  const auto cut_back = [](auto &list, const std::size_t to) {
+    list.erase(list.begin() + static_cast<std::ptrdiff_t>(to), list.end());
+  };
   auto held_at_cond_end = Vec<drop_utils::OwnedValue>();
   const auto run_iteration = [&](ScopeManager &walk) {
     flow.Loops[frame_at].SkipStates.clear();
     flow.Loops[frame_at].ExitStates.clear();
     flow.Loops[frame_at].ExitStmts.clear();
+    for (auto i = 0uz; i < frame_at; ++i) {
+      cut_back(flow.Loops[i].SkipStates, outer_marks[i][0]);
+      cut_back(flow.Loops[i].ExitStates, outer_marks[i][1]);
+      cut_back(flow.Loops[i].ExitStmts, outer_marks[i][2]);
+    }
     drop_utils::ForgetIterationBindings(*walk.CurrentScope);
     const auto iteration = drop_utils::TemporaryRegion(*walk.CurrentScope);
     BinaryExpressionAst::MarkCondition(*Cond);

@@ -12,6 +12,7 @@ import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.module_implementation_ast;
 import spp.asts.module_prototype_ast;
+import spp.asts.parenthesised_expression_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_deref_ast;
@@ -94,6 +95,11 @@ auto spp::asts::IsDeref(Ast const *ast) -> bool {
   const auto postfix = ast->To<PostfixExpressionAst>();
   return postfix != nullptr
     and postfix->Op->To<PostfixExpressionOperatorDerefAst>() != nullptr;
+}
+
+auto spp::asts::Unparenthesised(Ast const *ast) -> Ast const* {
+  while (const auto paren = ast->To<ParenthesisedExpressionAst>()) { ast = paren->Expr.get(); }
+  return ast;
 }
 
 /// [CHECKED]

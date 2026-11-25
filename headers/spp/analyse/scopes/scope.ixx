@@ -155,7 +155,7 @@ public:
   /// Every binding the walk now in this scope has declared, each time
   /// it did, in order (a loop's later pass declares its bindings
   /// again): a stretch of it is what one part of the walk declared
-  /// ("drop_utils::TemporaryRegion", "EndStatement").
+  /// ("drop_utils::TemporaryRegion").
   Vec<VariableSymbol*> Declarations;
 
   /// The scope of an "and"'s right operand, holding what its left

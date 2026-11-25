@@ -3,7 +3,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstMemoryLoopChecks,
   test_invalid_loop_with_memory_move,
-  SppUninitializedMemoryUseError, R"(
+  SppInconsistentlyInitializedMemoryUseError, R"(
   fun f() -> Void {
     let x = Str::from("hello world")
     loop true {
@@ -16,7 +16,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstMemoryLoopChecks,
   test_invalid_loop_with_memory_move_nested,
-  SppUninitializedMemoryUseError, R"(
+  SppInconsistentlyInitializedMemoryUseError, R"(
   cls SomeType {
     !public a: Str
   }
@@ -256,11 +256,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   }
 )");
 
-// "exit skip" continues the outer loop, so its body can run again, with "x" already moved.
+// "exit skip" continues the outer loop, so its body can run again, with "x" already moved: held on the way into the
+// loop's head, not on the way back round (E8).
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstMemoryLoopChecks,
   test_invalid_exit_skip_continues_the_outer_loop,
-  SppUninitializedMemoryUseError, R"(
+  SppInconsistentlyInitializedMemoryUseError, R"(
   fun f(b: Bool) -> Void {
     let x = Str::from("a")
     loop b {

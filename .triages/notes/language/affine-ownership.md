@@ -1,7 +1,7 @@
 ---
 name: affine-ownership
 description: "Ownership is affine since 2026-11-23: a non-Copy value moves at most once and is dropped by the compiler where its lifetime ends; where each drop point is computed and emitted"
-updated: 2026-11-24
+updated: 2026-11-25
 ---
 
 S++ was linear from 2026-08-26 to 2026-11-23 (every non-`Copy` value consumed exactly once, no implicit drops, E94).
@@ -21,7 +21,7 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
 | `ret` / `?` (a lowered `ret`), `exit` / `skip` | `OwnedUpToFn`, `OwnedUpToLoop` | `_OwnedAtExit` |
 | Generator frame destroyed at a `gen`, or before its first resume | `OwnedAtSuspend` | `_OwnedAtSuspend`, `_OwnedAtStart` |
 | A lowered `GenOnce`'s by-value `gen` (its return) | the same list, passed to `EmitReturn` | `_OwnedAtSuspend` |
-| Paths meeting that disagree (`case` branches and fall-through, loop exits) | `drop_utils::JoinPaths` | `_DropsAtEnd` (a branch's, `AddDropsAtJoin`), `_DropsAfterExit` (an `exit`'s, `SetDropsAtJoin`), `_DropsOnFallThrough`, `_DropsOnCondEnd` |
+| Paths meeting that disagree (`case` branches and fall-through, loop exits) | `drop_utils::JoinPaths` | `_DropsAtEnd` (a branch's, `AddDropsAtJoin`), `_DropsAfterExit` (an `exit`'s, `AddDropsAtJoin`), `_DropsOnFallThrough`, `_DropsOnCondEnd` |
 | A guard's moves, on the edges passing its branch over (no match, guard false); its `$` temporaries on the false edge | `case_utils::CarryGuardMoves` (`JoinPaths`), `TemporaryRegion::Held` | `_DropsOnNoMatch`, `_DropsOnGuardFalse` |
 | A logical operator's right operand vs its short circuit | `JoinPaths` | `BinaryExpressionAst::_DropsOnShortCircuit`, `_DropsAfterRhs` |
 | Overwrite (`x = v`, `p.a = v`, through `&mut`, `x@ = v`) | `OwnedOnPath`, `OwnedBeforeWrite` | `AssignmentStatementAst::_DropsOld` |
@@ -35,7 +35,9 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
   than Rust's scope-end drop, static. A loop's head is such a join too: the entry, the body's end and each `skip`
   meet there (every iteration after the first begins from it), and each drops on its way in what another does not
   hold (`_DropsOnEntry`, `_DropsOnBackEdge`, a `skip`'s `AddDropsAtJoin`), so in the body it is held on none (E8 on a
-  read; an overwrite drops nothing).
+  read; an overwrite drops nothing). An `exit` or `skip` aimed at an enclosing loop files itself in that loop's frame
+  on each pass over the inner body, so each inner pass cuts the enclosing frames back to where it found them: only the
+  last pass's entries stand.
 - **Only enclosing scopes' owners join.** `drop_utils::OwnersAround` starts at the `case`'s or loop's parent: their
   own scope holds `is` bindings that exist only where they matched, and the flow also holds branch-local symbols.
 - **Pending temporaries** live on `ctx->Pending->Held`: a block statement drops what it pushed at its end, a

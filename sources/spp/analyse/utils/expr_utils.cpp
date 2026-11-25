@@ -50,6 +50,7 @@ MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts, Ast);
 use_alias(spp::asts, CaseExpressionAst);
 use_alias(spp::asts, ExpressionAst);

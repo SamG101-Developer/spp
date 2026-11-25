@@ -1367,13 +1367,15 @@ auto spp::analyse::scopes::Scope::FindBoundVarSymbolById(
 
 /// [CHECKED]
 auto spp::analyse::scopes::Scope::FindVarSymbolOutermost(
-  Ast const &expr) const -> Pair<VariableSymbol*, Scope const*> {
+  Ast const &expr_written) const -> Pair<VariableSymbol*, Scope const*> {
+  // "(x)" is "x" ("asts::Unparenthesised").
+  auto const &expr = *asts::Unparenthesised(&expr_written);
   if (IsRuntimeMemberAccess(&expr)) {
     // Keep moving into the left-hand-side until there is
     // no left-hand-side: "a.b.c" becomes "a".
     auto adjusted_name = &expr;
     while (IsRuntimeMemberAccess(adjusted_name) or IsDeref(adjusted_name)) {
-      adjusted_name = adjusted_name->To<PostfixExpressionAst>()->Lhs.get();
+      adjusted_name = asts::Unparenthesised(adjusted_name->To<PostfixExpressionAst>()->Lhs.get());
     }
 
     // Get the symbol (will be in this scope), and return

@@ -20,6 +20,7 @@ import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.identifier_ast;
+import spp.asts.parenthesised_expression_ast;
 import spp.asts.spread_expression_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
@@ -175,6 +176,12 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     for (auto &&x : tup_literal->Elems) {
       ValidateSymbolMemory(*x, move_ast, sm, meta, {.MarkMoves = options.MarkMoves});
     }
+    return;
+  }
+
+  // "(x)" is "x" ("asts::Unparenthesised"): moving it moves "x".
+  if (const auto paren = value_ast.To<asts::ParenthesisedExpressionAst>(); paren != nullptr) {
+    ValidateSymbolMemory(*paren->Expr, move_ast, sm, meta, options);
     return;
   }
 

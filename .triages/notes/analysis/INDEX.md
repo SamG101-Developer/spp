@@ -2,7 +2,7 @@
 - [IMPORT_UTILS convention](import-utils-macro-convention.md) — utils as module::F, errors unqualified
 - [Scope symbol family duplication](scope-symbol-family-duplication.md) — one member per kind (symmetric), shared bodies; FindTypeSymbol kept apart
 - [ScopeDefinedIn can dangle](scope-defined-in-can-dangle.md) — resolve through LinkedScope
-- [Same-scope shadowing](spp-same-scope-shadowing.md) — lets declare at their position each walk (M2); hide on entry, reveal on exit; $_dst_ temps; is bindings hand the name back at statement end
+- [Same-scope shadowing](spp-same-scope-shadowing.md) — lets declare at their position each walk (M2); hide on entry, reveal on exit; $_dst_ temps; is bindings declared only where their match holds
 - [Visibility stage ordering](spp-visibility-stage-ordering.md) — attribute visibility syncs in Stage4; pre-stage-6 type names deferred (bug 45)
 - [Meta flags are per-stage](spp-meta-flags-are-per-stage.md) — stage 7 flags don't reach 8; new keywords
 - [Heavy guards, symmetric](meta-guard-heavy-symmetric.md) — Save/Restore only via MetaGuard; set an Enclosing* field = heavy guard, every stage

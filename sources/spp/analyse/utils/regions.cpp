@@ -85,8 +85,9 @@ auto spp::analyse::utils::regions::PlaceOf(
   // none. A call of anything else (a function, a value)
   // hands back a temporary, which is no place.
   auto steps = Vec<PlaceStep>();
-  auto cur = &ast;
-  while (const auto postfix = cur->To<PostfixExpressionAst>()) {
+  auto cur = asts::Unparenthesised(&ast);
+  for (; cur->To<PostfixExpressionAst>() != nullptr; cur = asts::Unparenthesised(cur)) {
+    const auto postfix = cur->To<PostfixExpressionAst>();
     // For a runtime member access, get the interned if of
     // the member being accessed, and add it to the steps.
     const auto member = postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();

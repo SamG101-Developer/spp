@@ -125,6 +125,10 @@ namespace spp::asts {
   /// operation. For example, "a@" is.
   SPP_EXP_FUN auto IsDeref(Ast const *ast) -> bool;
 
+  /// The expression inside any parentheses around "ast": "(x)" is the place
+  /// "x", the same storage (code generation reads it straight from "x").
+  SPP_EXP_FUN auto Unparenthesised(Ast const *ast) -> Ast const*;
+
   /// Check if an expression is a postfix expression whose operator is a
   /// function call. For example, "a()" is.
   SPP_EXP_FUN auto IsFuncCall(Ast const *ast) -> bool;
