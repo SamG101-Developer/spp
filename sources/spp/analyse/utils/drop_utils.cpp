@@ -86,17 +86,23 @@ namespace spp::analyse::utils::drop_utils {
     ScopeManager &sm, CompilerMetaData *meta) -> Opt<OwnedValue>;
 
 
-  /// Raise if a partial move out of "sym" (in "state") stranded a
-  /// value with a destructor of its own: taking something from
-  /// inside a value leaves that value unable to be destroyed. Every
-  /// place a move reached through is asked, not only "sym":
-  /// "o.inner.val" strands "o.inner" even when "o" has no "drop".
   /// The places in "taken_apart" at or under "prefix" (field-name
   /// steps), as paths from it: the empty path is "prefix" itself.
   static auto TakenApartPathsUnder(
     Vec<regions::PlaceAt> const &taken_apart, Vec<regions::PlaceStep> const &prefix)
     -> Vec<Vec<spp::utils::InternedId>>;
 
+  /// The parts gone from a value in "state": those moved on every path,
+  /// and those moved on only some, which the others dropped where they
+  /// met ("OwnedOnJoinPath"), so they are gone on every path after.
+  static auto PartsGone(
+    memory_state::MemoryState const &state) -> Vec<regions::PlaceAt>;
+
+  /// Raise if a part gone from "sym" (in "state", "PartsGone") stranded
+  /// a value with a destructor of its own: taking something from
+  /// inside a value leaves that value unable to be destroyed. Every
+  /// place a move reached through is asked, not only "sym":
+  /// "o.inner.val" strands "o.inner" even when "o" has no "drop".
   static auto CheckDestructorStillReachable(
     VariableSymbol const &sym, memory_state::MemoryState const &state, Ast const &exit_point,
     ScopeManager &sm, CompilerMetaData *meta) -> void;
@@ -376,7 +382,8 @@ auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
   VariableSymbol const &sym, memory_state::MemoryState const &state, Ast const &exit_point,
   ScopeManager &sm, CompilerMetaData *meta) -> void {
   // Nothing taken out of it is nothing to put back.
-  if (state.PartialMoves.empty()) { return; }
+  const auto gone = PartsGone(state);
+  if (gone.empty()) { return; }
   if (sym.Type == nullptr) { Ice(exit_point, *sm.CurrentScope, "partly moved variable has no type"); }
 
   // A borrow does not own what it points at, so the value
@@ -385,9 +392,16 @@ auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
 
   const auto root = TypeRef::Of(*sym.Type, *sm.CurrentScope);
   const auto taken_apart = TakenApartPathsUnder(state.TakenApart, {});
-  for (auto const &move : state.PartialMoves) {
+  for (auto const &move : gone) {
     RaiseIfPathStrandsDestructor(root, move.Of->Steps, *move.Site, exit_point, sm, meta, taken_apart);
   }
+}
+
+auto spp::analyse::utils::drop_utils::PartsGone(
+  memory_state::MemoryState const &state) -> Vec<regions::PlaceAt> {
+  auto gone = state.PartialMoves;
+  for (auto const &maybe : state.MaybePartialMoves) { gone.emplace_back(maybe.Part); }
+  return gone;
 }
 
 auto spp::analyse::utils::drop_utils::TakenApartPathsUnder(
@@ -490,9 +504,7 @@ auto spp::analyse::utils::drop_utils::OwnedOnPath(
   // Held on only some of the paths that met before this one: each path that still held it dropped it before they met,
   // the whole of it, or a part ("OwnedOnJoinPath"), which is then gone on every path.
   if (state.MaybeInit.has_value()) { return Nullopt; }
-  auto gone = state.PartialMoves;
-  for (auto const &maybe : state.MaybePartialMoves) { gone.emplace_back(maybe.Part); }
-  auto moved = MovedPathsUnder(gone, {});
+  auto moved = MovedPathsUnder(PartsGone(state), {});
   if (not moved.has_value()) { return Nullopt; }
 
   // What a destructure took apart is dropped field by field, its type's own "drop" not run, and so is "self" left at
@@ -832,10 +844,8 @@ auto spp::analyse::utils::drop_utils::OwnedBeforeWrite(
   const auto place = regions::PlaceOf(target, *sm.CurrentScope);
   if (not place.has_value()) { return Nullopt; }
 
-  // A part moved on only some of the paths that met was dropped on the others where they met ("OwnedOnJoinPath"),
-  // so it is gone on every path, as a part moved on all of them is.
-  auto gone = state.PartialMoves;
-  for (auto const &maybe : state.MaybePartialMoves) { gone.emplace_back(maybe.Part); }
+  // A part moved on only some of the paths that met is gone on every path, as a part moved on all of them is.
+  const auto gone = PartsGone(state);
   if (regions::RegionConsumed(*place, ref, *sm.CurrentScope, gone)) { return Nullopt; }
   // What a destructure took apart in it is dropped field by field.
   auto moved = MovedPathsUnder(gone, place->Steps);
@@ -844,7 +854,7 @@ auto spp::analyse::utils::drop_utils::OwnedBeforeWrite(
 
   // Overwritten, what is left of it is destroyed, as at its scope's end: a part moved from inside a value with its own
   // "drop" strands that "drop" (E106).
-  for (auto const &move : state.PartialMoves) {
+  for (auto const &move : gone) {
     auto const &steps = move.Of->Steps;
     if (steps.size() <= place->Steps.size() or not std::equal(place->Steps.begin(), place->Steps.end(), steps.begin())) {
       continue;

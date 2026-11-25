@@ -91,15 +91,19 @@ auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
   // viewing it last: a named one already is; anything else is
   // held by a hidden "$is" temporary, ending with the condition
   // it is in ("Scope::TemporaryHome").
+  // The operands are left as written, so a clone is analysed again
+  // from them ("HoistOnce" of a fold argument).
+  auto subject = Unique<ExpressionAst>();
   if (auto hoisted = expr_utils::HoistOnce(*Lhs, "$is", sm, meta); hoisted.Let != nullptr) {
     _SubjectLet = std::move(hoisted.Let);
-    Lhs = AstClone(hoisted.Name);
+    subject = AstClone(hoisted.Name);
   }
-  auto *const subject_root = sm->CurrentScope->FindVarSymbolOutermost(*Lhs).first;
+  else { subject = AstClone(Lhs); }
+  auto *const subject_root = sm->CurrentScope->FindVarSymbolOutermost(*subject).first;
 
   // Convert to a "case" destructure and analyse it.
   const auto n = sm->CurrentScope->Children.size();
-  _MappedFn = operator_desugaring::ConvertIsExprToCase(*this, sm, meta);
+  _MappedFn = operator_desugaring::ConvertIsExprToCase(*this, std::move(subject), sm, meta);
   _MappedFn->Stage7_AnalyseSemantics(sm, meta);
 
   // What the pattern binds, and the subject it narrows, hold where

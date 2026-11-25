@@ -451,3 +451,55 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     h2.drop(5)
   }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC_NO_MAIN(
+  TestAstDestructors,
+  test_invalid_partial_move_out_of_a_value_with_a_destructor_on_one_branch,
+  SppPartialMoveOfDestructibleValueError, R"(
+  cls Holder {
+    !public a: Str
+    !public b: Str
+  }
+
+  sup Holder ext std::ops::drop::Drop {
+    fun drop(self) -> Void {
+      let Holder(a, b) = self
+    }
+  }
+
+  fun f(h: Holder, c: Bool) -> Void {
+    case c of {
+      == true { let x = h.a }
+      else { }
+    }
+  }
+
+  fun main() -> Void { }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC_NO_MAIN(
+  TestAstDestructors,
+  test_invalid_partial_move_out_of_a_value_with_a_destructor_on_one_branch_then_overwritten,
+  SppPartialMoveOfDestructibleValueError, R"(
+  cls Holder {
+    !public a: Str
+    !public b: Str
+  }
+
+  sup Holder ext std::ops::drop::Drop {
+    fun drop(self) -> Void {
+      let Holder(a, b) = self
+    }
+  }
+
+  fun f(c: Bool) -> Void {
+    let mut h = Holder(a=Str::new(), b=Str::new())
+    case c of {
+      == true { let x = h.a }
+      else { }
+    }
+    h = Holder(a=Str::new(), b=Str::new())
+  }
+
+  fun main() -> Void { }
+)");

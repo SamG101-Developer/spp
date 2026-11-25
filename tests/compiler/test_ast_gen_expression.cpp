@@ -284,3 +284,25 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     std::mem::ops::drop(h)
   }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  GenExpressionAst,
+  test_invalid_gen_tuple_literal_moves_its_elements,
+  SppUninitializedMemoryUseError, R"(
+  cor foo() -> Gen[(Str, S32)] {
+    let item = Str::new()
+    gen (item, 1)
+    let y = item
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  GenExpressionAst,
+  test_valid_gen_tuple_literal_moves_an_owned_element,
+  R"(
+  cor foo() -> Gen[(Str, S32)] {
+    let item = Str::new()
+    let x = 1
+    gen (item, x)
+  }
+)");

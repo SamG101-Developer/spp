@@ -764,3 +764,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     let b: Bool = std::intrinsics::float_sqrt(2.0_f64) == 1.0_f64
   }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorFunctionCallAst,
+  test_valid_postfix_function_folding_with_is_binding_and, R"(
+  fun f(a: Bool, b: S32) -> Void { }
+
+  fun g() -> Void {
+    let o = Some(val=1_s32)
+    let t = (1, 2, 3)
+    f(o is Some(val as x) and x > 0, t)..
+  }
+)");

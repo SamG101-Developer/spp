@@ -110,7 +110,10 @@ auto spp::asts::BinaryExpressionAst::Clone() const -> Unique<Ast> {
   ast->_ChainTemps = AstCloneVec(_ChainTemps);
   ast->_IsCondition = _IsCondition;
   ast->_HeldWhenTrue = _HeldWhenTrue;
-  ast->_LogicalAnalysed = _LogicalAnalysed;
+  // A clone walked where this stands, never analysed again (a receiver,
+  // "InjectReceiver"; forwarding), walks this one's scope. One analysed
+  // again ("HoistOnce") makes its own where it stands, as its operands
+  // do: "_LogicalAnalysed" is not shared, so its Stage 7 runs.
   ast->_RhsScope = _RhsScope;
   ast->_OpenPack = AstClone(_OpenPack);
   ast->_OpenPackMoves = _OpenPackMoves;
@@ -218,7 +221,8 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
 
   // Analysed already: a clone shares the mapped call ("Clone"),
   // and a fold has rewritten its operands, so analysing again
-  // would desugar what is no longer written.
+  // would desugar what is no longer written. A logical operator's
+  // clone is analysed again ("Clone").
   if (_MappedFn or _LogicalAnalysed) { return; }
 
   // A fold reads its tuple's elements off it and combines them, for "t = (0, 1, 2, 3)": ".. + t" from the left,
@@ -329,17 +333,30 @@ auto spp::asts::BinaryExpressionAst::_DeclareLhsBound(
   rhs_scope.DeclareBoundWhenTrue(analyse::utils::expr_utils::BoundWhenTrue(*Lhs));
 }
 
+auto spp::asts::BinaryExpressionAst::_RhsScopeIsNext(
+  ScopeManager const &sm) const -> bool {
+  auto next = sm.Position().It;
+  return _RhsScope != nullptr and next != analyse::scopes::ScopeIterator() and *++next == _RhsScope;
+}
+
 auto spp::asts::BinaryExpressionAst::_InRhsScope(
   ScopeManager &sm, auto &&walk) const -> void {
   if (_RhsScope == nullptr) {
-    walk();
+    walk(&sm);
     return;
   }
-  sm.MoveToNextScope();
-  SPP_ASSERT(sm.CurrentScope == _RhsScope);
-  _DeclareLhsBound(*sm.CurrentScope);
-  walk();
-  sm.MoveOutOfCurrentScope();
+  // Entering a scope hides its "let"s ("MoveToNextScope"), so the
+  // bindings are declared once standing in it.
+  if (_RhsScopeIsNext(sm)) {
+    sm.MoveToNextScope();
+    _DeclareLhsBound(*_RhsScope);
+    walk(&sm);
+    sm.MoveOutOfCurrentScope();
+    return;
+  }
+  auto rhs_sm = sm.NewManagerAt(_RhsScope);
+  _DeclareLhsBound(*_RhsScope);
+  walk(&rhs_sm);
 }
 
 auto spp::asts::BinaryExpressionAst::MarkCondition(
@@ -393,9 +410,10 @@ auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
 
     const auto short_circuit = memory_state::SnapshotFlow(*sm->CurrentScope);
     const auto rhs_region = drop_utils::TemporaryRegion(*sm->CurrentScope->TemporaryHome());
-    _InRhsScope(*sm, [&] {
-      Rhs->Stage8_CheckMemory(sm, meta);
-      mem_utils::ValidateSymbolMemory(*Rhs, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
+    _InRhsScope(*sm, [&](ScopeManager *rhs_sm) {
+      Rhs->Stage8_CheckMemory(rhs_sm, meta);
+      mem_utils::ValidateSymbolMemory(
+        *Rhs, *this, *rhs_sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
     });
 
     // A temporary the right operand declared was never made on the
@@ -525,7 +543,7 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   ctx->Builder.SetInsertPoint(rhs_bb);
   const auto temporaries = codegen::TemporaryDepth(ctx);
   auto llvm_rhs = static_cast<llvm::Value*>(nullptr);
-  _InRhsScope(*sm, [&] { llvm_rhs = Rhs->Stage11_CodeGen(sm, meta, ctx); });
+  _InRhsScope(*sm, [&](ScopeManager *rhs_sm) { llvm_rhs = Rhs->Stage11_CodeGen(rhs_sm, meta, ctx); });
   SPP_ASSERT(llvm_rhs->getType()->isIntegerTy(1));
   auto &home = *sm->CurrentScope->TemporaryHome();
   if (_HeldWhenTrue.empty()) {
@@ -573,28 +591,15 @@ auto spp::asts::BinaryExpressionAst::EvaluateCompTime(
     const auto lhs_is_true = meta->CompTimeResult->As<BooleanLiteralAst>()->IsTrue();
     const auto runs_rhs = lhs_is_true == (TokOp->TokenType == lex::SppTokenType::KW_AND);
 
-    // Evaluated in walk order, the walk goes into the right operand's
-    // scope (or past it, when the left operand decided). Evaluated
-    // again out of order (a boolean "case"'s condition, re-read in its
-    // branch), it is evaluated by a walk of its own, standing there.
-    auto next = sm->Position().It;
-    const auto in_order = _RhsScope != nullptr and next != analyse::scopes::ScopeIterator()
-      and *++next == _RhsScope;
-    if (_RhsScope == nullptr) {
-      if (runs_rhs) { Rhs->EvaluateCompTime(sm, meta); }
+    // Decided by the left operand, the walk goes past the right
+    // operand's scope, when it is the next one.
+    if (runs_rhs) {
+      _InRhsScope(*sm, [&](ScopeManager *rhs_sm) { Rhs->EvaluateCompTime(rhs_sm, meta); });
     }
-    else if (in_order and not runs_rhs) {
+    else if (_RhsScopeIsNext(*sm)) {
       sm->MoveToNextScope();
       ignore = sm->SkipSubtree(sm->CurrentScope);
       sm->MoveOutOfCurrentScope();
-    }
-    else if (in_order) {
-      _InRhsScope(*sm, [&] { Rhs->EvaluateCompTime(sm, meta); });
-    }
-    else if (runs_rhs) {
-      auto walk = sm->NewManagerAt(_RhsScope);
-      _DeclareLhsBound(*_RhsScope);
-      Rhs->EvaluateCompTime(&walk, meta);
     }
     return;
   }
