@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.utils.ast_utils;
 import spp.asts.ast;
+import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
@@ -21,6 +22,19 @@ namespace spp::asts {
   inline auto CloneAs(Ast *clone) -> T* {
     if constexpr (std::derived_from<T, Ast>) { return static_cast<T*>(clone); }
     else { return dynamic_cast<T*>(clone); }
+  }
+
+  /// A shared clone of "ast" as a "T": its one-allocation
+  /// "CloneShared" where it has one, else its "Clone" wrapped as a
+  /// "Shared<T>", which sets an "enable_shared_from_this" base of "T".
+  template <typename T, typename A>
+  SPP_ATTR_ALWAYS_INLINE
+  inline auto CloneSharedOf(A const &ast) -> Shared<T> {
+    if (auto clone = ast.CloneShared(); clone != nullptr) {
+      if constexpr (std::derived_from<T, Ast>) { return static_shared_cast<T>(std::move(clone)); }
+      else { return dynamic_shared_case<T>(std::move(clone)); }
+    }
+    return Shared<T>(CloneAs<T>(ast.Clone().release()));
   }
 
   SPP_EXP_FUN template <typename T>
@@ -58,7 +72,7 @@ namespace spp::asts {
   inline auto AstCloneShared(Shared<T> const &ast) -> Shared<std::remove_cvref_t<T>> {
     if (ast == nullptr) { return nullptr; }
     using ResultT = std::remove_cvref_t<T>;
-    auto out = Shared<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
+    auto out = CloneSharedOf<ResultT>(*ast);
     out->CopyEdgeStore(*ast);
     return out;
   }
@@ -68,7 +82,7 @@ namespace spp::asts {
   inline auto AstCloneShared(T *ast) -> Shared<std::remove_cvref_t<T>> {
     if (ast == nullptr) { return nullptr; }
     using ResultT = std::remove_cvref_t<T>;
-    auto out = Shared<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
+    auto out = CloneSharedOf<ResultT>(*ast);
     out->CopyEdgeStore(*ast);
     return out;
   }
