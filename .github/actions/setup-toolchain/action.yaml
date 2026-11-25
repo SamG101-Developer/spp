@@ -35,7 +35,7 @@ runs:
   steps:
     # Runner images ship an older CMake (3.31.x); the project needs the pinned one to satisfy cmake_minimum_required.
     - name: Install CMake & Ninja
-      uses: lukka/get-cmake@30aea713799f46b5b60e60f5fa83f849abd52c22 # v4.5.0-rc3
+      uses: lukka/get-cmake@a1a8216777d3cbbf5602c73b9ddd3e98257ecdc4 # v4.5.1
       with:
         cmakeVersion: ${{ env.CMAKE_VERSION }}
         ninjaVersion: ${{ env.NINJA_VERSION }}
