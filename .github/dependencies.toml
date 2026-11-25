@@ -198,7 +198,7 @@ commit = "efd80e03356af65c7d4e61c56ffb326b34f8d0f4"
 [[library]]
 name = "magic_enum"
 repo = "https://github.com/Neargye/magic_enum.git"
-commit = "88121077cc81edad11798265d1feab8d985c18e7"
+commit = "8b69251a96d755dc9364fdf31c0f4056efdad365"
 cmake-flags = [
   "-DMAGIC_ENUM_OPT_BUILD_TESTS=OFF",
   "-DMAGIC_ENUM_OPT_BUILD_EXAMPLES=OFF",
@@ -242,7 +242,7 @@ commit = "9ad6bafe4d9fe9e2d588a3e620299b81ce8814c2"
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "521e68f6bbb55d4f3371690e74d3ed6b637c4070"
+commit = "fb508b99d1c7827d5b6e58642c9ef361e95352ec"
 
 [[library]]
 name = "NumEx"
