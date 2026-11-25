@@ -62,10 +62,9 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
     ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
 private:
-  /// Per target, the value written over is dropped first when one is
-  /// still owned there: the parts already moved out of it (none for a
-  /// whole value), or no entry for nothing to drop.
-  Vec<Opt<analyse::utils::drop_utils::OwnedValue>> _DropsOld;
+  // Per target, the value written over is dropped first when one is
+  // still owned there ("kOverwrite", held by the target,
+  // "drop_utils::DropsOn"): less the parts already moved out of it.
 
   /// Whether target "i" drops the value it held before the store.
   SPP_ATTR_NODISCARD auto DropsOldAt(std::size_t i) const -> bool;

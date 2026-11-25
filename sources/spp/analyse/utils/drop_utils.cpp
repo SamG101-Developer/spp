@@ -615,6 +615,38 @@ auto spp::analyse::utils::drop_utils::ReleaseOwnedLoans(
   for (auto const *const sym : scope.GetOwners()) { memory_state::ReleaseLoans(loans, *sym); }
 }
 
+auto spp::analyse::utils::drop_utils::DropsOn(
+  Ast const &ast, const DropEdge edge) -> Vec<OwnedValue> const& {
+  static const auto none = Vec<OwnedValue>();
+  auto const *const store = ast.EdgeStore();
+  if (store == nullptr) { return none; }
+  for (auto const &[at, drops] : store->Edges) {
+    if (at == edge) { return drops; }
+  }
+  return none;
+}
+
+auto spp::analyse::utils::drop_utils::SetDropsOn(
+  Ast &ast, const DropEdge edge, Vec<OwnedValue> drops) -> void {
+  auto &store = ast.EdgeStore();
+  for (auto &[at, held] : store.Edges) {
+    if (at == edge) {
+      held = std::move(drops);
+      return;
+    }
+  }
+  if (not drops.empty()) { store.Edges.emplace_back(edge, std::move(drops)); }
+}
+
+auto spp::analyse::utils::drop_utils::AddDropsOn(
+  Ast &ast, const DropEdge edge, Vec<OwnedValue> drops) -> void {
+  if (drops.empty()) { return; }
+  auto held = DropsOn(ast, edge);
+  held.append_range(std::move(drops));
+  SortNewestFirst(held);
+  SetDropsOn(ast, edge, std::move(held));
+}
+
 auto spp::analyse::utils::drop_utils::JoinPaths(
   Vec<VariableSymbol*> const &syms, Vec<JoinPath> const &paths,
   Map<VariableSymbol const*, Scope const*> const &owners, ScopeManager &sm, CompilerMetaData *meta,

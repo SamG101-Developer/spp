@@ -54,6 +54,9 @@ import spp.utils.uid;
 import genex;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::utils::drop_utils, DropEdge);
+use_alias(spp::analyse::utils::drop_utils, DropsOn);
+use_alias(spp::analyse::utils::drop_utils, SetDropsOn);
 use_alias(spp::analyse::scopes, BumpScopeLinkageGeneration);
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeBlockName);
@@ -107,7 +110,6 @@ auto spp::asts::ClosureExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Body));
   c->_TrueRetType = _TrueRetType;
   c->_MockType = _MockType;
-  c->_OwnedAtEnd = _OwnedAtEnd;
   return c;
 }
 
@@ -310,7 +312,7 @@ auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
     // A body that falls off its end drops what its parameters still
     // own there, as a function's does.
     if (not Body->Diverges(sm, meta)) {
-      _OwnedAtEnd = drop_utils::EndRegion(*outer_scope, *Body, *sm, meta);
+      SetDropsOn(*this, DropEdge::kEnd, drop_utils::EndRegion(*outer_scope, *Body, *sm, meta));
     }
 
     // Leave both closure scopes reading as Stage 7 left them. They
@@ -486,7 +488,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
           body_val = codegen::CoerceToSlot(body_val, ret_ref, body_ref, *sm, "closure.ret.variant" + uid, ctx);
         }
         codegen::EmitTemporaryDrops(closure_temporaries, sm, meta, ctx);
-        codegen::EmitOwnedDrops(*outer_scope, _OwnedAtEnd, this, sm, meta, ctx);
+        codegen::EmitOwnedDrops(*outer_scope, DropsOn(*this, DropEdge::kEnd), this, sm, meta, ctx);
         if (llvm_ret_ty->isVoidTy()) { ctx->Builder.CreateRetVoid(); }
         else if (body_val != nullptr) { ctx->Builder.CreateRet(body_val); }
         else { ctx->Builder.CreateUnreachable(); }

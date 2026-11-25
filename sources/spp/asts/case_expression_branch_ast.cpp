@@ -35,6 +35,9 @@ import spp.utils.uid;
 import genex;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::utils::drop_utils, DropEdge);
+use_alias(spp::analyse::utils::drop_utils, DropsOn);
+use_alias(spp::analyse::utils::drop_utils, SetDropsOn);
 use_alias(spp::analyse::scopes, ScopeBlockName);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
@@ -79,10 +82,6 @@ auto spp::asts::CaseExpressionBranchAst::Clone() const -> Unique<Ast> {
     AstClone(Guard),
     AstClone(Body));
   cloned->_MappedPatFns = AstCloneVec(_MappedPatFns);
-  cloned->_DropsAtEnd = _DropsAtEnd;
-  cloned->_DropsOnNoMatch = _DropsOnNoMatch;
-  cloned->_DropsOnGuardFalse = _DropsOnGuardFalse;
-  cloned->_GuardTemporariesOnFalse = _GuardTemporariesOnFalse;
   cloned->_KeepsTemporary = _KeepsTemporary;
   cloned->_DropsPatternBindings = _DropsPatternBindings;
   return cloned;
@@ -155,7 +154,8 @@ auto spp::asts::CaseExpressionBranchAst::Stage8_CheckMemory(
   for (auto const &p : Patterns) { p->Stage8_CheckMemory(sm, meta); }
   _StateBeforeGuard = nullptr;
   _StateAfterGuard = nullptr;
-  _GuardTemporariesOnFalse.clear();
+  SetDropsOn(*this, DropEdge::kNoMatch, {});
+  SetDropsOn(*this, DropEdge::kGuardFalse, {});
   if (Guard) {
     // The guard's temporaries live on into the body (its "is"
     // bindings view them), so where it answers false, what they
@@ -164,7 +164,8 @@ auto spp::asts::CaseExpressionBranchAst::Stage8_CheckMemory(
     const auto guard = drop_utils::TemporaryRegion(*sm->CurrentScope);
     BinaryExpressionAst::MarkCondition(*Guard->Expr);
     Guard->Stage8_CheckMemory(sm, meta);
-    _GuardTemporariesOnFalse = guard.Held(*Guard, *sm, meta, BinaryExpressionAst::HeldWhenTrue(*Guard->Expr));
+    const auto held_when_true = BinaryExpressionAst::HeldWhenTrue(*Guard->Expr);
+    SetDropsOn(*this, DropEdge::kGuardFalse, guard.Held(*Guard, *sm, meta, held_when_true));
     _StateAfterGuard = MakeShared<memory_state::ScopeSnapshot>(memory_state::SnapshotFlow(*sm->CurrentScope));
   }
   case_utils::ApplySubjectOnMatch(*sm, *meta);
@@ -173,10 +174,10 @@ auto spp::asts::CaseExpressionBranchAst::Stage8_CheckMemory(
   // The bindings end with the branch, so what they still own is
   // dropped at its end, unless it never gets there. (An "is" in the
   // "case" condition binds views of its subject, owning nothing.)
-  _DropsAtEnd.clear();
+  SetDropsOn(*this, DropEdge::kEnd, {});
   if (_DropsPatternBindings and not Body->Diverges(sm, meta)) {
     auto const &end = Body->TokR != nullptr ? static_cast<Ast const&>(*Body->TokR) : static_cast<Ast const&>(*this);
-    _DropsAtEnd = drop_utils::EndRegion(*sm->CurrentScope, end, *sm, meta);
+    SetDropsOn(*this, DropEdge::kEnd, drop_utils::EndRegion(*sm->CurrentScope, end, *sm, meta));
   }
 
   // The pattern's bindings end with the branch, and so do
@@ -217,7 +218,7 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
     // evaluating it unconditionally.
     const auto guard_bb = llvm::BasicBlock::Create(
       *ctx->Context, "case.branch.guard" + uid, func);
-    const auto no_match_bb = _EdgeToNext(_DropsOnNoMatch, "case.branch.no_match" + uid, next_bb, sm, meta, ctx);
+    const auto no_match_bb = _EdgeToNext(DropEdge::kNoMatch, "case.branch.no_match" + uid, next_bb, sm, meta, ctx);
     ctx->Builder.CreateCondBr(cond, guard_bb, no_match_bb);
     // The unnamed temporaries the guard makes exist only where it
     // ran: they are dropped at its end, before either edge, its value
@@ -228,7 +229,7 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
     const auto guard_cond = Guard->Stage11_CodeGen(sm, meta, ctx);
     codegen::EndTemporaryRegion(guard_temporaries, *sm->CurrentScope, {}, Guard.get(), sm, meta, ctx);
     const auto guard_end_bb = ctx->Builder.GetInsertBlock();
-    const auto false_bb = _EdgeToNext(_DropsOnGuardFalse, "case.branch.guard_false" + uid, next_bb, sm, meta, ctx);
+    const auto false_bb = _EdgeToNext(DropEdge::kGuardFalse, "case.branch.guard_false" + uid, next_bb, sm, meta, ctx);
     ctx->Builder.SetInsertPoint(guard_end_bb);
     ctx->Builder.CreateCondBr(guard_cond, body_bb, false_bb);
   }
@@ -277,7 +278,7 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
     // The bindings still owned are dropped once the body's value is made; the phi's edge comes from wherever
     // dropping them left the builder.
     codegen::EmitTemporaryDrops(temporaries, sm, meta, ctx);
-    codegen::EmitOuterDrops(_DropsAtEnd, *this, sm, meta, ctx);
+    codegen::EmitOuterDrops(DropsOn(*this, DropEdge::kEnd), *this, sm, meta, ctx);
     if (meta->LlvmPhi != nullptr) { meta->LlvmPhi->addIncoming(llvm_val, ctx->Builder.GetInsertBlock()); }
     ctx->Builder.CreateBr(meta->LlvmEndBB);
   }
@@ -412,15 +413,6 @@ auto spp::asts::CaseExpressionBranchAst::_CodegenCombinePatterns(
   return llvm_combined_pattern;
 }
 
-auto spp::asts::CaseExpressionBranchAst::SetGuardEdgeDrops(
-  Vec<analyse::utils::drop_utils::OwnedValue> on_no_match,
-  Vec<analyse::utils::drop_utils::OwnedValue> on_guard_false) -> void {
-  _DropsOnNoMatch = std::move(on_no_match);
-  _DropsOnGuardFalse = std::move(on_guard_false);
-  _DropsOnGuardFalse.append_range(_GuardTemporariesOnFalse);
-  analyse::utils::drop_utils::SortNewestFirst(_DropsOnGuardFalse);
-}
-
 auto spp::asts::CaseExpressionBranchAst::StateBeforeGuard() const
   -> analyse::utils::memory_state::ScopeSnapshot const* {
   return _StateBeforeGuard.get();
@@ -432,8 +424,9 @@ auto spp::asts::CaseExpressionBranchAst::StateAfterGuard() const
 }
 
 auto spp::asts::CaseExpressionBranchAst::_EdgeToNext(
-  Vec<analyse::utils::drop_utils::OwnedValue> const &drops, Str const &name, llvm::BasicBlock *next_bb,
+  const DropEdge edge, Str const &name, llvm::BasicBlock *next_bb,
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::BasicBlock* {
+  auto const &drops = DropsOn(*this, edge);
   // An edge passing this branch over that drops nothing goes
   // straight on; one that does drops in a block of its own. The
   // insert point is left where it was.
@@ -445,11 +438,6 @@ auto spp::asts::CaseExpressionBranchAst::_EdgeToNext(
   ctx->Builder.CreateBr(next_bb);
   ctx->Builder.SetInsertPoint(here);
   return edge_bb;
-}
-
-auto spp::asts::CaseExpressionBranchAst::AddDropsAtJoin(
-  Vec<analyse::utils::drop_utils::OwnedValue> drops) -> void {
-  _DropsAtEnd.append_range(std::move(drops));
 }
 
 auto spp::asts::CaseExpressionBranchAst::SetKeepsTemporary(

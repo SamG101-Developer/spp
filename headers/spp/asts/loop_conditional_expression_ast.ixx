@@ -53,21 +53,13 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
 private:
-  /// What the path the condition ends (through the "else" block, if
-  /// any) still holds, of values around the loop, that another path
-  /// out of it (an "exit") does not: dropped at its end, so after the
-  /// loop each is held on no path.
-  Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnCondEnd;
-
-  /// What the condition's temporaries still own at the body's end,
-  /// dropped there before the next iteration makes them afresh.
-  Vec<analyse::utils::drop_utils::OwnedValue> _IterationDrops;
-
-  /// The loop's head is where its entry and its ways back round (the
-  /// body's end, each "skip") meet: what one holds, of values around
-  /// the loop, that another does not is dropped on each still holding
-  /// it, before they meet ("drop_utils::JoinPaths"). The entry's and
-  /// the body end's ("skip"s add theirs to the "skip").
-  Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnEntry;
-  Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnBackEdge;
+  // Its drops ("drop_utils::DropsOn"): where the condition ends the
+  // loop ("kCondEnd", through the "else" block, if any), what that
+  // path holds of values around the loop that another path out (an
+  // "exit") does not, and what the condition's temporaries hold; at
+  // the body's end, what the condition's temporaries still own
+  // ("kIteration"); and at the loop's head, where its entry and its
+  // ways back round (the body's end, each "skip") meet, what one holds
+  // of values around the loop that another does not, dropped on each
+  // still holding it ("kEntry", "kBackEdge"; a "skip"'s go on it).
 };

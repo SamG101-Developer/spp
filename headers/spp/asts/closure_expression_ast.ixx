@@ -129,7 +129,7 @@ private:
   /// stage 11, and used to call the closure when it is invoked.
   Shared<codegen::LlvmFnWrapper> _LlvmFn;
 
-  /// What the closure's own scope (its parameters) still owns as
-  /// the body runs off its end, dropped there ("OwnedIn").
-  Vec<analyse::utils::drop_utils::OwnedValue> _OwnedAtEnd;
+  // What the closure's own scope (its parameters and by-value captures)
+  // still owns as the body runs off its end is dropped there ("kEnd",
+  // "drop_utils::DropsOn").
 };

@@ -171,9 +171,9 @@ private:
   /// The temporaries in "_FoldTemps" its calls do not take (a
   /// receiver or argument only borrowed, or any, when no call reads
   /// it), and what of them is still owned after the calls: dropped
-  /// there, so each lasts as long as the fold.
+  /// there ("kFold", "drop_utils::DropsOn"), so each lasts as long as
+  /// the fold.
   Vec<Shared<IdentifierAst>> _FoldUnconsumed;
-  Vec<analyse::utils::drop_utils::OwnedValue> _FoldDrops;
 
   /// A template's open packs this fold is over ("j(xs).."): one call is checked, on their first element, and the memory
   /// checks take each pack whole (pack-design.md phase 7).

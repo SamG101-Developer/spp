@@ -45,6 +45,40 @@ namespace spp::analyse::utils::drop_utils {
     Vec<Vec<spp::utils::InternedId>> TakenApart;
   };
 
+  /// Where on a construct a list of drops is made: where code generation
+  /// emits it. Each construct holds its own ("DropsOn"), made by Stage 8,
+  /// on the "Ast" ("Ast::EdgeStore", carried by "AstClone"): a block's
+  /// or a branch's end, a statement's end (held by the statement), the
+  /// value an overwrite replaces (held by the target), a call fold's
+  /// leftovers, and the edges where paths meet or part: a branch passed
+  /// over (no match, guard false), a "case" fallen through, an "and"'s
+  /// short circuit and right operand, a loop's head (entry, back edge)
+  /// and condition end, an "exit" or "skip".
+  SPP_EXP_CLS enum class DropEdge : std::uint8_t {
+    kEnd, kStatementEnd, kOverwrite, kFold,
+    kNoMatch, kGuardFalse, kFallThrough,
+    kShortCircuit, kAfterRhs, kRhsTemporaries,
+    kEntry, kBackEdge, kIteration, kCondEnd, kAfterExit,
+  };
+
+  /// A construct's drops, by edge ("DropEdge").
+  SPP_EXP_CLS struct EdgeDrops {
+    Vec<Pair<DropEdge, Vec<OwnedValue>>> Edges;
+  };
+
+  /// What "ast" drops at "edge" (none, if Stage 8 recorded nothing).
+  SPP_EXP_FUN auto DropsOn(
+    Ast const &ast, DropEdge edge) -> Vec<OwnedValue> const&;
+
+  /// Record what "ast" drops at "edge", replacing what was there.
+  SPP_EXP_FUN auto SetDropsOn(
+    Ast &ast, DropEdge edge, Vec<OwnedValue> drops) -> void;
+
+  /// Add to what "ast" drops at "edge" (a join's, after the construct's
+  /// own Stage 8 recorded its), newest first.
+  SPP_EXP_FUN auto AddDropsOn(
+    Ast &ast, DropEdge edge, Vec<OwnedValue> drops) -> void;
+
   /// What a way out of several scopes drops: one entry per scope
   /// left, innermost first, each newest first ("OwnedIn").
   SPP_EXP_CLS using OwnedScopes = Vec<Vec<OwnedValue>>;

@@ -110,11 +110,10 @@ private:
   Shared<TypeAst> _SubjectType;
   Shared<VariableSymbol> _SubjectValue;
 
-  /// What the path falling through every branch still holds of
-  /// values of the scopes around the "case" that another path out
-  /// does not, dropped before it reaches the end
-  /// ("case_utils::ValidateInconsistentMemory").
-  Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnFallThrough;
+  // What the path falling through every branch still holds of values
+  // of the scopes around the "case" that another path out does not is
+  // dropped before it reaches the end ("kFallThrough",
+  // "case_utils::ValidateInconsistentMemory").
 
   /// The "case" is over a temporary that falling through every
   /// branch keeps, so it is dropped on that path.

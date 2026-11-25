@@ -728,6 +728,41 @@ fun parenthesised_place() -> Void {
     std::console::println("after parens")
 }
 
+# Paths that disagree about one field drop only that field where they meet: what they agree on is held after.
+cls Three {
+    !public x: Noisy
+    !public y: Noisy
+    !public z: Noisy
+}
+
+fun one_field_disagreed(flag: Bool) -> Void {
+    let p = Three(x=Noisy(n=840_u64), y=Noisy(n=841_u64), z=Noisy(n=842_u64))
+    case flag { let t = takes(p.x) }
+    else { }
+    let y = p.y
+    std::console::println("after the join")
+}
+
+# A field read through forwarding off a temporary: the temporary is dropped as its statement ends.
+cls Forwarded { !public v: U64 }
+cls Forwarder { !public inner: Forwarded }
+
+sup Forwarder ext std::ops::fwd::FwdRef[Forwarded] {
+    cor fwd_ref(&self) -> std::generator::GenOnce[&Forwarded] { gen &self.inner }
+}
+
+sup Forwarder ext std::ops::drop::Drop {
+    fun drop(self) -> Void {
+        std::console::println("Forwarder.drop")
+        let Forwarder(..) = self
+    }
+}
+
+fun forwarded_off_a_temporary() -> Void {
+    let v = Forwarder(inner=Forwarded(v=1_u64)).v
+    std::console::println("after the statement")
+}
+
 fun is_on_the_right_in_a_loop() -> Void {
     let mut i = 0_u64
     loop i < 2_u64 and mk_opt(750_u64 + i) is Some(val as y) {
@@ -926,6 +961,11 @@ fun main() -> Void {
     exit_two_loops(true, false, false)
     std::console::println("a parenthesised place")
     parenthesised_place()
+    std::console::println("one field disagreed at a join")
+    one_field_disagreed(true)
+    one_field_disagreed(false)
+    std::console::println("forwarded off a temporary")
+    forwarded_off_a_temporary()
     std::console::println("a container field of a type with its own drop")
     container_in_own_drop()
     std::console::println("is in a guard, its temporary on each edge")
@@ -1129,6 +1169,18 @@ a parenthesised place
 dropped 831
 after parens
 dropped 830
+one field disagreed at a join
+dropped 840
+after the join
+dropped 841
+dropped 842
+dropped 840
+after the join
+dropped 841
+dropped 842
+forwarded off a temporary
+Forwarder.drop
+after the statement
 a container field of a type with its own drop
 HoldsVec.drop
 Guarded2.drop

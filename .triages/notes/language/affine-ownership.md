@@ -31,13 +31,15 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
 | A call fold's hoisted temporaries no call took | `OwnedOnPath`, then marked moved | `_FoldDrops` |
 
 - **No drop flags.** A value held on only some of the paths that meet is dropped at the end of each path still holding
-  it, before they meet; after the join it is held on none (`OwnedIn` skips `MaybeInit` / `MaybePartialMoves`). Earlier
-  than Rust's scope-end drop, static. A loop's head is such a join too: the entry, the body's end and each `skip`
-  meet there (every iteration after the first begins from it), and each drops on its way in what another does not
-  hold (`_DropsOnEntry`, `_DropsOnBackEdge`, a `skip`'s `AddDropsAtJoin`), so in the body it is held on none (E8 on a
-  read; an overwrite drops nothing). An `exit` or `skip` aimed at an enclosing loop files itself in that loop's frame
-  on each pass over the inner body, so each inner pass cuts the enclosing frames back to where it found them: only the
-  last pass's entries stand.
+  it, before they meet; after the join it is held on none (`OwnedIn` skips `MaybeInit`). Where they disagree only about
+  parts, each path drops just those parts it holds (the value with everything outside them counted moved,
+  `drop_utils::PathsOutside`), and after the join those parts are gone (a maybe-moved part counts as moved at the end)
+  while what the paths agree on is still held. Earlier than Rust's scope-end drop, static. A loop's head is such a join
+  too: the entry, the body's end and each `skip` meet there (every iteration after the first begins from it), and each
+  drops on its way in what another does not hold (`_DropsOnEntry`, `_DropsOnBackEdge`, a `skip`'s `AddDropsAtJoin`), so
+  in the body it is held on none (E8 on a read; an overwrite drops nothing). An `exit` or `skip` aimed at an enclosing
+  loop files itself in that loop's frame on each pass over the inner body, so each inner pass cuts the enclosing frames
+  back to where it found them: only the last pass's entries stand.
 - **Only enclosing scopes' owners join.** `drop_utils::OwnersAround` starts at the `case`'s or loop's parent: their
   own scope holds `is` bindings that exist only where they matched, and the flow also holds branch-local symbols.
 - **Pending temporaries** live on `ctx->Pending->Held`: a block statement drops what it pushed at its end, a
@@ -57,14 +59,14 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
   moving the branch's own non-borrow bindings, which are still parts of the subject.
 - **Views** (2026-11-24): a name for a part of another value, owning nothing (`regions::IsView`:
   `VariableKind::FlowNarrowing` with `VariableSymbol::ViewRoot`/`ViewSteps`). A subject a pattern narrows is a view of
-  it held as that member (`o.<Some[T]>`, a member step: `type_members::VariantMemberStep`); an `is` binding is a view
-  of the place it was read off (`o.<Some[T]>.val.a`). `regions::PlaceOf` resolves a place rooted at a view to the
-  owner's place, so every check and mark (`mem_utils::ValidateSymbolMemory` marks the owner) sees through it with no
-  forwarding: moving `y.a` partly moves `o` through its member, and `EmitDrop` hands paths under a member to that
-  member, as it hands taken-apart paths (a destructure through a view is taken apart in the owner,
-  `mem_utils::TakeApart`). Binding a view takes nothing (`LocalVariableSingleIdentifierAst::Stage8`). A path into a
-  variant naming no member uses the variant whole. `NarrowsSymbol`, its move/loan chains and the narrowed symbol's
-  copied state are gone.
+  it held as that member (`o.<Some[T]>`, a member step: `type_members::VariantMemberStep`); an `is` binding is a view of
+  the place it was read off (`o.<Some[T]>.val.a`). `regions::PlaceOf` resolves a place rooted at a view to the owner's
+  place, so every check and mark (`mem_utils::ValidateSymbolMemory` marks the owner) sees through it with no forwarding:
+  moving `y.a` partly moves `o` through its member, and `EmitDrop` hands paths under a member to that member, as it
+  hands taken-apart paths (a destructure through a view is taken apart in the owner, `mem_utils::TakeApart`). Binding a
+  view takes nothing (`LocalVariableSingleIdentifierAst::Stage8`); a view cannot be `mut` (E4: it is generated as a
+  copy, so a write would change the copy). A path into a variant naming no member uses the variant whole.
+  `NarrowsSymbol`, its move/loan chains and the narrowed symbol's copied state are gone.
 - **`is` bindings are scoped where the match holds** (2026-11-24): an `is` declares nothing where it stands
   (`IsExpressionAst::Bound`). An `and` whose left operand binds something analyses its right operand in a scope of
   its own (`Scope::IsOperandScope`), declaring what the left operand bound (`expr_utils::BoundWhenTrue`), as does

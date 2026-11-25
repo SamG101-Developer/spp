@@ -162,7 +162,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Clone() const -> Uniqu
   ast->_FoldArgsScope = _FoldArgsScope;
   ast->_FoldTemps = AstCloneVec(_FoldTemps);
   ast->_FoldUnconsumed = _FoldUnconsumed;
-  ast->_FoldDrops = _FoldDrops;
   ast->_OpenFoldPacks = AstCloneVec(_OpenFoldPacks);
   ast->_OpenFoldType = _OpenFoldType;
   ast->_FoldIsVoid = _FoldIsVoid;
@@ -432,16 +431,17 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
     for (auto const &ast : _FoldedAsts) { ast->Stage8_CheckMemory(sm, meta); }
     // A temporary no call took (a receiver or argument only borrowed, or any, when no call reads it) is dropped
     // after the calls: what it still holds, then it is gone.
-    _FoldDrops.clear();
+    auto fold_drops = Vec<drop_utils::OwnedValue>();
     for (auto const &name : _FoldUnconsumed) {
       auto *const sym = sm->CurrentScope->FindVarSymbol(name.get());
       if (sym == nullptr) { continue; }
       auto &state = memory_state::StateOf(*sm->CurrentScope, *sym);
       if (auto value = drop_utils::OwnedOnPath(*sym, state, *sm->CurrentScope, *this, *sm, meta)) {
-        _FoldDrops.emplace_back(std::move(*value));
+        fold_drops.emplace_back(std::move(*value));
         state.MovedBy(*this);
       }
     }
+    drop_utils::SetDropsOn(*this, drop_utils::DropEdge::kFold, std::move(fold_drops));
     for (auto const &pack_name : _OpenFoldPacks) {
       auto *const pack = sm->CurrentScope->FindVarSymbol(pack_name.get());
       auto borrows = false;
@@ -517,7 +517,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     for (auto const &temp : _FoldTemps) { temp->Stage11_CodeGen(sm, meta, ctx); }
     auto results = Vec<llvm::Value*>();
     for (auto const &ast : _FoldedAsts) { results.emplace_back(AstClone(ast)->Stage11_CodeGen(sm, meta, ctx)); }
-    codegen::EmitOuterDrops(_FoldDrops, *this, sm, meta, ctx);
+    codegen::EmitOuterDrops(
+      analyse::utils::drop_utils::DropsOn(*this, analyse::utils::drop_utils::DropEdge::kFold), *this, sm, meta, ctx);
 
     const auto tuple_ref = InferTypeRef(sm, meta).WithoutConvention();
     const auto tuple_sym = tuple_ref.Symbol;

@@ -72,18 +72,6 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
   /// views of its subject, handed on to the statement it is in.
   auto SetDropsBindings(bool patterns) -> void;
 
-  /// Add what the "case"'s join drops on this branch's path to
-  /// "_DropsAtEnd" ("case_utils::ValidateInconsistentMemory").
-  auto AddDropsAtJoin(Vec<analyse::utils::drop_utils::OwnedValue> drops) -> void;
-
-  /// What the "case"'s join drops where this branch is passed over
-  /// after its guard moved values: on the edge where the patterns do
-  /// not match (the guard never ran), and where the guard answers
-  /// false ("case_utils::ValidateInconsistentMemory").
-  auto SetGuardEdgeDrops(
-    Vec<analyse::utils::drop_utils::OwnedValue> on_no_match,
-    Vec<analyse::utils::drop_utils::OwnedValue> on_guard_false) -> void;
-
   /// The states just before and just after the guard ran, as stage
   /// 8 last left them (the patterns' own effects are in both); none
   /// without a guard.
@@ -96,9 +84,9 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
 
 private:
   /// The block an edge passing this branch over leads to: "next_bb",
-  /// or one dropping "drops" first.
+  /// or one dropping what the branch drops at "edge" first.
   auto _EdgeToNext(
-    Vec<analyse::utils::drop_utils::OwnedValue> const &drops, Str const &name, llvm::BasicBlock *next_bb,
+    analyse::utils::drop_utils::DropEdge edge, Str const &name, llvm::BasicBlock *next_bb,
     ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::BasicBlock*;
 
   /// Save the generated combined pattern expressions for
@@ -113,19 +101,14 @@ private:
   /// See "SetDropsBindings". Not carried by "Clone": a copy's "case" sets them again.
   bool _DropsPatternBindings = false;
 
-  /// What is dropped at the body's end: what the branch's bindings
-  /// (and the condition's, "_DropsConditionBindings") still own, then
-  /// what this path holds of values around the "case" that another
-  /// path out of it does not, so the "case"'s end holds each on none.
-  Vec<analyse::utils::drop_utils::OwnedValue> _DropsAtEnd;
-
-  /// See "SetGuardEdgeDrops".
-  Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnNoMatch;
-  Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnGuardFalse;
-
-  /// What the guard's temporaries hold where it answers false, for
-  /// that edge to drop with the rest ("SetGuardEdgeDrops").
-  Vec<analyse::utils::drop_utils::OwnedValue> _GuardTemporariesOnFalse;
+  // Its drops ("drop_utils::DropsOn"): at the body's end ("kEnd"),
+  // what the branch's bindings still own, then what this path holds of
+  // values around the "case" that another path out does not (added by
+  // the "case"'s join, "case_utils::ValidateInconsistentMemory"); and
+  // where the branch is passed over after its guard moved values, on
+  // the edge where the patterns do not match ("kNoMatch") and where
+  // the guard answers false ("kGuardFalse", with what the guard's
+  // temporaries hold: they live on into the body otherwise).
 
   /// See "StateAfterGuard". Not carried by "Clone": read only by the
   /// "case" analysing this branch, straight after.

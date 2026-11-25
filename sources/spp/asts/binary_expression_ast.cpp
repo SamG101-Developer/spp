@@ -45,6 +45,9 @@ import genex;
 import llvm;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::utils::drop_utils, DropEdge);
+use_alias(spp::analyse::utils::drop_utils, DropsOn);
+use_alias(spp::analyse::utils::drop_utils, SetDropsOn);
 use_alias(spp::analyse::scopes, ScopeBlockName);
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, ScopeManager);
@@ -105,9 +108,6 @@ auto spp::asts::BinaryExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Rhs));
   ast->_MappedFn = _MappedFn;
   ast->_ChainTemps = AstCloneVec(_ChainTemps);
-  ast->_DropsOnShortCircuit = _DropsOnShortCircuit;
-  ast->_DropsAfterRhs = _DropsAfterRhs;
-  ast->_DropsRhsTemporaries = _DropsRhsTemporaries;
   ast->_IsCondition = _IsCondition;
   ast->_HeldWhenTrue = _HeldWhenTrue;
   ast->_LogicalAnalysed = _LogicalAnalysed;
@@ -358,7 +358,7 @@ auto spp::asts::BinaryExpressionAst::_NestChainRight() -> void {
   // operand run or skipped alike. Nested to the right, "c" runs on
   // "b"'s path, where what "b" made is still held: the "$is" its
   // "is" bindings view lives to the end of the operand it is made
-  // in ("_DropsRhsTemporaries"), and "c" can read them.
+  // in ("kRhsTemporaries"), and "c" can read them.
   while (true) {
     auto *const inner = Lhs->To<BinaryExpressionAst>();
     if (inner == nullptr or inner->TokOp->TokenType != TokOp->TokenType) { return; }
@@ -406,10 +406,10 @@ auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
     _HeldWhenTrue.clear();
     if (held_when_true) {
       _HeldWhenTrue = rhs_region.Declared();
-      _DropsRhsTemporaries = rhs_region.Held(*Rhs, *sm, meta, HeldWhenTrue(*Rhs));
+      SetDropsOn(*this, DropEdge::kRhsTemporaries, rhs_region.Held(*Rhs, *sm, meta, HeldWhenTrue(*Rhs)));
     }
     else {
-      _DropsRhsTemporaries = rhs_region.End(*Rhs, *sm, meta);
+      SetDropsOn(*this, DropEdge::kRhsTemporaries, rhs_region.End(*Rhs, *sm, meta));
     }
     _JoinShortCircuit(short_circuit, rhs_region.Declared(), *sm, meta);
     return;
@@ -435,8 +435,8 @@ auto spp::asts::BinaryExpressionAst::_JoinShortCircuit(
   analyse::utils::memory_state::ScopeSnapshot const &short_circuit,
   Vec<analyse::scopes::VariableSymbol*> const &rhs_temporaries, ScopeManager &sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
-  _DropsOnShortCircuit.clear();
-  _DropsAfterRhs.clear();
+  SetDropsOn(*this, DropEdge::kShortCircuit, {});
+  SetDropsOn(*this, DropEdge::kAfterRhs, {});
   auto const *const flow = memory_state::FlowOf(*sm.CurrentScope);
   if (flow == nullptr) { return; }
 
@@ -454,8 +454,8 @@ auto spp::asts::BinaryExpressionAst::_JoinShortCircuit(
   }
   auto drops = drop_utils::JoinPaths(
     syms, {{&short_circuit, Lhs.get(), Lhs.get()}, {nullptr, Rhs.get(), Rhs.get()}}, owners, sm, meta);
-  _DropsOnShortCircuit = std::move(drops[0]);
-  _DropsAfterRhs = std::move(drops[1]);
+  SetDropsOn(*this, DropEdge::kShortCircuit, std::move(drops[0]));
+  SetDropsOn(*this, DropEdge::kAfterRhs, std::move(drops[1]));
 }
 
 auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
@@ -498,20 +498,20 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
     *ctx->Context, "logical.join" + uid, func);
 
   // The short-circuit edge drops what only the right operand would
-  // have taken ("_DropsOnShortCircuit"), in a block of its own. The
+  // have taken ("kShortCircuit"), in a block of its own. The
   // edge into the join is taken from where the builder is, as the
   // left operand may have left it in a block of its own making (a
   // "case" on the left of an "and").
   auto short_end_bb = ctx->Builder.GetInsertBlock();
   auto short_bb = join_bb;
-  if (not _DropsOnShortCircuit.empty()) {
+  if (not DropsOn(*this, DropEdge::kShortCircuit).empty()) {
     short_bb = llvm::BasicBlock::Create(*ctx->Context, "logical.short" + uid, func);
   }
   ctx->Builder.CreateCondBr(
     llvm_lhs, is_and ? rhs_bb : short_bb, is_and ? short_bb : rhs_bb);
   if (short_bb != join_bb) {
     ctx->Builder.SetInsertPoint(short_bb);
-    codegen::EmitOuterDrops(_DropsOnShortCircuit, *this, sm, meta, ctx);
+    codegen::EmitOuterDrops(DropsOn(*this, DropEdge::kShortCircuit), *this, sm, meta, ctx);
     short_end_bb = ctx->Builder.GetInsertBlock();
     ctx->Builder.CreateBr(join_bb);
   }
@@ -529,23 +529,23 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   SPP_ASSERT(llvm_rhs->getType()->isIntegerTy(1));
   auto &home = *sm->CurrentScope->TemporaryHome();
   if (_HeldWhenTrue.empty()) {
-    codegen::EndTemporaryRegion(temporaries, home, _DropsRhsTemporaries, Rhs.get(), sm, meta, ctx);
+    codegen::EndTemporaryRegion(temporaries, home, DropsOn(*this, DropEdge::kRhsTemporaries), Rhs.get(), sm, meta, ctx);
   }
   else {
     // Held where the "and" is true: dropped on the right operand's
     // false edge only.
     codegen::EndTemporaryRegion(temporaries, home, {}, Rhs.get(), sm, meta, ctx);
-    if (not _DropsRhsTemporaries.empty() and not ctx->Builder.GetInsertBlock()->hasTerminator()) {
+    if (not DropsOn(*this, DropEdge::kRhsTemporaries).empty() and not ctx->Builder.GetInsertBlock()->hasTerminator()) {
       const auto false_bb = llvm::BasicBlock::Create(*ctx->Context, "logical.rhs_false" + uid, func);
       const auto done_bb = llvm::BasicBlock::Create(*ctx->Context, "logical.rhs_done" + uid, func);
       ctx->Builder.CreateCondBr(llvm_rhs, done_bb, false_bb);
       ctx->Builder.SetInsertPoint(false_bb);
-      codegen::EmitOwnedDrops(home, _DropsRhsTemporaries, Rhs.get(), sm, meta, ctx);
+      codegen::EmitOwnedDrops(home, DropsOn(*this, DropEdge::kRhsTemporaries), Rhs.get(), sm, meta, ctx);
       ctx->Builder.CreateBr(done_bb);
       ctx->Builder.SetInsertPoint(done_bb);
     }
   }
-  codegen::EmitOuterDrops(_DropsAfterRhs, *this, sm, meta, ctx);
+  codegen::EmitOuterDrops(DropsOn(*this, DropEdge::kAfterRhs), *this, sm, meta, ctx);
   const auto rhs_end_bb = ctx->Builder.GetInsertBlock();
   ctx->Builder.CreateBr(join_bb);
 

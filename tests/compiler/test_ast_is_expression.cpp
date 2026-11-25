@@ -269,3 +269,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
   }
 )");
+
+// An "is" binding is a view of its subject, generated as a copy: writing through it ("mut") would change the copy.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  IsExpressionAst,
+  test_invalid_mut_is_binding,
+  SppInvalidMutationError, R"(
+  fun f(mut o: Opt[Str]) -> Void {
+    let b = o is Some(mut val) and val.len() > 0_uz
+  }
+)");

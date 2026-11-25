@@ -378,9 +378,8 @@ protected:
 
   Unique<analyse::utils::annotation_utils::AnnotationInfo> _AnnotationInfo;
 
-  /// What the function's own scope (its parameters) still owns as
-  /// the body runs off its end, dropped there ("OwnedIn").
-  Vec<analyse::utils::drop_utils::OwnedValue> _OwnedAtEnd;
+  // What the function's own scope (its parameters) still owns as the
+  // body runs off its end is dropped there ("kEnd", "drop_utils::DropsOn").
 
   inline static Vec<Pair<FunctionPrototypeAst*, bool>> _PendingDefaults = {};
 

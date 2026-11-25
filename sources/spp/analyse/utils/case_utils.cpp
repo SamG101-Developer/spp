@@ -320,7 +320,8 @@ auto spp::analyse::utils::case_utils::CarryGuardMoves(
   }) | genex::to<Vec>();
   auto drops = drop_utils::JoinPaths(
     changed, {{&before, &branch, &branch}, {&after_guard, branch.Guard.get(), branch.Guard.get()}}, owners, *sm, meta);
-  branch.SetGuardEdgeDrops(std::move(drops[0]), std::move(drops[1]));
+  drop_utils::SetDropsOn(branch, drop_utils::DropEdge::kNoMatch, std::move(drops[0]));
+  drop_utils::AddDropsOn(branch, drop_utils::DropEdge::kGuardFalse, std::move(drops[1]));
   return memory_state::SnapshotSymbols(syms, *sm->CurrentScope);
 }
 
@@ -463,7 +464,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
   for (auto i = 0uz; i < leaving_paths.size(); ++i) {
     drop_utils::SortNewestFirst(path_drops[i]);
     if (leaving_paths[i].first == nullptr) { fall_through_drops = std::move(path_drops[i]); }
-    else { leaving_paths[i].first->AddDropsAtJoin(std::move(path_drops[i])); }
+    else { drop_utils::AddDropsOn(*leaving_paths[i].first, drop_utils::DropEdge::kEnd, std::move(path_drops[i])); }
   }
 
   // The loans held after the "case", likewise.

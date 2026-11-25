@@ -76,7 +76,6 @@ auto spp::asts::AssignmentStatementAst::Clone() const -> Unique<Ast> {
     AstCloneVec(Lhs),
     AstClone(TokAssign),
     AstCloneVec(Rhs));
-  a->_DropsOld = _DropsOld;
   return a;
 }
 
@@ -196,7 +195,13 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
   // generation does: in "a, b = b, a" the second value reads the
   // "a" the statement started with, so it is moved there, and no
   // old value it took is dropped by the write over "a".
-  _DropsOld.assign(Lhs.size(), Nullopt);
+  // What each write replaces is dropped first ("kOverwrite", held by the target: none, or the one value).
+  const auto drops_old = [&](const std::size_t i, Opt<drop_utils::OwnedValue> old) {
+    auto drops = Vec<drop_utils::OwnedValue>();
+    if (old.has_value()) { drops.emplace_back(std::move(*old)); }
+    drop_utils::SetDropsOn(*Lhs[i], drop_utils::DropEdge::kOverwrite, std::move(drops));
+  };
+  for (auto i = 0uz; i < Lhs.size(); ++i) { drops_old(i, Nullopt); }
   auto &loans = memory_state::LoansOf(*sm->CurrentScope);
   const auto targets = genex::views::zip(
     genex::views::iota(0uz, Lhs.size()), Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms);
@@ -270,7 +275,7 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
       mem_utils::ValidateSymbolMemory(
         *lhs_expr, *TokAssign, *sm, meta,
         {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false, .IsPlaceWritten = true});
-      _DropsOld[i] = drop_utils::OwnedBeforeWrite(lhs_sym, *lhs_expr, *sm, meta);
+      drops_old(i, drop_utils::OwnedBeforeWrite(lhs_sym, *lhs_expr, *sm, meta));
       lhs_state().RemovePartialMoves(*lhs_expr, sm->CurrentScope);
     }
 
@@ -282,7 +287,7 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
           borrows::RaiseIfConflictedUse(*borrow_sym, *sm->CurrentScope);
         }
       }
-      _DropsOld[i] = drop_utils::OwnedBeforeWrite(nullptr, *lhs_expr, *sm, meta);
+      drops_old(i, drop_utils::OwnedBeforeWrite(nullptr, *lhs_expr, *sm, meta));
     }
 
     // Otherwise, resolve the moved identifier's memory status
@@ -303,9 +308,7 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
           *lhs_sym->Name, *TokAssign,
           *(state.AstInitialization != nullptr ? state.AstInitialization : state.AstMoved), "immutable sym"));
 
-      if (auto old = drop_utils::OwnedOnPath(*lhs_sym, lhs_state(), *sm->CurrentScope, *this, *sm, meta)) {
-        _DropsOld[i] = std::move(*old);
-      }
+      drops_old(i, drop_utils::OwnedOnPath(*lhs_sym, lhs_state(), *sm->CurrentScope, *this, *sm, meta));
       lhs_state().InitializedBy(*this);
     }
 
@@ -327,7 +330,8 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
 
 auto spp::asts::AssignmentStatementAst::DropsOldAt(
   const std::size_t i) const -> bool {
-  return i < _DropsOld.size() and _DropsOld[i].has_value();
+  return i < Lhs.size()
+    and not analyse::utils::drop_utils::DropsOn(*Lhs[i], analyse::utils::drop_utils::DropEdge::kOverwrite).empty();
 }
 
 auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
@@ -409,9 +413,10 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
     if (llvm_lhs_locs[i] == nullptr and llvm_rhs_vals[i] == nullptr) { continue; }
     SPP_ASSERT(llvm_lhs_locs[i] != nullptr and llvm_rhs_vals[i] != nullptr);
     if (DropsOldAt(i)) {
+      using analyse::utils::drop_utils::DropEdge;
+      auto const &old = analyse::utils::drop_utils::DropsOn(*Lhs[i], DropEdge::kOverwrite)[0];
       codegen::EmitDrop(
-        Lhs[i]->InferTypeRef(sm, meta).WithoutConvention(), llvm_lhs_locs[i], sm, meta, ctx, _DropsOld[i]->Moved,
-        _DropsOld[i]->TakenApart);
+        Lhs[i]->InferTypeRef(sm, meta).WithoutConvention(), llvm_lhs_locs[i], sm, meta, ctx, old.Moved, old.TakenApart);
     }
     ctx->Builder.CreateStore(llvm_rhs_vals[i], llvm_lhs_locs[i]);
 

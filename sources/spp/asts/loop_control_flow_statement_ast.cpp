@@ -31,6 +31,9 @@ import genex;
 import llvm;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::utils::drop_utils, DropEdge);
+use_alias(spp::analyse::utils::drop_utils, DropsOn);
+use_alias(spp::analyse::utils::drop_utils, SetDropsOn);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, CompilerMetaData);
@@ -66,7 +69,6 @@ auto spp::asts::LoopControlFlowStatementAst::Clone() const -> Unique<Ast> {
     AstClone(Expr));
   p->_ExprIsNever = _ExprIsNever;
   p->_OwnedAtExit = _OwnedAtExit;
-  p->_DropsAfterExit = _DropsAfterExit;
   return p;
 }
 
@@ -129,7 +131,7 @@ auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
 auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // An "exit"'s are set by its loop's join, after this.
-  _DropsAfterExit.clear();
+
   //
   IMPORT_UTILS;
   auto &loops = memory_state::FlowOf(*sm->CurrentScope)->Loops;
@@ -186,8 +188,10 @@ auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
   const auto exit_point = TokSeqExit.empty()
     ? static_cast<Ast const*>(TokSkip.get())
     : static_cast<Ast const*>(TokSeqExit.back().get());
+  auto iteration = Vec<drop_utils::OwnedValue>();
   _OwnedAtExit = drop_utils::OwnedUpToLoop(
-    *exit_point, TokSeqExit.size(), TokSkip != nullptr, *sm, meta, _DropsAfterExit);
+    *exit_point, TokSeqExit.size(), TokSkip != nullptr, *sm, meta, iteration);
+  SetDropsOn(*this, DropEdge::kAfterExit, std::move(iteration));
 }
 
 auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
@@ -229,7 +233,7 @@ auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
   codegen::EmitScopeExit(
       has_skip ? target.LoopScope : target.LoopScope->Parent, sm, meta, ctx, _OwnedAtExit);
 
-  codegen::EmitOuterDrops(_DropsAfterExit, *this, sm, meta, ctx);
+  codegen::EmitOuterDrops(DropsOn(*this, DropEdge::kAfterExit), *this, sm, meta, ctx);
 
   // A "skip" starts the next iteration at the condition check.
   // It never has a value, so no phi node is involved.
@@ -276,12 +280,6 @@ auto spp::asts::LoopControlFlowStatementAst::InferTypeRef(
   return Expr != nullptr
     ? Expr->InferTypeRef(sm, meta)
     : TypeRef::Of(*VOID, *sm->CurrentScope);
-}
-
-auto spp::asts::LoopControlFlowStatementAst::AddDropsAtJoin(
-  Vec<analyse::utils::drop_utils::OwnedValue> drops) -> void {
-  _DropsAfterExit.append_range(std::move(drops));
-  analyse::utils::drop_utils::SortNewestFirst(_DropsAfterExit);
 }
 
 SPP_MOD_END

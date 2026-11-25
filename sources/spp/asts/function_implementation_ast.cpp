@@ -33,7 +33,6 @@ auto spp::asts::FunctionImplementationAst::Clone() const -> Unique<Ast> {
     AstClone(TokL),
     AstCloneVec(Members),
     AstClone(TokR));
-  ast->_OwnedAtEnd = _OwnedAtEnd;
   return ast;
 }
 

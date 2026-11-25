@@ -28,7 +28,9 @@ namespace spp::asts {
   inline auto AstClone(Unique<T> const &ast) -> Unique<std::remove_cvref_t<T>> {
     if (ast == nullptr) { return nullptr; }
     using ResultT = std::remove_cvref_t<T>;
-    return Unique<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
+    auto out = Unique<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
+    out->CopyEdgeStore(*ast);
+    return out;
   }
 
   SPP_EXP_FUN template <typename T>
@@ -36,7 +38,9 @@ namespace spp::asts {
   inline auto AstClone(Shared<T> const &ast) -> Unique<std::remove_cvref_t<T>> {
     if (ast == nullptr) { return nullptr; }
     using ResultT = std::remove_cvref_t<T>;
-    return Unique<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
+    auto out = Unique<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
+    out->CopyEdgeStore(*ast);
+    return out;
   }
 
   SPP_EXP_FUN template <typename T>
@@ -44,7 +48,9 @@ namespace spp::asts {
   inline auto AstClone(T *ast) -> Unique<std::remove_cvref_t<T>> {
     if (ast == nullptr) { return nullptr; }
     using ResultT = std::remove_cvref_t<T>;
-    return Unique<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
+    auto out = Unique<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
+    out->CopyEdgeStore(*ast);
+    return out;
   }
 
   SPP_EXP_FUN template <typename T>
@@ -52,7 +58,9 @@ namespace spp::asts {
   inline auto AstCloneShared(Shared<T> const &ast) -> Shared<std::remove_cvref_t<T>> {
     if (ast == nullptr) { return nullptr; }
     using ResultT = std::remove_cvref_t<T>;
-    return Shared<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
+    auto out = Shared<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
+    out->CopyEdgeStore(*ast);
+    return out;
   }
 
   SPP_EXP_FUN template <typename T>
@@ -60,7 +68,9 @@ namespace spp::asts {
   inline auto AstCloneShared(T *ast) -> Shared<std::remove_cvref_t<T>> {
     if (ast == nullptr) { return nullptr; }
     using ResultT = std::remove_cvref_t<T>;
-    return Shared<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
+    auto out = Shared<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
+    out->CopyEdgeStore(*ast);
+    return out;
   }
 
   SPP_EXP_FUN template <typename T>

@@ -89,14 +89,10 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
   auto SetDropsDiscarded(std::size_t i) -> void;
 
 protected:
-  /// What this scope still owns at its closing brace, dropped there
-  /// ("drop_utils::EndRegion").
-  Vec<analyse::utils::drop_utils::OwnedValue> _OwnedAtEnd;
-
-  /// What the "$" temporaries each member made still own at its end,
-  /// dropped there ("drop_utils::TemporaryRegion"), one entry per
-  /// member.
-  Vec<Vec<analyse::utils::drop_utils::OwnedValue>> _StatementDrops;
+  // Its drops ("drop_utils::DropsOn"): what this scope still owns at
+  // its closing brace ("kEnd", "drop_utils::EndRegion"); and each
+  // member's, at its end, what the "$" temporaries it made still own
+  // ("kStatementEnd", held by the member, "drop_utils::TemporaryRegion").
 
   /// See "SetBoundOnEntry".
   Vec<Shared<VariableSymbol>> _BoundOnEntry;

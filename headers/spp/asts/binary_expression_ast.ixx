@@ -127,16 +127,13 @@ private:
   /// A logical operator's right operand runs on one path only, and
   /// the short circuit is the other: where they meet, what one holds
   /// and the other does not is dropped on the path still holding it
-  /// ("flag and take(x)" drops "x" where "flag" is false).
-  Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnShortCircuit;
-  Vec<analyse::utils::drop_utils::OwnedValue> _DropsAfterRhs;
-
-  /// The hidden temporaries the right operand declares ("$is" for an
-  /// "is" subject that is no place) exist only on its path: they are
-  /// dropped at its end, and the join never sees them. As a condition
-  /// ("MarkCondition"), they are dropped only where it answers false,
-  /// and held on where it answers true ("_HeldWhenTrue").
-  Vec<analyse::utils::drop_utils::OwnedValue> _DropsRhsTemporaries;
+  /// ("flag and take(x)" drops "x" where "flag" is false: the edges
+  /// "kShortCircuit", "kAfterRhs"). The hidden temporaries the right
+  /// operand declares ("$is" for an "is" subject that is no place)
+  /// exist only on its path: dropped at its end ("kRhsTemporaries"),
+  /// the join never sees them. As a condition ("MarkCondition"), they
+  /// are dropped only where it answers false, and held on where it
+  /// answers true ("_HeldWhenTrue").
   bool _IsCondition = false;
   Vec<analyse::scopes::VariableSymbol*> _HeldWhenTrue;
 

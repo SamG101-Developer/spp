@@ -74,7 +74,7 @@ namespace spp::analyse::utils::case_utils {
   /// about is no error until it is used ("maybe" states). A value
   /// of an enclosing scope held on only some paths is dropped on
   /// each path still holding it: each branch is given its own
-  /// ("AddDropsAtJoin"), and what the path falling through every
+  /// ("drop_utils::DropEdge::kEnd"), and what the path falling through every
   /// branch drops is returned. The temporaries the condition made
   /// ("condition_temporaries", "drop_utils::TemporaryRegion") are
   /// held on every path out, each dropping what it still holds, but

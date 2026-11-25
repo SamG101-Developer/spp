@@ -73,6 +73,8 @@ import spp.utils.strings;
 import genex;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::utils::drop_utils, DropEdge);
+use_alias(spp::analyse::utils::drop_utils, DropsOn);
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeId);
@@ -705,8 +707,7 @@ auto spp::asts::FunctionPrototypeAst::_CheckBodyMemory(
   // parameters, so there is nothing to hold to the rule.
   if (BuiltinAnnotation == nullptr and FfiAnnotation == nullptr and AbstractAnnotation == nullptr
     and not Impl->Diverges(sm, meta)) {
-    _OwnedAtEnd = drop_utils::EndRegion(
-      *sm->CurrentScope, *Impl, *sm, meta);
+    SetDropsOn(*this, DropEdge::kEnd, drop_utils::EndRegion(*sm->CurrentScope, *Impl, *sm, meta));
   }
 }
 
@@ -978,7 +979,6 @@ auto spp::asts::FunctionPrototypeAst::_CloneStateInto(
   ast.InlineAnnotation = InlineAnnotation;
   ast.Visibility = Visibility;
   ast._LlvmFn = _LlvmFn;
-  ast._OwnedAtEnd = _OwnedAtEnd;
   for (auto const &a : ast.Annotations) { a->SetAstCtx(&ast); }
 }
 
