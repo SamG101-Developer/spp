@@ -147,9 +147,16 @@ private:
   /// stands.
   analyse::scopes::Scope *_RhsScope = nullptr;
 
-  /// Walk the right operand in its scope ("_RhsScope"): on entering
-  /// an "and"'s, in every walk, declare what its left operand bound
-  /// where it is true.
+  /// Whether "_RhsScope" is the next scope on the walk "sm" makes.
+  SPP_ATTR_NODISCARD auto _RhsScopeIsNext(ScopeManager const &sm) const -> bool;
+
+  /// Walk the right operand in its scope ("_RhsScope"), declaring
+  /// there what its left operand bound where it is true: "walk" is
+  /// given the manager to walk it with. That is "sm", entering the
+  /// scope, when it is the next on the walk. Otherwise the operator is
+  /// evaluated again out of order (a boolean "case"'s condition, re-read
+  /// at compile time in its branch), and a manager standing at the
+  /// scope walks it.
   auto _InRhsScope(ScopeManager &sm, auto &&walk) const -> void;
 
   /// An "and"'s right operand's scope holds what its left operand
