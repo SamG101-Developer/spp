@@ -452,6 +452,10 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::_Resolve(
   return _Member;
 }
 
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::GetFwdAccess() const -> PostfixExpressionAst* {
+  return _MappedFwd.get();
+}
+
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::GetFwdReceiver() const -> PostfixExpressionAst* {
   // The lhs of the rewritten access is the forwarding call
   // ("x.fwd_ref()") applied to the original lhs.

@@ -64,6 +64,10 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst fi
   /// invoked on.
   SPP_ATTR_NODISCARD auto GetFwdReceiver() const -> PostfixExpressionAst*;
 
+  /// The whole access as rewritten through forwarding ("x.fwd_ref().n"),
+  /// if it was: what is generated in its place, so what is checked too.
+  SPP_ATTR_NODISCARD auto GetFwdAccess() const -> PostfixExpressionAst*;
+
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
   /// Read off a temporary ("mk().a"), the rest of it is dropped as

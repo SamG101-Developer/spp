@@ -120,6 +120,13 @@ auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
       auto bindings = Vec<VariableSymbol*>();
       for (auto const &x : destructure_syms) {
         if ((x->Kind != VariableKind::Local and x->Kind != VariableKind::Temporary) or x->IsBorrow()) { continue; }
+
+        // A view names its subject's part but is generated as a copy of
+        // it: written to or lent "&mut", it would change the copy (one
+        // never dropped) and not the subject. Bind "&mut", or write
+        // through the subject.
+        RaiseIf<SppInvalidMutationError>(
+          x->IsMutable, ERR_ARGS(*x->Name, *this, *x->Name, "\"is\" binding (a view of its subject)"));
         x->Kind = VariableKind::FlowNarrowing;
         bindings.emplace_back(x);
       }

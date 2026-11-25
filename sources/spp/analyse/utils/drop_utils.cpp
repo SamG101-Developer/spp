@@ -67,10 +67,19 @@ namespace spp::analyse::utils::drop_utils {
   static auto IsOwnedIn(
     VariableSymbol const &sym, memory_state::MemoryState const &state, ScopeManager const &sm) -> bool;
 
+  /// The paths of the parts of a value of type "root" outside every one
+  /// of "keep" (field names, and a variant's member steps,
+  /// "type_members::VariantMemberStep"): with them counted as moved,
+  /// destroying the value destroys only the parts in "keep".
+  static auto PathsOutside(
+    TypeRef const &root, Scope const &scope, Vec<Vec<spp::utils::InternedId>> const &keep)
+    -> Vec<Vec<spp::utils::InternedId>>;
+
   /// Where paths meet, what the path whose state of "sym" is "path"
-  /// still holds of it, for that path to drop at its end: none unless
-  /// "sym" is one of "owners" and the paths disagree about it
-  /// ("joined" holds it on only some). "at" is where, for an error.
+  /// still holds of what they disagree about, for that path to drop at
+  /// its end: none unless "sym" is one of "owners" and the paths
+  /// disagree about it (the whole, or parts of it: only those parts are
+  /// dropped). "at" is where, for an error.
   static auto OwnedOnJoinPath(
     VariableSymbol const &sym, memory_state::MemoryState const &joined, memory_state::MemoryState const &path,
     Map<VariableSymbol const*, Scope const*> const &owners, Ast const &at,
@@ -478,10 +487,12 @@ auto spp::analyse::utils::drop_utils::OwnedOnPath(
   Ast const &at, ScopeManager &sm, CompilerMetaData *meta) -> Opt<OwnedValue> {
   if (not IsOwnedIn(sym, state, sm)) { return Nullopt; }
 
-  // Held on only some of the paths that met before this one: each path that still held it dropped it before they met.
-  if (state.MaybeInit.has_value() or not state.MaybePartialMoves.empty()) { return Nullopt; }
-
-  auto moved = MovedPathsUnder(state.PartialMoves, {});
+  // Held on only some of the paths that met before this one: each path that still held it dropped it before they met,
+  // the whole of it, or a part ("OwnedOnJoinPath"), which is then gone on every path.
+  if (state.MaybeInit.has_value()) { return Nullopt; }
+  auto gone = state.PartialMoves;
+  for (auto const &maybe : state.MaybePartialMoves) { gone.emplace_back(maybe.Part); }
+  auto moved = MovedPathsUnder(gone, {});
   if (not moved.has_value()) { return Nullopt; }
 
   // What a destructure took apart is dropped field by field, its type's own "drop" not run, and so is "self" left at
@@ -542,7 +553,57 @@ auto spp::analyse::utils::drop_utils::OwnedOnJoinPath(
   if (not joined.MaybeInit.has_value() and joined.MaybePartialMoves.empty()) { return Nullopt; }
   const auto owner = owners.find(&sym);
   if (owner == owners.end()) { return Nullopt; }
-  return OwnedOnPath(sym, path, *owner->second, at, sm, meta);
+  if (joined.MaybeInit.has_value()) { return OwnedOnPath(sym, path, *owner->second, at, sm, meta); }
+
+  // The paths disagree only about parts: this path drops those of them it still holds, and nothing else, so what they
+  // agree it holds is still held after the join (it is the value less those parts: everything outside them counts as
+  // moved here, "PathsOutside").
+  auto drops = Vec<Vec<spp::utils::InternedId>>();
+  for (auto const &[part, _] : joined.MaybePartialMoves) {
+    const auto gone_here = genex::any_of(path.PartialMoves, [&](auto const &move) {
+      return regions::Relate(*move.Of, *part.Of) == regions::MemRegionRelation::Contains;
+    }) or genex::any_of(path.MaybePartialMoves, [&](auto const &maybe) { return *maybe.Part.Of == *part.Of; });
+    if (gone_here) { continue; }
+    if (genex::any_of(part.Of->Steps, [](auto const &step) { return step.Opaque; })) { return Nullopt; }
+    drops.emplace_back(part.Of->Steps | genex::views::transform([](auto const &step) { return step.Name; })
+      | genex::to<Vec>());
+  }
+  if (drops.empty()) { return Nullopt; }
+  auto value = OwnedOnPath(sym, path, *owner->second, at, sm, meta);
+  if (value.has_value()) {
+    value->Moved.append_range(PathsOutside(sym.TypeRefIn(*owner->second), *owner->second, drops));
+  }
+  return value;
+}
+
+auto spp::analyse::utils::drop_utils::PathsOutside(
+  TypeRef const &root, Scope const &scope, Vec<Vec<spp::utils::InternedId>> const &keep)
+  -> Vec<Vec<spp::utils::InternedId>> {
+  auto outside = Vec<Vec<spp::utils::InternedId>>();
+  auto path = Vec<spp::utils::InternedId>();
+  const auto starts_with = [](auto const &whole, auto const &prefix) {
+    return whole.size() >= prefix.size() and std::equal(prefix.begin(), prefix.end(), whole.begin());
+  };
+  const auto walk = [&](auto const &self, TypeRef const &ref) -> void {
+    auto children = Vec<Pair<spp::utils::InternedId, TypeRef>>();
+    for (auto const &member : type_members::VariantMemberRefs(ref, scope)) {
+      children.emplace_back(type_members::VariantMemberStep(member), member);
+    }
+    if (children.empty()) {
+      for (auto const &part : type_members::GetAllParts(ref, scope, true)) {
+        children.emplace_back(part.Step->NameId(), part.Ref);
+      }
+    }
+    for (auto const &[step, child] : children) {
+      path.emplace_back(step);
+      if (genex::any_of(keep, [&](auto const &kept) { return kept == path; })) {}
+      else if (genex::any_of(keep, [&](auto const &kept) { return starts_with(kept, path); })) { self(self, child); }
+      else { outside.emplace_back(path); }
+      path.pop_back();
+    }
+  };
+  if (genex::none_of(keep, [](auto const &kept) { return kept.empty(); })) { walk(walk, root); }
+  return outside;
 }
 
 auto spp::analyse::utils::drop_utils::ReleaseOwnedLoans(

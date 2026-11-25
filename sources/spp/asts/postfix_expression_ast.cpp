@@ -16,6 +16,8 @@ import spp.analyse.utils.regions;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.function_call_argument_keyword_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
@@ -283,6 +285,19 @@ auto spp::asts::PostfixExpressionAst::_TakeFieldsOffTemporary(
   // it if it is a copy or only borrowed ("ReadByBorrow"). The path leaves a hole in every value it runs through,
   // which is E106 for one with its own "drop", as for a named value.
   if (not drop_utils::IsTemporary(*first->Lhs, sm, meta)) { return; }
+
+  // Reached by forwarding ("mk().n", "n" a field of what "mk()" forwards to), the read is through the borrow the
+  // forwarding call hands back: nothing is taken off the temporary, which that call borrows as its "self", and drops
+  // as any temporary argument it borrows.
+  auto const *const first_read = first->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
+  if (auto *const fwd_call = first_read->GetFwdReceiver(); fwd_call != nullptr) {
+    if (auto const *const call = fwd_call->Op->To<PostfixExpressionOperatorFunctionCallAst>(); call != nullptr) {
+      for (auto *const arg : call->FnArgGroup->GetKeywordArgs()) {
+        if (arg->Name->Val == "self") { arg->DropsTemporary = true; }
+      }
+    }
+    return;
+  }
   auto &rest = first->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()->DropsReceiverRest;
   const auto read_by_borrow = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()->ReadByBorrow;
   if (read_by_borrow or not InferTypeRef(&sm, meta).IsMoveOnly()) {
