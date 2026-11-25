@@ -84,6 +84,7 @@ auto spp::asts::CaseExpressionBranchAst::Clone() const -> Unique<Ast> {
   cloned->_DropsOnGuardFalse = _DropsOnGuardFalse;
   cloned->_GuardTemporariesOnFalse = _GuardTemporariesOnFalse;
   cloned->_KeepsTemporary = _KeepsTemporary;
+  cloned->_DropsPatternBindings = _DropsPatternBindings;
   return cloned;
 }
 

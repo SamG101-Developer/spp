@@ -67,6 +67,7 @@ auto spp::asts::IsExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Rhs));
   ast->_MappedFn = _MappedFn;
   ast->_SubjectLet = AstClone(_SubjectLet);
+  ast->_Bound = _Bound;
   return ast;
 }
 

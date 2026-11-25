@@ -59,8 +59,9 @@ SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  /// See "_DropsAfterExit" (an "exit"'s, set by its loop's join).
-  auto SetDropsAtJoin(Vec<analyse::utils::drop_utils::OwnedValue> drops) -> void;
+  /// See "_DropsAfterExit": added by its loop's joins (an "exit"'s at
+  /// the loop's end, a "skip"'s at its head).
+  auto AddDropsAtJoin(Vec<analyse::utils::drop_utils::OwnedValue> drops) -> void;
 
 private:
   /// Whether the exited value is "!", found when it is analysed.
@@ -75,9 +76,10 @@ private:
   /// Dropped once the scopes are left ("_OwnedAtExit"): for an
   /// "exit", what its path holds of values around the loop it leaves
   /// that another path out does not (the loop's join,
-  /// "SetDropsAtJoin"); for a "skip", what the iteration it ends
-  /// still holds in the loop's own scope (its condition's "is"
-  /// bindings and temporaries).
+  /// "AddDropsAtJoin"); for a "skip", what the iteration it ends
+  /// still holds in the loop's own scope (its condition's
+  /// temporaries), and what it holds of values around the loop that
+  /// another way into the loop's head does not (the head's join).
   Vec<analyse::utils::drop_utils::OwnedValue> _DropsAfterExit;
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;

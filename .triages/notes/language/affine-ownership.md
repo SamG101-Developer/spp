@@ -32,8 +32,10 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
 
 - **No drop flags.** A value held on only some of the paths that meet is dropped at the end of each path still holding
   it, before they meet; after the join it is held on none (`OwnedIn` skips `MaybeInit` / `MaybePartialMoves`). Earlier
-  than Rust's scope-end drop, static. The loop head join records none: a value held there on some paths only cannot be
-  used in the body without E8.
+  than Rust's scope-end drop, static. A loop's head is such a join too: the entry, the body's end and each `skip`
+  meet there (every iteration after the first begins from it), and each drops on its way in what another does not
+  hold (`_DropsOnEntry`, `_DropsOnBackEdge`, a `skip`'s `AddDropsAtJoin`), so in the body it is held on none (E8 on a
+  read; an overwrite drops nothing).
 - **Only enclosing scopes' owners join.** `drop_utils::OwnersAround` starts at the `case`'s or loop's parent: their
   own scope holds `is` bindings that exist only where they matched, and the flow also holds branch-local symbols.
 - **Pending temporaries** live on `ctx->Pending->Held`: a block statement drops what it pushed at its end, a

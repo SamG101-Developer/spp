@@ -43,10 +43,12 @@ use_alias(spp::asts::meta, CompilerMetaData);
 namespace spp::analyse::utils::mem_utils {
   /// Raise if using "sym" here breaks a loan: one of it (held by
   /// a coroutine, a future, a closure, or the binding a yielded
-  /// or indexed borrow went to), or one it holds itself.
+  /// or indexed borrow went to), or one it holds itself. "named" is
+  /// what the use names: "sym" itself, or a view of it, whose being
+  /// a borrow is what says one is passed on.
   static auto RaiseIfBadEscapingBorrow(
-    VariableSymbol const &sym, Ast const &value_ast, Ast const &move_ast, const bool moves_value,
-    SymbolMemoryOptions const &options, ScopeManager const &sm) -> void;
+    VariableSymbol const &sym, VariableSymbol const &named, Ast const &value_ast, Ast const &move_ast,
+    bool moves_value, SymbolMemoryOptions const &options, ScopeManager const &sm) -> void;
 
 
   /// Raise if "sym" was initialized, moved, partially moved,
@@ -61,8 +63,8 @@ namespace spp::analyse::utils::mem_utils {
 
 /// [CHECKED]
 auto spp::analyse::utils::mem_utils::RaiseIfBadEscapingBorrow(
-  VariableSymbol const &sym, Ast const &value_ast, Ast const &move_ast, const bool moves_value,
-  SymbolMemoryOptions const &options, ScopeManager const &sm) -> void {
+  VariableSymbol const &sym, VariableSymbol const &named, Ast const &value_ast, Ast const &move_ast,
+  const bool moves_value, SymbolMemoryOptions const &options, ScopeManager const &sm) -> void {
   if (not options.CheckMove) { return; }
   auto const *const scope = sm.CurrentScope;
   auto &loans = memory_state::LoansOf(*scope);
@@ -103,7 +105,7 @@ auto spp::analyse::utils::mem_utils::RaiseIfBadEscapingBorrow(
   // borrow, a borrow a generator yielded) only passes the
   // borrow on, to whatever it is given to ("TransferLoans").
   const auto holds = memory_state::LoansHeldBy(loans, sym);
-  const auto is_borrow = sym.IsBorrow();
+  const auto is_borrow = named.IsBorrow();
 
   // A borrow binding passed on somewhere other than a call (which holds it only while it runs) - a block's or a
   // branch's result - leaves its loans with nothing tracking where the borrow went: they are live from here on.
@@ -196,6 +198,7 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   // A view reached through a borrow (a borrowed member: "case a of {
   // is &A(..) }") is behind that borrow, though its owner is not.
   auto view_place = Opt<regions::Place>();
+  auto const &named = *var_sym;
   auto const *where_borrowed = var_sym->MemInfo->AstBorrowed;
   for (auto const *link = var_sym; where_borrowed == nullptr and regions::IsView(*link); link = link->ViewRoot) {
     where_borrowed = link->ViewRoot->MemInfo->AstBorrowed;
@@ -245,7 +248,7 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   // borrows being moved.
   RaiseIfInconsistent(*var_sym, value_ast, options, sm.CurrentScope);
   RaiseIfMoved(*var_sym, value_ast, sm.CurrentScope);
-  RaiseIfBadEscapingBorrow(*var_sym, value_ast, move_ast, moves_value, options, sm);
+  RaiseIfBadEscapingBorrow(*var_sym, named, value_ast, move_ast, moves_value, options, sm);
 
   // Check we aren't trying to move a comptime constant
   // (unless copyable).

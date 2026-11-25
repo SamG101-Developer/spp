@@ -110,6 +110,8 @@ auto spp::asts::BinaryExpressionAst::Clone() const -> Unique<Ast> {
   ast->_DropsRhsTemporaries = _DropsRhsTemporaries;
   ast->_IsCondition = _IsCondition;
   ast->_HeldWhenTrue = _HeldWhenTrue;
+  ast->_LogicalAnalysed = _LogicalAnalysed;
+  ast->_RhsScope = _RhsScope;
   ast->_OpenPack = AstClone(_OpenPack);
   ast->_OpenPackMoves = _OpenPackMoves;
   ast->Source = Source;

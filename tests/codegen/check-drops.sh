@@ -693,6 +693,19 @@ fun is_on_the_right_read_in_a_case_branch(flag: Bool, n: U64) -> Void {
     }
 }
 
+# What the loop is entered holding and the body moves is dropped on the way in: every iteration (and none) starts
+# from the head, where the entry and the body's end meet.
+fun reassigned_then_moved_in_a_loop(n: U64) -> Void {
+    let mut x = Noisy(n=810_u64)
+    let mut i = 0_u64
+    loop i < n {
+        x = Noisy(n=811_u64 + i)
+        let t = takes(x)
+        i = i + 1_u64
+    }
+    std::console::println("after loop")
+}
+
 fun is_on_the_right_in_a_loop() -> Void {
     let mut i = 0_u64
     loop i < 2_u64 and mk_opt(750_u64 + i) is Some(val as y) {
@@ -883,6 +896,9 @@ fun main() -> Void {
     is_on_the_right_read_in_a_case_branch(false, 791_u64)
     is_on_the_right_read_in_a_case_branch(true, 790_u64)
     is_on_the_right_read_in_a_case_branch(true, 792_u64)
+    std::console::println("reassigned then moved in a loop, two trips and none")
+    reassigned_then_moved_in_a_loop(2_u64)
+    reassigned_then_moved_in_a_loop(0_u64)
     std::console::println("a container field of a type with its own drop")
     container_in_own_drop()
     std::console::println("is in a guard, its temporary on each edge")
@@ -1070,6 +1086,13 @@ dropped 790
 case false
 case true
 dropped 792
+reassigned then moved in a loop, two trips and none
+dropped 810
+dropped 811
+dropped 812
+after loop
+dropped 810
+after loop
 a container field of a type with its own drop
 HoldsVec.drop
 Guarded2.drop

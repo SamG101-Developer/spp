@@ -166,7 +166,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
 
   // An "is" binding is a view of the part it is read off (its owner keeps it, "regions::IsView"): binding it takes
   // nothing, so the part only has to be there to read.
-  const auto takes = Conv == nullptr and not regions::IsView(*_Symbol);
+  auto const *const binding = _Binding(sm);
+  const auto takes = Conv == nullptr and (binding == nullptr or not regions::IsView(*binding));
   mem_utils::ValidateSymbolMemory(
     *meta->LetStatementValue, *this, *sm, meta,
     {.CheckMove = takes, .CheckMoveFromBorrowedCtx = takes, .MarkMoves = takes});

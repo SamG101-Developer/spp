@@ -102,6 +102,7 @@ auto spp::asts::InnerScopeExpressionAst::Clone() const -> Unique<Ast> {
   i->_Scope = _Scope;
   i->_OwnedAtEnd = _OwnedAtEnd;
   i->_StatementDrops = _StatementDrops;
+  i->_BoundOnEntry = _BoundOnEntry;
   i->_DropsDiscarded = _DropsDiscarded;
   i->ValueDiscarded = ValueDiscarded;
   return i;

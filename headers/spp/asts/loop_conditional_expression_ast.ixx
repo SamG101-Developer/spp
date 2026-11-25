@@ -59,7 +59,15 @@ private:
   /// loop each is held on no path.
   Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnCondEnd;
 
-  /// What the condition's "is" bindings still own at the body's end,
-  /// dropped there before the next iteration binds them afresh.
+  /// What the condition's temporaries still own at the body's end,
+  /// dropped there before the next iteration makes them afresh.
   Vec<analyse::utils::drop_utils::OwnedValue> _IterationDrops;
+
+  /// The loop's head is where its entry and its ways back round (the
+  /// body's end, each "skip") meet: what one holds, of values around
+  /// the loop, that another does not is dropped on each still holding
+  /// it, before they meet ("drop_utils::JoinPaths"). The entry's and
+  /// the body end's ("skip"s add theirs to the "skip").
+  Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnEntry;
+  Vec<analyse::utils::drop_utils::OwnedValue> _DropsOnBackEdge;
 };

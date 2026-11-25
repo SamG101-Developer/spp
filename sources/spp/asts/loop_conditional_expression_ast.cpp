@@ -81,6 +81,8 @@ auto spp::asts::LoopConditionalExpressionAst::Clone() const -> Unique<Ast> {
   cloned->_Scope = _Scope;
   cloned->_DropsOnCondEnd = _DropsOnCondEnd;
   cloned->_IterationDrops = _IterationDrops;
+  cloned->_DropsOnEntry = _DropsOnEntry;
+  cloned->_DropsOnBackEdge = _DropsOnBackEdge;
   return cloned;
 }
 
@@ -249,6 +251,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
   using HeadStates = Vec<Pair<VariableSymbol*, MemoryState>>;
   auto entry = HeadStates();
   for (auto *const sym : outer_syms) { entry.emplace_back(sym, memory_state::StateOf(*sm->CurrentScope, *sym)); }
+  const auto entry_snapshot = memory_state::SnapshotSymbols(outer_syms, *sm->CurrentScope);
   const auto entry_loans = memory_state::LoansOf(*sm->CurrentScope);
   run_iteration(*sm);
 
@@ -281,15 +284,16 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
       }
       if (edges.empty()) { break; }
 
-      // Joined into the head so far (none, after the first pass).
-      auto next = back.value_or(HeadStates());
-      if (not back.has_value()) {
-        for (auto *const sym : outer_syms) { next.emplace_back(sym, MemoryState()); }
-      }
+      // Joined into the head so far: the entry's, after the first pass.
+      // An iteration after the first begins where every way into the
+      // head meets, the entry included: a value one way holds and
+      // another does not is dropped on the way holding it (below), so
+      // it is held on none.
+      auto next = back.value_or(entry);
       for (auto i = 0uz; i < next.size(); ++i) {
         auto *const sym = next[i].first;
         auto states = Vec<Pair<MemoryState, Ast*>>();
-        if (back.has_value()) { states.emplace_back(next[i].second, edges[0].first); }
+        states.emplace_back(next[i].second, back.has_value() ? edges[0].first : TokLoop.get());
         for (auto const &[edge, snapshot] : edges) {
           states.emplace_back(
             snapshot == nullptr ? memory_state::StateOf(*sm->CurrentScope, *sym) : memory_state::StateIn(*snapshot, *sym),
@@ -318,6 +322,29 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
       memory_state::LoansOf(*sm->CurrentScope) = back_loans;
       auto tm = sm->NewManagerAt(body_start);
       run_iteration(tm);
+    }
+  }
+
+  // The head's join: what the entry, the body's end and each "skip"
+  // hold that another way in does not is dropped on that way.
+  _DropsOnEntry.clear();
+  _DropsOnBackEdge.clear();
+  if (back.has_value()) {
+    auto head_paths = Vec<drop_utils::JoinPath>{{&entry_snapshot, TokLoop.get(), TokLoop.get()}};
+    if (not body_diverges) { head_paths.push_back({nullptr, Body.get(), Body.get()}); }
+    for (auto const &[skip, skip_state] : flow.Loops[frame_at].SkipStates) {
+      head_paths.push_back({&skip_state, const_cast<Ast*>(skip), skip});
+    }
+    auto head_drops = drop_utils::JoinPaths(
+      outer_syms, head_paths, drop_utils::OwnersAround(*sm->CurrentScope, meta), *sm, meta);
+    _DropsOnEntry = std::move(head_drops[0]);
+    auto next_drops = 1uz;
+    if (not body_diverges) { _DropsOnBackEdge = std::move(head_drops[next_drops++]); }
+    for (auto const &[skip, _] : flow.Loops[frame_at].SkipStates) {
+      if (auto *const stmt = const_cast<Ast*>(skip)->To<LoopControlFlowStatementAst>(); stmt != nullptr) {
+        stmt->AddDropsAtJoin(std::move(head_drops[next_drops]));
+      }
+      next_drops += 1;
     }
   }
 
@@ -417,7 +444,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
   }
   for (auto i = 0uz; i < frame.ExitStmts.size(); ++i) {
     if (const auto stmt = frame.ExitStmts[i]->To<LoopControlFlowStatementAst>(); stmt != nullptr) {
-      stmt->SetDropsAtJoin(std::move(path_drops[first_exit + i]));
+      stmt->AddDropsAtJoin(std::move(path_drops[first_exit + i]));
     }
   }
 
@@ -473,6 +500,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
   const auto loop_else_bb = ElseBlock != nullptr or not _DropsOnCondEnd.empty()
     ? llvm::BasicBlock::Create(*ctx->Context, "loop.else" + uid, func)
     : loop_end_bb;
+  codegen::EmitOuterDrops(_DropsOnEntry, *this, sm, meta, ctx);
   ctx->Builder.CreateBr(loop_cond_bb);
 
   // The phi merges the value yielded by the "else" block
@@ -523,6 +551,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
       Body->Stage11_CodeGen(sm, meta, ctx);
     }
     codegen::EmitOwnedDrops(*sm->CurrentScope, _IterationDrops, this, sm, meta, ctx);
+    codegen::EmitOuterDrops(_DropsOnBackEdge, *this, sm, meta, ctx);
     if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
       ctx->Builder.CreateBr(loop_cond_bb);
     }

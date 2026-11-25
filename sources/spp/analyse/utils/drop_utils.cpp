@@ -334,21 +334,25 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
   };
 
   // Recursive drop search. A place taken apart is destroyed part by
-  // part, its own destructor not run, so its parts are searched
-  // (and, a part further in being taken apart too, theirs).
-  // A variant is stepped into as the member a path names ("type_members::VariantMemberStep").
+  // part, its own destructor not run, and one with a part taken apart
+  // inside it is reached part by part too: so wherever a taken-apart
+  // path leads, its parts (a variant's members, through the member a
+  // path names: "type_members::VariantMemberStep") are searched as
+  // well as the place's own destructor. One instantiated and not used
+  // costs nothing; one used and not instantiated destroys field by
+  // field.
   const auto apart = [&](auto const &self, TypeRef const &ref, Vec<spp::utils::InternedId> &path) -> void {
+    walk(walk, ref);
     const auto under = genex::any_of(taken_apart, [&](auto const &taken) {
       return taken.size() >= path.size() and std::equal(path.begin(), path.end(), taken.begin());
     });
-    if (not under) { walk(walk, ref); return; }
-    const auto members = type_members::VariantMemberRefs(ref, *sm.CurrentScope);
-    for (auto const &member : members) {
+    if (not under) { return; }
+    seen.clear();
+    for (auto const &member : type_members::VariantMemberRefs(ref, *sm.CurrentScope)) {
       path.emplace_back(type_members::VariantMemberStep(member));
       self(self, member, path);
       path.pop_back();
     }
-    if (not members.empty()) { return; }
     for (auto const &part : type_members::GetAllParts(ref, *sm.CurrentScope, true)) {
       path.emplace_back(part.Step->NameId());
       self(self, part.Ref, path);
@@ -739,6 +743,17 @@ auto spp::analyse::utils::drop_utils::OwnedBeforeWrite(
   auto moved = MovedPathsUnder(state.PartialMoves, place->Steps);
   if (not moved.has_value()) { return Nullopt; }
   auto taken_apart = TakenApartPathsUnder(state.TakenApart, place->Steps);
+
+  // Overwritten, what is left of it is destroyed, as at its scope's end: a part moved from inside a value with its own
+  // "drop" strands that "drop" (E106).
+  for (auto const &move : state.PartialMoves) {
+    auto const &steps = move.Of->Steps;
+    if (steps.size() <= place->Steps.size() or not std::equal(place->Steps.begin(), place->Steps.end(), steps.begin())) {
+      continue;
+    }
+    const auto rel = Vec<regions::PlaceStep>(steps.begin() + static_cast<std::ptrdiff_t>(place->Steps.size()), steps.end());
+    RaiseIfPathStrandsDestructor(ref, rel, *move.Site, target, sm, meta, taken_apart);
+  }
   EnsureDropInstantiated(ref, sm, meta, taken_apart);
   return OwnedValue{.Moved = std::move(*moved), .TakenApart = std::move(taken_apart)};
 }

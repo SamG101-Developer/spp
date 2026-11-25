@@ -278,9 +278,10 @@ auto spp::asts::LoopControlFlowStatementAst::InferTypeRef(
     : TypeRef::Of(*VOID, *sm->CurrentScope);
 }
 
-auto spp::asts::LoopControlFlowStatementAst::SetDropsAtJoin(
+auto spp::asts::LoopControlFlowStatementAst::AddDropsAtJoin(
   Vec<analyse::utils::drop_utils::OwnedValue> drops) -> void {
-  _DropsAfterExit = std::move(drops);
+  _DropsAfterExit.append_range(std::move(drops));
+  analyse::utils::drop_utils::SortNewestFirst(_DropsAfterExit);
 }
 
 SPP_MOD_END

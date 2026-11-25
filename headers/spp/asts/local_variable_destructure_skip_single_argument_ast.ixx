@@ -28,4 +28,9 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst fina
   SPP_ATTR_NODISCARD auto ExtractNames() const -> Vec<Shared<IdentifierAst>> override;
 
   SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
+
+  /// A skip binds nothing, so there is nothing to resolve: a literal a
+  /// pattern tests ("is Point(x=1, y)") is a skip once its check is
+  /// made ("CasePatternVariantLiteralAst::ConvToVar").
+  auto EvaluateCompTime(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
