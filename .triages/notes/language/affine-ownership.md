@@ -71,7 +71,12 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
   (`IsExpressionAst::Bound`). An `and` whose left operand binds something analyses its right operand in a scope of
   its own (`Scope::IsOperandScope`), declaring what the left operand bound (`expr_utils::BoundWhenTrue`), as does
   the body of a loop, a guard's branch and a boolean `case`'s first branch (`InnerScopeExpressionAst::SetBoundOnEntry`),
-  in every walk; nothing else makes one (a comp argument's operator is analysed off the walk). Nothing is
+  in every walk; nothing else makes one (a comp argument's operator is analysed off the walk). A clone walked where the
+  original stood and never analysed again (a receiver, `InjectReceiver`; forwarding) shares `_RhsScope`; one analysed
+  again elsewhere (`HoistOnce`: a fold argument) does not share `_LogicalAnalysed`, so its Stage 7 makes its own scope
+  where it stands, as its `is` operands make their own `case` (`ConvertIsExprToCase` lowers from copies, leaving the
+  `is`'s operands as written, so a clone can be analysed again). Only a compile-time re-read is walked out of order
+  (`_InRhsScope` with a manager standing at the scope). Nothing is
   retracted: no statement end, no `or` or `else` hiding (the old `ExpiresWithStatement`, `ExpiredIsBindings`,
   `EndStatement` are gone). A hidden temporary made in an operand scope lives in the condition around it
   (`Scope::TemporaryHome`, `LocalVariableSingleIdentifierAst::DeclareIn`). `case o is P { .. }` is not this: it is
@@ -97,7 +102,8 @@ by its ast's `Clone`, as some clones are generated without being analysed again.
   as `OwnedValue::TakenApart` paths). Binding every owned part moves it whole. So `let Self(..) = self` is how a
   `close`-style consumer disarms `drop` without leaking fields, and skipping an owned part of a `Drop` type is no E106.
   A field moved out by access (`let a = h.a`) is still E106. Paths that disagree about it are a "maybe", dropped on each
-  path before they meet.
+  path before they meet; it is E106 too (moved on one branch only), so every E106 check and every drop reads the parts
+  gone as `PartsGone` (`PartialMoves` plus `MaybePartialMoves`), never `PartialMoves` alone.
 - **`self` at the end of its own type's `drop`** is dropped field by field (the empty path in `OwnedValue::TakenApart`),
   not through `drop` again. A partial move out of it is no E106 there.
 - **Overwrites build the new value into a temporary** when an old one is dropped, never straight into the slot.
