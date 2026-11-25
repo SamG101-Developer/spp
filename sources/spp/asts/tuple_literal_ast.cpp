@@ -72,7 +72,7 @@ auto spp::asts::TupleLiteralAst::EqualsTupleLiteral(
 
   // Ensure each element of the two array literals are equal.
   if (genex::all_of(
-    genex::views::zip(Elems | genex::views::ptr, other.Elems | genex::views::ptr) | genex::to<Vec>(),
+    genex::views::zip(Elems | genex::views::ptr, other.Elems | genex::views::ptr),
     [](auto const &pair) { return *spp::get<0>(pair) == *spp::get<1>(pair); })) {
     return Ordering::equal;
   }
@@ -259,43 +259,43 @@ auto spp::asts::TupleLiteralAst::_BuildType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // The tuple of the elements' types, analysed.
   auto tuple_type = generate::common_types::TupleType(
-    PosStart(), ElementTypes(Elems | genex::views::ptr | genex::to<Vec>(), sm, meta));
+    PosStart(), ElementTypes(Elems, sm, meta));
   tuple_type->Stage7_AnalyseSemantics(sm, meta);
   return tuple_type;
 }
 
 auto spp::asts::TupleLiteralAst::ElementTypes(
-  Vec<ExpressionAst*> const &elems, ScopeManager *sm, CompilerMetaData *meta,
-  const bool strip_conventions) -> Vec<Shared<TypeAst>> {
-  // Iterate each element in the tuple, inferring its type and applying pack
-  // spreading logic.
+  const Span<Unique<ExpressionAst> const> elems, ScopeManager *sm, CompilerMetaData *meta) -> Vec<Shared<TypeAst>> {
+  // Each element's types in turn, a spread's pack giving several.
   auto types_gen = Vec<Shared<TypeAst>>();
-  for (const auto elem : elems) {
-    // Infer the type of each element. If we are stripping the conventions, then
-    // remove them before any more processing.
-    auto type = elem->InferType(sm, meta);
-    if (strip_conventions) { type = AstCloneShared(type->WithoutConvention()); }
-
-    // For a spread expression that is being moved from into this tuple, add the
-    // types of each part of that pack into the type list and continue looping.
-    if (elem->To<SpreadExpressionAst>() != nullptr and type->GetConvention() == nullptr) {
-      for (const auto arg : type->LastTypePart()->GnArgGroup->GetTypeArgs()) {
-        types_gen.emplace_back(arg->TypeVal->WithSourceSpanAt(*elem));
-      }
-      continue;
-    }
-
-    // Otherwise, get the type's symbol, and qualify it, and set it into the
-    // type list.
-    const auto sym = sm->CurrentScope->FindTypeSymbol(
-      type->WithoutConvention().get());
-    if (sym != nullptr and sym->IsGn() and sym->AsBound() != sym) {
-      type = sym->AsBound()->FqName()->WithConvention(
-        AstClone(type->GetConvention()));
-    }
-    types_gen.emplace_back(type->WithSourceSpanAt(*elem));
-  }
+  for (auto const &elem : elems) { AppendElementTypes(types_gen, *elem, sm, meta); }
   return types_gen;
+}
+
+auto spp::asts::TupleLiteralAst::AppendElementTypes(
+  Vec<Shared<TypeAst>> &out, ExpressionAst &elem, ScopeManager *sm, CompilerMetaData *meta,
+  const bool strip_conventions) -> void {
+  // Infer the type of the element. If we are stripping the conventions, then
+  // remove them before any more processing.
+  auto type = elem.InferType(sm, meta);
+  if (strip_conventions) { type = AstCloneShared(type->WithoutConvention()); }
+
+  // For a spread expression that is being moved from into this tuple, add the
+  // types of each part of that pack into the type list.
+  if (elem.To<SpreadExpressionAst>() != nullptr and type->GetConvention() == nullptr) {
+    for (const auto arg : type->LastTypePart()->GnArgGroup->GetTypeArgs()) {
+      out.emplace_back(arg->TypeVal->WithSourceSpanAt(elem));
+    }
+    return;
+  }
+
+  // Otherwise, get the type's symbol, and qualify it, and set it into the
+  // type list.
+  const auto sym = sm->CurrentScope->FindTypeSymbol(type->WithoutConvention().get());
+  if (sym != nullptr and sym->IsGn() and sym->AsBound() != sym) {
+    type = sym->AsBound()->FqName()->WithConvention(AstClone(type->GetConvention()));
+  }
+  out.emplace_back(type->WithSourceSpanAt(elem));
 }
 
 auto spp::asts::TupleLiteralAst::ReadExpr(
