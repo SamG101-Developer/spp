@@ -42,3 +42,4 @@
 - [Special lowering, matching layout](special-lowering-needs-matching-layout.md) — LayoutOf must special-case what lowering does; Ptr[T] was 0 bytes, Vec never allocated (IsTypePointer)
 - [Builtin coroutine bodies](builtin-coroutine-bodies.md) — mock gens are never analysed: SetOwnedAtSuspend per gen; a by-move self slot holds the value, no load
 - [Float checks shape](float-checks-shape.md) — one hot uno(r-r) branch, cold classifier; deferral reads only the hot flag (0x23); +-* checks elided into their checked users
+- [Hash-table intrinsics](hash-table-intrinsics.md) — *mul_wide is (low, high); byte masks bit i = byte i; unaligned index in bytes, prefetch index in Ts; lanes 1-64, locality 0-3

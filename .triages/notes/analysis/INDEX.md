@@ -30,3 +30,4 @@
 - [Overridables recorded at stage 7](overridables-recorded-at-stage-7.md) — sup-ext 'still to override' record; MethodsOf caches, so not before stage 7; names as written
 - [Guards through ScopedInsert/Assign](thread-local-guards-scoped.md) — thread_local guard sets and saved values: utils::functions helpers only; a hand erase skipped by a throw leaks into the next compile
 - [Open instances made by analysis](open-instances-made-by-analysis.md) — open instantiation exists only once its type is analysed; analyse types spelled from an id
+- [Comp-time builtin needing meta](comp-time-builtin-needing-meta.md) — overload lookups need mutable Sm + Meta: subclass CompTimeFn (NeedsDropCompTimeFn), not MakeCompTimeFn
