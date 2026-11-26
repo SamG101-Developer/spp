@@ -235,7 +235,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
   const auto i0 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, 0));
   for (auto const &[i, llvm_elem] : llvm_elems) {
     const auto i1 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, i));
-    ctx->Builder.CreateStore(llvm_elem, ctx->Builder.CreateGEP(llvm_arr_ty, llvm_arr_alloc, {i0, i1}));
+    ctx->Builder.CreateStore(llvm_elem, ctx->Builder.CreateInBoundsGEP(llvm_arr_ty, llvm_arr_alloc, {i0, i1}));
   }
   return ctx->Builder.CreateLoad(llvm_arr_ty, llvm_arr_alloc, "array.explicit.result" + uid);
 }

@@ -114,7 +114,7 @@ llvm::Value * {
 
     const auto index = static_cast<std::uint32_t>(step.Index);
     if (type_predicates::IsTypeArray(step.Of, scope)) {
-      ptr = ctx->Builder.CreateGEP(
+      ptr = ctx->Builder.CreateInBoundsGEP(
         llvm_of_ty, ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
         "case.pattern.elem_ptr" + uid);
     }
@@ -196,7 +196,8 @@ auto spp::analyse::utils::case_utils::EmitPatternChecks(
     // A tag: the variant's discriminant is one of the members'.
     if (check.K == PatternCheck::Kind::Tag) {
       const auto variant_ty = codegen::GetLlvmTypeOf(check.Variant, ctx);
-      const auto tag = codegen::LoadVariantTag(at, variant_ty, "case.pattern.tag" + uid, ctx);
+      const auto member_count = type_members::VariantMemberRefs(check.Variant, *sm->CurrentScope).size();
+      const auto tag = codegen::LoadVariantTag(at, variant_ty, member_count, "case.pattern.tag" + uid, ctx);
       auto holds = static_cast<llvm::Value*>(nullptr);
       for (const auto member : check.Members) {
         const auto is = ctx->Builder.CreateICmpEQ(

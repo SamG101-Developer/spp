@@ -353,7 +353,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::_EmitFieldPtr(
   const auto index = static_cast<std::uint32_t>(std::stoul(Name->Val));
   if (type_predicates::IsTypeArray(TypeRef::ForKindCheck(owner, *sm->CurrentScope), *sm->CurrentScope)) {
     const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
-    return ctx->Builder.CreateGEP(
+    return ctx->Builder.CreateInBoundsGEP(
       llvm_type, base_ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
       "member_access.arr.elem_ptr" + uid);
   }

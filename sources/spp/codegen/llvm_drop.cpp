@@ -123,9 +123,9 @@ auto spp::codegen::EmitDrop(
     const auto variant_ty = GetLlvmTypeOf(type.WithoutConvention(), ctx);
     const auto func = ctx->Builder.GetInsertBlock()->getParent();
     const auto done_bb = llvm::BasicBlock::Create(*ctx->Context, "drop.var.done" + uid);
-    const auto tag = LoadVariantTag(ptr, variant_ty, "drop.var.tag" + uid, ctx);
-    const auto dispatch = ctx->Builder.CreateSwitch(tag, done_bb);
     const auto members = VariantMemberRefs(type, *sm->CurrentScope);
+    const auto tag = LoadVariantTag(ptr, variant_ty, members.size(), "drop.var.tag" + uid, ctx);
+    const auto dispatch = ctx->Builder.CreateSwitch(tag, done_bb);
     for (auto i = 0uz; i < members.size(); ++i) {
       if (not NeedsDrop(members[i], *sm, meta)) { continue; }
       const auto member_bb = llvm::BasicBlock::Create(*ctx->Context, "drop.var.member" + uid, func);
@@ -186,7 +186,7 @@ auto spp::codegen::EmitDrop(
     // are separate fields, found through the layout's index map: the S++ layout re-orders a struct's fields to
     // minimise padding, and a tuple's leaves out its valueless ("Void") elements.
     const auto part_ptr = is_arr
-      ? ctx->Builder.CreateGEP(
+      ? ctx->Builder.CreateInBoundsGEP(
         elem_ty, ptr,
         {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, static_cast<std::uint32_t>(part.Index))},
         "drop.elem" + uid + "." + part.Step->Val)

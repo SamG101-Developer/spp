@@ -35,10 +35,11 @@ namespace spp::codegen {
     Str const &name, LlvmCtx *ctx) -> llvm::Value*;
 
   /// Get the LLVM tag of the variant, loaded out of the tag value, used to test
-  /// the current variant being held.
+  /// the current variant being held. The load is given the range of the
+  /// variant's "member_count" tags, so llvm can drop checks for any other.
   SPP_EXP_FUN auto LoadVariantTag(
     llvm::Value *llvm_variant_ptr, llvm::Type *llvm_variant_type,
-    Str const &name, LlvmCtx *ctx) -> llvm::Value*;
+    std::uint64_t member_count, Str const &name, LlvmCtx *ctx) -> llvm::Value*;
 
   /// Build a variant from a type such as "A or B", lowered into "{ tag,
   /// payload }". The tag marks the member being held; the payload is as wide

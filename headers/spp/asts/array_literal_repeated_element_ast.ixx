@@ -20,7 +20,8 @@ use(spp::asts, struct TypeAst);
 /// The repeated array literal represents the [0; 3_uz] literal which copies, by
 /// bits, the provided element (so it must superimpose Copy), n amounts of times
 /// into the "Arr[T, n]" type.
-SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : LiteralAst {
+SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final :
+  LiteralAst {
   SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ArrayLiteralRepeatedElementAst);
 

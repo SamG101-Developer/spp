@@ -770,6 +770,8 @@ auto spp::codegen::fn_impls::MemOpsAddress(
   const auto borrow = ctx->Builder.CreateLoad(ptr_ty, sym->LlvmInfo->Alloca, spp::Str(name) + ".borrow");
   const auto base = ctx->Builder.CreateLoad(ptr_ty, borrow, spp::Str(name) + ".base");
   if (elem_ty == nullptr) { elem_ty = llvm::Type::getInt8Ty(*ctx->Context); }
+  // Deliberately not "inbounds", unlike the indexing GEPs: a prefetch may name
+  // an address past the end of what it is given.
   return ctx->Builder.CreateGEP(elem_ty, base, at, spp::Str(name));
 }
 
@@ -1501,7 +1503,7 @@ auto spp::codegen::fn_impls::SimpleCoroIter(
       LlvmCtx *ctx) -> llvm::Value* override {
       const auto idx_0 = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*ctx->Context), 0uz);
       const auto idx_i = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*ctx->Context), I);
-      const auto shift = ctx->Builder.CreateGEP(ArrTy, SelfPtr, {idx_0, idx_i});
+      const auto shift = ctx->Builder.CreateInBoundsGEP(ArrTy, SelfPtr, {idx_0, idx_i});
       return ctx->Builder.CreateLoad(ElemTy, shift);
     }
   };
@@ -1592,7 +1594,7 @@ auto spp::codegen::fn_impls::SimpleCoroViewIter(
     auto Stage11_CodeGen(ScopeManager *, CompilerMetaData *,
       LlvmCtx *ctx) -> llvm::Value* override {
       // Indexed over the element type, so one step of the index advances by one element rather than by one byte.
-      const auto shift = ctx->Builder.CreateGEP(_ElemTy, _Data, {_Index}, "view.iter.elem_ptr" + _Uid);
+      const auto shift = ctx->Builder.CreateInBoundsGEP(_ElemTy, _Data, {_Index}, "view.iter.elem_ptr" + _Uid);
       return _Borrow
         ? shift
         : static_cast<llvm::Value*>(ctx->Builder.CreateLoad(_ElemTy, shift, "view.iter.elem" + _Uid));
@@ -1748,7 +1750,7 @@ auto spp::codegen::fn_impls::SimpleCoroViewSlice(
       // elements long. Indexing is over the element type, so
       // that one index advances by one element rather than by
       // one byte.
-      const auto slice_data = ctx->Builder.CreateGEP(
+      const auto slice_data = ctx->Builder.CreateInBoundsGEP(
         _ElemTy, self_data, {from_val}, "view.slice.data" + _Uid);
       const auto slice_length = ctx->Builder.CreateSub(upto_val, from_val, "view.slice.length" + _Uid);
 
@@ -1962,7 +1964,7 @@ auto spp::codegen::fn_impls::SimpleCoroViewIndex(
 
       // Indexed over the element type, so one step of the index advances by one element rather than by one byte.
       ctx->Builder.SetInsertPoint(ok_bb);
-      return ctx->Builder.CreateGEP(_ElemTy, self_data, {idx_val}, "view.index.elem_ptr" + _Uid);
+      return ctx->Builder.CreateInBoundsGEP(_ElemTy, self_data, {idx_val}, "view.index.elem_ptr" + _Uid);
     }
   };
 
@@ -2606,7 +2608,7 @@ auto spp::codegen::fn_impls::StdRawBufTakeAt(
     "raw_buf.take_at.buf" + uid);
   const auto elem_val = ctx->Builder.CreateLoad(
     elem_ty,
-    ctx->Builder.CreateGEP(elem_ty, buf_ptr, index_val, "raw_buf.take_at.elem.ptr" + uid),
+    ctx->Builder.CreateInBoundsGEP(elem_ty, buf_ptr, index_val, "raw_buf.take_at.elem.ptr" + uid),
     "raw_buf.take_at.elem" + uid);
   ctx->Builder.CreateRet(
     BuildVariant(elem_val, opt_llvm_ty, *some_tag, "raw_buf.take_at.some" + uid, ctx));
@@ -2647,7 +2649,7 @@ auto spp::codegen::fn_impls::StdRawBufPlaceAt(
     ptr_ty, ctx->Builder.CreateStructGEP(self_llvm_ty, self_ptr, data_idx, "raw_buf.place_at.buf_ptr" + uid),
     "raw_buf.place_at.buf" + uid);
 
-  const auto elem_addr = ctx->Builder.CreateGEP(elem_ty, buf_ptr, index_val, "raw_buf.place_at.elem_addr");
+  const auto elem_addr = ctx->Builder.CreateInBoundsGEP(elem_ty, buf_ptr, index_val, "raw_buf.place_at.elem_addr");
   ctx->Builder.CreateStore(element_val, elem_addr);
   ctx->Builder.CreateRetVoid();
 }
@@ -2683,8 +2685,8 @@ auto spp::codegen::fn_impls::StdRawBufShift(
     ptr_ty, ctx->Builder.CreateStructGEP(self_llvm_ty, self_ptr, data_idx, "raw_buf.shift.buf_ptr" + uid),
     "raw_buf.shift.buf" + uid);
 
-  const auto src_addr = ctx->Builder.CreateGEP(elem_ty, buf_ptr, from_val, "raw_buf.shift.src");
-  const auto dst_addr = ctx->Builder.CreateGEP(elem_ty, buf_ptr, upto_val, "raw_buf.shift.dst");
+  const auto src_addr = ctx->Builder.CreateInBoundsGEP(elem_ty, buf_ptr, from_val, "raw_buf.shift.src");
+  const auto dst_addr = ctx->Builder.CreateInBoundsGEP(elem_ty, buf_ptr, upto_val, "raw_buf.shift.dst");
 
   auto const &dl = ctx->Module->getDataLayout();
   const auto elem_size = dl.getTypeAllocSize(elem_ty).getFixedValue();
@@ -2752,7 +2754,7 @@ auto spp::codegen::fn_impls::StdRawBufClearRange(
 
   ctx->Builder.SetInsertPoint(body_bb);
   const auto elem_index = ctx->Builder.CreateAdd(start_val, index, "raw_buf.clear.idx" + uid);
-  const auto elem_addr = ctx->Builder.CreateGEP(elem_ty, buf_ptr, elem_index, "raw_buf.clear.elem" + uid);
+  const auto elem_addr = ctx->Builder.CreateInBoundsGEP(elem_ty, buf_ptr, elem_index, "raw_buf.clear.elem" + uid);
   EmitDrop(elem_ref, elem_addr, sm, meta, ctx);
   const auto next = ctx->Builder.CreateAdd(index, llvm::ConstantInt::get(usize_ty, 1), "raw_buf.clear.next" + uid);
   index->addIncoming(next, ctx->Builder.GetInsertBlock());

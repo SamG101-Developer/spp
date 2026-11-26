@@ -38,8 +38,8 @@ namespace spp::codegen {
   /// this with inversely built maps.
   static auto RetagVariant(
     llvm::Value *source_ptr, TypeRef const &source, TypeRef const &target,
-    Vec<Pair<std::uint64_t, std::uint64_t>> const &map, Str const &name,
-    LlvmCtx *ctx) -> llvm::Value*;
+    Vec<Pair<std::uint64_t, std::uint64_t>> const &map, std::uint64_t source_count,
+    Str const &name, LlvmCtx *ctx) -> llvm::Value*;
 }
 
 /// [CHECKED]
@@ -76,8 +76,8 @@ auto spp::codegen::TranslateVariantTag(
 /// [CHECKED]
 auto spp::codegen::RetagVariant(
   llvm::Value *source_ptr, TypeRef const &source, TypeRef const &target,
-  Vec<Pair<std::uint64_t, std::uint64_t>> const &map, Str const &name,
-  LlvmCtx *ctx) -> llvm::Value* {
+  Vec<Pair<std::uint64_t, std::uint64_t>> const &map, const std::uint64_t source_count,
+  Str const &name, LlvmCtx *ctx) -> llvm::Value* {
   // Nothing to re-tag if the target has no members; and both types must have
   // an LLVM lowering.
   if (map.empty()) { return nullptr; }
@@ -90,7 +90,7 @@ auto spp::codegen::RetagVariant(
   // Load the variant tag from the source variant, using the source type. Then,
   // translate the source's tag, using the target's numbering.
   const auto source_tag = LoadVariantTag(
-    source_ptr, source_llvm_type, name + ".from.tag", ctx);
+    source_ptr, source_llvm_type, source_count, name + ".from.tag", ctx);
   const auto target_tag = TranslateVariantTag(source_tag, map, name, ctx);
 
   // Zero the slot first: a wider target's payload tail is not
@@ -166,14 +166,24 @@ auto spp::codegen::GetVariantTagPtr(
 
 /// [CHECKED]
 auto spp::codegen::LoadVariantTag(
-  llvm::Value *llvm_variant_ptr, llvm::Type *llvm_variant_type, Str const &name,
-  LlvmCtx *ctx) -> llvm::Value* {
+  llvm::Value *llvm_variant_ptr, llvm::Type *llvm_variant_type,
+  const std::uint64_t member_count, Str const &name, LlvmCtx *ctx) -> llvm::Value* {
   // The tag is the first field, before the payload: its pointer, then the
   // value underneath.
   const auto llvm_tag_ptr = GetVariantTagPtr(
     llvm_variant_ptr, llvm_variant_type, name + ".ptr", ctx);
   const auto llvm_tag_type = GetVariantTagType(ctx);
-  return ctx->Builder.CreateLoad(llvm_tag_type, llvm_tag_ptr, name);
+  const auto tag = ctx->Builder.CreateLoad(llvm_tag_type, llvm_tag_ptr, name);
+
+  // Every variant is built holding one of its members ("StoreVariant", or the
+  // zeroed slot of a re-tag), so the tag is one of theirs: "!range [0, n)" lets
+  // a switch or comparison over it drop the cases no member has.
+  if (member_count > 0) {
+    tag->setMetadata(llvm::LLVMContext::MD_range, llvm::MDNode::get(*ctx->Context, {
+      llvm::ConstantAsMetadata::get(llvm::ConstantInt::get(llvm_tag_type, 0)),
+      llvm::ConstantAsMetadata::get(llvm::ConstantInt::get(llvm_tag_type, member_count))}));
+  }
+  return tag;
 }
 
 /// [CHECKED]
@@ -233,7 +243,7 @@ auto spp::codegen::WidenVariant(
     if (not target_tag.has_value()) { return nullptr; }
     map.emplace_back(static_cast<std::uint64_t>(i), *target_tag);
   }
-  return RetagVariant(source_ptr, source, target, map, name, ctx);
+  return RetagVariant(source_ptr, source, target, map, source_members.size(), name, ctx);
 }
 
 /// [CHECKED]
@@ -257,5 +267,6 @@ auto spp::codegen::NarrowVariant(
     if (not source_tag.has_value()) { return nullptr; }
     map.emplace_back(*source_tag, static_cast<std::uint64_t>(i));
   }
-  return RetagVariant(source_ptr, source, target, map, name, ctx);
+  const auto source_count = type_members::VariantMemberRefs(source, scope).size();
+  return RetagVariant(source_ptr, source, target, map, source_count, name, ctx);
 }
