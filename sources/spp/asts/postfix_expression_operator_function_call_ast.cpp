@@ -162,6 +162,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Clone() const -> Uniqu
   ast->_FoldArgsScope = _FoldArgsScope;
   ast->_FoldTemps = AstCloneVec(_FoldTemps);
   ast->_FoldUnconsumed = _FoldUnconsumed;
+  ast->_Drops = _Drops;
   ast->_OpenFoldPacks = AstCloneVec(_OpenFoldPacks);
   ast->_OpenFoldType = _OpenFoldType;
   ast->_FoldIsVoid = _FoldIsVoid;
@@ -441,7 +442,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
         state.MovedBy(*this);
       }
     }
-    drop_utils::SetDropsOn(*this, drop_utils::DropEdge::kFold, std::move(fold_drops));
+    _Drops.Fold = std::move(fold_drops);
     for (auto const &pack_name : _OpenFoldPacks) {
       auto *const pack = sm->CurrentScope->FindVarSymbol(pack_name.get());
       auto borrows = false;
@@ -517,8 +518,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     for (auto const &temp : _FoldTemps) { temp->Stage11_CodeGen(sm, meta, ctx); }
     auto results = Vec<llvm::Value*>();
     for (auto const &ast : _FoldedAsts) { results.emplace_back(AstClone(ast)->Stage11_CodeGen(sm, meta, ctx)); }
-    codegen::EmitOuterDrops(
-      analyse::utils::drop_utils::DropsOn(*this, analyse::utils::drop_utils::DropEdge::kFold), *this, sm, meta, ctx);
+    codegen::EmitOuterDrops(_Drops.Fold, *this, sm, meta, ctx);
 
     const auto tuple_ref = InferTypeRef(sm, meta).WithoutConvention();
     const auto tuple_sym = tuple_ref.Symbol;

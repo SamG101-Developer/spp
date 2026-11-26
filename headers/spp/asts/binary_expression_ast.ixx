@@ -44,6 +44,14 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
     std::size_t OriginalPosEnd;
   } Source;
 
+  /// The logic operators ("and", "or") are short-circuiting, meaning the rhs
+  /// operands only run on one path. Also track introduced hidden temporaries
+  /// introduced on the right-hand-side (eg from the "is" expression).
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> ShortCircuit, AfterRhs;
+    Vec<analyse::utils::drop_utils::OwnedValue> RhsTemporaries;
+  } _Drops;
+
   /// Check if this is a logical binary operator ("and"/"or"),
   /// which have some special behaviour - no function mapping,
   /// direct LLVM intrinsics, for short-circuiting.
@@ -124,16 +132,9 @@ private:
   /// same way: ".. + f()" reads each element off one "f()".
   Vec<Unique<LetStatementInitializedAst>> _ChainTemps;
 
-  /// A logical operator's right operand runs on one path only, and
-  /// the short circuit is the other: where they meet, what one holds
-  /// and the other does not is dropped on the path still holding it
-  /// ("flag and take(x)" drops "x" where "flag" is false: the edges
-  /// "kShortCircuit", "kAfterRhs"). The hidden temporaries the right
-  /// operand declares ("$is" for an "is" subject that is no place)
-  /// exist only on its path: dropped at its end ("kRhsTemporaries"),
-  /// the join never sees them. As a condition ("MarkCondition"), they
-  /// are dropped only where it answers false, and held on where it
-  /// answers true ("_HeldWhenTrue").
+  /// Whether this is a condition ("MarkCondition"), and the right
+  /// operand's temporaries it holds on where it answers true: they
+  /// are dropped only where it answers false ("_Drops.RhsTemporaries").
   bool _IsCondition = false;
   Vec<analyse::scopes::VariableSymbol*> _HeldWhenTrue;
 

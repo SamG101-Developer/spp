@@ -44,8 +44,6 @@ import genex;
 import llvm;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
-use_alias(spp::analyse::utils::drop_utils, DropEdge);
-use_alias(spp::analyse::utils::drop_utils, DropsOn);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, CompilerMetaData);
@@ -426,7 +424,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     // instead would leave the consumer asking a destroyed frame
     // whether it was finished. "ret" must set the current block as
     // as the final block.
-    codegen::EmitOwnedDrops(*sm->CurrentScope, DropsOn(*this, DropEdge::kEnd), this, sm, meta, ctx);
+    codegen::EmitOwnedDrops(*sm->CurrentScope, _Drops.End, this, sm, meta, ctx);
     if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
       ctx->Builder.CreateBr(final_bb);
     }

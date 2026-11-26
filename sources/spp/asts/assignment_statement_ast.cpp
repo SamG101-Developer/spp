@@ -76,6 +76,7 @@ auto spp::asts::AssignmentStatementAst::Clone() const -> Unique<Ast> {
     AstCloneVec(Lhs),
     AstClone(TokAssign),
     AstCloneVec(Rhs));
+  a->_Drops = _Drops;
   return a;
 }
 
@@ -195,13 +196,11 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
   // generation does: in "a, b = b, a" the second value reads the
   // "a" the statement started with, so it is moved there, and no
   // old value it took is dropped by the write over "a".
-  // What each write replaces is dropped first ("kOverwrite", held by the target: none, or the one value).
+  // What each write replaces is dropped first ("_Drops.Overwrite": none, or the one value).
   const auto drops_old = [&](const std::size_t i, Opt<drop_utils::OwnedValue> old) {
-    auto drops = Vec<drop_utils::OwnedValue>();
-    if (old.has_value()) { drops.emplace_back(std::move(*old)); }
-    drop_utils::SetDropsOn(*Lhs[i], drop_utils::DropEdge::kOverwrite, std::move(drops));
+    _Drops.Overwrite[i] = std::move(old);
   };
-  for (auto i = 0uz; i < Lhs.size(); ++i) { drops_old(i, Nullopt); }
+  _Drops.Overwrite.assign(Lhs.size(), Nullopt);
   auto &loans = memory_state::LoansOf(*sm->CurrentScope);
   const auto targets = genex::views::zip(
     genex::views::iota(0uz, Lhs.size()), Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms);
@@ -331,13 +330,8 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
 /// [CHECKED]
 auto spp::asts::AssignmentStatementAst::DropsOldAt(
   const std::size_t i) const -> bool {
-  IMPORT_UTILS;
-  using drop_utils::DropEdge;
-
-  // The ith right-hand-side value is getting dropped if the "overwrite" edge
-  // has been set for the lhs value.
-  return i < Lhs.size()
-    and not drop_utils::DropsOn(*Lhs[i], DropEdge::kOverwrite).empty();
+  // The ith target drops the value it held if Stage 8 recorded one there.
+  return i < _Drops.Overwrite.size() and _Drops.Overwrite[i].has_value();
 }
 
 auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
@@ -419,8 +413,7 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
     if (llvm_lhs_locs[i] == nullptr and llvm_rhs_vals[i] == nullptr) { continue; }
     SPP_ASSERT(llvm_lhs_locs[i] != nullptr and llvm_rhs_vals[i] != nullptr);
     if (DropsOldAt(i)) {
-      using analyse::utils::drop_utils::DropEdge;
-      auto const &old = analyse::utils::drop_utils::DropsOn(*Lhs[i], DropEdge::kOverwrite)[0];
+      auto const &old = *_Drops.Overwrite[i];
       codegen::EmitDrop(
         Lhs[i]->InferTypeRef(sm, meta).WithoutConvention(), llvm_lhs_locs[i], sm, meta, ctx, old.Moved, old.TakenApart);
     }

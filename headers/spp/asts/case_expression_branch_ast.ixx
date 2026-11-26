@@ -43,6 +43,16 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
   /// The statements executed if the branch matches.
   Unique<InnerScopeExpressionAst> Body;
 
+  /// There are 3 ways out of a case branch: either the pattern never matched
+  /// (but bindings may have been introduced); the guard after the matched
+  /// patterns is false (again pattern bindings could exist); or the end of the
+  /// branch is reached normally.
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> End;
+    Vec<analyse::utils::drop_utils::OwnedValue> BadMatch;
+    Vec<analyse::utils::drop_utils::OwnedValue> BadGuard;
+  } _Drops;
+
   CaseExpressionBranchAst(
     decltype(Op) &&op,
     decltype(Patterns) &&patterns,
@@ -84,9 +94,9 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
 
 private:
   /// The block an edge passing this branch over leads to: "next_bb",
-  /// or one dropping what the branch drops at "edge" first.
+  /// or one dropping "drops" (the edge's, in "_Drops") first.
   auto _EdgeToNext(
-    analyse::utils::drop_utils::DropEdge edge, Str const &name, llvm::BasicBlock *next_bb,
+    Vec<analyse::utils::drop_utils::OwnedValue> const &drops, Str const &name, llvm::BasicBlock *next_bb,
     ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::BasicBlock*;
 
   /// Save the generated combined pattern expressions for
@@ -100,15 +110,6 @@ private:
 
   /// See "SetDropsBindings". Not carried by "Clone": a copy's "case" sets them again.
   bool _DropsPatternBindings = false;
-
-  // Its drops ("drop_utils::DropsOn"): at the body's end ("kEnd"),
-  // what the branch's bindings still own, then what this path holds of
-  // values around the "case" that another path out does not (added by
-  // the "case"'s join, "case_utils::ValidateInconsistentMemory"); and
-  // where the branch is passed over after its guard moved values, on
-  // the edge where the patterns do not match ("kNoMatch") and where
-  // the guard answers false ("kGuardFalse", with what the guard's
-  // temporaries hold: they live on into the body otherwise).
 
   /// See "StateAfterGuard". Not carried by "Clone": read only by the
   /// "case" analysing this branch, straight after.

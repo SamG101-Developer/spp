@@ -40,6 +40,14 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
 
   static auto NewEmpty() -> Unique<InnerScopeExpressionAst>;
 
+  /// An inner scope records owned values that need to be dropped at the end of
+  /// the scope, and the temporaries that each statement introduces and need to
+  /// be dropped at the end of the statement (but in this scope).
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> End;
+    Vec<Vec<analyse::utils::drop_utils::OwnedValue>> StatementTemporaries;
+  } _Drops;
+
   InnerScopeExpressionAst(
     decltype(TokL) &&tok_l,
     decltype(Members) &&members,
@@ -89,11 +97,6 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
   auto SetDropsDiscarded(std::size_t i) -> void;
 
 protected:
-  // Its drops ("drop_utils::DropsOn"): what this scope still owns at
-  // its closing brace ("kEnd", "drop_utils::EndRegion"); and each
-  // member's, at its end, what the "$" temporaries it made still own
-  // ("kStatementEnd", held by the member, "drop_utils::TemporaryRegion").
-
   /// See "SetBoundOnEntry".
   Vec<Shared<VariableSymbol>> _BoundOnEntry;
 

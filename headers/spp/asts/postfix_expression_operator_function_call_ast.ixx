@@ -53,6 +53,12 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
     Ast *OriginalExpr;
   } Source;
 
+  /// Handle drops for temporaries created from folding, so they all last as
+  /// long as the fold.
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> Fold;
+  } _Drops;
+
   explicit PostfixExpressionOperatorFunctionCallAst(
     decltype(GnArgGroup) &&generic_arg_group,
     decltype(FnArgGroup) &&arg_group,
@@ -171,7 +177,7 @@ private:
   /// The temporaries in "_FoldTemps" its calls do not take (a
   /// receiver or argument only borrowed, or any, when no call reads
   /// it), and what of them is still owned after the calls: dropped
-  /// there ("kFold", "drop_utils::DropsOn"), so each lasts as long as
+  /// there ("_Drops.Fold"), so each lasts as long as
   /// the fold.
   Vec<Shared<IdentifierAst>> _FoldUnconsumed;
 

@@ -131,6 +131,12 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     Unique<FunctionImplementationAst> OriginalImpl;
   } Source;
 
+  /// A function is its own scope, so record owned values that need to be
+  /// dropped at the end of the closure.
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> End;
+  } _Drops;
+
   FunctionPrototypeAst(
     decltype(Annotations) &&annotations,
     decltype(TokCmp) &&tok_cmp,
@@ -377,9 +383,6 @@ protected:
   LlvmCtx *_OwnerCtx;
 
   Unique<analyse::utils::annotation_utils::AnnotationInfo> _AnnotationInfo;
-
-  // What the function's own scope (its parameters) still owns as the
-  // body runs off its end is dropped there ("kEnd", "drop_utils::DropsOn").
 
   inline static Vec<Pair<FunctionPrototypeAst*, bool>> _PendingDefaults = {};
 

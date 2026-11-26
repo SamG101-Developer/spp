@@ -47,9 +47,6 @@ import genex;
 import std;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
-use_alias(spp::analyse::utils::drop_utils, DropEdge);
-use_alias(spp::analyse::utils::drop_utils, DropsOn);
-use_alias(spp::analyse::utils::drop_utils, SetDropsOn);
 use_alias(spp::analyse::scopes, ScopeBlockName);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
@@ -140,6 +137,7 @@ auto spp::asts::CaseExpressionAst::Clone() const -> Unique<Ast> {
   c->LoweredFromTryOperator = LoweredFromTryOperator;
   c->ValueDiscarded = ValueDiscarded;
   c->_KeepsTemporaryOnFallThrough = _KeepsTemporaryOnFallThrough;
+  c->_Drops = _Drops;
   return c;
 }
 
@@ -336,9 +334,9 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
     meta->CaseSubject = subject;
     // An "is" never takes its subject on a match: its bindings are
     // views of it, which the subject's owner keeps owning.
-    SetDropsOn(*this, DropEdge::kFallThrough, case_utils::ValidateInconsistentMemory(
+    _Drops.FallThrough = case_utils::ValidateInconsistentMemory(
       this, branches, coverage, subject != nullptr and not LoweredFromIsExpr ? &plan.Edges : nullptr,
-      condition.Declared(), BinaryExpressionAst::HeldWhenTrue(*Cond), sm, meta));
+      condition.Declared(), BinaryExpressionAst::HeldWhenTrue(*Cond), sm, meta);
   }
 
   // Move out of the case expression scope.
@@ -485,7 +483,7 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
         if (_KeepsTemporaryOnFallThrough and subject_ptr != nullptr) {
           codegen::EmitDrop(*subject_ref, subject_ptr, sm, meta, ctx);
         }
-        codegen::EmitOuterDrops(DropsOn(*this, DropEdge::kFallThrough), *this, sm, meta, ctx);
+        codegen::EmitOuterDrops(_Drops.FallThrough, *this, sm, meta, ctx);
         ctx->Builder.CreateBr(case_end_bb);
       }
     }

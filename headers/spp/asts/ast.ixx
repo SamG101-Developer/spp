@@ -10,7 +10,6 @@ import std;
 
 use_common(Ast);
 use(spp::analyse::scopes, class Scope);
-use(spp::analyse::utils::drop_utils, struct EdgeDrops);
 
 GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
 use(spp::asts, struct TokenAst);
@@ -165,24 +164,12 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
   /// Setter for the internal scope from the stage 2 pass.
   auto SetAstScope(Scope *scope) -> void;
 
-  /// What this construct drops at its edges, made by Stage 8
-  /// ("drop_utils::DropsOn"): made on first use; none until then.
-  auto EdgeStore() -> analyse::utils::drop_utils::EdgeDrops&;
-  SPP_ATTR_NODISCARD auto EdgeStore() const -> analyse::utils::drop_utils::EdgeDrops const*;
-
-  /// Take on "from"'s drops: a copy is the same construct, analysed
-  /// once ("AstClone").
-  auto CopyEdgeStore(Ast const &from) -> void;
-
 protected:
   /// The internal context from stage 1.
   Ast *_Ctx = nullptr;
 
   /// The internal context from stage 2.
   Scope *_Scope = nullptr;
-
-  /// See "EdgeStore".
-  Unique<analyse::utils::drop_utils::EdgeDrops> _EdgeStore;
 
   /// Creating a raw Ast isn't allowed, but to be created from
   /// its base classes, the constructor is marked as "protected".

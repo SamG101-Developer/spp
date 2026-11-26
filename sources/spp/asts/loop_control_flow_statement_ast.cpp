@@ -31,9 +31,6 @@ import genex;
 import llvm;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
-use_alias(spp::analyse::utils::drop_utils, DropEdge);
-use_alias(spp::analyse::utils::drop_utils, DropsOn);
-use_alias(spp::analyse::utils::drop_utils, SetDropsOn);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, CompilerMetaData);
@@ -69,6 +66,7 @@ auto spp::asts::LoopControlFlowStatementAst::Clone() const -> Unique<Ast> {
     AstClone(Expr));
   p->_ExprIsNever = _ExprIsNever;
   p->_OwnedAtExit = _OwnedAtExit;
+  p->_Drops = _Drops;
   return p;
 }
 
@@ -191,7 +189,7 @@ auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
   auto iteration = Vec<drop_utils::OwnedValue>();
   _OwnedAtExit = drop_utils::OwnedUpToLoop(
     *exit_point, TokSeqExit.size(), TokSkip != nullptr, *sm, meta, iteration);
-  SetDropsOn(*this, DropEdge::kAfterExit, std::move(iteration));
+  _Drops.AfterJump = std::move(iteration);
 }
 
 auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
@@ -233,7 +231,7 @@ auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
   codegen::EmitScopeExit(
       has_skip ? target.LoopScope : target.LoopScope->Parent, sm, meta, ctx, _OwnedAtExit);
 
-  codegen::EmitOuterDrops(DropsOn(*this, DropEdge::kAfterExit), *this, sm, meta, ctx);
+  codegen::EmitOuterDrops(_Drops.AfterJump, *this, sm, meta, ctx);
 
   // A "skip" starts the next iteration at the condition check.
   // It never has a value, so no phi node is involved.

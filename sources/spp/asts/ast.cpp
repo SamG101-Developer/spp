@@ -7,7 +7,6 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.drop_utils;
 import spp.utils.ice;
 import spp.utils.stats;
 import std;
@@ -24,21 +23,6 @@ spp::asts::Ast::Ast() {
 }
 
 spp::asts::Ast::~Ast() = default;
-
-auto spp::asts::Ast::EdgeStore() -> analyse::utils::drop_utils::EdgeDrops& {
-  if (_EdgeStore == nullptr) { _EdgeStore = MakeUnique<analyse::utils::drop_utils::EdgeDrops>(); }
-  return *_EdgeStore;
-}
-
-auto spp::asts::Ast::EdgeStore() const -> analyse::utils::drop_utils::EdgeDrops const* {
-  return _EdgeStore.get();
-}
-
-auto spp::asts::Ast::CopyEdgeStore(Ast const &from) -> void {
-  _EdgeStore = from._EdgeStore != nullptr
-    ? MakeUnique<analyse::utils::drop_utils::EdgeDrops>(*from._EdgeStore)
-    : nullptr;
-}
 
 auto spp::asts::Ast::_AsFailed(
   Ast const *self,

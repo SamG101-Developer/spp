@@ -36,6 +36,12 @@ SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
   /// a value with the "exit value" statement.
   Unique<ExpressionAst> Expr;
 
+  /// Handle the drops that the "exit" triggers, anything needing handling by
+  /// the "skip" join.
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> AfterJump;
+  } _Drops;
+
   LoopControlFlowStatementAst(
     decltype(TokSeqExit) &&tok_seq_exit,
     decltype(TokSkip) &&tok_skip,
@@ -68,14 +74,6 @@ private:
   /// What each scope the jump leaves still owns there, innermost
   /// first ("drop_utils::OwnedUpToLoop").
   analyse::utils::drop_utils::OwnedScopes _OwnedAtExit;
-
-  // Dropped once the scopes are left ("_OwnedAtExit", the edge
-  // "kAfterExit"): for an "exit", what its path holds of values
-  // around the loop it leaves that another path out does not (added
-  // by the loop's join); for a "skip", what the iteration it ends
-  // still holds in the loop's own scope (its condition's
-  // temporaries), and what it holds of values around the loop that
-  // another way into the loop's head does not (the head's join).
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 };

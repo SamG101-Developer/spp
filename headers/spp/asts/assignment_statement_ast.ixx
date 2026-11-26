@@ -30,6 +30,12 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
   /// The values on the right-hand-side.
   Vec<Unique<ExpressionAst>> Rhs;
 
+  /// An assignment can overwrite an owned value currently stored, so track it
+  /// for "drop" injection. Nullopt per slot where no overwrite takes place.
+  struct {
+    Vec<Opt<analyse::utils::drop_utils::OwnedValue>> Overwrite;
+  } _Drops;
+
   AssignmentStatementAst(
     decltype(Lhs) &&lhs,
     decltype(TokAssign) &&tok_assign,

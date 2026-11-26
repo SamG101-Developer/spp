@@ -33,6 +33,16 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
   /// written); nullptr for a loop written as one.
   Ast const *LoweredFrom = nullptr;
 
+  /// A loop's condition is reached from 3 different points: the initial entry
+  /// from above; a re-iteration from the end of the loop; a re-iteration from a
+  /// skip statement. Skip handles its own stuff, so only re-iteration is the
+  /// "back edge" here. "BadCond" is when the condition goes false.
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> Entry, BackEdge;
+    Vec<analyse::utils::drop_utils::OwnedValue> CondTemporaries;
+    Vec<analyse::utils::drop_utils::OwnedValue> BadCond;
+  } _Drops;
+
   LoopConditionalExpressionAst(
     decltype(TokLoop) &&tok_loop,
     decltype(Cond) &&cond,
@@ -51,15 +61,4 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
-
-private:
-  // Its drops ("drop_utils::DropsOn"): where the condition ends the
-  // loop ("kCondEnd", through the "else" block, if any), what that
-  // path holds of values around the loop that another path out (an
-  // "exit") does not, and what the condition's temporaries hold; at
-  // the body's end, what the condition's temporaries still own
-  // ("kIteration"); and at the loop's head, where its entry and its
-  // ways back round (the body's end, each "skip") meet, what one holds
-  // of values around the loop that another does not, dropped on each
-  // still holding it ("kEntry", "kBackEdge"; a "skip"'s go on it).
 };

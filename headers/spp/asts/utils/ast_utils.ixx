@@ -42,9 +42,7 @@ namespace spp::asts {
   inline auto AstClone(Unique<T> const &ast) -> Unique<std::remove_cvref_t<T>> {
     if (ast == nullptr) { return nullptr; }
     using ResultT = std::remove_cvref_t<T>;
-    auto out = Unique<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
-    out->CopyEdgeStore(*ast);
-    return out;
+    return Unique<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
   }
 
   SPP_EXP_FUN template <typename T>
@@ -52,9 +50,7 @@ namespace spp::asts {
   inline auto AstClone(Shared<T> const &ast) -> Unique<std::remove_cvref_t<T>> {
     if (ast == nullptr) { return nullptr; }
     using ResultT = std::remove_cvref_t<T>;
-    auto out = Unique<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
-    out->CopyEdgeStore(*ast);
-    return out;
+    return Unique<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
   }
 
   SPP_EXP_FUN template <typename T>
@@ -62,9 +58,7 @@ namespace spp::asts {
   inline auto AstClone(T *ast) -> Unique<std::remove_cvref_t<T>> {
     if (ast == nullptr) { return nullptr; }
     using ResultT = std::remove_cvref_t<T>;
-    auto out = Unique<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
-    out->CopyEdgeStore(*ast);
-    return out;
+    return Unique<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
   }
 
   SPP_EXP_FUN template <typename T>
@@ -72,9 +66,7 @@ namespace spp::asts {
   inline auto AstCloneShared(Shared<T> const &ast) -> Shared<std::remove_cvref_t<T>> {
     if (ast == nullptr) { return nullptr; }
     using ResultT = std::remove_cvref_t<T>;
-    auto out = CloneSharedOf<ResultT>(*ast);
-    out->CopyEdgeStore(*ast);
-    return out;
+    return CloneSharedOf<ResultT>(*ast);
   }
 
   SPP_EXP_FUN template <typename T>
@@ -82,9 +74,7 @@ namespace spp::asts {
   inline auto AstCloneShared(T *ast) -> Shared<std::remove_cvref_t<T>> {
     if (ast == nullptr) { return nullptr; }
     using ResultT = std::remove_cvref_t<T>;
-    auto out = CloneSharedOf<ResultT>(*ast);
-    out->CopyEdgeStore(*ast);
-    return out;
+    return CloneSharedOf<ResultT>(*ast);
   }
 
   SPP_EXP_FUN template <typename T>

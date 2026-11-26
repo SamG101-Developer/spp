@@ -31,8 +31,6 @@ import spp.utils.ice;
 import genex;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
-use_alias(spp::analyse::utils::drop_utils, DropEdge);
-use_alias(spp::analyse::utils::drop_utils, DropsOn);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, CompilerMetaData);
@@ -227,7 +225,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
       // Add a return instruction inside the function if there isn't
       // one (abstract methods will never be called due to previous
       // semantic analysis on abstracts, but to satisfy LLVM analysis).
-      codegen::EmitOwnedDrops(*sm->CurrentScope, DropsOn(*this, DropEdge::kEnd), this, sm, meta, ctx);
+      codegen::EmitOwnedDrops(*sm->CurrentScope, _Drops.End, this, sm, meta, ctx);
       const auto insert_bb = ctx->Builder.GetInsertBlock();
       if (not insert_bb->hasTerminator()) {
         const auto ret_void = insert_bb->getParent()->getReturnType()->isVoidTy();

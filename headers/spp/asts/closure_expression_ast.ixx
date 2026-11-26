@@ -53,6 +53,12 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
     Shared<TypeAst> _OriginalRetType;
   } Source;
 
+  /// A closure is its own scope, so record owned values that need to be dropped
+  /// at the end of the closure.
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> End;
+  } _Drops;
+
   ClosureExpressionAst(
     decltype(Tok) &&tok,
     decltype(PcGroup) &&pc_group,
@@ -128,8 +134,4 @@ private:
   /// The LLVM function representing the closure. Generated in
   /// stage 11, and used to call the closure when it is invoked.
   Shared<codegen::LlvmFnWrapper> _LlvmFn;
-
-  // What the closure's own scope (its parameters and by-value captures)
-  // still owns as the body runs off its end is dropped there ("kEnd",
-  // "drop_utils::DropsOn").
 };

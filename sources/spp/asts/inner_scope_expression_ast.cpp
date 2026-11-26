@@ -38,9 +38,6 @@ import spp.utils.uid;
 import genex;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
-use_alias(spp::analyse::utils::drop_utils, DropEdge);
-use_alias(spp::analyse::utils::drop_utils, DropsOn);
-use_alias(spp::analyse::utils::drop_utils, SetDropsOn);
 use_alias(spp::analyse::scopes, ScopeBlockName);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
@@ -104,6 +101,7 @@ auto spp::asts::InnerScopeExpressionAst::Clone() const -> Unique<Ast> {
   i->_Scope = _Scope;
   i->_BoundOnEntry = _BoundOnEntry;
   i->_DropsDiscarded = _DropsDiscarded;
+  i->_Drops = _Drops;
   i->ValueDiscarded = ValueDiscarded;
   return i;
 }
@@ -185,10 +183,11 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
 
   // Check the memory of each member. The hidden temporaries a
   // statement made end with it.
+  _Drops.StatementTemporaries.assign(Members.size(), {});
   for (auto const &[i, m] : Members | genex::views::enumerate) {
     const auto statement = drop_utils::TemporaryRegion(*sm->CurrentScope);
     m->Stage8_CheckMemory(sm, meta);
-    SetDropsOn(*m, DropEdge::kStatementEnd, statement.End(*m, *sm, meta, OwnLetName(*m)));
+    _Drops.StatementTemporaries[i] = statement.End(*m, *sm, meta, OwnLetName(*m));
   }
 
   // The final statement is the scope's value, so unless nothing
@@ -211,8 +210,8 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
   // What this scope still owns at its end is dropped there. Read
   // after the members, so a value the last statement took is gone.
   if (not Diverges(sm, meta)) {
-    SetDropsOn(*this, DropEdge::kEnd, drop_utils::EndRegion(
-      *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this, *sm, meta));
+    _Drops.End = drop_utils::EndRegion(
+      *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this, *sm, meta);
   }
 
   // At the end of a scope, every symbol declared *in* this
@@ -252,7 +251,8 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   for (auto const &[i, m] : this->Members | genex::views::enumerate) {
     // Each member at its own line, for the debug info.
     codegen::SetDebugLocation(*ctx, m->PosStart());
-    auto const &statement_drops = DropsOn(*m, DropEdge::kStatementEnd);
+    static const auto no_drops = Vec<analyse::utils::drop_utils::OwnedValue>();
+    auto const &statement_drops = i < _Drops.StatementTemporaries.size() ? _Drops.StatementTemporaries[i] : no_drops;
     const auto temporaries = codegen::TemporaryDepth(ctx);
     const auto end_statement = [&] {
       codegen::EndTemporaryRegion(temporaries, *sm->CurrentScope, statement_drops, m.get(), sm, meta, ctx);
@@ -290,7 +290,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   // Whatever this scope deferred runs as it is left, after
   // the value it hands out has been produced.
   codegen::EmitScopeExit(sm->CurrentScope->Parent, sm, meta, ctx);
-  codegen::EmitOwnedDrops(*sm->CurrentScope, DropsOn(*this, DropEdge::kEnd), this, sm, meta, ctx);
+  codegen::EmitOwnedDrops(*sm->CurrentScope, _Drops.End, this, sm, meta, ctx);
 
   // Exit the scope.
   codegen::LeaveDebugBlock(*ctx);
