@@ -24,24 +24,16 @@ use(spp::asts, struct PostfixExpressionOperatorRuntimeMemberAccessAst);
 use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::drop_utils {
-  /// A value still owned where its lifetime ends, for code
-  /// generation to drop there: the symbol's name, and the paths
-  /// of the parts already moved out of it (field names, outermost
-  /// first), none for a whole value. Found again by name, so an
-  /// instance finds its own copy, and by where the name is
-  /// declared ("DeclaredAt"), as a scope can own two of one name
-  /// (one displaced by the other). None for a value nothing
-  /// declares (a codegen-built "gen"'s "self").
+  /// A value owned where its lifetime ends, so that LLVM codegen can inject a
+  /// drop there. Record the name on the symbol, the paths of the parts already
+  /// moved from (ie for an overall partially moved symbol), and where the ast
+  /// was declared at so shadowing isn't an issue. The "TakenApart" list is the
+  /// list of "containers" that have been destructures into parts; "drop" is not
+  /// injected for them.
   SPP_EXP_CLS struct OwnedValue {
     Shared<IdentifierAst> Name;
     Vec<Vec<spp::utils::InternedId>> Moved;
     Opt<std::size_t> DeclaredAt;
-
-    /// The places in it whose type's own "drop" does not run, so only
-    /// their fields are dropped, as paths of field names (the empty
-    /// path is the value itself): what a destructure took apart, and
-    /// "self" at the end of its own type's "drop", where running the
-    /// destructor again would recurse.
     Vec<Vec<spp::utils::InternedId>> TakenApart;
   };
 

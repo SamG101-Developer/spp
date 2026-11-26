@@ -328,10 +328,16 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
   }
 }
 
+/// [CHECKED]
 auto spp::asts::AssignmentStatementAst::DropsOldAt(
   const std::size_t i) const -> bool {
+  IMPORT_UTILS;
+  using drop_utils::DropEdge;
+
+  // The ith right-hand-side value is getting dropped if the "overwrite" edge
+  // has been set for the lhs value.
   return i < Lhs.size()
-    and not analyse::utils::drop_utils::DropsOn(*Lhs[i], analyse::utils::drop_utils::DropEdge::kOverwrite).empty();
+    and not drop_utils::DropsOn(*Lhs[i], DropEdge::kOverwrite).empty();
 }
 
 auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
