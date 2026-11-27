@@ -255,7 +255,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
     Body->Stage8_CheckMemory(&walk, meta);
     if (not Body->Diverges(&walk, meta)) {
       auto const &end = Body->TokR != nullptr ? static_cast<Ast const&>(*Body->TokR) : static_cast<Ast const&>(*Body);
-      _Drops.Iteration = iteration.End(end, walk, meta);
+      _Drops.CondTemporaries = iteration.End(end, walk, meta);
     }
   };
 
@@ -356,7 +356,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
     if (not body_diverges) { _Drops.BackEdge = std::move(head_drops[next_drops++]); }
     for (auto const &[skip, _] : flow.Loops[frame_at].SkipStates) {
       if (auto *const stmt = const_cast<Ast*>(skip)->To<LoopControlFlowStatementAst>(); stmt != nullptr) {
-        drop_utils::AddDrops(stmt->_Drops.AfterExit, std::move(head_drops[next_drops]));
+        drop_utils::AddDrops(stmt->_Drops.AfterJump, std::move(head_drops[next_drops]));
       }
       next_drops += 1;
     }
@@ -447,18 +447,18 @@ auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
   }
   for (auto &drops : path_drops) { drop_utils::SortNewestFirst(drops); }
   const auto first_exit = cond_can_end ? 1uz : 0uz;
-  _Drops.CondEnd = cond_can_end ? std::move(path_drops[0]) : Vec<drop_utils::OwnedValue>();
+  _Drops.BadCond = cond_can_end ? std::move(path_drops[0]) : Vec<drop_utils::OwnedValue>();
 
   // The condition that ended the loop matched no "is": its
   // temporaries (not its bindings) still hold what it left them, a
   // failed match's value included.
-  if (cond_can_end) { drop_utils::AddDrops(_Drops.CondEnd, std::move(held_at_cond_end)); }
+  if (cond_can_end) { drop_utils::AddDrops(_Drops.BadCond, std::move(held_at_cond_end)); }
   if (first_exit + frame.ExitStmts.size() != paths.size()) {
     Ice(*this, *sm->CurrentScope, "a loop's exit states and exit statements are out of step");
   }
   for (auto i = 0uz; i < frame.ExitStmts.size(); ++i) {
     if (const auto stmt = frame.ExitStmts[i]->To<LoopControlFlowStatementAst>(); stmt != nullptr) {
-      drop_utils::AddDrops(stmt->_Drops.AfterExit, std::move(path_drops[first_exit + i]));
+      drop_utils::AddDrops(stmt->_Drops.AfterJump, std::move(path_drops[first_exit + i]));
     }
   }
 
@@ -511,7 +511,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
   // when no "exit" gives one. Without one (or drops to run on
   // that path first, "_Drops.CondEnd"), the condition ends the
   // loop at its end block.
-  const auto loop_else_bb = ElseBlock != nullptr or not _Drops.CondEnd.empty()
+  const auto loop_else_bb = ElseBlock != nullptr or not _Drops.BadCond.empty()
     ? llvm::BasicBlock::Create(*ctx->Context, "loop.else" + uid, func)
     : loop_end_bb;
   codegen::EmitOuterDrops(_Drops.Entry, *this, sm, meta, ctx);
@@ -564,7 +564,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
       meta->LlvmAssignmentTarget = nullptr;
       Body->Stage11_CodeGen(sm, meta, ctx);
     }
-    codegen::EmitOwnedDrops(*sm->CurrentScope, _Drops.Iteration, this, sm, meta, ctx);
+    codegen::EmitOwnedDrops(*sm->CurrentScope, _Drops.CondTemporaries, this, sm, meta, ctx);
     codegen::EmitOuterDrops(_Drops.BackEdge, *this, sm, meta, ctx);
     if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
       ctx->Builder.CreateBr(loop_cond_bb);
@@ -581,7 +581,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
           else_val, ret_ref, ElseBlock->InferTypeRef(sm, meta), *sm, "loop.else.coerce" + uid, ctx);
       }
       codegen::EmitScopeExit(sm->CurrentScope->Parent, sm, meta, ctx);
-      codegen::EmitOuterDrops(_Drops.CondEnd, *this, sm, meta, ctx);
+      codegen::EmitOuterDrops(_Drops.BadCond, *this, sm, meta, ctx);
       const auto else_end_bb = ctx->Builder.GetInsertBlock();
       if (not else_end_bb->hasTerminator()) {
         if (phi != nullptr) {
