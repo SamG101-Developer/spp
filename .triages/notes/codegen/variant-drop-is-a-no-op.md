@@ -1,7 +1,7 @@
 ---
 name: variant-drop-is-a-no-op
 description: "Var has no parts, so drop code reads variants through VariantMemberRefs: NeedsDrop recurses into members, EmitDrop switches on the tag (fixed 2026-11-10)"
-updated: 2026-11-10
+updated: 2026-11-23
 ---
 
 `std::variant::Var[..Variants]` is an empty class; its members exist only in the lowered `{ tag, payload }`. Every
@@ -10,8 +10,8 @@ drop path reads a type's parts through `type_members::GetAllParts`, which finds 
 - `codegen::EmitDrop` (`llvm_drop.cpp`) handles generators, own `drop`s and parts, but has no variant branch, so
   `std::mem::ops::drop[T=Bool or Vec[S32]]` compiles to a store and `ret` (seen in both dev and rel IR).
 
-The analysis still treats the variant as linear (`IsCopyable` is false, E94 without a `drop`), so the program is
-forced to call a `drop` that does nothing. Was found by valgrind on
+At the time the analysis treated the variant as linear (`IsCopyable` false, E94 without a `drop`), so the program
+was forced to call a `drop` that did nothing; under affine ownership the compiler's own drop of it went the same way. Was found by valgrind on
 `std::tst::variant::test_a_variant_can_hold_a_non_copyable_alternative` (4 bytes definitely lost in rel; dev hides it
 because a stale copy of the pointer survives on the stack). The same goes for a variant nested in a struct or tuple,
 and for `Opt[T]`/`Res[T, E]` over owning types.

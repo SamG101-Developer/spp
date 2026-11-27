@@ -71,16 +71,11 @@ namespace spp::analyse::utils::pattern_solver {
     Vec<TypeRef> Remaining;
   };
 
-  /// What a "case" does with its subject on each way through it: on
-  /// each branch's match edge, and on the edge that falls through
-  /// every branch, if there is one. A branch binding by move off it
-  /// takes it. A branch narrowing it to members that are all "Copy"
-  /// ("is None"), and an "else" or fall-through left only such
-  /// members, find it owes nothing. Anything else keeps it owned on
-  /// that path.
+  /// What a "case" does with its subject on each branch's match edge:
+  /// a branch binding by move off it takes it; any other keeps it,
+  /// as does falling through every branch.
   SPP_EXP_CLS struct SubjectEdges {
     Vec<SubjectOnMatch> OnMatch;
-    SubjectOnMatch OnFallThrough = SubjectOnMatch::kKeep;
   };
 
   /// One thing a pattern tests of the value at "Path": which member a
@@ -171,7 +166,7 @@ namespace spp::analyse::utils::pattern_solver {
 SPP_EXP_CLS class spp::analyse::utils::pattern_solver::PatternSolver {
 public:
   PatternSolver(
-    Vec<CaseExpressionBranchAst*> branches, TypeRef const &subject,
+    Span<Unique<CaseExpressionBranchAst> const> branches, TypeRef const &subject,
     Shared<VariableSymbol> subject_value, Scope const &scope);
 
   PatternSolver(PatternSolver const &) = delete;
@@ -186,7 +181,7 @@ public:
 
 private:
   /// All the branches on the case being solved.
-  Vec<CaseExpressionBranchAst*> _Branches;
+  Span<Unique<CaseExpressionBranchAst> const> _Branches;
 
   /// The case's subject type, inferred from the case's condition.
   TypeRef _Subject;

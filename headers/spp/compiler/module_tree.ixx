@@ -151,9 +151,8 @@ public:
   /// Provide an "end" to allow for simple iteration.
   auto end() -> Vec<Unique<Module>>::iterator;
 
-  /// Get the modules as a view over the raw pointers (this tree owns the
-  /// modules as unique pointers)
-  auto GetModules() -> Vec<Module*>;
+  /// The modules this tree owns.
+  SPP_ATTR_NODISCARD auto ViewModules() const -> Span<Unique<Module> const>;
 
   /// Getter for the root path.
   auto RootPath() const -> Path;

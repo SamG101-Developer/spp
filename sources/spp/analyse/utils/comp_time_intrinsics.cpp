@@ -227,10 +227,10 @@ auto spp::analyse::utils::comp_time_intrinsics::FindNamedArg(
   ObjectInitializerAst const &init,
   IdentifierAst const &name)
   -> ObjectInitializerArgumentAst* {
-  for (auto *const arg : init.ArgGroup->GetAllArgs()) {
+  for (auto const &arg : init.ArgGroup->Args) {
     const auto shorthand = arg->To<ObjectInitializerArgumentShorthandAst>();
     if (shorthand != nullptr and shorthand->TokEllipsis != nullptr) { continue; }
-    if (arg->Name != nullptr and *arg->Name == name) { return arg; }
+    if (arg->Name != nullptr and *arg->Name == name) { return arg.get(); }
   }
   return nullptr;
 }
@@ -342,7 +342,7 @@ auto spp::analyse::utils::comp_time_intrinsics::GetCompTimeAttrValue(
   -> Unique<ExpressionAst> {
   // The argument setting the attribute, or else whatever an autofill argument ("..old") supplies for it.
   if (const auto arg = FindNamedArg(*object, *attribute); arg != nullptr) { return AstClone(arg->Val); }
-  for (const auto arg : object->ArgGroup->GetAllArgs()) {
+  for (auto const &arg : object->ArgGroup->Args) {
     const auto shorthand = arg->To<ObjectInitializerArgumentShorthandAst>();
     const auto source = shorthand != nullptr and shorthand->TokEllipsis != nullptr
       ? shorthand->Val->To<ObjectInitializerAst>()

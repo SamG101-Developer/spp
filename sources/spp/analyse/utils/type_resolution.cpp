@@ -65,6 +65,12 @@ namespace spp::analyse::utils::type_resolution {
     GenericParameterAst const &param, GenericSubst bindings,
     Scope const &written_in, Scope const &read_in) -> Shared<TypeAst>;
 
+  /// "ParamsBoundByArgs" over parameters held either way: owned
+  /// by their group, or a filtered list of pointers.
+  template <typename Param>
+  static auto ParamsBoundByArgsIn(
+    Span<Unique<GenericArgumentAst> const> args, Span<Param const> params) -> Vec<GenericParameterAst*>;
+
   /// A comp value read by its identity alone; null when it has an opaque part, or none.
   static auto ReadCompId(
     ExpressionAst const &written, ExprSubst const &sub)
@@ -74,8 +80,8 @@ namespace spp::analyse::utils::type_resolution {
 auto spp::analyse::utils::type_resolution::ReadTypeOrNull(
   TypeAst const &written, ExprSubst const &sub) -> Shared<TypeAst> {
   const auto id = SubstituteTypeId(sub.Written->TypeIdOf(written), sub.Bindings);
-  const auto out = id != nullptr ? sub.Reading->TypeAstOf(id) : nullptr;
-  return out != nullptr ? out->WithSourceSpanOf(written) : nullptr;
+  auto out = id != nullptr ? sub.Reading->TypeAstOf(id) : nullptr;
+  return out != nullptr ? TypeAst::WithSourceSpanOf(std::move(out), written) : nullptr;
 }
 
 auto spp::analyse::utils::type_resolution::ReadTypeDefault(
@@ -95,6 +101,44 @@ auto spp::analyse::utils::type_resolution::ReadCompId(
   if (node == nullptr or node->Any(opaque)) { return nullptr; }
   const auto rewritten = SubstituteCompId(id, sub.Bindings);
   return rewritten != nullptr ? sub.Reading->CompAstOf(rewritten) : nullptr;
+}
+
+template <typename Param>
+auto spp::analyse::utils::type_resolution::ParamsBoundByArgsIn(
+  const Span<Unique<GenericArgumentAst> const> args, const Span<Param const> params) -> Vec<GenericParameterAst*> {
+  // Whether a keyword argument (of either kind) names the
+  // parameter, which no positional argument then binds.
+  const auto taken_by_keyword = [&args](GenericParameterAst const *param) {
+    return genex::any_of(args, [param](auto const &arg) {
+      return arg->KeywordName() != nullptr and *arg->KeywordName() == *param->Name;
+    });
+  };
+
+  // One cursor per kind ([0] type, [1] comp): a positional
+  // argument binds the next parameter of its own kind.
+  auto next = Arr<std::size_t, 2>{0, 0};
+  auto out = Vec<GenericParameterAst*>();
+  out.reserve(args.size());
+  for (auto const &arg : args) {
+    if (arg->KeywordName() != nullptr) {
+      const auto it = genex::find_if(params, [&arg](auto const &param) { return *param->Name == *arg->KeywordName(); });
+      out.emplace_back(it != params.end() ? std::to_address(*it) : nullptr);
+      continue;
+    }
+
+    // A reference into "next", so advancing it moves that kind's
+    // cursor. The cursor is one of the two slots in "next", for
+    // type vs comp.
+    const auto comp = arg->IsCompArg();
+    auto &cursor = next[comp ? 1 : 0];
+    while (cursor < params.size()
+      and (params[cursor]->IsCompParam() != comp or taken_by_keyword(std::to_address(params[cursor])))) {
+      ++cursor;
+    }
+    out.emplace_back(cursor < params.size() ? std::to_address(params[cursor]) : nullptr);
+    if (cursor < params.size() and not params[cursor]->IsVariadic()) { ++cursor; }
+  }
+  return out;
 }
 
 /// [CHECKED]
@@ -119,41 +163,30 @@ auto spp::analyse::utils::type_resolution::AnalyseWrittenType(
   return t;
 }
 
+auto spp::analyse::utils::type_resolution::AnalyseInferredType(
+  TypeAst const &written, generic_inference::Evidence &&evidence,
+  ScopeManager &sm, CompilerMetaData &meta) -> Shared<TypeAst> {
+  auto type = TypeAst::WithSourceSpanOf(self_type::SubstituteSelf(
+    written, sm.CurrentScope->FindEnclosingSelfType(meta).get(),
+    *sm.CurrentScope), written);
+  if (not evidence.Equations.empty() or evidence.Subject != nullptr) {
+    type->LastTypePart()->InferFrom(std::move(evidence));
+  }
+  type->Stage7_AnalyseSemantics(&sm, &meta);
+  return type;
+}
+
 /// [CHECKED]
 auto spp::analyse::utils::type_resolution::ParamsBoundByArgs(
-  Vec<GenericArgumentAst*> const &args,
-  Vec<GenericParameterAst*> const &params) -> Vec<GenericParameterAst*> {
-  // Whether a keyword argument (of either kind) names the
-  // parameter, which no positional argument then binds.
-  const auto taken_by_keyword = [&args](GenericParameterAst const *param) {
-    return genex::any_of(args, [param](auto const *arg) {
-      return arg->KeywordName() != nullptr and *arg->KeywordName() == *param->Name;
-    });
-  };
+  const Span<Unique<GenericArgumentAst> const> args,
+  const Span<Unique<GenericParameterAst> const> params) -> Vec<GenericParameterAst*> {
+  return ParamsBoundByArgsIn(args, params);
+}
 
-  // One cursor per kind ([0] type, [1] comp): a positional
-  // argument binds the next parameter of its own kind.
-  auto next = Arr<std::size_t, 2>{0, 0};
-  auto out = Vec<GenericParameterAst*>();
-  for (const auto arg : args) {
-    if (arg->KeywordName() != nullptr) {
-      const auto it = genex::find_if(params, [arg](auto const *param) { return *param->Name == *arg->KeywordName(); });
-      out.emplace_back(it != params.end() ? *it : nullptr);
-      continue;
-    }
-
-    // A reference into "next", so advancing it moves that kind's
-    // cursor. The cursor is one of the two slots in "next", for
-    // type vs comp.
-    const auto comp = arg->IsCompArg();
-    auto &cursor = next[comp ? 1 : 0];
-    while (cursor < params.size() and (params[cursor]->IsCompParam() != comp or taken_by_keyword(params[cursor]))) {
-      ++cursor;
-    }
-    out.emplace_back(cursor < params.size() ? params[cursor] : nullptr);
-    if (cursor < params.size() and not params[cursor]->IsVariadic()) { ++cursor; }
-  }
-  return out;
+auto spp::analyse::utils::type_resolution::ParamsBoundByArgs(
+  const Span<Unique<GenericArgumentAst> const> args,
+  const Span<GenericParameterAst* const> params) -> Vec<GenericParameterAst*> {
+  return ParamsBoundByArgsIn(args, params);
 }
 
 auto spp::analyse::utils::type_resolution::ReadType(
@@ -253,9 +286,10 @@ auto spp::analyse::utils::type_resolution::StampPrecompiledTypes(
     if (type != nullptr) { StampTypeParts(*type, global); }
   }
 
-  // The templates a reader with no scope (a substitution)
-  // compares against, read from "TEMPLATE_SYMBOLS".
-  for (auto const &tmpl : {TUP, VAR}) {
+  // The templates a reader with no scope (a substitution, a function type's key
+  // dropping its "Void" arguments) compares against, read from
+  // "TEMPLATE_SYMBOLS"; "Void" with them.
+  for (auto const &tmpl : {TUP, VAR, FUN_MOV, FUN_MUT, FUN_REF, VOID}) {
     if (tmpl != nullptr) {
       ignore = scopes::PrecompiledTemplate(*tmpl, global);
     }
@@ -284,10 +318,10 @@ auto spp::analyse::utils::type_resolution::RecordedArgsFor(
 
   // Each argument names its parameter as the solver names it ("ParamsBoundByArgs"); a pack's elements stay positional,
   // after the others ("Scope::ArgsIdOf" keys them into its list).
-  const auto all_args = args.GetAllArgs();
-  const auto all_params = params.GetAllParams();
-  const auto targets = ParamsBoundByArgs(all_args, all_params);
-  for (auto *const param : all_params) {
+  auto const &all_args = args.Args;
+  const auto targets = ParamsBoundByArgs(all_args, params.Params);
+  for (auto const &owned_param : params.Params) {
+    auto *const param = owned_param.get();
     if (param == pack) {
       for (auto i = 0uz; i < all_args.size(); ++i) {
         if (targets[i] != pack) { continue; }
@@ -298,7 +332,7 @@ auto spp::analyse::utils::type_resolution::RecordedArgsFor(
       continue;
     }
     const auto at = genex::find(targets, param);
-    auto const *const given = at != targets.end() ? all_args[static_cast<std::size_t>(at - targets.begin())] : nullptr;
+    auto const *const given = at != targets.end() ? all_args[static_cast<std::size_t>(at - targets.begin())].get() : nullptr;
     if (given != nullptr and given->IsTypeArg()) {
       out.emplace_back(GenericArgumentAst::NewType(param->Name, given->TypeVal));
       continue;
@@ -310,8 +344,7 @@ auto spp::analyse::utils::type_resolution::RecordedArgsFor(
 
     // A default, read with the arguments before it bound.
     if (not param->IsOptional()) { continue; }
-    const auto so_far = out | genex::views::ptr | genex::to<Vec>();
-    auto bindings = scopes::BindArgs(params, so_far, scope);
+    auto bindings = scopes::BindArgs(params, out, scope);
     if (param->IsTypeParam()) {
       auto type = ReadTypeDefault(*param, std::move(bindings), decl_scope, scope);
       if (type == nullptr) { return {}; }

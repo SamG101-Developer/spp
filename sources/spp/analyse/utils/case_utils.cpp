@@ -9,9 +9,10 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.comp_time_intrinsics;
+import spp.analyse.utils.drop_utils;
+import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.pattern_solver;
-import spp.analyse.utils.regions;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -24,6 +25,7 @@ import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.object_initializer_ast;
+import spp.asts.pattern_guard_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -42,6 +44,7 @@ MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::analyse::utils::pattern_solver, CaseCoverage);
 use_alias(spp::analyse::utils::pattern_solver, MatchPlan);
@@ -52,7 +55,6 @@ use_alias(spp::asts, AstClone);
 use_alias(spp::asts, BooleanLiteralAst);
 use_alias(spp::asts, CaseExpressionBranchAst);
 use_alias(spp::asts, CasePatternVariantElseAst);
-use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, ObjectInitializerAst);
 use_alias(spp::asts, TupleLiteralAst);
 use_alias(spp::asts, TypeAst);
@@ -62,6 +64,16 @@ use_alias(spp::codegen, LlvmCtx);
 
 namespace spp::analyse::utils::case_utils {
   using pattern_solver::PathStep;
+
+  /// Join the two edges passing "branch" over after its guard ran:
+  /// its patterns not matching ("before") and its guard answering
+  /// false ("after_guard"). Records each edge's drops on the branch,
+  /// and returns the joined state the next branch starts from.
+  static auto CarryGuardMoves(
+    CaseExpressionBranchAst &branch, memory_state::ScopeSnapshot const &before,
+    memory_state::ScopeSnapshot const &after_guard, Vec<VariableSymbol*> const &syms,
+    Map<VariableSymbol const*, Scope const*> const &owners, ScopeManager *sm,
+    CompilerMetaData *meta) -> memory_state::ScopeSnapshot;
 
   /// The address of the value at "path" in the subject at
   /// "subject_ptr": a payload behind its variant's discriminant; a
@@ -102,12 +114,13 @@ llvm::Value * {
 
     const auto index = static_cast<std::uint32_t>(step.Index);
     if (type_predicates::IsTypeArray(step.Of, scope)) {
-      ptr = ctx->Builder.CreateGEP(
+      ptr = ctx->Builder.CreateInBoundsGEP(
         llvm_of_ty, ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
         "case.pattern.elem_ptr" + uid);
     }
     else if (std::isdigit(static_cast<unsigned char>(step.Name->Val[0]))) {
-      ptr = ctx->Builder.CreateStructGEP(llvm_of_ty, ptr, index, "case.pattern.elem_ptr" + uid);
+      const auto field_index = codegen::GetPhysicalFieldIndex(*step.Of.Symbol->LlvmInfo, index);
+      ptr = ctx->Builder.CreateStructGEP(llvm_of_ty, ptr, field_index, "case.pattern.elem_ptr" + uid);
     }
     else {
       const auto decl_index = type_members::GetFieldIndexInType(*step.Of.Symbol, *step.Name);
@@ -144,7 +157,7 @@ auto spp::analyse::utils::case_utils::CompTimeValueAt(
 
 auto spp::analyse::utils::case_utils::BindSubjectValue(
   pattern_solver::MatchPlan const &plan, llvm::Value *llvm_subject,
-  LlvmCtx *ctx) -> void {
+  LlvmCtx *ctx) -> llvm::Value* {
   // The hidden borrow holds the subject's address: a borrowed
   // subject is one already; any other is stored in a slot of its
   // own, once, for the checks to index.
@@ -158,6 +171,7 @@ auto spp::analyse::utils::case_utils::BindSubjectValue(
   const auto slot = LlvmEntryAlloca(llvm::PointerType::get(*ctx->Context, 0), "case.subject" + uid, ctx);
   ctx->Builder.CreateStore(subject_ptr, slot);
   plan.Subject->LlvmInfo->Alloca = slot;
+  return subject_ptr;
 }
 
 auto spp::analyse::utils::case_utils::EmitPatternChecks(
@@ -182,7 +196,8 @@ auto spp::analyse::utils::case_utils::EmitPatternChecks(
     // A tag: the variant's discriminant is one of the members'.
     if (check.K == PatternCheck::Kind::Tag) {
       const auto variant_ty = codegen::GetLlvmTypeOf(check.Variant, ctx);
-      const auto tag = codegen::LoadVariantTag(at, variant_ty, "case.pattern.tag" + uid, ctx);
+      const auto member_count = type_members::VariantMemberRefs(check.Variant, *sm->CurrentScope).size();
+      const auto tag = codegen::LoadVariantTag(at, variant_ty, member_count, "case.pattern.tag" + uid, ctx);
       auto holds = static_cast<llvm::Value*>(nullptr);
       for (const auto member : check.Members) {
         const auto is = ctx->Builder.CreateICmpEQ(
@@ -271,26 +286,51 @@ auto spp::analyse::utils::case_utils::ResolvePatternChecks(
 }
 
 auto spp::analyse::utils::case_utils::JoinBranches(
-  Vec<CaseExpressionBranchAst*> const &branches, ScopeManager &sm,
+  const Span<Unique<CaseExpressionBranchAst> const> branches, ScopeManager &sm,
   CompilerMetaData *meta) -> type_join::TypeJoin {
   // A branch that diverges ("ret" from a branch) passes no value
   // back to the binding, so it is no value for the others to agree
   // with. An error points at a branch's final member.
   auto join = type_join::TypeJoin(meta->AssignmentTargetType, sm.CurrentScope, meta->AssignmentTarget.get());
-  for (auto *const branch : branches) {
+  for (auto const &branch : branches) {
     auto const *const final_member = branch->Body->FinalMember();
     join.Give(
-      final_member != nullptr ? *static_cast<Ast const*>(final_member) : *static_cast<Ast const*>(branch),
+      final_member != nullptr ? *static_cast<Ast const*>(final_member) : *static_cast<Ast const*>(branch.get()),
       branch->InferType(&sm, meta), *sm.CurrentScope, branch->Body->Diverges(&sm, meta));
   }
   return join;
 }
 
+auto spp::analyse::utils::case_utils::CarryGuardMoves(
+  CaseExpressionBranchAst &branch, memory_state::ScopeSnapshot const &before,
+  memory_state::ScopeSnapshot const &after_guard, Vec<VariableSymbol*> const &syms,
+  Map<VariableSymbol const*, Scope const*> const &owners, ScopeManager *sm,
+  CompilerMetaData *meta) -> memory_state::ScopeSnapshot {
+  // Two edges pass a guarded branch over: its patterns did not
+  // match, so the guard never ran ("before"), or the guard ran and
+  // answered false ("after_guard"). They meet at the next branch,
+  // where they are joined as any paths are: a value one holds and
+  // the other does not is dropped on the edge still holding it, so
+  // past the branch it is held on neither (E8 on a later use). Only
+  // what the guard itself changed is carried: what checking the
+  // patterns did stays in the branch.
+  auto const &before_guard = *branch.StateBeforeGuard();
+  const auto changed = syms | genex::views::filter([&](auto const *sym) {
+    const auto guard_false = memory_state::StateIn(after_guard, *sym);
+    return not memory_state::SameShape(memory_state::StateIn(before_guard, *sym), guard_false);
+  }) | genex::to<Vec>();
+  auto drops = drop_utils::JoinPaths(
+    changed, {{&before, &branch, &branch}, {&after_guard, branch.Guard.get(), branch.Guard.get()}}, owners, *sm, meta);
+  branch._Drops.BadMatch = std::move(drops[0]);
+  drop_utils::AddDrops(branch._Drops.BadGuard, std::move(drops[1]));
+  return memory_state::SnapshotSymbols(syms, *sm->CurrentScope);
+}
+
 auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
-  Ast *parent, Vec<CaseExpressionBranchAst*> const &branches,
-  CaseCoverage const &coverage, VariableSymbol *subject,
-  SubjectEdges const *subject_edges, ScopeManager *sm,
-  CompilerMetaData *meta) -> void {
+  Ast *parent, const Span<Unique<CaseExpressionBranchAst> const> branches,
+  CaseCoverage const &coverage, SubjectEdges const *subject_edges,
+  Vec<VariableSymbol*> const &condition_temporaries, Vec<VariableSymbol*> const &held_in_first_branch,
+  ScopeManager *sm, CompilerMetaData *meta) -> Vec<drop_utils::OwnedValue> {
   // The symbols whose states are joined: those visible here,
   // and (inside a body) every one its flow has touched, so a
   // symbol hidden by a shadowing "let" is joined too. The
@@ -311,12 +351,17 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
       }
     }
   }
+  for (auto *const sym : condition_temporaries) {
+    if (var_syms_seen.insert(sym).second) { var_syms.emplace_back(sym); }
+  }
 
-  // The state before any branch has run. Each branch starts
-  // from it, and it stands in as the path that falls through
-  // every branch, where there is one. Each branch's state
-  // is kept to be joined.
-  const auto pre_analysis = memory_state::SnapshotSymbols(var_syms, *sm->CurrentScope);
+  // The state each branch starts from, and the path that falls
+  // through every branch, where there is one: the state before
+  // the "case", with the moves of the guards passed over carried
+  // on ("CarryGuardMoves"). Each branch's state is kept to be
+  // joined.
+  const auto owners = drop_utils::OwnersAround(*sm->CurrentScope, meta);
+  auto pre_analysis = memory_state::SnapshotSymbols(var_syms, *sm->CurrentScope);
   auto paths = Vec<Pair<CaseExpressionBranchAst*, memory_state::ScopeSnapshot>>();
   for (auto const &[i, branch] : branches | genex::views::enumerate) {
     // The branch applies its match edge to the subject.
@@ -324,40 +369,53 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
       ? subject_edges->OnMatch[i]
       : SubjectOnMatch::kKeep;
     branch->Stage8_CheckMemory(sm, meta);
-    paths.emplace_back(branch, memory_state::SnapshotSymbols(var_syms, *sm->CurrentScope));
+    paths.emplace_back(branch.get(), memory_state::SnapshotSymbols(var_syms, *sm->CurrentScope));
     memory_state::RestoreSnapshot(pre_analysis);
+
+    // Past the first branch, a boolean condition answered false, so
+    // what it held only where it was true is not held.
+    if (i == 0 and not held_in_first_branch.empty()) {
+      for (auto *const sym : held_in_first_branch) { memory_state::StateOf(*sm->CurrentScope, *sym).MovedBy(*parent); }
+      pre_analysis = memory_state::SnapshotSymbols(var_syms, *sm->CurrentScope);
+    }
+    if (auto const *const after_guard = branch->StateAfterGuard(); after_guard != nullptr) {
+      pre_analysis = CarryGuardMoves(*branch, pre_analysis, *after_guard, var_syms, owners, sm, meta);
+    }
   }
 
   // On the fall-through path, the subject holds whichever
   // members no branch matched.
-  const auto falls_through = coverage.FallsThrough;
   paths.emplace_back(nullptr, pre_analysis);
-  const auto discharged = subject_edges != nullptr
-    and subject_edges->OnFallThrough == SubjectOnMatch::kDischarge;
 
-  // A branch that never finishes leaves no state behind to
-  // agree with. Worked out once per branch, not per symbol:
-  // it infers the body's type.
+  // The paths out of the "case": each branch that finishes (one
+  // that diverges leaves no state behind to agree with; worked out
+  // once per branch, as it infers the body's type), is reachable
+  // (not after every value was matched), and is not an iterable
+  // loop's exit "else"; and the fall-through path, where there is
+  // one.
   auto diverging = Set<CaseExpressionBranchAst const*>();
-  for (auto branch : branches) {
-    if (branch->Body->Diverges(sm, meta)) { diverging.insert(branch); }
+  for (auto const &branch : branches) {
+    if (branch->Body->Diverges(sm, meta)) { diverging.insert(branch.get()); }
   }
-
-  // A branch diverges if it in the set of diverging case
-  // expression asts.
-  const auto diverges = [&](CaseExpressionBranchAst const *branch) {
-    return diverging.contains(branch);
-  };
-
-  // A branch after every value was matched, is never taken.
-  const auto reachable = [&](CaseExpressionBranchAst const *branch) {
-    const auto at = genex::position(branches, genex::operations::eq_fixed{branch});
-    return not at.has_value() or coverage.Reachable[*at];
+  auto const *const else_pattern = not branches.empty()
+    ? branches.back()->Patterns[0]->To<CasePatternVariantElseAst>()
+    : nullptr;
+  auto const *const loop_exit_else = else_pattern != nullptr and else_pattern->MarkedForIterLoopExit()
+    ? branches.back().get()
+    : nullptr;
+  auto leaving = Set<CaseExpressionBranchAst const*>();
+  for (auto const &[i, branch] : branches | genex::views::enumerate) {
+    if (not diverging.contains(branch.get()) and coverage.Reachable[i] and branch.get() != loop_exit_else) {
+      leaving.insert(branch.get());
+    }
+  }
+  const auto leaves = [&](CaseExpressionBranchAst const *branch) {
+    return branch == nullptr ? coverage.FallsThrough : leaving.contains(branch);
   };
 
   // The first branch that finishes is the path carried on.
   const auto non_terminating_branch = genex::find_if(
-    branches, [&](auto const &x) { return not diverges(x); });
+    branches, [&](auto const &x) { return not diverging.contains(x.get()); });
 
   // A path is named by its branch, or by the "case" itself
   // where the branch was generated (a lowered "is" builds an
@@ -371,95 +429,63 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
   const auto path_of = [case_named](CaseExpressionBranchAst *branch) -> Ast* {
     return branch != nullptr and branch->PosStart() != 0 ? static_cast<Ast*>(branch) : case_named;
   };
-  const auto first_branch = non_terminating_branch == branches.end() ? case_named : path_of(*non_terminating_branch);
+  const auto first_branch = non_terminating_branch == branches.end() ? case_named : path_of(non_terminating_branch->get());
   auto const &first_path = non_terminating_branch != branches.end()
     ? paths.at(static_cast<std::size_t>(genex::iterators::distance(branches.begin(), non_terminating_branch))).second
     : paths.back().second;
 
-  const auto has_else_branch = not branches.empty()
-    ? branches.back()->Patterns[0]->To<CasePatternVariantElseAst>()
-    : nullptr;
-  const auto skip_else = has_else_branch and has_else_branch->MarkedForIterLoopExit();
+  // The state after the "case" is every path's state out of it,
+  // joined, each path dropping at its end (the branch's, or the
+  // "case"'s for falling through) what of a scope around the "case"
+  // it holds and another does not. A branch's own symbols exist only
+  // in that branch.
+  auto leaving_paths = Vec<Pair<CaseExpressionBranchAst*, memory_state::ScopeSnapshot const*>>();
+  auto join_paths = Vec<drop_utils::JoinPath>();
+  for (auto const &[branch_or_null, path] : paths) {
+    if (not leaves(branch_or_null)) { continue; }
+    auto const *const end = branch_or_null != nullptr ? static_cast<Ast const*>(branch_or_null) : parent;
+    leaving_paths.emplace_back(branch_or_null, &path);
+    join_paths.push_back({&path, path_of(branch_or_null), end});
+  }
+  auto path_drops = drop_utils::JoinPaths(
+    var_syms, join_paths, owners, *sm, meta, drop_utils::JoinPath{&first_path, first_branch, first_branch});
 
-  // The state after the "case" is every path's state out of
-  // it, joined: the branches that finish, and without an
-  // "else" (when no branch may run at all) the state the
-  // "case" was entered with (the null entry).
-  const auto leaves = [&](CaseExpressionBranchAst const *branch) {
-    return not((branch == nullptr and not falls_through) or (branch != nullptr and diverges(branch))
-      or (branch != nullptr and not reachable(branch))
-      or (skip_else and not branches.empty() and branch == branches.back()));
-  };
-  const auto state_on = [&](memory_state::ScopeSnapshot const &path, VariableSymbol const &sym) {
-    auto state = memory_state::StateIn(path, sym);
-    if (discharged and &sym == subject and &path == &paths.back().second) { state.OwesNothing = true; }
-    return memory_state::SettleFullyTaken(state, sym, *sm->CurrentScope);
-  };
-  for (auto sym : var_syms) {
-    auto joined = state_on(first_path, *sym);
-    for (auto const &[branch_or_null, path] : paths) {
-      if (leaves(branch_or_null)) {
-        memory_state::Join(joined, state_on(path, *sym), first_branch, path_of(branch_or_null));
+  // The temporaries the condition made ("a < f() < b") are held on
+  // every path out, and nothing after the "case" names them: each
+  // path drops what it still holds.
+  for (auto *const sym : condition_temporaries) {
+    for (auto i = 0uz; i < join_paths.size(); ++i) {
+      const auto state = memory_state::StateIn(*join_paths[i].State, *sym);
+      if (auto value = drop_utils::OwnedOnPath(*sym, state, *sm->CurrentScope, *join_paths[i].End, *sm, meta)) {
+        path_drops[i].emplace_back(std::move(*value));
       }
     }
-    memory_state::StateOf(*sm->CurrentScope, *sym) = joined;
+  }
+  auto fall_through_drops = Vec<drop_utils::OwnedValue>();
+  for (auto i = 0uz; i < leaving_paths.size(); ++i) {
+    drop_utils::SortNewestFirst(path_drops[i]);
+    if (leaving_paths[i].first == nullptr) { fall_through_drops = std::move(path_drops[i]); }
+    else { drop_utils::AddDrops(leaving_paths[i].first->_Drops.End, std::move(path_drops[i])); }
   }
 
   // The loans held after the "case", likewise.
   auto &loans = memory_state::LoansOf(*sm->CurrentScope);
-  const auto loans_on = [](memory_state::ScopeSnapshot const &path) { return path.Loans; };
-  loans = loans_on(first_path);
+  loans = first_path.Loans;
   for (auto const &[branch_or_null, path] : paths) {
-    if (leaves(branch_or_null)) {
-      memory_state::JoinLoans(loans, loans_on(path), first_branch, path_of(branch_or_null));
-    }
+    if (leaves(branch_or_null)) { memory_state::JoinLoans(loans, path.Loans, first_branch, path_of(branch_or_null)); }
   }
+  return fall_through_drops;
 }
 
 auto spp::analyse::utils::case_utils::ApplySubjectOnMatch(
-  CaseExpressionBranchAst const &branch,
   ScopeManager &sm,
   CompilerMetaData const &meta)
   -> void {
-  // "case x of" takes the symbol itself; "case x.inner of"
-  // takes one region of it, a partial move like any other.
-  // Only a whole subject can be found to owe nothing: the
-  // fact is held per symbol.
-  const auto subject = meta.CaseSubject;
-  auto const *const cond = meta.CaseCondition;
-  if (subject == nullptr or cond == nullptr) { return; }
-  const auto whole = cond->To<IdentifierAst>() != nullptr;
-
-  // The patterns took it apart, so a part they left unbound
-  // would be left with no owner once it is taken.
-  if (meta.CaseSubjectOnMatch == SubjectOnMatch::kTake) {
-    const auto taken = regions::PlaceOf(*cond, *sm.CurrentScope);
-    if (const auto skipped = taken.has_value() ? regions::FirstUnaccountedPart(*subject, *taken, sm) : Str();
-      not skipped.empty()) {
-      auto const *const blamed = branch.Patterns.empty()
-        ? static_cast<Ast const*>(&branch)
-        : static_cast<Ast const*>(branch.Patterns[0].get());
-      Raise<errors::SppDestructureSkipsOwnedPartError>(ERR_ARGS(*blamed, *subject->Name, StrView(skipped)));
-    }
-  }
-
-  // If we are moving an identifier part, then mark the state
-  // as "moved by", so it cannot be used until initialized
-  // again.
-  if (meta.CaseSubjectOnMatch == SubjectOnMatch::kTake and whole) {
-    memory_state::StateOf(*sm.CurrentScope, *subject).MovedBy(*cond);
-  }
-
-  // If we are moving a non-identifier part, then this is a
-  // partial move, so get its place, and mark the partial
-  // move.
-  else if (meta.CaseSubjectOnMatch == SubjectOnMatch::kTake) {
-    memory_state::StateOf(*sm.CurrentScope, *subject).PartMovedBy(regions::PlaceAtOf(*cond, *sm.CurrentScope));
-  }
-
-  // If the discharge flag has been set and it is a identifier
-  // ast, then mark the "owes nothing" as true.
-  else if (meta.CaseSubjectOnMatch == SubjectOnMatch::kDischarge and whole) {
-    memory_state::StateOf(*sm.CurrentScope, *subject).OwesNothing = true;
-  }
+  // "case x of" takes the symbol itself; "case x.inner of" takes
+  // one region of it, a partial move like any other. A part the
+  // patterns left unbound stays with the subject, which is left
+  // partly moved for its owner to drop the rest of.
+  if (meta.CaseSubject == nullptr or meta.CaseCondition == nullptr) { return; }
+  if (meta.CaseSubjectOnMatch != SubjectOnMatch::kTake) { return; }
+  mem_utils::TakeApart(*meta.CaseSubject, *meta.CaseCondition, *meta.CaseCondition, false, sm);
 }

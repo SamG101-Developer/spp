@@ -9,9 +9,9 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_values;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.self_type;
@@ -38,7 +38,6 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_coros;
-import spp.codegen.llvm_defer;
 import spp.codegen.llvm_drop;
 import spp.lex.tokens;
 import spp.utils.ice;
@@ -224,7 +223,7 @@ auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
 
   // Once the yielded value has gone, what is still owned is the
   // frame's to drop should the coroutine be destroyed here.
-  const auto record_owned = [&] { _OwnedAtSuspend = linear_utils::OwnedAtSuspend(*this, *sm, meta); };
+  const auto record_owned = [&] { _OwnedAtSuspend = drop_utils::OwnedAtSuspend(*this, *sm, meta); };
 
   // If there is no expression, then now ork needs to be
   // done.
@@ -239,23 +238,20 @@ auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
   mem_utils::ValidateSymbolMemory(
     *Expr, *TokGen, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
 
-  // If the value is non-symbolic, then there is no borrow
-  // logic to implement, so return.
+  // A value yielded by move is moved out, whatever names it: a
+  // symbol, or the symbols a tuple or object literal is built
+  // from ("gen (item, next)"), as a "let" of it would. Ensure that
+  // attributes aren't being moved off of a borrowed value and that
+  // pins are maintained, and mark the moves.
   auto [sym, _] = sm->CurrentScope->FindVarSymbolOutermost(*Expr);
-  if (sym == nullptr) {
-    record_owned();
-    return;
-  }
-
   if (Conv == nullptr) {
-    // Ensure that attributes aren't being moved off of a
-    // borrowed value and that pins are maintained. Mark the
-    // move or partial move of the argument.
     mem_utils::ValidateSymbolMemory(
       *Expr, *TokGen, *sm, meta, {.CheckMove = false, .CheckPartialMove = false});
   }
 
-  else if (*Conv == ConventionTag::MUT) {
+  // A borrow of something that is not a symbol has no borrow
+  // logic to apply.
+  else if (sym != nullptr and *Conv == ConventionTag::MUT) {
     // Lent on mutably as a call's argument is: a "&mut" parameter
     // ("x: &mut S32") can be ("RequireMutablyBorrowable").
     common_errors::RequireMutablyBorrowable(*sym, *Conv, *sm);
@@ -270,7 +266,7 @@ auto spp::asts::GenExpressionAst::Diverges(
 }
 
 auto spp::asts::GenExpressionAst::SetOwnedAtSuspend(
-  Vec<Vec<analyse::utils::linear_utils::OwnedValue>> owned) -> void {
+  analyse::utils::drop_utils::OwnedScopes owned) -> void {
   _OwnedAtSuspend = std::move(owned);
 }
 
@@ -281,7 +277,9 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
   if (Diverges(sm, meta)) {
     // A borrow yielded is its address, coerced into the yield type as any
     // yielded value is: a variant holding the borrow as a member ("&S32 or
-    // None") wraps it, tagged (open-bugs #49).
+    // None") wraps it, tagged (open-bugs #49). Nothing the body owns is
+    // dropped here: the borrow may point into it, and is read after this
+    // returns (see the "GenOnce frame ends on read" note).
     if (Conv != nullptr) {
       auto llvm_addr = codegen::LlvmAddrOf(*Expr, sm, meta, ctx);
       if (_YieldRef != nullptr and _YieldRef->Symbol != nullptr) {
@@ -294,8 +292,10 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
     }
 
     // A "gen" in a lowered "GenOnce" reads as the return. "Expr"
-    // stays where it is, so the node can be generated again.
-    return RetStatementAst::EmitReturn(Expr.get(), nullptr, *this, sm, meta, ctx);
+    // stays where it is, so the node can be generated again. What the
+    // body still owns here is dropped as the return leaves each scope:
+    // the same values a frame destroyed at this "gen" would drop.
+    return RetStatementAst::EmitReturn(Expr.get(), nullptr, *this, sm, meta, ctx, _OwnedAtSuspend);
   }
 
   // The three-step operation for the "gen" expression is

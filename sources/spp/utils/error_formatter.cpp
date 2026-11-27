@@ -226,9 +226,8 @@ auto spp::utils::errors::ErrorFormatter::_RenderQuote(
   const auto quoted = is_error ? (colex::fg_bright_red & colex::st_bold) : (colex::fg_bright_green & colex::st_bold);
   const auto carets = is_error ? (colex::reset & colex::fg_bright_red) : (colex::reset & colex::fg_bright_green);
 
-  // Todo: Make the file path clickable in supporting terminals (IntelliJ).
-  // file_path = "\033]8;;"s + file_path + "\033" + file_path + "\033]8;;\033";
-  const auto line1 = (colex::fg_bright_white & colex::st_bold) + heading + _FilePath + "', "s +
+  // "path:line:col" is what an IDE's console links to that place.
+  const auto line1 = (colex::fg_bright_white & colex::st_bold) + heading + _FilePath + quote.PathSuffix + "', "s +
     quote.Location + ":\n";
   const auto line2 = (colex::fg_bright_white & colex::st_bold) + quote.LeftPadding + " |\n"s;
   const auto line3 = quoted + quote.LineNumber + " | "s + quote.LineText + "\n"s;
@@ -403,11 +402,15 @@ auto spp::utils::errors::ErrorFormatter::_QuoteRawPos(
   // A line of the prelude ("kPrelude", appended to every file)
   // has no number, as no user wrote it: something in it std does
   // not have means this compiler and its std do not match.
+  // The suffix's column is one-based in UTF-16 code units, as an
+  // editor counts it.
   const auto line_number = loc.PastUserSource ? Str() : std::to_string(loc.Line);
+  const auto column = 1 + Utf16Length(StrView(loc.LineText).substr(0, std::min(loc.ByteOffset, loc.LineText.length())));
   return {
     .Location = loc.PastUserSource
       ? "in the prelude every file imports (this compiler and its std do not match)"_str
       : "on line "s + line_number,
+    .PathSuffix = loc.PastUserSource ? Str() : ":"s + line_number + ":"s + std::to_string(column),
     .LineNumber = line_number,
     .LineText = loc.LineText,
     .LeftPadding = Str(line_number.length(), ' '),

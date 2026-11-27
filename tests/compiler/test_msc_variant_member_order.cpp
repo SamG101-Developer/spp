@@ -75,61 +75,61 @@ TEST(TestVariantMemberOrder, test_order_is_total_and_irreflexive) {
 // Written in any order, one variant: one type, so one set of tags (the value passes from one spelling to the other
 // without being rebuilt), including through a generic argument and a substitution.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestVariantMemberOrder,
-    test_valid_every_written_order_is_one_type, R"(
-    cls Alpha { }
-    cls Zeta { }
-    fun f(x: Zeta or Alpha or Bool) -> Bool or Alpha or Zeta { ret x }
-    fun g(x: Alpha or Bool or Zeta) -> Alpha or Zeta or Bool { ret f(x) }
+  TestVariantMemberOrder,
+  test_valid_every_written_order_is_one_type, R"(
+  cls Alpha { }
+  cls Zeta { }
+  fun f(x: Zeta or Alpha or Bool) -> Bool or Alpha or Zeta { ret x }
+  fun g(x: Alpha or Bool or Zeta) -> Alpha or Zeta or Bool { ret f(x) }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestVariantMemberOrder,
-    test_valid_substituted_variant_is_the_written_one, R"(
-    cls Alpha { }
-    cls Zeta { }
-    fun id[T](x: T) -> T { ret x }
-    fun g(x: Zeta or Alpha) -> Alpha or Zeta {
-        let y: Alpha or Zeta = id[Zeta or Alpha](x)
-        ret y
-    }
+  TestVariantMemberOrder,
+  test_valid_substituted_variant_is_the_written_one, R"(
+  cls Alpha { }
+  cls Zeta { }
+  fun id[T](x: T) -> T { ret x }
+  fun g(x: Zeta or Alpha) -> Alpha or Zeta {
+    let y: Alpha or Zeta = id[Zeta or Alpha](x)
+    ret y
+  }
 )");
 
 // Members differing only by a float or bool comp argument are ordered by value, so either written order is one type.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestVariantMemberOrder,
-    test_valid_members_differing_by_a_float_or_bool_comp_argument, R"(
-    cls A[cmp x: F64] { }
-    cls C[cmp b: Bool] { }
-    fun f(v: A[2.5_f64] or A[1.5_f64]) -> Void { std::mem::ops::drop(v) }
-    fun h(v: C[true] or C[false]) -> Void { std::mem::ops::drop(v) }
-    fun g() -> Void {
-        let a: A[1.5_f64] or A[2.5_f64] = A[1.5_f64]()
-        f(a)
-        let c: C[false] or C[true] = C[true]()
-        h(c)
-    }
+  TestVariantMemberOrder,
+  test_valid_members_differing_by_a_float_or_bool_comp_argument, R"(
+  cls A[cmp x: F64] { }
+  cls C[cmp b: Bool] { }
+  fun f(v: A[2.5_f64] or A[1.5_f64]) -> Void { }
+  fun h(v: C[true] or C[false]) -> Void { }
+  fun g() -> Void {
+    let a: A[1.5_f64] or A[2.5_f64] = A[1.5_f64]()
+    f(a)
+    let c: C[false] or C[true] = C[true]()
+    h(c)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestVariantMemberOrder,
-    test_valid_members_differing_by_a_comp_operation, R"(
-    cls A[cmp n: USize] { }
-    fun f[cmp n: USize](v: A[n + 2_uz] or A[n + 1_uz]) -> Void { std::mem::ops::drop(v) }
-    fun g() -> Void {
-        let a: A[2_uz] or A[3_uz] = A[2_uz]()
-        f[1_uz](a)
-    }
+  TestVariantMemberOrder,
+  test_valid_members_differing_by_a_comp_operation, R"(
+  cls A[cmp n: USize] { }
+  fun f[cmp n: USize](v: A[n + 2_uz] or A[n + 1_uz]) -> Void { }
+  fun g() -> Void {
+    let a: A[2_uz] or A[3_uz] = A[2_uz]()
+    f[1_uz](a)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestVariantMemberOrder,
-    test_invalid_members_differing_by_a_comp_operation_wrong_binding,
-    SppFunctionCallNoValidSignaturesError, R"(
-    cls A[cmp n: USize] { }
-    fun f[cmp n: USize](v: A[n + 2_uz] or A[n + 1_uz]) -> Void { std::mem::ops::drop(v) }
-    fun g() -> Void {
-        let a: A[2_uz] or A[3_uz] = A[2_uz]()
-        f[2_uz](a)
-    }
+  TestVariantMemberOrder,
+  test_invalid_members_differing_by_a_comp_operation_wrong_binding,
+  SppFunctionCallNoValidSignaturesError, R"(
+  cls A[cmp n: USize] { }
+  fun f[cmp n: USize](v: A[n + 2_uz] or A[n + 1_uz]) -> Void { std::mem::ops::drop(v) }
+  fun g() -> Void {
+    let a: A[2_uz] or A[3_uz] = A[2_uz]()
+    f[2_uz](a)
+  }
 )");

@@ -4,118 +4,118 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ArrayLiteralExplicitElementsAst,
   test_invalid_element_ast,
   SppInvalidPrimaryExpressionError, R"(
-    fun f() -> Void {
-        let a = [Bool]
-    }
+  fun f() -> Void {
+    let a = [Bool]
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ArrayLiteralExplicitElementsAst,
   test_invalid_different_element_types,
   SppTypeMismatchError, R"(
-    fun f() -> Void {
-        let a = [1, false, 3]
-    }
+  fun f() -> Void {
+    let a = [1, false, 3]
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ArrayLiteralExplicitElementsAst,
   test_invalid_different_element_types_by_generic,
   SppTypeMismatchError, R"(
-    fun f() -> Void {
-        let a = [[1], [2, 3]]
-    }
+  fun f() -> Void {
+    let a = [[1], [2, 3]]
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ArrayLiteralExplicitElementsAst,
   test_invalid_immutably_borrowed_elements,
   SppSecondClassBorrowViolationError, R"(
-    fun f(a: &Str) -> Void {
-        let b = [a]
-    }
+  fun f(a: &Str) -> Void {
+    let b = [a]
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ArrayLiteralExplicitElementsAst,
   test_invalid_mutably_borrowed_elements,
   SppSecondClassBorrowViolationError, R"(
-    fun f(a: &mut Str) -> Void {
-        let b = [a]
-    }
+  fun f(a: &mut Str) -> Void {
+    let b = [a]
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ArrayLiteralExplicitElementsAst,
   test_valid_1_element, R"(
-    fun f() -> Void {
-        let a = [1]
-    }
+  fun f() -> Void {
+    let a = [1]
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ArrayLiteralExplicitElementsAst,
   test_valid_n_elements, R"(
-    fun f() -> Void {
-        let a = [1, 2, 3]
-    }
+  fun f() -> Void {
+    let a = [1, 2, 3]
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ArrayLiteralExplicitElementsAst,
   test_valid_nested_array_elements, R"(
-    fun f() -> Void {
-        let a = [[1, 2], [3, 4]]
-    }
+  fun f() -> Void {
+    let a = [[1, 2], [3, 4]]
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ArrayLiteralExplicitElementsAst,
   test_valid_nested_tuple_elements, R"(
-    fun f() -> Void {
-        let a = [(1, 2), (3, 4)]
-    }
+  fun f() -> Void {
+    let a = [(1, 2), (3, 4)]
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ArrayLiteralExplicitElementsAst,
   test_valid_array_literal_argument_consumes_its_elements, R"(
-    fun f(p: Str, q: Str) -> Void {
-        drop([p, q])
-    }
+  fun f(p: Str, q: Str) -> Void {
+    drop([p, q])
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ArrayLiteralExplicitElementsAst,
   test_invalid_use_of_an_element_moved_into_an_array_literal_argument,
   SppUninitializedMemoryUseError, R"(
-    fun f(p: Str, q: Str) -> Void {
-        drop([p, q])
-        drop(p)
-    }
+  fun f(p: Str, q: Str) -> Void {
+    drop([p, q])
+    drop(p)
+  }
 )");
 
 // A "case" giving a value as an element takes the element's type, not the array's (open-bugs #61).
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ArrayLiteralExplicitElementsAst,
   test_valid_case_expression_as_first_element_of_a_let, R"(
-    fun f(c: Bool) -> Void {
-        let a = [case c { 1_u8 } else { 2_u8 }, 3_u8]
-    }
+  fun f(c: Bool) -> Void {
+    let a = [case c { 1_u8 } else { 2_u8 }, 3_u8]
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ArrayLiteralExplicitElementsAst,
   test_valid_case_expression_as_first_element_of_a_return, R"(
-    fun f(c: Bool) -> Arr[U8, 2_uz] {
-        ret [case c { 1_u8 } else { 2_u8 }, 3_u8]
-    }
+  fun f(c: Bool) -> Arr[U8, 2_uz] {
+    ret [case c { 1_u8 } else { 2_u8 }, 3_u8]
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   ArrayLiteralExplicitElementsAst,
   test_valid_case_expression_as_last_element, R"(
-    fun f(c: Bool) -> Arr[U8, 2_uz] {
-        ret [3_u8, case c { 1_u8 } else { 2_u8 }]
-    }
+  fun f(c: Bool) -> Arr[U8, 2_uz] {
+    ret [3_u8, case c { 1_u8 } else { 2_u8 }]
+  }
 )");

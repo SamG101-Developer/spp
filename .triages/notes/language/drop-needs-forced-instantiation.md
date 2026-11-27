@@ -1,7 +1,7 @@
 ---
 name: drop-needs-forced-instantiation
 description: "Destructors are reached only from C++ codegen, so every site that synthesises a drop must force-instantiate it during analysis"
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Nothing in S++ source ever names a destructor - `Drop::drop` is `!protected` and every discard goes through
@@ -13,8 +13,10 @@ the only prototype that exists is then the template's, which is pure generic, ne
 `FunctionPrototypeAst::AnalysePendingGnSubstitutions`.
 
 **Every site that synthesises a drop has to do this itself**, during analysis, with `EnsureDropInstantiated`:
-the drop intrinsics (`_EnsureDropsForBuiltin`), what a coroutine frame owns at a suspension or at its initial
-suspend (`linear_utils::OwnedAtSuspend`), and a closure's by-value captures
+the drop intrinsics (`_EnsureDropsForBuiltin`, for each builtin registered with a `DropsGn` in `codegen/builtins.cpp`:
+`std::mem::ops::drop`, and `RawBuf::clear_range` since 2026-11-24, before which a `Vec[Single[U64]]` leaked its
+elements once std's tests stopped calling `drop` explicitly), every drop point of [[affine-ownership]] (`drop_utils::OwnedOnPath`,
+`OwnedBeforeWrite`, `IsTemporary` do it for what they list), and a closure's by-value captures
 (`ClosureExpressionCaptureGroupAst::Stage8_CheckMemory`). A miss today is not "nothing emitted" but worse:
 `FindDropOverload` returns null, so `EmitDrop` destroys the value **field by field**, and a `Vec` frees its buffer
 without dropping its elements. It only shows when nothing else in the program instantiated that type's `drop`, so a

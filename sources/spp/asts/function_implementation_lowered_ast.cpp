@@ -176,7 +176,7 @@ auto spp::asts::FunctionImplementationLoweredAst::EvaluateCompTime(
   _ValidateShiftAmount(extracted_args, meta);
   meta->CompTimeResult =
     lowered_cmp_code
-    .PreloadGns(sm, meta->CompTimeCall.GnTypeArgs, meta->CompTimeCall.GnCompArgs)
+    .PreloadGns(sm, meta, meta->CompTimeCall.GnTypeArgs, meta->CompTimeCall.GnCompArgs)
     .Invoke(extracted_args);
 
   // An "_assign" builtin writes its "&mut" operand in place:

@@ -150,7 +150,8 @@ auto spp::compiler::cfg::Meets(
 
       if (not known) {
         const auto why = "names '" + Str(alternative) + "', which no build has";
-        Raise<SppCfgInvalidValueError>(ERR_ARGS(*arg->Val, StrView(key), StrView(why)));
+        Raise<SppCfgInvalidValueError>(
+          ERR_ARGS(*arg->Val, StrView(key), StrView(why)));
       }
       if (bar == StrView::npos) { break; }
       rest.remove_prefix(bar + 1);

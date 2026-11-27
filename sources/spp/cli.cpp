@@ -91,6 +91,29 @@ build = "exe"
 std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
 
 namespace spp::cli {
+  namespace {
+    /// The deleter of a "HeldCompile": it frees the compile only in a build
+    /// that exists to see destructors run (SPP_TEARDOWN), and otherwise keeps
+    /// it for the next "StartCompile" to free.
+    struct ParkCompile {
+      auto operator()(compiler::Compiler *c) const -> void;
+    };
+  }
+
+  /// A compile as "StartCompile" made it.
+  using HeldCompile = Unique<compiler::Compiler, ParkCompile>;
+
+  /// The compile the last "HeldCompile" let go of. A process almost always
+  /// compiles once and exits, and freeing a compile is 5-8% of its run, so the
+  /// last one is left to the OS: a raw pointer, which nothing destroys at exit.
+  static compiler::Compiler *parked_compile = nullptr;
+
+  /// Free the kept compile, then make the next with "make". The order matters:
+  /// freeing a compile clears the identities it interned, which the next one
+  /// would otherwise share.
+  template <typename Make>
+  static auto StartCompile(Make &&make) -> HeldCompile;
+
   /// Check the current directory has the structure a project needs, without
   /// looking at its dependencies. This is all that can be asked before a
   /// fetch: a dependency's checkout may be missing, or broken in a way the
@@ -147,6 +170,20 @@ namespace spp::cli {
   /// executable, so for one it prints nothing and returns false.
   static auto PrintExecutable(
     const compiler::BuildMode mode, Str const &target) -> bool;
+}
+
+auto spp::cli::ParkCompile::operator()(compiler::Compiler *c) const -> void {
+#if defined(SPP_TEARDOWN)
+  delete c;
+#else
+  parked_compile = c;
+#endif
+}
+
+template <typename Make>
+auto spp::cli::StartCompile(Make &&make) -> HeldCompile {
+  delete std::exchange(parked_compile, nullptr);
+  return HeldCompile(std::forward<Make>(make)().release());
 }
 
 auto spp::cli::ValidateProject(
@@ -974,7 +1011,10 @@ auto spp::cli::HandleBuild(
   // Compile the code, as the "lib" or "exe" the toml config says. Call the
   // resolution index hooks depending on what is being indexed (project,
   // specific files, etc).
-  auto c = compiler::Compiler(build_mode, ProjectBuildType());
+  const auto held = StartCompile([&] {
+    return MakeUnique<compiler::Compiler>(build_mode, ProjectBuildType());
+  });
+  auto &c = *held;
 
   // If this is an analysis-only build, mark the compiler as that, to restrict
   // the stages, otherwise enable indexing for the marked files.
@@ -1187,8 +1227,10 @@ auto spp::cli::HandleTest(
   const auto scope = compiler::TestScope{
     .Project = true, .AllLibs = all_libs, .Libs = libs
   };
-  auto c = compiler::Compiler(
-    mode, compiler::BuildType::EXE, scope);
+  const auto held = StartCompile([&] {
+    return MakeUnique<compiler::Compiler>(mode, compiler::BuildType::EXE, scope);
+  });
+  auto &c = *held;
   c.SetTestFilters(name_filter, group_filter);
   if (not CompileReportingErrors(c)) { std::exit(1); }
 
@@ -1353,16 +1395,6 @@ auto spp::cli::CreateDefaultConfigFor(Str const &project_name) -> Str {
 /// [CHECKED]
 auto spp::cli::RunCppGoogleTest(
   const compiler::BuildMode mode, Str &&main_code) -> Map<Str, Str> {
-#if !defined(SPP_TEST_TEARDOWN)
-  // A test process almost always compiles once and exits, and freeing a compile
-  // is about 7% of its run. So the last compile is freed only when another one
-  // is about to start, and otherwise left to the OS: never destroyed, as a
-  // static would be at exit. Builds that exist to see destructors run define
-  // SPP_TEST_TEARDOWN.
-  static auto &previous = *new Unique<compiler::Compiler>();
-  previous.reset();
-#endif
-
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE_OR(false, {});
 
@@ -1374,15 +1406,9 @@ auto spp::cli::RunCppGoogleTest(
   SPP_VALIDATE_STRUCTURE_OR(false, {});
 
   // Compile the code. It is held before it runs, as a rejected program throws.
-#if defined(SPP_TEST_TEARDOWN)
-  const auto c = compiler::Compiler::ForCppGoogleTest(
-    mode, std::move(main_code));
+  const auto c = StartCompile([&] {
+    return compiler::Compiler::ForCppGoogleTest(mode, std::move(main_code));
+  });
   ignore = c->Compile();
   return c->CompTimeConstants();
-#else
-  previous = compiler::Compiler::ForCppGoogleTest(
-    mode, std::move(main_code));
-  ignore = previous->Compile();
-  return previous->CompTimeConstants();
-#endif
 }

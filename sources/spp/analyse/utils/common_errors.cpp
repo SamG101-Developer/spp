@@ -25,46 +25,61 @@ use_alias(spp::asts, Ast);
 use_alias(spp::asts, ExpressionAst);
 use_alias(spp::asts, TypeAst);
 
+/// [CHECKED]
 auto spp::analyse::utils::common_errors::RequirePrimary(
-  ExpressionAst const &expr, ScopeManager const &sm, expr_utils::PrimaryExpressionOptions &&options)
-  -> void {
+  ExpressionAst const &expr, ScopeManager const &sm,
+  expr_utils::PrimaryExpressionOptions &&options) -> void {
   using errors::SppInvalidPrimaryExpressionError;
+
+  // Throw an error if the result of the primary expression checker is false.
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not expr_utils::IsPrimaryExprTypeValid(expr, sm, std::move(options)),
     ERR_ARGS(expr));
 }
 
+/// [CHECKED]
 auto spp::analyse::utils::common_errors::RequireNotBorrowed(
-  TypeAst const &type, Ast const &at, Ast const &shown, const StrView what, ScopeManager const &sm, const bool deep)
-  -> void {
+  TypeAst const &type, Ast const &at, const StrView what,
+  ScopeManager const &sm, const bool deep) -> void {
+  // Map into the other overload, using the "type" as the "shown" type.
+  RequireNotBorrowed(type, at, type, what, sm, deep);
+}
+
+/// [CHECKED]
+auto spp::analyse::utils::common_errors::RequireNotBorrowed(
+  TypeAst const &type, Ast const &at, Ast const &shown, const StrView what,
+  ScopeManager const &sm, const bool deep) -> void {
   using errors::SppSecondClassBorrowViolationError;
+
+  // Throw an error if the result of the type-borrowed checker is false.
   RaiseIf<SppSecondClassBorrowViolationError>(
     type_predicates::IsTypeBorrowed(type, *sm.CurrentScope, deep),
     ERR_ARGS(at, shown, what));
 }
 
-auto spp::analyse::utils::common_errors::RequireNotBorrowed(
-  TypeAst const &type, Ast const &at, const StrView what, ScopeManager const &sm, const bool deep)
-  -> void {
-  RequireNotBorrowed(type, at, type, what, sm, deep);
-}
-
+/// [CHECKED]
 auto spp::analyse::utils::common_errors::RequireMutablyBorrowable(
   VariableSymbol const &sym, Ast const &mutator, ScopeManager const &sm)
   -> void {
+  // Get the convention off of the symbol's type.
   using errors::SppInvalidMutationError;
-  auto const *const conv = sym.Type != nullptr ? sym.Type->GetConvention() : nullptr;
+  const auto c = sym.Type != nullptr ? sym.Type->GetConvention() : nullptr;
+  const auto is_conv_mut = c != nullptr and *c == asts::ConventionTag::MUT;
+  const auto is_conv_ref = c != nullptr and *c == asts::ConventionTag::REF;
 
-  // An immutable symbol cannot be lent on mutably, unless what it
-  // holds is itself a mutable borrow.
+  // For a symbol to be mutably borrowed, it must either be a mutable borrow
+  // itself, or the symbol must be mutable.
   RaiseIf<SppInvalidMutationError>(
-    not sym.IsMutable and not (conv != nullptr and *conv == asts::ConventionTag::MUT),
+    not sym.IsMutable and not is_conv_mut,
     ERR_ARGS(
-      *sym.Name, mutator, *memory_state::StateOf(*sm.CurrentScope, sym).AstInitialization, "immutable symbol"));
+      *sym.Name, mutator,
+      *memory_state::StateOf(*sm.CurrentScope, sym).AstInitialization,
+      "immutable symbol"));
 
-  // Immutable borrows, even if their symbol is mutable, cannot be
-  // lent on mutably.
+  // Immutable borrows, even if their symbol is mutable, cannot be borrowed
+  // mutably.
   RaiseIf<SppInvalidMutationError>(
-    sym.MemInfo->AstBorrowed and conv != nullptr and *conv == asts::ConventionTag::REF,
-    ERR_ARGS(*sym.Name, mutator, *sym.MemInfo->AstBorrowed, "immutable borrow"));
+    sym.MemInfo->AstBorrowed and is_conv_ref,
+    ERR_ARGS(
+      *sym.Name, mutator, *sym.MemInfo->AstBorrowed, "immutable borrow"));
 }

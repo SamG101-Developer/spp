@@ -27,10 +27,8 @@ use(spp::asts::meta, enum class CompilerStage);
 use(spp::asts::meta, enum class SubjectOnMatch);
 use(spp::asts::meta, struct CompilerMetaData);
 use(spp::asts::meta, struct CompilerMetaDataState);
-use(spp::asts::meta, struct AllowPackWholeGuard);
 use(spp::asts::meta, struct CompTimeCallArgs);
 use(spp::asts::meta, struct LlvmLoopInfo);
-use(spp::asts::meta, struct IsBindingsScope);
 use(spp::asts::meta, struct MetaGuard);
 use(spp::codegen, struct LlvmCtx);
 
@@ -51,12 +49,10 @@ SPP_EXP_CLS enum class spp::asts::meta::CompilerStage {
 
 /// What a "case" branch's match edge does with the subject, once
 /// its patterns (and guard) have matched: take it (a pattern binds
-/// by move off it), find it owes nothing (it is narrowed to members
-/// that are all "Copy"), or keep it owned.
+/// by move off it), or keep it owned.
 SPP_EXP_CLS enum class spp::asts::meta::SubjectOnMatch {
   kKeep,
   kTake,
-  kDischarge,
 };
 
 /// The LLVM blocks belonging to a single enclosing loop,
@@ -85,6 +81,10 @@ SPP_EXP_CLS struct spp::asts::meta::LlvmLoopInfo {
   /// The loop's own type, which each value reaching the phi node
   /// is coerced into; null when the loop yields no value.
   Shared<TypeRef> Type = nullptr;
+
+  /// How many temporaries were held as the loop began: an "exit" or
+  /// "skip" drops those after it.
+  std::size_t TemporaryDepth = 0;
 };
 
 /// What a "cmp" call binds for its callee when evaluated: its
@@ -175,35 +175,15 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
 
   /// Checking a value evaluated at compile time (a "cmp"'s value):
   /// nothing it makes exists at run time, so no temporary of it is
-  /// owed to anyone.
+  /// dropped.
   bool InCompTimeValue = false;
 
-  /// Whether we are currently operating within a "defer"
-  /// statement's expression - different rules for analysis and
-  /// terminating.
-  TokenAst *WithinDeferTok = nullptr;
 
   /// The scope holding a function's parameters while one of
   /// their defaults is analysed. A default is copied into the
   /// calls that leave it out, so it cannot name a parameter.
   Scope const *ParameterDefaultScope = nullptr;
 
-  /// Every binding an "is" has introduced into its enclosing
-  /// scope, in order. An "is" binding only exists where the match
-  /// is known to have succeeded - on the right of an "and", in the
-  /// branch it conditions - so the users of "is" move the ones
-  /// they no longer cover into "ExpiredIsBindings". Not restored
-  /// by "MetaGuard": it carries bindings up to the "case", "and"
-  /// or block reading them, each slicing off what was added after
-  /// the length it noted. A function body bounds it instead
-  /// ("IsBindingsScope").
-  Vec<VariableSymbol*> AddedIsBindings;
-
-  /// "is" bindings no longer in force: an identifier resolving to
-  /// one is reported as unknown. They stay in their scope, as
-  /// later stages still find them by name for the code that could
-  /// use them. Carried up and bounded as "AddedIsBindings" is.
-  Vec<VariableSymbol*> ExpiredIsBindings;
 
   /// The actual "current scope" of the program, which has been
   /// hidden by the isolated closure scope being set to the
@@ -386,6 +366,11 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// else it is "a pack is not a value".
   bool AllowPackWhole = false;
 
+  /// Set while the left-hand side of a static member access is analysed: there
+  /// a name may be a namespace ("std" in "std::x"). Anywhere else a name that
+  /// is only a namespace is no value, so it is an unknown identifier.
+  bool AllowNamespaceName = false;
+
   /// The coroutine being generated into, for "gen" and ".res()"
   /// to interact with in stage 11.
   Shared<codegen::LlvmGenerator> LlvmGenerator;
@@ -393,6 +378,16 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// Additional coroutine information for the "gen" expression
   /// to interact with.
   llvm::AllocaInst *LlvmGeneratorState;
+
+  /// How many temporaries were held ("codegen::TemporaryDepth") as
+  /// the body being generated began: a "ret" drops those after it.
+  std::size_t TemporaryBase;
+
+  /// The temporary a "case" is over (its slot) and its type, while
+  /// its branches are generated: a branch keeping it, not taking
+  /// it, drops it at its end.
+  llvm::Value *LlvmCaseTemporary;
+  Shared<TypeRef> LlvmCaseTemporaryType;
 };
 
 /// The CompilerMetaData inherits the state, which acts as
@@ -464,36 +459,4 @@ private:
 
   /// Whether to restore the "heavy" fields too.
   bool _Heavy;
-};
-
-/// Sets "AllowPackWhole" for as long as it lives, then puts the outer value
-/// back, an error unwinding included: the one field, where a "MetaGuard" would
-/// save them all for every argument analysed.
-SPP_EXP_CLS struct spp::asts::meta::AllowPackWholeGuard {
-  AllowPackWholeGuard(CompilerMetaData *meta, bool allow);
-  ~AllowPackWholeGuard();
-  AllowPackWholeGuard(AllowPackWholeGuard const &) = delete;
-  auto operator=(AllowPackWholeGuard const &) -> AllowPackWholeGuard& = delete;
-
-private:
-  CompilerMetaData *_Meta;
-  bool _Outer;
-};
-
-/// Bounds the "is" binding lists ("AddedIsBindings",
-/// "ExpiredIsBindings") to a function body: no "is" binding
-/// outlives the function it is written in. Both are cut back to
-/// their lengths at construction when this is destroyed - on an
-/// error too, so a body abandoned midway leaves nothing behind.
-SPP_EXP_CLS struct spp::asts::meta::IsBindingsScope {
-  explicit IsBindingsScope(CompilerMetaData *meta);
-  ~IsBindingsScope();
-
-  IsBindingsScope(IsBindingsScope const &) = delete;
-  auto operator=(IsBindingsScope const &) -> IsBindingsScope& = delete;
-
-private:
-  CompilerMetaData *_Meta;
-  std::size_t _Added;
-  std::size_t _Expired;
 };

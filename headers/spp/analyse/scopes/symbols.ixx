@@ -9,6 +9,7 @@ import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.utils.visibility;
 import spp.codegen.llvm_sym_info;
+import spp.utils.interner;
 import spp.utils.ptr;
 import spp.utils.types;
 import std;
@@ -42,92 +43,75 @@ use_alias(spp::asts, ConventionTag);
 use_alias(spp::asts::utils, Visibility);
 use_alias(spp::codegen, LlvmTypeSymbolInfo);
 
-/// What a type resolves to: the symbol of the type, and how
-/// a value of it is held. The convention is not part of the
-/// symbol ("&mut Str" and "Str" are one type symbol, borrowed
-/// differently), and "!" is marked rather than resolved: it
-/// names the "Never" class, but fits anywhere that class would
-/// not.
-///
-/// Which factory to build one with depends on what is in hand:
-/// - a type ast (written or inferred): "Of(TypeAst, Scope)";
-/// - a symbol a lookup already found: "Of(TypeSymbol, Scope)";
-/// - an identity already in the scope's terms: "Of(TypeId, Scope)";
-/// - a symbol only asked what it is ("IsA", "Template"):
-///   "ForKindCheck".
+/// A resolved type, containing the symbol it is represented by, convention
+/// information, "!" information, its interned "id", etc.
 SPP_EXP_CLS struct spp::analyse::scopes::TypeRef {
-  /// What reading an identity answers when nothing is filed
-  /// under it where it is read: no symbol ("Null"), the symbol
-  /// the read started from ("Open", which the identity then
-  /// names no one symbol of its own), or that instantiation
-  /// made there first, else "Open" ("Make"). Every factory
-  /// that reads takes one, so a caller says which it needs
-  /// instead of inheriting it.
+  /// How to behave when an identity has nothing filed under it when read in a
+  /// certain scope. Either no symbol (null), the symbol the search started from
+  /// (open), or create the symbol.
   enum class OnMissing : std::uint8_t { Null, Open, Make };
 
-  /// No type: what an expression with none, or a name that
-  /// did not resolve, answers with.
+  /// No type: what an expression with "Null", or a name that did not resolve,
+  /// answers with.
   TypeRef() = default;
 
-  /// The type's symbol, as the lookup found it; null when the
-  /// type resolved to none. Identity is "Id", not this: two
-  /// symbols can be one type (a binding and what it is bound to).
+  /// The type's symbol, as the lookup found it; nullptr when the type resolved
+  /// to none.
   TypeSymbol *Symbol = nullptr;
 
-  /// How the value is held. "MOV" is no convention, as
-  /// "ConventionAst" compares it.
+  /// How the value is held. "MOV" is no convention, as "ConventionAst" compares
+  /// it. Can be "&" or "&mut" too.
   ConventionTag Conv = ConventionTag::MOV;
 
-  /// Whether the type is "!".
+  /// Whether the type is "!". This is a single flag so comparisons and lookups
+  /// don't have to be run every time we need to check it.
   bool IsNever = false;
 
-  /// The type's identity without its convention: two references
-  /// are one type exactly when these are equal and so are their
-  /// conventions. Present whenever "Symbol" is.
+  /// The type's identity without its convention. Two references are one type
+  /// exactly when these are equal and so are their conventions. Present
+  /// whenever "Symbol" is.
   TypeId Id = nullptr;
 
-  /// Resolves a type ast, as written or inferred, where "scope"
-  /// reads it. The symbol is found by the type's stamp or by
-  /// name; an instantiation not made from here yet is made now
-  /// ("FindOrMakeTypeSymbol"), and an alias is followed to its
-  /// target. The convention and "!" are the ones written on the
-  /// type. No type if nothing resolves.
-  /// ---
-  /// Use it whenever the type is an ast: parameter, attribute
-  /// and return types, annotations, inferred expression types.
-  static auto Of(
-    TypeAst const &type, Scope const &scope) -> TypeRef;
+  /// Resolves a type ast, as written or inferred, where "scope" reads it. The
+  /// symbol is found by the type's stamp or by name; an instantiation not made
+  /// from here yet is made now, and an alias is followed to its target. The
+  /// convention and "!" are set to the ones written on the type ast. Used
+  /// whenever the type is an ast: parameter, attribute and return types,
+  /// annotations, inferred expression types.
+  static auto Of(TypeAst const &type, Scope const &scope) -> TypeRef;
 
-  /// Wraps a symbol a lookup already found (a class, a super
-  /// class, a template, a parameter, a binding). Its identity is
-  /// read through "scope"'s bindings ("Scope::ReadIn"). The
-  /// symbol filed under that identity is the answer; when there
-  /// is none, "missing" says what to do. An alias is followed to
-  /// its target. Held under "conv", else as "sym" is held (a
-  /// binding to "&Str" is borrowed); "!" when "sym" is named "!".
-  ///---
-  /// Use it when the symbol is in hand and the type ast is not,
-  /// or would only be rebuilt to resolve it again.
+  /// Wraps a symbol a lookup already found (a class, a super class, a template,
+  /// a parameter, a binding). Its identity is read through the scope's bindings
+  /// with "Scope::ReadIn". The symbol filed under that identity is the answer;
+  /// when there is none, "missing" says what to do. An alias is followed to its
+  /// target. Used when the symbol is in hand and the type ast is not, or would
+  /// only be rebuilt to resolve it again.
   static auto Of(
     TypeSymbol &sym, Scope const &scope, Opt<ConventionTag> conv = Nullopt,
     OnMissing missing = OnMissing::Make) -> TypeRef;
 
-  /// Looks up the symbol filed under an identity, where "scope"
-  /// reads it. The identity is taken as already in "scope"'s
-  /// terms (not read through its bindings), and nothing is made
-  /// or substituted: an identity with nothing filed under it,
-  /// or one holding "Self", gives no type. Held under "conv",
-  /// else the convention the identity carries; "!" as "never"
-  /// says, else when the identity names the "Never" class.
-  ///
-  /// Use it for an identity built or substituted already (off
-  /// another "TypeRef", an argument, an inferred binding), when
-  /// only an existing instantiation is wanted. To read one into
-  /// a scope, or to make what is missing, use "ReadIn" or
-  /// "Substitute" on a "TypeRef" instead.
+  /// Looks up the symbol filed under an identity, where "scope" reads it. The
+  /// identity is taken as already in scope's terms (not read through its
+  /// bindings), and nothing is made or substituted: an identity with nothing
+  /// filed under it, or one holding "Self", gives no type. Used for an identity
+  /// built or substituted already, when only an existing instantiation is
+  /// wanted. To read one into a scope, or to make what is missing, use "ReadIn"
+  /// or "Substitute" on a "TypeRef" instead.
   static auto Of(
     TypeId id, Scope const &scope, Opt<ConventionTag> conv = Nullopt,
     Opt<bool> never = Nullopt) -> TypeRef;
+
+  /// "ForKindCheck" for a written type: what its head names here
+  /// ("Vec" for "Vec[Str]"), held as written, so a borrow or "!"
+  /// stays one and the same checks reject it. No instance is
+  /// looked up or made; no type for "!" or a name that does not
+  /// resolve.
+  ///
+  /// Use it to give a written type to the kind checks
+  /// ("type_predicates::IsTypeTuple(TypeRef::ForKindCheck(type,
+  /// scope), scope)").
+  static auto ForKindCheck(
+    TypeAst const &type, Scope const &scope) -> TypeRef;
 
   /// Wraps "sym" for a question about what kind of type it is
   /// ("IsA", "Template", "type_predicates::IsType*"), not for
@@ -143,18 +127,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeRef {
   /// happen. Never use the result as a value's type.
   static auto ForKindCheck(
     TypeSymbol const &sym, Scope const &scope) -> TypeRef;
-
-  /// "ForKindCheck" for a written type: what its head names here
-  /// ("Vec" for "Vec[Str]"), held as written, so a borrow or "!"
-  /// stays one and the same checks reject it. No instance is
-  /// looked up or made; no type for "!" or a name that does not
-  /// resolve.
-  ///
-  /// Use it to give a written type to the kind checks
-  /// ("type_predicates::IsTypeTuple(TypeRef::ForKindCheck(type,
-  /// scope), scope)").
-  static auto ForKindCheck(
-    TypeAst const &type, Scope const &scope) -> TypeRef;
 
   /// "ForKindCheck" for the type a scope belongs to (its
   /// "Scope::LinkedTypeSymbol", which it must have), read in
@@ -200,6 +172,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeRef {
   SPP_ATTR_NODISCARD auto IsBorrowed() const -> bool {
     return Conv != ConventionTag::MOV;
   }
+
+  /// Whether a value of this type, held this way, moves when used (and so is dropped where its owner ends, if nothing
+  /// moved it on). A borrow belongs to whoever it borrows, a "Copy" value leaves the original in place, and a "!" value
+  /// never exists. No type is not move-only.
+  SPP_ATTR_NODISCARD auto IsMoveOnly() const -> bool;
 
   /// The same type held by value ("Str" for "&Str"), without the
   /// clone a type's own "WithoutConvention" makes.
@@ -322,7 +299,7 @@ SPP_EXP_CLS enum class spp::analyse::scopes::VariableKind {
   Local, // A "let" binding or a function parameter.
   Temporary, // A "$" desugaring temporary, never written by the programmer.
   Import, // A "use" import whose target is not found yet; takes the target's kind in stage 3.
-  Capture, // A closure's capture, owned by the closure's environment. Not "Local": the linear and "is" checks skip it.
+  Capture, // A closure's capture, owned by the closure's environment. Not "Local": the closure, not its body, drops it, and "is" checks skip it.
   FlowNarrowing, // A narrowed view of another symbol's value, from a case pattern. Not "Local", as "Capture".
   Attribute, // A class attribute, reached with ".".
   Constant, // A "cmp" constant, reached with "::".
@@ -467,10 +444,18 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// before stage 3 - whose kind is "Import" until then.
   Shared<VariableSymbol> AliasSymbol;
 
-  /// For flow typing, store the variable that this symbol has
-  /// narrowed down from. If this is a variable of "Some[S32]",
-  /// the "NarrowsSymbol" might be the "Opt[S32]" type variable.
-  Shared<VariableSymbol> NarrowsSymbol;
+  /// A view ("regions::IsView", its kind "FlowNarrowing"): a name for
+  /// a part of another value, owning nothing. "ViewRoot" is the value
+  /// and "ViewSteps" the path to the part: field names, and a variant
+  /// member's step ("type_members::VariantMemberStep") where it is
+  /// known to hold that member. A subject narrowed by a pattern is a
+  /// view of it, held as the member ("o.<Some[T]>"); an "is" binding
+  /// is a view of the place it was read off. A place rooted at a view
+  /// is that place in its owner ("regions::PlaceOf"), so reading or
+  /// moving through one reads or moves the owner's part. A pattern's
+  /// binding records its place here before an "is" makes it a view.
+  VariableSymbol *ViewRoot = nullptr;
+  Vec<spp::utils::InternedId> ViewSteps;
 
   /// There is a unique cases with functional types; if we constrain
   /// a generic F to FunMov, and then supply a FunRef, the "f: F"
@@ -562,6 +547,12 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// Whether this has no runtime storage of its own: a "cmp"
   /// constant, a function's mock constant, or a comp generic.
   SPP_ATTR_NODISCARD auto IsCompTime() const -> bool;
+
+  /// Whether this holds a borrow: bound to one ("&val" in a
+  /// pattern, a borrowed value destructured), or declared as one
+  /// ("x: &T"). What it points at belongs to someone else, so it
+  /// owns nothing, and nothing is moved or destroyed through it.
+  SPP_ATTR_NODISCARD auto IsBorrow() const -> bool;
 
   /// What a "use" names, followed through each "use" in turn
   /// ("AliasSymbol"), stopping on one it comes back to: the
@@ -736,6 +727,10 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// the "!zero_type" annotation.
   bool IsDirectlyZeroType = false;
 
+  /// Track whether this type has been marked as must-use, with the
+  /// "!must_use" annotation: a value of it is never discarded (E95).
+  bool IsDirectlyMustUse = false;
+
   /// Track whether this type has been marked as a thread hazard
   /// with the "!thread_hazard" annotation.
   bool IsDirectlyThreadHazard = false;
@@ -814,6 +809,10 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// Whether this symbol is directly zero-type, or it has
   /// inherited zero-typedness from the derives-from symbol.
   SPP_ATTR_NODISCARD auto IsZeroType() const -> bool;
+
+  /// Whether this symbol is directly must-use, or it has inherited
+  /// it from the derives-from symbol.
+  SPP_ATTR_NODISCARD auto IsMustUse() const -> bool;
 
   /// This is more complex. If this type is a direct thread
   /// hazard, it inherits a thread-hazardous property, or any
@@ -934,6 +933,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// a template, and what the sup blocks written over it
   /// are matched against.
   SPP_ATTR_NODISCARD auto GnSelfName() const -> Shared<TypeAst>;
+
+  /// "GnSelfName" by identity, read where the type is declared
+  /// (as the symbol, for a name that does not key). Null for a
+  /// type declared nowhere.
+  SPP_ATTR_NODISCARD auto GnSelfId() const -> TypeId;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::Symbol)

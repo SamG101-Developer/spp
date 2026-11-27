@@ -9,6 +9,8 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.case_utils;
+import spp.analyse.utils.drop_utils;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.pattern_solver;
 import spp.asts.binary_expression_ast;
@@ -25,6 +27,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coerce;
+import spp.codegen.llvm_drop;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.ice;
@@ -76,6 +79,9 @@ auto spp::asts::CaseExpressionBranchAst::Clone() const -> Unique<Ast> {
     AstClone(Guard),
     AstClone(Body));
   cloned->_MappedPatFns = AstCloneVec(_MappedPatFns);
+  cloned->_KeepsTemporary = _KeepsTemporary;
+  cloned->_DropsPatternBindings = _DropsPatternBindings;
+  cloned->_Drops = _Drops;
   return cloned;
 }
 
@@ -111,7 +117,7 @@ auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
   // ... of".
   _MappedPatFns = Vec<Unique<BinaryExpressionAst>>(Patterns.size());
   if (Op != nullptr and Op->TokenType != lex::SppTokenType::KW_IS) {
-    for (auto const &[i, p] : Patterns | genex::views::ptr | genex::views::enumerate) {
+    for (auto const &[i, p] : Patterns | genex::views::enumerate) {
       const auto pe = p->To<CasePatternVariantExpressionAst>();
       if (pe == nullptr) { continue; }
 
@@ -122,8 +128,12 @@ auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
     }
   }
 
-  // Analyse the guard and body.
-  if (Guard) { Guard->Stage7_AnalyseSemantics(sm, meta); }
+  // Analyse the guard and body: what the guard bound where it is true
+  // holds in the body.
+  if (Guard) {
+    Guard->Stage7_AnalyseSemantics(sm, meta);
+    Body->SetBoundOnEntry(analyse::utils::expr_utils::BoundWhenTrue(*Guard->Expr));
+  }
   Body->Stage7_AnalyseSemantics(sm, meta);
 
   // Exit the scope.
@@ -140,16 +150,37 @@ auto spp::asts::CaseExpressionBranchAst::Stage8_CheckMemory(
   // then the body.
   IMPORT_UTILS;
   for (auto const &p : Patterns) { p->Stage8_CheckMemory(sm, meta); }
-  if (Guard) { Guard->Stage8_CheckMemory(sm, meta); }
-  case_utils::ApplySubjectOnMatch(*this, *sm, *meta);
+  _StateBeforeGuard = nullptr;
+  _StateAfterGuard = nullptr;
+  _Drops.BadMatch = {};
+  _Drops.BadGuard = {};
+  if (Guard) {
+    // The guard's temporaries live on into the body (its "is"
+    // bindings view them), so where it answers false, what they
+    // hold is dropped on that edge.
+    _StateBeforeGuard = MakeShared<memory_state::ScopeSnapshot>(memory_state::SnapshotFlow(*sm->CurrentScope));
+    const auto guard = drop_utils::TemporaryRegion(*sm->CurrentScope);
+    BinaryExpressionAst::MarkCondition(*Guard->Expr);
+    Guard->Stage8_CheckMemory(sm, meta);
+    const auto held_when_true = BinaryExpressionAst::HeldWhenTrue(*Guard->Expr);
+    _Drops.BadGuard = guard.Held(*Guard, *sm, meta, held_when_true);
+    _StateAfterGuard = MakeShared<memory_state::ScopeSnapshot>(memory_state::SnapshotFlow(*sm->CurrentScope));
+  }
+  case_utils::ApplySubjectOnMatch(*sm, *meta);
   Body->Stage8_CheckMemory(sm, meta);
+
+  // The bindings end with the branch, so what they still own is
+  // dropped at its end, unless it never gets there. (An "is" in the
+  // "case" condition binds views of its subject, owning nothing.)
+  _Drops.End = {};
+  if (_DropsPatternBindings and not Body->Diverges(sm, meta)) {
+    auto const &end = Body->TokR != nullptr ? static_cast<Ast const&>(*Body->TokR) : static_cast<Ast const&>(*this);
+    _Drops.End = drop_utils::EndRegion(*sm->CurrentScope, end, *sm, meta);
+  }
 
   // The pattern's bindings end with the branch, and so do
   // the loans they hold.
-  auto &loans = memory_state::LoansOf(*sm->CurrentScope);
-  for (const auto sym : sm->CurrentScope->GetAllVarSymbols(true)) {
-    memory_state::ReleaseLoans(loans, *sym);
-  }
+  drop_utils::ReleaseOwnedLoans(*sm->CurrentScope);
 
   // Move out of the branch's scope.
   sm->MoveOutOfCurrentScope();
@@ -174,6 +205,12 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
   // always in-bounds regardless of which variant is selected).
   const auto cond = _CodegenCombinePatterns(sm, meta, ctx);
 
+  // A temporary subject this branch keeps is held from where its patterns matched: a way out of its guard ("?")
+  // drops it with the other temporaries, as a way out of its body does.
+  const auto temporaries = codegen::TemporaryDepth(ctx);
+  const auto keeps_temporary = _KeepsTemporary and meta->LlvmCaseTemporary != nullptr;
+  if (keeps_temporary) { codegen::PushTemporary(meta->LlvmCaseTemporary, *meta->LlvmCaseTemporaryType, {}, ctx); }
+
   if (Guard) {
     // The guard is user-written and may assume the pattern
     // actually matched (eg. "is Some(v) and v.foo()" reading
@@ -185,10 +222,20 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
     // evaluating it unconditionally.
     const auto guard_bb = llvm::BasicBlock::Create(
       *ctx->Context, "case.branch.guard" + uid, func);
-    ctx->Builder.CreateCondBr(cond, guard_bb, next_bb);
+    const auto no_match_bb = _EdgeToNext(_Drops.BadMatch, "case.branch.no_match" + uid, next_bb, sm, meta, ctx);
+    ctx->Builder.CreateCondBr(cond, guard_bb, no_match_bb);
+    // The unnamed temporaries the guard makes exist only where it
+    // ran: they are dropped at its end, before either edge, its value
+    // being a "Bool" that borrows none of them. Its "$" ones live on
+    // into the body, and are dropped on the false edge.
     ctx->Builder.SetInsertPoint(guard_bb);
+    const auto guard_temporaries = codegen::TemporaryDepth(ctx);
     const auto guard_cond = Guard->Stage11_CodeGen(sm, meta, ctx);
-    ctx->Builder.CreateCondBr(guard_cond, body_bb, next_bb);
+    codegen::EndTemporaryRegion(guard_temporaries, *sm->CurrentScope, {}, Guard.get(), sm, meta, ctx);
+    const auto guard_end_bb = ctx->Builder.GetInsertBlock();
+    const auto false_bb = _EdgeToNext(_Drops.BadGuard, "case.branch.guard_false" + uid, next_bb, sm, meta, ctx);
+    ctx->Builder.SetInsertPoint(guard_end_bb);
+    ctx->Builder.CreateCondBr(guard_cond, body_bb, false_bb);
   }
   else {
     // Otherwise, we have no guard in place, so just branch to
@@ -229,13 +276,18 @@ auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
     ctx->Builder.CreateUnreachable();
   }
   else if (not incoming_bb->hasTerminator()) {
-    if (meta->LlvmPhi != nullptr) { meta->LlvmPhi->addIncoming(llvm_val, incoming_bb); }
+    // The bindings still owned are dropped once the body's value is made; the phi's edge comes from wherever
+    // dropping them left the builder.
+    codegen::EmitTemporaryDrops(temporaries, sm, meta, ctx);
+    codegen::EmitOuterDrops(_Drops.End, *this, sm, meta, ctx);
+    if (meta->LlvmPhi != nullptr) { meta->LlvmPhi->addIncoming(llvm_val, ctx->Builder.GetInsertBlock()); }
     ctx->Builder.CreateBr(meta->LlvmEndBB);
   }
 
   // Set the current point to the "next" zone, so that the next
   // branch can be added in the right place. Move out of the
   // branch's scope.
+  codegen::PopTemporaries(temporaries, ctx);
   ctx->Builder.SetInsertPoint(next_bb);
   sm->MoveOutOfCurrentScope();
   return nullptr;
@@ -253,18 +305,18 @@ auto spp::asts::CaseExpressionBranchAst::EvaluateCompTime(
     and Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
 
   SPP_ASSERT(_MappedPatFns.size() == Patterns.size());
-  for (auto const &[i, pattern] : Patterns | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, pattern] : Patterns | genex::views::enumerate) {
     auto *tested = tests_condition_directly
       ? static_cast<Ast*>(meta->CaseCondition)
       : _MappedPatFns[i] != nullptr
       ? static_cast<Ast*>(_MappedPatFns[i].get())
-      : static_cast<Ast*>(pattern);
+      : static_cast<Ast*>(pattern.get());
 
     // Determine if this branch is not a match (false): the checks
     // the plan says the pattern makes, before the pattern binds
     // anything (a binding reads a payload only its tag says is
     // there), and then the pattern itself.
-    const auto checks_hold = tested != pattern
+    const auto checks_hold = tested != pattern.get()
       or case_utils::ResolvePatternChecks(
         *_CasePlan, _CasePlan->Branches[_CaseIndex].Checks[i], sm, meta);
     if (checks_hold) { tested->EvaluateCompTime(sm, meta); }
@@ -301,6 +353,11 @@ auto spp::asts::CaseExpressionBranchAst::UsePlan(
   MatchPlan const *plan, const std::size_t index) -> void {
   _CasePlan = plan;
   _CaseIndex = index;
+}
+
+auto spp::asts::CaseExpressionBranchAst::SetDropsBindings(
+  const bool patterns) -> void {
+  _DropsPatternBindings = patterns;
 }
 
 auto spp::asts::CaseExpressionBranchAst::InferType(
@@ -355,6 +412,41 @@ auto spp::asts::CaseExpressionBranchAst::_CodegenCombinePatterns(
     llvm_combined_pattern = ctx->Builder.CreateOr(llvm_combined_pattern, codegen_pattern(i));
   }
   return llvm_combined_pattern;
+}
+
+auto spp::asts::CaseExpressionBranchAst::StateBeforeGuard() const
+  -> analyse::utils::memory_state::ScopeSnapshot const* {
+  return _StateBeforeGuard.get();
+}
+
+auto spp::asts::CaseExpressionBranchAst::StateAfterGuard() const
+  -> analyse::utils::memory_state::ScopeSnapshot const* {
+  return _StateAfterGuard.get();
+}
+
+auto spp::asts::CaseExpressionBranchAst::_EdgeToNext(
+  Vec<analyse::utils::drop_utils::OwnedValue> const &drops, Str const &name, llvm::BasicBlock *next_bb,
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::BasicBlock* {
+  // An edge passing this branch over that drops nothing goes
+  // straight on; one that does drops in a block of its own. The
+  // insert point is left where it was.
+  if (drops.empty()) { return next_bb; }
+  const auto here = ctx->Builder.GetInsertBlock();
+  const auto edge_bb = llvm::BasicBlock::Create(*ctx->Context, name, here->getParent());
+  ctx->Builder.SetInsertPoint(edge_bb);
+  codegen::EmitOuterDrops(drops, *this, sm, meta, ctx);
+  ctx->Builder.CreateBr(next_bb);
+  ctx->Builder.SetInsertPoint(here);
+  return edge_bb;
+}
+
+auto spp::asts::CaseExpressionBranchAst::SetKeepsTemporary(
+  const bool keeps) -> void {
+  _KeepsTemporary = keeps;
+}
+
+auto spp::asts::CaseExpressionBranchAst::KeepsTemporary() const -> bool {
+  return _KeepsTemporary;
 }
 
 SPP_MOD_END

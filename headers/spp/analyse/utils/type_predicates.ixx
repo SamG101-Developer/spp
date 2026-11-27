@@ -18,80 +18,68 @@ use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
 
 namespace spp::analyse::utils::type_predicates {
-  /// Whether any part of a type satisfies a predicate: each name part ("Vec" and "T" in "Vec[T]"), walking through
-  /// conventions, nested names and generic arguments. A comp argument is walked as a comp expression
-  /// ("AnyCompPart"): its names are asked "comp_name", where given, and the types its constants are
-  /// named through are walked as types. Walks the ast in place, with no list of parts built.
+  /// Check if any part of a type satisfies a given predicate. Walk the type,
+  /// its generics (including inner ones), passing each part into the predicate.
+  /// Inner generics could be "cmp", using "AnyCompPart", whose names are asked
+  /// "comp_name".
   SPP_EXP_FUN auto AnyTypePart(
-    TypeAst const &type,
-    FuncRef<bool(TypeIdentifierAst const &)> part,
-    Func<bool(IdentifierAst const &)> const &comp_name = nullptr)
-    -> bool;
+    TypeAst const &type, FuncRef<bool(TypeIdentifierAst const &)> type_match,
+    Func<bool(IdentifierAst const &)> const &comp_match = nullptr) -> bool;
 
-  /// Whether any part of a comp expression satisfies a predicate, walking an operation's operands, a parenthesis and a
-  /// pack's elements: each name is asked "name", each type a constant is named through ("Self::N") "owner", and each
-  /// value that is not a pack "value" (an element, or a part of one), where given. The comp analog of
-  /// "AnyTypePart".
+  /// Whether any part of a comp expression satisfies a predicate, walking an
+  /// operation's operands, a parenthesis, a tuple's or an array's elements, an
+  /// object's arguments, and a postfix operation's operand and arguments. Each
+  /// value is asked "value" before its parts, each name "name", and each type
+  /// a value is named through ("Self::N", "Some[T](...)") "owner", where given.
   SPP_EXP_FUN auto AnyCompPart(
-    ExpressionAst const &expr,
-    Func<bool(IdentifierAst const &)> const &name,
+    ExpressionAst const &expr, Func<bool(IdentifierAst const &)> const &comp_match,
     Func<bool(TypeAst const &)> const &owner = nullptr,
     Func<bool(ExpressionAst const &)> const &value = nullptr) -> bool;
 
-  /// Check if "Self" appears anywhere in a type, at any depth
-  /// ("Opt[Self]", "&Self"), not only as the whole type.
+  /// Check if "Self" appears anywhere in a type, at any depth ("Opt[Self]",
+  /// "&Self"), not only as the whole type.
   SPP_EXP_FUN auto DoesTypeNameSelf(TypeAst const &type) -> bool;
 
-  /// Whether a type names a generic parameter, by identity: a
-  /// part (or a comp name) that is that parameter where it is
-  /// read in "scope" ("Vec[T]" names "T"; a "T" of another
-  /// declaration does not). Used to find a "sup" block's
-  /// parameters its type never names (so never inferable), and
-  /// the constraints others are inferred through.
+  /// Check if a type contains a given generic parameter, using the unique
+  /// parameter id stored by generic parameters. Reuses the above "AnyXXX"
+  /// functions.
   SPP_EXP_FUN auto DoesTypeNameAGnParam(
-    TypeAst const &type, GenericParameterAst const &param, Scope const &scope) -> bool;
+    TypeAst const &type, GenericParameterAst const &param,
+    Scope const &scope) -> bool;
 
-  /// Whether "sym", read in "scope", is an instance of "tmpl" (or
-  /// "tmpl" itself), or extends one: the template of the type, or
-  /// of any "sup" scope attached to it.
+  /// Whether "sym", read in "scope", is an instance of "tmpl" (or "tmpl"
+  /// itself), or extends one: the template of the type, or of any "sup" scope
+  /// attached to it.
   SPP_EXP_FUN auto IsOrExtendsTemplate(
-    TypeSymbol const &sym, Scope const &scope,
-    TypeSymbol const *tmpl) -> bool;
+    TypeSymbol const &sym, Scope const &scope, TypeSymbol const *tmpl) -> bool;
 
-  /// The kind checks for a resolved type, as a value of it is held ("TypeRef"): whether it instantiates the template
-  /// of the kind ("TypeRef::IsA"). A borrow is none of the kinds (a borrowed variant excepted), "!" is only itself,
-  /// and a "$" mock is a function value.
   SPP_EXP_FUN auto IsTypeGenerator(TypeRef const &ref, Scope const &scope) -> bool;
   SPP_EXP_FUN auto IsTypeTuple(TypeRef const &ref, Scope const &scope) -> bool;
   SPP_EXP_FUN auto IsTypeArray(TypeRef const &ref, Scope const &scope) -> bool;
   SPP_EXP_FUN auto IsTypeVariant(TypeRef const &ref, Scope const &scope) -> bool;
   SPP_EXP_FUN auto IsTypeFunction(TypeRef const &ref, Scope const &scope) -> bool;
+  SPP_EXP_FUN auto IsTypePointer(TypeRef const &ref, Scope const &scope) -> bool;
   SPP_EXP_FUN auto IsTypeCompTimeIndexable(TypeRef const &ref, Scope const &scope) -> bool;
   SPP_EXP_FUN auto IsTypeBool(TypeRef const &ref, Scope const &scope) -> bool;
   SPP_EXP_FUN auto IsTypeVoid(TypeRef const &ref, Scope const &scope) -> bool;
   SPP_EXP_FUN auto IsTypeTry(TypeRef const &ref, Scope const &scope) -> bool;
 
+  /// Whether a sized-integer type is a signed one. Get the full integer type
+  /// and check against the "sized" generic argument for "=true".
+  SPP_EXP_FUN auto IsTypeSignedInteger(
+    TypeAst const &type, Scope const &scope) -> bool;
 
-  /// Whether a written type is concrete where "scope" reads it: its
-  /// identity names no parameter and no "Self" ("IsConcreteTypeId",
-  /// of "Scope::PartialTypeIdOf", so a name that does not resolve here does
-  /// not count against it), and it is not a generic template named
-  /// bare.
-  SPP_EXP_FUN auto IsTypeConcrete(TypeAst const &type, Scope const &scope) -> bool;
+  /// A concrete type is a type whose generic arguments are all concrete types
+  /// ie not-generic or Self.
+  SPP_EXP_FUN auto IsTypeConcrete(
+    TypeAst const &type, Scope const &scope) -> bool;
 
-  /// Whether a sized-integer type is a signed one. Not a question its name can answer: "U8" is an alias for
-  /// "SizedIntegerUnsigned[8]", itself for "SizedInteger[8, false]", so once resolved every width of both
-  /// signednesses is called "SizedInteger" (reading the first letter made "max_val[U8]()" 127). It is the type's own
-  /// "signed" comp argument; a type without one (not an integer) is not signed.
-  SPP_EXP_FUN auto IsTypeSignedInteger(TypeAst const &type, Scope const &scope) -> bool;
-
-  /// "IsTypeConcrete" on a resolved type: its identity is concrete
-  /// ("IsConcreteTypeId"), and it is not a bare template.
+  /// The "TypeRef" version of the normal "IsTypeConcrete" function, using the
+  /// same method as above.
   SPP_EXP_FUN auto IsTypeConcrete(TypeRef const &ref) -> bool;
 
-  /// A type is borrowed if it has a convention, or its a by-move
-  /// variant that itself can contain a borrow, like "Str or &S32",
-  /// read in "scope".
+  /// A type is borrowed if it has a convention, or it's a by-move variant that
+  /// itself can contain a borrow, like "Str or &S32", read in "scope".
   SPP_EXP_FUN auto IsTypeBorrowed(
     TypeAst const &type, Scope const &scope, bool deep = true) -> bool;
 }

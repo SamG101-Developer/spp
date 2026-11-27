@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.operator_desugaring;
+import spp.analyse.utils.regions;
 import spp.asts.ast;
 import spp.asts.case_expression_ast;
 import spp.asts.case_pattern_variant_ast;
@@ -65,6 +66,8 @@ auto spp::asts::IsExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(TokOp),
     AstClone(Rhs));
   ast->_MappedFn = _MappedFn;
+  ast->_SubjectLet = AstClone(_SubjectLet);
+  ast->_Bound = _Bound;
   return ast;
 }
 
@@ -84,78 +87,91 @@ auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
-  _LhsAsId = AstClone(Lhs->To<IdentifierAst>());
+  // The subject is owned by a place for as long as the bindings
+  // viewing it last: a named one already is; anything else is
+  // held by a hidden "$is" temporary, ending with the condition
+  // it is in ("Scope::TemporaryHome").
+  // The operands are left as written, so a clone is analysed again
+  // from them ("HoistOnce" of a fold argument).
+  auto subject = Unique<ExpressionAst>();
+  if (auto hoisted = expr_utils::HoistOnce(*Lhs, "$is", sm, meta); hoisted.Let != nullptr) {
+    _SubjectLet = std::move(hoisted.Let);
+    subject = AstClone(hoisted.Name);
+  }
+  else { subject = AstClone(Lhs); }
+  auto *const subject_root = sm->CurrentScope->FindVarSymbolOutermost(*subject).first;
 
   // Convert to a "case" destructure and analyse it.
   const auto n = sm->CurrentScope->Children.size();
-  _MappedFn = operator_desugaring::ConvertIsExprToCase(*this, sm, meta);
+  _MappedFn = operator_desugaring::ConvertIsExprToCase(*this, std::move(subject), sm, meta);
   _MappedFn->Stage7_AnalyseSemantics(sm, meta);
 
-  // Add the destructure symbols to the current scope. This
-  // includes the lhs symbol if it's been flow typed. They are
-  // recorded as the scope's bindings, as a "let"'s are, so
-  // a later walk only finds them from this "is" onwards.
-  _Exposed.clear();
+  // What the pattern binds, and the subject it narrows, hold where
+  // it matched: what this "is" leads into declares them ("Bound"),
+  // nothing else. Nothing is declared where the "is" stands.
+  _Bound.clear();
   if (AstAs<InnerScopeAst<Unique<Ast>>>(sm->CurrentScope->AstNode) == nullptr) {
     const auto destructure_syms = sm->CurrentScope->Children[n]->Children[0]->GetAllVarSymbols(true, true);
-    for (auto const &x : destructure_syms) {
-      _Exposed.emplace_back(x->SharedFromThis<VariableSymbol>());
-      sm->CurrentScope->RecordLetBinding(_Exposed.back());
-      sm->CurrentScope->AddVarSymbol(_Exposed.back());
-      if (x->Kind == VariableKind::Local) { meta->AddedIsBindings.emplace_back(x); }
-    }
-  }
-}
+    for (auto const &x : destructure_syms) { _Bound.emplace_back(x->SharedFromThis<VariableSymbol>()); }
 
-auto spp::asts::IsExpressionAst::_DeclareExposed(
-  ScopeManager &sm) const -> void {
-  // Bulk declare whatever is in the "exposed" list. Used in
-  // stages 8, 9 and 11, and expose the bindings.
-  for (auto const &x : _Exposed) {
-    sm.CurrentScope->AddVarSymbol(x);
+    // What an "is" binds is a view of the part of the subject it names
+    // ("regions::IsView"): the subject's owner keeps owning it, so
+    // nothing drops a binding, and using one uses that part of the
+    // owner. A binding is the place it was read off ("o.<Some[T]>.val.a"
+    // through the narrowed subject, itself a view), through to the
+    // subject. One read off anything else stands for the whole.
+    if (subject_root != nullptr) {
+      auto bindings = Vec<VariableSymbol*>();
+      for (auto const &x : destructure_syms) {
+        if ((x->Kind != VariableKind::Local and x->Kind != VariableKind::Temporary) or x->IsBorrow()) { continue; }
+
+        // A view names its subject's part but is generated as a copy of
+        // it: written to or lent "&mut", it would change the copy (one
+        // never dropped) and not the subject. Bind "&mut", or write
+        // through the subject.
+        RaiseIf<SppInvalidMutationError>(
+          x->IsMutable, ERR_ARGS(*x->Name, *this, *x->Name, "\"is\" binding (a view of its subject)"));
+        x->Kind = VariableKind::FlowNarrowing;
+        bindings.emplace_back(x);
+      }
+      const auto reaches_subject = [&](VariableSymbol const *root) {
+        while (root != nullptr and root != subject_root and regions::IsView(*root)) { root = root->ViewRoot; }
+        return root == subject_root;
+      };
+      for (auto *const x : bindings) {
+        if (not reaches_subject(x->ViewRoot)) {
+          x->ViewRoot = subject_root;
+          x->ViewSteps.clear();
+        }
+      }
+    }
   }
 }
 
 auto spp::asts::IsExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward the memory checking to the mapped function, then
-  // expose what it binds: the subject it tests is the one
-  // named before the "is", not the one it narrows.
+  // Forward the memory checking to the mapped function.
+  if (_SubjectLet != nullptr) { _SubjectLet->Stage8_CheckMemory(sm, meta); }
   _MappedFn->Stage8_CheckMemory(sm, meta);
-  _DeclareExposed(*sm);
 }
 
 auto spp::asts::IsExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  // As moving to the next scope clears ast-generated bindings
-  // in that scope, we need to redeclare them for them for
-  // narrowing analysis and codegen.
-  _DeclareExposed(*sm);
-
-  // If the lhs was an identifier, the "is" causes it to get
-  // flow typed, so we need to promote the original "alloca"
-  // into the flow typed symbol. Declared before the mapped
-  // function is generated, as code generation has always read
-  // it: the narrowed symbol shares the original's storage.
-  if (_LhsAsId) {
-    const auto narrow_sym = sm->CurrentScope->FindVarSymbol(_LhsAsId.get(), true);
-    if (narrow_sym != nullptr) {
-      auto wide_sym = sm->CurrentScope->Parent->FindVarSymbol(_LhsAsId.get());
-      wide_sym = wide_sym ? wide_sym : narrow_sym; // Todo: Remove fallback?
-      narrow_sym->LlvmInfo->Alloca = wide_sym->LlvmInfo->Alloca;
-    }
-  }
-
-  // Forward the code generation to the mapped function.
+  // Forward the code generation to the mapped function. The narrowed
+  // subject shares the subject's storage ("LlvmInfo").
+  if (_SubjectLet != nullptr) { _SubjectLet->Stage11_CodeGen(sm, meta, ctx); }
   return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
 }
 
 auto spp::asts::IsExpressionAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward the resolution to the mapped function, then expose
-  // what it binds, as stage 8 does.
+  // Forward the resolution to the mapped function.
+  if (_SubjectLet != nullptr) { _SubjectLet->EvaluateCompTime(sm, meta); }
   _MappedFn->EvaluateCompTime(sm, meta);
-  _DeclareExposed(*sm);
+}
+
+auto spp::asts::IsExpressionAst::Bound() const -> Vec<Shared<VariableSymbol>> const& {
+  return _Bound;
 }
 
 auto spp::asts::IsExpressionAst::InferTypeRef(

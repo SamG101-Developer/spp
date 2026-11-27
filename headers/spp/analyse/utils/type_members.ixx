@@ -2,7 +2,10 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.type_members;
+import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
+import spp.analyse.scopes.type_key;
+import spp.utils.interner;
 import spp.utils.ptr;
 import spp.utils.types;
 import std;
@@ -131,6 +134,15 @@ namespace spp::analyse::utils::type_members {
   SPP_EXP_FUN auto SuperClsReads(
     Vec<Scope*> const &sup_scopes) -> Vec<Pair<TypeRef, Scope const*>>;
 
+  /// "UnifyTypeIds" for "given", else for the first of the classes
+  /// it is superimposed as ("SuperClsReads") that fits "declared":
+  /// what a type is matched as beside itself. "bindings" holds that
+  /// match's bindings, or, when none fits, what matching "given"
+  /// itself left.
+  SPP_EXP_FUN auto UnifyInHierarchy(
+    scopes::TypeId given, Scope const &given_scope, scopes::TypeId declared, Scope const &declared_scope,
+    scopes::GenericSubst &bindings, bool check_variant, bool check_constraints) -> bool;
+
   /// How many pointers a value of the type "ref" is: 2 for the
   /// "Fun*" family (and a "$" mock of one), a { fn_ptr, env_ptr }
   /// pair; 1 for "Gen"/"GenOnce", the bare "llvm.coro.begin"
@@ -187,4 +199,16 @@ namespace spp::analyse::utils::type_members {
   /// reader that needs the members' symbols, not their names, asks.
   SPP_EXP_FUN auto VariantMemberRefs(
     TypeRef const &ref, Scope const &scope) -> Vec<TypeRef>;
+
+  /// A step of a place into a variant, as one of its members (what
+  /// an "is" narrowed it to): "o.<Some[Pair]>.val" is the payload
+  /// of "o", held as "Some[Pair]". Valid only where the variant is
+  /// known to hold that member.
+  SPP_EXP_FUN auto VariantMemberStep(
+    TypeRef const &member) -> spp::utils::InternedId;
+
+  /// The member of the variant "ref" that "step" names
+  /// ("VariantMemberStep"), if it names one.
+  SPP_EXP_FUN auto VariantMemberAt(
+    TypeRef const &ref, spp::utils::InternedId step, Scope const &scope) -> Opt<TypeRef>;
 }

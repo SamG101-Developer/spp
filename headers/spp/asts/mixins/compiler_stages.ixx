@@ -62,7 +62,7 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
   virtual auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
   /// All memory oriented checks, such as ownership checking,
-  /// law of exclusivity, drop semantics, linear enforcement etc.
+  /// law of exclusivity, where values are dropped etc.
   virtual auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
   /// The pre-code-gen step is needed for order agnostic behaviour

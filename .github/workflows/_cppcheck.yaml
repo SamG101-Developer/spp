@@ -47,7 +47,7 @@ jobs:
       # GCC compiles it, and no project toolchain is set up.
       - name: Install CMake & Ninja (cache miss)
         if: steps.cppcheck-cache.outputs.cache-hit != 'true'
-        uses: lukka/get-cmake@30aea713799f46b5b60e60f5fa83f849abd52c22 # v4.5.0-rc3
+        uses: lukka/get-cmake@a1a8216777d3cbbf5602c73b9ddd3e98257ecdc4 # v4.5.1
         with:
           cmakeVersion: ${{ env.CMAKE_VERSION }}
           ninjaVersion: ${{ env.NINJA_VERSION }}

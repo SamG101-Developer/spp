@@ -14,6 +14,7 @@ use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::analyse::utils::generic_inference, struct Evidence);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericArgumentGroupAst);
@@ -39,6 +40,15 @@ namespace spp::analyse::utils::type_resolution {
   SPP_EXP_FUN auto AnalyseWrittenType(
     TypeAst const &written, ScopeManager &sm, CompilerMetaData &meta,
     SelfPolicy self = SelfPolicy::kSubstitute) -> Shared<TypeAst>;
+
+  /// "AnalyseWrittenType" for a type whose unwritten generic
+  /// arguments a use site has evidence for ("Evidence"): an object
+  /// initializer's attributes, a destructure's subject. "Self" is
+  /// substituted first, without analysis: the substitution is a
+  /// copy, which would not carry the evidence.
+  SPP_EXP_FUN auto AnalyseInferredType(
+    TypeAst const &written, generic_inference::Evidence &&evidence,
+    ScopeManager &sm, CompilerMetaData &meta) -> Shared<TypeAst>;
 
   /// Record on a written type the identity "sym" (what it
   /// names) stands for wherever it is read ("NameTypeIdOf"),
@@ -87,7 +97,14 @@ namespace spp::analyse::utils::type_resolution {
   /// parallel; a keyword arg for parameter names, the next
   /// type/comp available for positional.
   SPP_EXP_FUN auto ParamsBoundByArgs(
-    Vec<GenericArgumentAst*> const &args, Vec<GenericParameterAst*> const &params) -> Vec<GenericParameterAst*>;
+    Span<Unique<GenericArgumentAst> const> args,
+    Span<Unique<GenericParameterAst> const> params) -> Vec<GenericParameterAst*>;
+
+  /// "ParamsBoundByArgs" against a filtered list of parameters
+  /// ("GetCompParams").
+  SPP_EXP_FUN auto ParamsBoundByArgs(
+    Span<Unique<GenericArgumentAst> const> args,
+    Span<GenericParameterAst* const> params) -> Vec<GenericParameterAst*>;
 
   /// A type read with "sub" ("ExprSubst"): keyed where written,
   /// its bindings applied ("SubstituteTypeId"), and named from

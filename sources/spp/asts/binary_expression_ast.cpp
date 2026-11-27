@@ -6,9 +6,12 @@ module spp.asts.binary_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_iterator;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
@@ -33,18 +36,20 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_drop;
 import spp.lex.tokens;
+import spp.utils.functions;
 import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 import llvm;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeBlockName);
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts, TokenAst);
-use_alias(spp::asts::meta, AllowPackWholeGuard);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);
 
@@ -100,9 +105,17 @@ auto spp::asts::BinaryExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Rhs));
   ast->_MappedFn = _MappedFn;
   ast->_ChainTemps = AstCloneVec(_ChainTemps);
+  ast->_IsCondition = _IsCondition;
+  ast->_HeldWhenTrue = _HeldWhenTrue;
+  // A clone walked where this stands, never analysed again (a receiver,
+  // "InjectReceiver"; forwarding), walks this one's scope. One analysed
+  // again ("HoistOnce") makes its own where it stands, as its operands
+  // do: "_LogicalAnalysed" is not shared, so its Stage 7 runs.
+  ast->_RhsScope = _RhsScope;
   ast->_OpenPack = AstClone(_OpenPack);
   ast->_OpenPackMoves = _OpenPackMoves;
   ast->Source = Source;
+  ast->_Drops = _Drops;
   return ast;
 }
 
@@ -136,7 +149,8 @@ auto spp::asts::BinaryExpressionAst::_BindFoldOperand(
   }
 
   // A name may be a pack, which a fold names whole ("AllowPackWhole").
-  const auto _pack_guard = AllowPackWholeGuard(meta, true);
+  const auto _pack_guard = spp::utils::functions::ScopedAssign(
+    meta->AllowPackWhole, true);
   operand->Stage7_AnalyseSemantics(sm, meta);
 }
 
@@ -205,7 +219,8 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
 
   // Analysed already: a clone shares the mapped call ("Clone"),
   // and a fold has rewritten its operands, so analysing again
-  // would desugar what is no longer written.
+  // would desugar what is no longer written. A logical operator's
+  // clone is analysed again ("Clone").
   if (_MappedFn or _LogicalAnalysed) { return; }
 
   // A fold reads its tuple's elements off it and combines them, for "t = (0, 1, 2, 3)": ".. + t" from the left,
@@ -268,30 +283,37 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
     // in, like "not", for short-circuiting. Both operands must
     // be "Bool", again like "not".
     if (IsLogicalOperator()) {
-      // What an "is" on the left binds holds on the right of an
-      // "and" (the match succeeded), but not of an "or" - the right
-      // only runs when it failed.
-      const auto bound_before = meta->AddedIsBindings.size();
-      Lhs->Stage7_AnalyseSemantics(sm, meta);
-      if (TokOp->TokenType == lex::SppTokenType::KW_OR) {
-        for (auto i = bound_before; i < meta->AddedIsBindings.size(); ++i) {
-          meta->ExpiredIsBindings.emplace_back(meta->AddedIsBindings[i]);
-        }
-      }
-      Rhs->Stage7_AnalyseSemantics(sm, meta);
+      _NestChainRight();
 
-      const auto what = Str("\"") + TokOp->TokenData + "\" expression";
       // An owned "Bool" each (a borrow is not one); the type is only spelled out for the error.
       // Held, not passed through: the error's arguments are bound as references, and these types are nobody
       // else's - the temporary they came back in would be gone before the error was built.
+      const auto what = Str("\"") + TokOp->TokenData + "\" expression";
+      Lhs->Stage7_AnalyseSemantics(sm, meta);
       if (not type_predicates::IsTypeBool(Lhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
         const auto lhs_ty = Lhs->InferType(sm, meta);
         Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Lhs, *lhs_ty, what));
       }
+
+      // Where an "and"'s left operand is true, what it bound holds: its
+      // right operand is then analysed in a scope of its own, holding
+      // those bindings. Nothing else has one (a comp argument's operator
+      // is analysed off the walk, which never enters a scope it makes).
+      const auto scoped = TokOp->TokenType == lex::SppTokenType::KW_AND
+        and not analyse::utils::expr_utils::BoundWhenTrue(*Lhs).empty();
+      if (scoped) {
+        auto scope_name = ScopeBlockName::FromParts("and-rhs", {}, Rhs->PosStart());
+        sm->CreateAndMoveIntoNewScope(std::move(scope_name), nullptr);
+        sm->CurrentScope->IsOperandScope = true;
+        _RhsScope = sm->CurrentScope;
+        _DeclareLhsBound(*sm->CurrentScope);
+      }
+      Rhs->Stage7_AnalyseSemantics(sm, meta);
       if (not type_predicates::IsTypeBool(Rhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
         const auto rhs_ty = Rhs->InferType(sm, meta);
         Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Rhs, *rhs_ty, what));
       }
+      if (scoped) { sm->MoveOutOfCurrentScope(); }
 
       _LogicalAnalysed = true;
       return;
@@ -300,6 +322,65 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
     // Standard non-folding binary expression.
     _MappedFn = operator_desugaring::ConvertBinExprToFnCall(*this, sm, meta);
     _MappedFn->Stage7_AnalyseSemantics(sm, meta);
+  }
+}
+
+auto spp::asts::BinaryExpressionAst::_DeclareLhsBound(
+  analyse::scopes::Scope &rhs_scope) const -> void {
+  if (TokOp->TokenType != lex::SppTokenType::KW_AND) { return; }
+  rhs_scope.DeclareBoundWhenTrue(analyse::utils::expr_utils::BoundWhenTrue(*Lhs));
+}
+
+auto spp::asts::BinaryExpressionAst::_RhsScopeIsNext(
+  ScopeManager const &sm) const -> bool {
+  auto next = sm.Position().It;
+  return _RhsScope != nullptr and next != analyse::scopes::ScopeIterator() and *++next == _RhsScope;
+}
+
+auto spp::asts::BinaryExpressionAst::_InRhsScope(
+  ScopeManager &sm, auto &&walk) const -> void {
+  if (_RhsScope == nullptr) {
+    walk(&sm);
+    return;
+  }
+  // Entering a scope hides its "let"s ("MoveToNextScope"), so the
+  // bindings are declared once standing in it.
+  if (_RhsScopeIsNext(sm)) {
+    sm.MoveToNextScope();
+    _DeclareLhsBound(*_RhsScope);
+    walk(&sm);
+    sm.MoveOutOfCurrentScope();
+    return;
+  }
+  auto rhs_sm = sm.NewManagerAt(_RhsScope);
+  _DeclareLhsBound(*_RhsScope);
+  walk(&rhs_sm);
+}
+
+auto spp::asts::BinaryExpressionAst::MarkCondition(
+  ExpressionAst &cond) -> void {
+  if (auto *const binary = cond.To<BinaryExpressionAst>(); binary != nullptr) { binary->_IsCondition = true; }
+}
+
+auto spp::asts::BinaryExpressionAst::HeldWhenTrue(
+  ExpressionAst const &cond) -> Vec<analyse::scopes::VariableSymbol*> {
+  auto const *const binary = cond.To<BinaryExpressionAst>();
+  return binary != nullptr ? binary->_HeldWhenTrue : Vec<analyse::scopes::VariableSymbol*>();
+}
+
+auto spp::asts::BinaryExpressionAst::_NestChainRight() -> void {
+  // "(a and b) and c" is "a and (b and c)": the same answer, each
+  // operand run or skipped alike. Nested to the right, "c" runs on
+  // "b"'s path, where what "b" made is still held: the "$is" its
+  // "is" bindings view lives to the end of the operand it is made
+  // in ("_Drops.RhsTemporaries"), and "c" can read them.
+  while (true) {
+    auto *const inner = Lhs->To<BinaryExpressionAst>();
+    if (inner == nullptr or inner->TokOp->TokenType != TokOp->TokenType) { return; }
+    auto rhs = MakeUnique<BinaryExpressionAst>(std::move(inner->Rhs), std::move(TokOp), std::move(Rhs));
+    TokOp = std::move(inner->TokOp);
+    Lhs = std::move(inner->Lhs);
+    Rhs = std::move(rhs);
   }
 }
 
@@ -314,11 +395,39 @@ auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
   // to. Both operands are checked as at worst, they both
   // evaluate, so must both be valid. Maintains consistency
   // in all code.
+  // The right operand runs only when the left does not decide the
+  // answer, so the two paths are joined after it.
   if (IsLogicalOperator()) {
     Lhs->Stage8_CheckMemory(sm, meta);
     mem_utils::ValidateSymbolMemory(*Lhs, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
-    Rhs->Stage8_CheckMemory(sm, meta);
-    mem_utils::ValidateSymbolMemory(*Rhs, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
+    // An "and" held where it is true is so through its right
+    // operand: in "a and (b and c)", "b and c" is true just where
+    // the whole is (given "a").
+    const auto held_when_true = _IsCondition and TokOp->TokenType == lex::SppTokenType::KW_AND;
+    if (held_when_true) { MarkCondition(*Rhs); }
+
+    const auto short_circuit = memory_state::SnapshotFlow(*sm->CurrentScope);
+    const auto rhs_region = drop_utils::TemporaryRegion(*sm->CurrentScope->TemporaryHome());
+    _InRhsScope(*sm, [&](ScopeManager *rhs_sm) {
+      Rhs->Stage8_CheckMemory(rhs_sm, meta);
+      mem_utils::ValidateSymbolMemory(
+        *Rhs, *this, *rhs_sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
+    });
+
+    // A temporary the right operand declared was never made on the
+    // short-circuit path, so the join never sees it. It ends with the
+    // right operand, or, held where the "and" is true, is dropped only
+    // where the right operand answers false (but not what a nested
+    // "and" there already dropped where it answered false).
+    _HeldWhenTrue.clear();
+    if (held_when_true) {
+      _HeldWhenTrue = rhs_region.Declared();
+      _Drops.RhsTemporaries = rhs_region.Held(*Rhs, *sm, meta, HeldWhenTrue(*Rhs));
+    }
+    else {
+      _Drops.RhsTemporaries = rhs_region.End(*Rhs, *sm, meta);
+    }
+    _JoinShortCircuit(short_circuit, rhs_region.Declared(), *sm, meta);
     return;
   }
 
@@ -336,6 +445,33 @@ auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
 
   // Forward the memory checking to the mapped function.
   _MappedFn->Stage8_CheckMemory(sm, meta);
+}
+
+auto spp::asts::BinaryExpressionAst::_JoinShortCircuit(
+  analyse::utils::memory_state::ScopeSnapshot const &short_circuit,
+  Vec<analyse::scopes::VariableSymbol*> const &rhs_temporaries, ScopeManager &sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+  _Drops.ShortCircuit = {};
+  _Drops.AfterRhs = {};
+  auto const *const flow = memory_state::FlowOf(*sm.CurrentScope);
+  if (flow == nullptr) { return; }
+
+  // The values of this block and the ones around it may be held on
+  // one path and not the other; only those the right operand changed
+  // are joined.
+  auto owners = drop_utils::OwnersAround(*sm.CurrentScope, meta);
+  for (auto const *const owner : sm.CurrentScope->GetOwners()) { owners.emplace(owner, sm.CurrentScope); }
+  auto syms = Vec<analyse::scopes::VariableSymbol*>();
+  for (auto const *const sym : flow->States | genex::views::keys) {
+    const auto on_rhs = memory_state::StateOf(*sm.CurrentScope, *sym);
+    const auto on_short = memory_state::StateIn(short_circuit, *sym);
+    if (genex::contains(rhs_temporaries, sym) or memory_state::SameShape(on_short, on_rhs)) { continue; }
+    syms.emplace_back(const_cast<analyse::scopes::VariableSymbol*>(sym));
+  }
+  auto drops = drop_utils::JoinPaths(
+    syms, {{&short_circuit, Lhs.get(), Lhs.get()}, {nullptr, Rhs.get(), Rhs.get()}}, owners, sm, meta);
+  _Drops.ShortCircuit = std::move(drops[0]);
+  _Drops.AfterRhs = std::move(drops[1]);
 }
 
 auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
@@ -377,20 +513,55 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   const auto join_bb = llvm::BasicBlock::Create(
     *ctx->Context, "logical.join" + uid, func);
 
-  // Taken from here rather than from before the operand was
-  // generated, because generating it may have left the builder
-  // in a block of its own making, like from a "case" on the left
-  // of an "and" expression.
-  const auto lhs_end_bb = ctx->Builder.GetInsertBlock();
+  // The short-circuit edge drops what only the right operand would
+  // have taken ("_Drops.ShortCircuit"), in a block of its own. The
+  // edge into the join is taken from where the builder is, as the
+  // left operand may have left it in a block of its own making (a
+  // "case" on the left of an "and").
+  auto short_end_bb = ctx->Builder.GetInsertBlock();
+  auto short_bb = join_bb;
+  if (not _Drops.ShortCircuit.empty()) {
+    short_bb = llvm::BasicBlock::Create(*ctx->Context, "logical.short" + uid, func);
+  }
   ctx->Builder.CreateCondBr(
-    llvm_lhs, is_and ? rhs_bb : join_bb, is_and ? join_bb : rhs_bb);
+    llvm_lhs, is_and ? rhs_bb : short_bb, is_and ? short_bb : rhs_bb);
+  if (short_bb != join_bb) {
+    ctx->Builder.SetInsertPoint(short_bb);
+    codegen::EmitOuterDrops(_Drops.ShortCircuit, *this, sm, meta, ctx);
+    short_end_bb = ctx->Builder.GetInsertBlock();
+    ctx->Builder.CreateBr(join_bb);
+  }
 
   // Do the right-hand-side codegen (doesn't execute the LLVM,
   // just creates it), and hook it into the short-circuiting
   // mechanism.
+  // The temporaries the right operand makes exist only on its
+  // path, not the short-circuit one: they are dropped at its end,
+  // its value being a "Bool" that borrows none of them.
   ctx->Builder.SetInsertPoint(rhs_bb);
-  const auto llvm_rhs = Rhs->Stage11_CodeGen(sm, meta, ctx);
+  const auto temporaries = codegen::TemporaryDepth(ctx);
+  auto llvm_rhs = static_cast<llvm::Value*>(nullptr);
+  _InRhsScope(*sm, [&](ScopeManager *rhs_sm) { llvm_rhs = Rhs->Stage11_CodeGen(rhs_sm, meta, ctx); });
   SPP_ASSERT(llvm_rhs->getType()->isIntegerTy(1));
+  auto &home = *sm->CurrentScope->TemporaryHome();
+  if (_HeldWhenTrue.empty()) {
+    codegen::EndTemporaryRegion(temporaries, home, _Drops.RhsTemporaries, Rhs.get(), sm, meta, ctx);
+  }
+  else {
+    // Held where the "and" is true: dropped on the right operand's
+    // false edge only.
+    codegen::EndTemporaryRegion(temporaries, home, {}, Rhs.get(), sm, meta, ctx);
+    if (not _Drops.RhsTemporaries.empty() and not ctx->Builder.GetInsertBlock()->hasTerminator()) {
+      const auto false_bb = llvm::BasicBlock::Create(*ctx->Context, "logical.rhs_false" + uid, func);
+      const auto done_bb = llvm::BasicBlock::Create(*ctx->Context, "logical.rhs_done" + uid, func);
+      ctx->Builder.CreateCondBr(llvm_rhs, done_bb, false_bb);
+      ctx->Builder.SetInsertPoint(false_bb);
+      codegen::EmitOwnedDrops(home, _Drops.RhsTemporaries, Rhs.get(), sm, meta, ctx);
+      ctx->Builder.CreateBr(done_bb);
+      ctx->Builder.SetInsertPoint(done_bb);
+    }
+  }
+  codegen::EmitOuterDrops(_Drops.AfterRhs, *this, sm, meta, ctx);
   const auto rhs_end_bb = ctx->Builder.GetInsertBlock();
   ctx->Builder.CreateBr(join_bb);
 
@@ -399,7 +570,7 @@ auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   // other edge carries whatever the right operand evaluated to.
   ctx->Builder.SetInsertPoint(join_bb);
   const auto llvm_res = ctx->Builder.CreatePHI(llvm_bool_ty, 2, "logical" + uid);
-  llvm_res->addIncoming(llvm::ConstantInt::getBool(*ctx->Context, not is_and), lhs_end_bb);
+  llvm_res->addIncoming(llvm::ConstantInt::getBool(*ctx->Context, not is_and), short_end_bb);
   llvm_res->addIncoming(llvm_rhs, rhs_end_bb);
   return llvm_res;
 }
@@ -416,8 +587,18 @@ auto spp::asts::BinaryExpressionAst::EvaluateCompTime(
   if (IsLogicalOperator()) {
     Lhs->EvaluateCompTime(sm, meta);
     const auto lhs_is_true = meta->CompTimeResult->As<BooleanLiteralAst>()->IsTrue();
-    if (lhs_is_true != (TokOp->TokenType == lex::SppTokenType::KW_AND)) { return; }
-    Rhs->EvaluateCompTime(sm, meta);
+    const auto runs_rhs = lhs_is_true == (TokOp->TokenType == lex::SppTokenType::KW_AND);
+
+    // Decided by the left operand, the walk goes past the right
+    // operand's scope, when it is the next one.
+    if (runs_rhs) {
+      _InRhsScope(*sm, [&](ScopeManager *rhs_sm) { Rhs->EvaluateCompTime(rhs_sm, meta); });
+    }
+    else if (_RhsScopeIsNext(*sm)) {
+      sm->MoveToNextScope();
+      ignore = sm->SkipSubtree(sm->CurrentScope);
+      sm->MoveOutOfCurrentScope();
+    }
     return;
   }
 

@@ -1,7 +1,7 @@
 ---
 name: msvc-needs-member-type-imported
 description: "Calling through a member whose type another module defines (postfix->Op->To<..>()) needs that module imported; GCC/clang reach it transitively, MSVC errors C2027"
-updated: 2026-11-12
+updated: 2026-11-24
 ---
 
 `postfix->Op->To<X>()` with only `spp.asts.postfix_expression_ast` and X's module imported builds on GCC and clang,
@@ -19,3 +19,15 @@ Seen again in run 43328587771 (2026-11-12): moving a helper out of `SPP_MOD_BEGI
 [[internal-functions-static-top-block]]) made `UnboundPack`'s `lhs.To<IdentifierAst>()` fail with C2027 on
 `ExpressionAst`. Inside the `extern "C++"` block MSVC had resolved it. When moving code out of `SPP_MOD_BEGIN`, check
 the AST types it uses are imported directly.
+
+Seen a third time in run 45315079822 (2026-11-24, `type_predicates.cpp`). Ninja stops at the first failed file, so
+sweep before pushing rather than fixing one file per run: every `.cpp` calling through `Op` must import the module.
+
+```sh
+grep -rl 'Op->To<' sources/spp | xargs grep -L 'import spp.asts.postfix_expression_operator_ast;'
+```
+
+The next run (45382815297) failed on the `SPP_MOD_BEGIN` case instead: `inner_scope_expression_ast.cpp`'s static
+helpers `RestoreDisplacedByIs` (since removed; `in->FindVarSymbol`, a `Scope`) and `OwnLetName` (`let->Var->To<..>()`, a
+`LocalVariableAst`) had neither module imported. The grep cannot see that shape: check by hand every helper defined
+above `SPP_MOD_BEGIN` that changed, listing each type it reaches through.

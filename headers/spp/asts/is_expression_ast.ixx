@@ -14,6 +14,7 @@ use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct CaseExpressionAst);
 use(spp::asts, struct CasePatternVariantAst);
 use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, struct TypeRef);
@@ -54,18 +55,21 @@ SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
+  /// What this "is" binds where it matched (its pattern's names, and
+  /// the subject narrowed by it), as views of the subject, for what
+  /// it leads into to declare: an "and"'s right operand, a body
+  /// ("expr_utils::BoundWhenTrue").
+  SPP_ATTR_NODISCARD auto Bound() const -> Vec<Shared<VariableSymbol>> const&;
+
 private:
   Shared<CaseExpressionAst> _MappedFn;
 
-  Shared<IdentifierAst> _LhsAsId;
 
-  /// The bindings this "is" exposes to the scope it is written
-  /// in (its pattern's names, and the subject flow-typed by it),
-  /// as Stage 7 made them. Every later walk declares them where
-  /// the "is" stands.
-  Vec<Shared<VariableSymbol>> _Exposed;
+  /// A subject that is no place ("mk() is Some(..)") is held by a
+  /// hidden "$is" temporary, which owns it to the end of the
+  /// condition it is in, as long as the bindings that view it last.
+  Unique<LetStatementInitializedAst> _SubjectLet;
 
-  /// Put the exposed bindings under their names in the current
-  /// scope.
-  auto _DeclareExposed(ScopeManager &sm) const -> void;
+  /// See "Bound".
+  Vec<Shared<VariableSymbol>> _Bound;
 };

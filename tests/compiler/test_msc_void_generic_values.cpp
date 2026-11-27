@@ -3,65 +3,64 @@
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   VoidGenericValues,
   test_valid_generic_call_result_passed_on_at_void, R"(
-    fun take[T](t: T) -> T { ret t }
+  fun take[T](t: T) -> T { ret t }
 
-    fun relay[T, F: std::function::FunMov[(), T]](f: F) -> T {
-        ret take(f())
-    }
+  fun relay[T, F: std::function::FunMov[(), T]](f: F) -> T {
+    ret take(f())
+  }
 
-    fun f() -> Void {
-        relay(|| -> Void { })
-        let n = relay(|| -> S32 { ret 1 })
-    }
+  fun f() -> Void {
+    relay(|| -> Void { })
+    let n = relay(|| -> S32 { ret 1 })
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   VoidGenericValues,
   test_valid_void_returning_call_as_an_argument, R"(
-    fun nothing() -> Void { }
-    fun take[T](t: T) -> T { ret t }
+  fun nothing() -> Void { }
+  fun take[T](t: T) -> T { ret t }
 
-    fun f() -> Void {
-        take(nothing())
-    }
+  fun f() -> Void {
+    take(nothing())
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   VoidGenericValues,
   test_valid_the_same_instantiation_reached_twice, R"(
-    fun nothing() -> Void { }
-    fun take[T](t: T) -> T { ret t }
+  fun nothing() -> Void { }
+  fun take[T](t: T) -> T { ret t }
 
-    fun f() -> Void {
-        take(nothing())
-        take(nothing())
-    }
+  fun f() -> Void {
+    take(nothing())
+    take(nothing())
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   VoidGenericValues,
   test_valid_void_argument_built_from_a_call_with_its_own_arguments, R"(
-    fun bump(n: &mut S32) -> Void { n@ += 1 }
-    fun take[T](t: T) -> T { ret t }
+  fun bump(n: &mut S32) -> Void { n@ += 1 }
+  fun take[T](t: T) -> T { ret t }
 
-    fun f() -> Void {
-        let mut n = 0
-        take(bump(&mut n))
-    }
+  fun f() -> Void {
+    let mut n = 0
+    take(bump(&mut n))
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   VoidGenericValues,
   test_valid_void_argument_consumes_what_it_was_built_from, R"(
-    fun sink(s: Str) -> Void {
-        std::mem::ops::drop(s)
-    }
+  fun sink(s: Str) -> Void {
+  }
 
-    fun take[T](t: T) -> T { ret t }
+  fun take[T](t: T) -> T { ret t }
 
-    fun f() -> Void {
-        take(sink(Str::from("x")))
-    }
+  fun f() -> Void {
+    take(sink(Str::from("x")))
+  }
 )");
 
 // A class keeps an attribute whose type is "Void" ("v: T" at "T=Void"); the layout gives it no field, so what it is
@@ -69,91 +68,189 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   VoidGenericValues,
   test_valid_void_attribute_given_a_void_value, R"(
-    fun nothing() -> Void { }
-    cls Box[T] { !public v: T }
+  fun nothing() -> Void { }
+  cls Box[T] { !public v: T }
 
-    fun f() -> Void {
-        let b = Box[Void](v=nothing())
-        std::mem::ops::drop(b)
-    }
+  fun f() -> Void {
+    let b = Box[Void](v=nothing())
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   VoidGenericValues,
   test_valid_void_attribute_inferred_from_a_void_value, R"(
-    fun nothing() -> Void { }
-    cls Box[T] { !public v: T }
+  fun nothing() -> Void { }
+  cls Box[T] { !public v: T }
 
-    fun f() -> Void {
-        let b = Box(v=nothing())
-        std::mem::ops::drop(b)
-    }
+  fun f() -> Void {
+    let b = Box(v=nothing())
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   VoidGenericValues,
   test_valid_void_attribute_beside_a_value, R"(
-    cls Pair[A, B] {
-        !public a: A
-        !public b: B
-    }
+  cls Pair[A, B] {
+    !public a: A
+    !public b: B
+  }
 
-    fun take(p: Pair[S32, Void]) -> S32 {
-        let x = p.a
-        std::mem::ops::drop(p)
-        ret x
-    }
+  fun take(p: Pair[S32, Void]) -> S32 {
+    let x = p.a
+    ret x
+  }
 
-    fun f() -> S32 {
-        ret take(Pair[S32, Void](a=1_s32))
-    }
+  fun f() -> S32 {
+    ret take(Pair[S32, Void](a=1_s32))
+  }
 )");
 
 // "Void"'s one value is no value: always initialized, and "Copy".
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   VoidGenericValues,
   test_valid_void_attribute_left_out_is_initialized, R"(
-    cls Box[T] { !public v: T }
+  cls Box[T] { !public v: T }
 
-    fun f() -> Void {
-        let b = Box[Void]()
-        let x = b.v
-        std::mem::ops::drop(b)
-    }
+  fun f() -> Void {
+    let b = Box[Void]()
+    let x = b.v
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   VoidGenericValues,
   test_valid_destructured_void_needs_no_consuming, R"(
-    cls Box[T] { !public v: T }
+  cls Box[T] { !public v: T }
 
-    fun f() -> Void {
-        let b = Box[Void]()
-        let Box[Void](v) = b
-    }
+  fun f() -> Void {
+    let b = Box[Void]()
+    let Box[Void](v) = b
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   VoidGenericValues,
   test_valid_unused_void_parameter_needs_no_drop, R"(
-    fun takes(x: Void) -> S32 { ret 1_s32 }
+  fun takes(x: Void) -> S32 { ret 1_s32 }
 
-    fun f() -> S32 {
-        ret takes()
-    }
+  fun f() -> S32 {
+    ret takes()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   VoidGenericValues,
   test_valid_void_value_used_twice, R"(
-    fun nothing() -> Void { }
-    cls Box[T] { !public v: T }
+  fun nothing() -> Void { }
+  cls Box[T] { !public v: T }
 
-    fun f() -> Void {
-        let v = nothing()
-        let a = Box(v=v)
-        let b = Box(v=v)
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
-    }
+  fun f() -> Void {
+    let v = nothing()
+    let a = Box(v=v)
+    let b = Box(v=v)
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_closure_void_parameter_is_no_parameter, R"(
+  fun f() -> Void {
+    let c = |v: Void| 1_u32
+    let n = c()
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_function_type_void_argument_is_no_argument, R"(
+  fun f() -> Void {
+    let c: std::function::FunRef[(Void,), U32] = || 1_u32
+    let n = c()
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_map_a_void_result_with_an_empty_closure, R"(
+  fun g() -> Res[Void, Bool] { ret Pass[Void]() }
+
+  fun f() -> Void {
+    let r = g().map(|| 1_u32)
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_map_a_void_result_with_a_void_parameter_closure, R"(
+  fun g() -> Res[Void, Bool] { ret Pass[Void]() }
+
+  fun f() -> Void {
+    let r = g().map(|v: Void| 1_u32)
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_map_a_void_result_with_a_function, R"(
+  fun g() -> Res[Void, Bool] { ret Pass[Void]() }
+  fun h() -> U32 { ret 1_u32 }
+
+  fun f() -> Void {
+    let r = g().map(h)
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_map_a_void_result_moving_a_capture_out, R"(
+  fun g() -> Res[Void, Bool] { ret Pass[Void]() }
+
+  fun f() -> Res[Vec[U8], Bool] {
+    let out = Vec[U8]()
+    ret g().map(|caps out| out)
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_void_argument_with_no_parameter_is_no_argument, R"(
+  fun nothing() -> Void { }
+  fun k() -> U32 { ret 1_u32 }
+
+  fun f() -> Void {
+    let n = k(nothing())
+  }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  VoidGenericValues,
+  test_invalid_void_argument_still_binds_positionally,
+  SppFunctionCallNoValidSignaturesError, R"(
+  fun nothing() -> Void { }
+  fun k(x: U32) -> U32 { ret x }
+
+  fun f() -> Void {
+    let n = k(nothing(), 1_u32)
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_void_argument_with_no_parameter_in_a_comp_time_call, R"(
+  cmp fun nothing() -> Void { }
+  cmp fun k() -> U32 { ret 3_u32 }
+  cmp c: U32 = k(nothing())
+)");
+
+// Only a function type's "Args" loses its "Void"s: a tuple it returns keeps them.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_closure_returning_a_tuple_with_a_void_element,
+  R"(
+  fun nothing() -> Void { }
+
+  fun f() -> Void {
+    let g = || (nothing(), 1_s32)
+    let (a, b) = g()
+  }
 )");

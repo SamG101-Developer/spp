@@ -35,7 +35,7 @@ runs:
   steps:
     # Runner images ship an older CMake (3.31.x); the project needs the pinned one to satisfy cmake_minimum_required.
     - name: Install CMake & Ninja
-      uses: lukka/get-cmake@30aea713799f46b5b60e60f5fa83f849abd52c22 # v4.5.0-rc3
+      uses: lukka/get-cmake@a1a8216777d3cbbf5602c73b9ddd3e98257ecdc4 # v4.5.1
       with:
         cmakeVersion: ${{ env.CMAKE_VERSION }}
         ninjaVersion: ${{ env.NINJA_VERSION }}
@@ -160,17 +160,26 @@ runs:
         CLANG_VERSION: ${{ inputs.version }}
       run: bash .github/scripts/setup/install-clang-macos.sh
 
+    # The compiler's own banner, not the runner label: an image can change compiler under the same label, and a
+    # module library the old one built then fails to link.
+    - name: Identify compiler
+      if: inputs.dependencies == 'true'
+      id: compiler-id
+      shell: bash
+      run: bash .github/scripts/setup/compiler-id.sh
+
     # The remaining libraries are header/CMake projects: check out, install, cache. The key is content-addressed on
-    # the files that decide what the tree contains and where it goes.
+    # the files that decide what the tree contains and where it goes, and on the compiler that builds it; the
+    # restore prefix keeps the compiler, so a tree another compiler built is never restored.
     - name: Restore small libraries
       if: inputs.dependencies == 'true'
       id: libs-cache
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.local
-        key: spp-libs-v2-${{ inputs.runner-image }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/scripts/setup/install-small-libs.sh', '.github/scripts/lib/pins.py') }}-${{ hashFiles('.github/dependencies.toml') }}
+        key: spp-libs-v3-${{ inputs.runner-image }}-${{ inputs.compiler }}${{ inputs.version }}-${{ steps.compiler-id.outputs.id }}-${{ hashFiles('.github/scripts/setup/install-small-libs.sh', '.github/scripts/lib/pins.py') }}-${{ hashFiles('.github/dependencies.toml') }}
         restore-keys: |
-          spp-libs-v2-${{ inputs.runner-image }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/scripts/setup/install-small-libs.sh', '.github/scripts/lib/pins.py') }}-
+          spp-libs-v3-${{ inputs.runner-image }}-${{ inputs.compiler }}${{ inputs.version }}-${{ steps.compiler-id.outputs.id }}-${{ hashFiles('.github/scripts/setup/install-small-libs.sh', '.github/scripts/lib/pins.py') }}-
 
     # A restored tree is only usable if the install that filled it ran to the end; a half-installed prefix otherwise
     # looks like a hit forever and every find_package() past the missing library fails.

@@ -59,28 +59,41 @@ auto spp::asts::TypeAst::IsAllowedInDefault() const -> bool {
 
 auto spp::asts::TypeAst::WithSourceSpanOf(
   TypeAst const &written) const -> Shared<TypeAst> {
-  // A type rewritten more than once ("Self" substituted, then
-  // qualified) keeps the text first written, not a rewrite's.
-  auto copy = WithSourceSpanAt(written);
-  if (copy->_HasSourceSpan) {
-    copy->_WrittenText = written._WrittenText.empty() ? written.ToString() : written._WrittenText;
-  }
-  return copy;
+  return WithSourceSpanOf(AstCloneShared(this), written);
 }
 
 auto spp::asts::TypeAst::WithSourceSpanAt(
   Ast const &site) const -> Shared<TypeAst> {
-  // Copied rather than stamped in place: a qualified name is
-  // cached on its symbol and shared by every use of it.
-  auto copy = AstCloneShared(this);
+  return WithSourceSpanAt(AstCloneShared(this), site);
+}
+
+auto spp::asts::TypeAst::WithSourceSpanOf(
+  Shared<TypeAst> &&type, TypeAst const &written) -> Shared<TypeAst> {
+  // A type rewritten more than once ("Self" substituted, then
+  // qualified) keeps the text first written, not a rewrite's.
+  auto out = WithSourceSpanAt(std::move(type), written);
+  if (out->_HasSourceSpan) {
+    out->_WrittenText = written._WrittenText.empty() ? written.ToString() : written._WrittenText;
+  }
+  return out;
+}
+
+auto spp::asts::TypeAst::WithSourceSpanAt(
+  Shared<TypeAst> &&type, Ast const &site) -> Shared<TypeAst> {
+  // Only the root is stamped, so a fresh tree sharing subtrees
+  // with cached names is stamped in place. A root held anywhere
+  // else (a qualified name, cached on its symbol and shared by
+  // every use of it) is copied first.
+  auto out = std::move(type);
+  if (out.use_count() != 1) { out = AstCloneShared(out.get()); }
   const auto start = site.PosStart();
   const auto end = site.PosEnd();
   if (start != 0 and end > start) {
-    copy->_HasSourceSpan = true;
-    copy->_SpanStart = start;
-    copy->_SpanEnd = end;
+    out->_HasSourceSpan = true;
+    out->_SpanStart = start;
+    out->_SpanEnd = end;
   }
-  return copy;
+  return out;
 }
 
 auto spp::asts::TypeAst::WithGns(

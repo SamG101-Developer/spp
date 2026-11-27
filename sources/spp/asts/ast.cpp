@@ -34,6 +34,10 @@ auto spp::asts::Ast::_AsFailed(
   Ice(*self, "an ast cast as a kind it is not", raised_at);
 }
 
+auto spp::asts::Ast::CloneShared() const -> Shared<Ast> {
+  return nullptr;
+}
+
 auto spp::asts::Ast::Size() const -> std::size_t {
   // The size is the difference between the two positions.
   return PosEnd() - PosStart();

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.binary_expression_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast_kind;
 import spp.asts.expression_ast;
 import spp.codegen.llvm_ctx;
@@ -10,6 +11,7 @@ import llvm;
 import std;
 
 use_common(BinaryExpressionAst);
+use(spp::analyse::utils::memory_state, struct ScopeSnapshot);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct IdentifierAst);
@@ -18,6 +20,7 @@ use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct VariableSymbol);
 
 /// A binary expression between 2 operators, either a normal
 /// "+", "*" etc, or a compound assignment operator like "+=".
@@ -41,10 +44,33 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
     std::size_t OriginalPosEnd;
   } Source;
 
+  /// The logic operators ("and", "or") are short-circuiting, meaning the rhs
+  /// operands only run on one path. Also track introduced hidden temporaries
+  /// introduced on the right-hand-side (eg from the "is" expression).
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> ShortCircuit, AfterRhs;
+    Vec<analyse::utils::drop_utils::OwnedValue> RhsTemporaries;
+  } _Drops;
+
   /// Check if this is a logical binary operator ("and"/"or"),
   /// which have some special behaviour - no function mapping,
   /// direct LLVM intrinsics, for short-circuiting.
   SPP_ATTR_NODISCARD auto IsLogicalOperator() const -> bool;
+
+  /// Called by a loop, a guard or a boolean "case" on its condition
+  /// before checking it, whose true edge leads into a body. An "and"
+  /// there keeps what its right operand's temporaries hold where it
+  /// answers true, for the body to read its "is" bindings through,
+  /// and drops it where the right operand answers false: after it,
+  /// they are held exactly where it is true ("HeldWhenTrue").
+  /// Anywhere else they end with the right operand.
+  static auto MarkCondition(ExpressionAst &cond) -> void;
+
+  /// The temporaries held where the condition "cond" answers true,
+  /// for its consumer to end on that edge and pass over on the other
+  /// (none unless it is an "and" marked a condition).
+  SPP_ATTR_NODISCARD static auto HeldWhenTrue(
+    ExpressionAst const &cond) -> Vec<analyse::scopes::VariableSymbol*>;
 
   /// The two operands to the binary expression, left-hand-side
   /// and right-hand-side, held until their owning pointers
@@ -105,6 +131,45 @@ private:
   /// to materialize "f()". A fold's tuple operand is held the
   /// same way: ".. + f()" reads each element off one "f()".
   Vec<Unique<LetStatementInitializedAst>> _ChainTemps;
+
+  /// Whether this is a condition ("MarkCondition"), and the right
+  /// operand's temporaries it holds on where it answers true: they
+  /// are dropped only where it answers false ("_Drops.RhsTemporaries").
+  bool _IsCondition = false;
+  Vec<analyse::scopes::VariableSymbol*> _HeldWhenTrue;
+
+  /// Nest a chain of one logical operator to the right ("a and b and
+  /// c" as "a and (b and c)").
+  auto _NestChainRight() -> void;
+
+  /// An "and"'s right operand's scope, holding what its left operand
+  /// bound ("IsOperandScope"), made by Stage 7 when there is any. None
+  /// otherwise: the right operand is then walked where the operator
+  /// stands.
+  analyse::scopes::Scope *_RhsScope = nullptr;
+
+  /// Whether "_RhsScope" is the next scope on the walk "sm" makes.
+  SPP_ATTR_NODISCARD auto _RhsScopeIsNext(ScopeManager const &sm) const -> bool;
+
+  /// Walk the right operand in its scope ("_RhsScope"), declaring
+  /// there what its left operand bound where it is true: "walk" is
+  /// given the manager to walk it with. That is "sm", entering the
+  /// scope, when it is the next on the walk. Otherwise the operator is
+  /// evaluated again out of order (a boolean "case"'s condition, re-read
+  /// at compile time in its branch), and a manager standing at the
+  /// scope walks it.
+  auto _InRhsScope(ScopeManager &sm, auto &&walk) const -> void;
+
+  /// An "and"'s right operand's scope holds what its left operand
+  /// bound where it is true: declared on entering it, in every walk.
+  auto _DeclareLhsBound(analyse::scopes::Scope &rhs_scope) const -> void;
+
+  /// Stage 8 for a logical operator: join the state the left operand
+  /// left ("short_circuit") with the right operand's, filling the two
+  /// drop lists above.
+  auto _JoinShortCircuit(
+    analyse::utils::memory_state::ScopeSnapshot const &short_circuit,
+    Vec<analyse::scopes::VariableSymbol*> const &rhs_temporaries, ScopeManager &sm, CompilerMetaData *meta) -> void;
 
   /// Check whether a logical operator has been analysed - the
   /// mirror of checking if "_MappedFn" is not nullptr.

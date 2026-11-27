@@ -107,7 +107,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::Stage8_CheckMemory(
   IMPORT_UTILS;
   // Use the shared helper.
   destructure_utils::DestructureStage8(
-    *this, Elems, _NewAsts, _TmpName, nullptr, _FromCasePattern, *sm, meta);
+    *this, _NewAsts, _TmpName, nullptr, _FromCasePattern, *sm, meta);
 }
 
 auto spp::asts::LocalVariableDestructureTupleAst::Stage11_CodeGen(

@@ -174,10 +174,10 @@ auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
     and (enclosing->To<SupPrototypeFunctionsAst>() != nullptr or enclosing->To<SupPrototypeExtensionAst>() != nullptr)
     ? AstName(enclosing)
     : nullptr;
-  OldType = (sup_name != nullptr and not sup_name->LastTypePart()->GnArgGroup->Args.empty()
+  OldType = TypeAst::WithSourceSpanOf(sup_name != nullptr and not sup_name->LastTypePart()->GnArgGroup->Args.empty()
     ? self_type::SubstituteSelf(*OldType, sup_name.get(), *sm->CurrentScope)
-    : self_type::SubstituteSelf(*OldType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope)
-  )->WithSourceSpanOf(*OldType);
+    : self_type::SubstituteSelf(*OldType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope),
+    *OldType);
 
   // An alias names a type, and a borrow is not one a type can be: it is second class, so it cannot be what a name
   // stands for any more than it can be an attribute or a variant member. The new type is checked at stage 2, where

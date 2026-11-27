@@ -161,11 +161,11 @@ auto spp::analyse::utils::operator_desugaring::ConvertBinExprToFnCall(
 }
 
 auto spp::analyse::utils::operator_desugaring::ConvertIsExprToCase(
-  IsExpressionAst &is_expr, ScopeManager *, CompilerMetaData *)
+  IsExpressionAst const &is_expr, Unique<ExpressionAst> &&subject, ScopeManager *, CompilerMetaData *)
   -> Unique<CaseExpressionAst> {
   // Construct the expression-pattern based on the
   // right-hand-side of the "x is Type".
-  auto pattern = std::move(is_expr.Rhs);
+  auto pattern = AstClone(is_expr.Rhs);
   auto patterns = Vec<Unique<CasePatternVariantAst>>();
   patterns.emplace_back(std::move(pattern));
 
@@ -187,7 +187,7 @@ auto spp::analyse::utils::operator_desugaring::ConvertIsExprToCase(
   else_patterns.emplace_back(MakeUnique<CasePatternVariantElseAst>(nullptr));
 
   auto branch = MakeUnique<CaseExpressionBranchAst>(
-    std::move(is_expr.TokOp), std::move(patterns), nullptr, std::move(match_body));
+    AstClone(is_expr.TokOp), std::move(patterns), nullptr, std::move(match_body));
   auto else_branch = MakeUnique<CaseExpressionBranchAst>(
     nullptr, std::move(else_patterns), nullptr, std::move(no_match_body));
   auto branches = Vec<Unique<CaseExpressionBranchAst>>();
@@ -196,7 +196,7 @@ auto spp::analyse::utils::operator_desugaring::ConvertIsExprToCase(
 
   // Construct and return the case expression AST.
   auto case_expr = MakeUnique<CaseExpressionAst>(
-    nullptr, std::move(is_expr.Lhs), nullptr, std::move(branches));
+    nullptr, std::move(subject), nullptr, std::move(branches));
   case_expr->LoweredFromIsExpr = true;
   return case_expr;
 }

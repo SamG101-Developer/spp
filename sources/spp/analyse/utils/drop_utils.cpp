@@ -27,19 +27,29 @@ import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.loop_conditional_expression_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.string_literal_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 import spp.utils.ice;
+import spp.utils.interner;
 import genex;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts, Ast);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, LoopConditionalExpressionAst);
 use_alias(spp::asts, FunctionCallArgumentAst);
 use_alias(spp::asts, FunctionPrototypeAst);
 use_alias(spp::asts, GenericArgumentAst);
@@ -49,6 +59,67 @@ use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::drop_utils {
   using overload_resolution::FnOverload;
+
+  /// Whether "sym" still owns a value nothing has taken, on some
+  /// path at least, in "state" (one path's state of it): an owned
+  /// local (or "$" temporary) of a move-only type, initialised, and
+  /// not taken apart whole.
+  static auto IsOwnedIn(
+    VariableSymbol const &sym, memory_state::MemoryState const &state, ScopeManager const &sm) -> bool;
+
+  /// The paths of the parts of a value of type "root" outside every one
+  /// of "keep" (field names, and a variant's member steps,
+  /// "type_members::VariantMemberStep"): with them counted as moved,
+  /// destroying the value destroys only the parts in "keep".
+  static auto PathsOutside(
+    TypeRef const &root, Scope const &scope, Vec<Vec<spp::utils::InternedId>> const &keep)
+    -> Vec<Vec<spp::utils::InternedId>>;
+
+  /// Where paths meet, what the path whose state of "sym" is "path"
+  /// still holds of what they disagree about, for that path to drop at
+  /// its end: none unless "sym" is one of "owners" and the paths
+  /// disagree about it (the whole, or parts of it: only those parts are
+  /// dropped). "at" is where, for an error.
+  static auto OwnedOnJoinPath(
+    VariableSymbol const &sym, memory_state::MemoryState const &joined, memory_state::MemoryState const &path,
+    Map<VariableSymbol const*, Scope const*> const &owners, Ast const &at,
+    ScopeManager &sm, CompilerMetaData *meta) -> Opt<OwnedValue>;
+
+
+  /// The places in "taken_apart" at or under "prefix" (field-name
+  /// steps), as paths from it: the empty path is "prefix" itself.
+  static auto TakenApartPathsUnder(
+    Vec<regions::PlaceAt> const &taken_apart, Vec<regions::PlaceStep> const &prefix)
+    -> Vec<Vec<spp::utils::InternedId>>;
+
+  /// The parts gone from a value in "state": those moved on every path,
+  /// and those moved on only some, which the others dropped where they
+  /// met ("OwnedOnJoinPath"), so they are gone on every path after.
+  static auto PartsGone(
+    memory_state::MemoryState const &state) -> Vec<regions::PlaceAt>;
+
+  /// Raise if a part gone from "sym" (in "state", "PartsGone") stranded
+  /// a value with a destructor of its own: taking something from
+  /// inside a value leaves that value unable to be destroyed. Every
+  /// place a move reached through is asked, not only "sym":
+  /// "o.inner.val" strands "o.inner" even when "o" has no "drop".
+  static auto CheckDestructorStillReachable(
+    VariableSymbol const &sym, memory_state::MemoryState const &state, Ast const &exit_point,
+    ScopeManager &sm, CompilerMetaData *meta) -> void;
+
+  /// Whether "sym" is "self" in its own type's "drop", whose end
+  /// drops what is left of it field by field.
+  static auto IsSelfInItsOwnDrop(
+    VariableSymbol const &sym, TypeRef const &ref, ScopeManager &sm, CompilerMetaData *meta) -> bool;
+
+  /// The parts "moves" took from inside the place "prefix" leads to
+  /// (an empty one: the whole value), each as the field names walked
+  /// from there. None when one went through a method's result (an
+  /// opaque step), which names no field: what it came out of is not
+  /// dropped at all. Todo: drop the rest of it.
+  static auto MovedPathsUnder(
+    Vec<regions::PlaceAt> const &moves, Vec<regions::PlaceStep> const &prefix)
+    -> Opt<Vec<Vec<spp::utils::InternedId>>>;
 
   /// Find an overload for a types destructor, rather than
   /// just the prototype; instantiating it needs the block
@@ -152,8 +223,7 @@ auto spp::analyse::utils::drop_utils::DropProtoFor(
   const auto sup_gns = overload.ReachedThrough != nullptr
     ? overload.ReachedThrough->GetGns()
     : Vec<Unique<GenericArgumentAst>>();
-  const auto args_id = tm.CurrentScope->ArgsIdOf(
-    sup_gns | genex::views::transform([](auto const &a) { return a.get(); }) | genex::to<Vec>(), nullptr);
+  const auto args_id = tm.CurrentScope->ArgsIdOf(sup_gns, nullptr);
   return instantiate
     ? monomorphization::RequireFnInstance(overload.Proto, overload.FnScope, args_id, &tm, meta)
     : monomorphization::FindRequiredFnInstance(overload.Proto, args_id);
@@ -234,8 +304,8 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
 }
 
 auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
-  TypeRef const &type, ScopeManager &sm,
-  CompilerMetaData *meta) -> void {
+  TypeRef const &type, ScopeManager &sm, CompilerMetaData *meta,
+  Vec<Vec<spp::utils::InternedId>> const &taken_apart) -> void {
   //
   auto seen = Set<TypeSymbol const*>();
 
@@ -277,54 +347,557 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
     }
   };
 
-  // Recursive drop search.
-  walk(walk, type);
+  // Recursive drop search. A place taken apart is destroyed part by
+  // part, its own destructor not run, and one with a part taken apart
+  // inside it is reached part by part too: so wherever a taken-apart
+  // path leads, its parts (a variant's members, through the member a
+  // path names: "type_members::VariantMemberStep") are searched as
+  // well as the place's own destructor. One instantiated and not used
+  // costs nothing; one used and not instantiated destroys field by
+  // field.
+  const auto apart = [&](auto const &self, TypeRef const &ref, Vec<spp::utils::InternedId> &path) -> void {
+    walk(walk, ref);
+    const auto under = genex::any_of(taken_apart, [&](auto const &taken) {
+      return taken.size() >= path.size() and std::equal(path.begin(), path.end(), taken.begin());
+    });
+    if (not under) { return; }
+    seen.clear();
+    for (auto const &member : type_members::VariantMemberRefs(ref, *sm.CurrentScope)) {
+      path.emplace_back(type_members::VariantMemberStep(member));
+      self(self, member, path);
+      path.pop_back();
+    }
+    for (auto const &part : type_members::GetAllParts(ref, *sm.CurrentScope, true)) {
+      path.emplace_back(part.Step->NameId());
+      self(self, part.Ref, path);
+      path.pop_back();
+    }
+  };
+  auto path = Vec<spp::utils::InternedId>();
+  apart(apart, type, path);
 }
 
-/**
- * Raise if @p sym holds a value with a destructor that can no longer be run, because a part of it has been moved
- * out and nothing put one back. Asked of every place a recorded move reached through, not only of @p sym itself:
- * @c {o.inner.val} leaves @c {o.inner} unable to be destroyed even when @c {o} has no destructor of its own. Only
- * a type with a @c drop of its own has anything to lose here: everything else is destroyed field by field, which
- * a partial move has already done for the parts it took.
- * @param sym The symbol being checked.
- * @param exit_point The ast to report the error against.
- * @param sm The scope manager, positioned where the symbol's type resolves from.
- * @param meta Associated metadata, for resolving the destructor overload.
- */
 auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
-  VariableSymbol const &sym, Ast const &exit_point,
+  VariableSymbol const &sym, memory_state::MemoryState const &state, Ast const &exit_point,
   ScopeManager &sm, CompilerMetaData *meta) -> void {
   // Nothing taken out of it is nothing to put back.
-  if (memory_state::StateOf(*sm.CurrentScope, sym).PartialMoves.empty()) { return; }
+  const auto gone = PartsGone(state);
+  if (gone.empty()) { return; }
   if (sym.Type == nullptr) { Ice(exit_point, *sm.CurrentScope, "partly moved variable has no type"); }
 
   // A borrow does not own what it points at, so the value
   // behind it is not this scope's to destroy.
-  if (sym.MemInfo->AstBorrowed != nullptr) { return; }
-  if (sym.Type->GetConvention() != nullptr) { return; }
+  if (sym.IsBorrow()) { return; }
 
   const auto root = TypeRef::Of(*sym.Type, *sm.CurrentScope);
-  for (auto const &move : memory_state::StateOf(*sm.CurrentScope, sym).PartialMoves) {
-    // A move leaves a hole in every place it reached *through*, so each of those is asked in turn: the symbol's
-    // own type first, then one step further in for each name the path passes on its way. The place the move
-    // landed on is not one of them - taking a whole field out hands that field's destructor to whoever received
-    // it, and only taking something from inside a value strands the value's own. That is what stops the last
-    // step being walked, and what makes "let x = o.inner" fine where "let x = o.inner.val" is not.
-    auto const &path = move.Of->Steps;
+  const auto taken_apart = TakenApartPathsUnder(state.TakenApart, {});
+  for (auto const &move : gone) {
+    RaiseIfPathStrandsDestructor(root, move.Of->Steps, *move.Site, exit_point, sm, meta, taken_apart);
+  }
+}
 
-    for (auto i = 0uz; i < path.size(); ++i) {
-      const auto [part_ref, part_scope] = regions::DescendToPart(root, *sm.CurrentScope, path, i);
-      if (part_ref.Symbol == nullptr or part_scope == nullptr) { break; }
+auto spp::analyse::utils::drop_utils::PartsGone(
+  memory_state::MemoryState const &state) -> Vec<regions::PlaceAt> {
+  auto gone = state.PartialMoves;
+  for (auto const &maybe : state.MaybePartialMoves) { gone.emplace_back(maybe.Part); }
+  return gone;
+}
 
-      const auto destructor = FindDropOverload(*part_ref.Symbol, sm, meta);
-      if (destructor == nullptr) { continue; }
+auto spp::analyse::utils::drop_utils::TakenApartPathsUnder(
+  Vec<regions::PlaceAt> const &taken_apart, Vec<regions::PlaceStep> const &prefix)
+  -> Vec<Vec<spp::utils::InternedId>> {
+  auto paths = Vec<Vec<spp::utils::InternedId>>();
+  for (auto const &place : taken_apart) {
+    auto const &steps = place.Of->Steps;
+    if (steps.size() < prefix.size() or not std::equal(prefix.begin(), prefix.end(), steps.begin())) { continue; }
+    auto &path = paths.emplace_back();
+    for (auto i = prefix.size(); i < steps.size(); ++i) { path.emplace_back(steps[i].Name); }
+  }
+  return paths;
+}
 
-      // Held in a local so the view handed to the error
-      // outlives it.
-      const auto owner_name = part_ref.Symbol->FqName()->WithoutGns()->ToString();
-      Raise<errors::SppPartialMoveOfDestructibleValueError>(
-        ERR_ARGS(exit_point, *move.Site, *destructor->Name, StrView(owner_name)));
+auto spp::analyse::utils::drop_utils::RaiseIfPathStrandsDestructor(
+  TypeRef const &root, Vec<regions::PlaceStep> const &steps, Ast const &move,
+  Ast const &exit_point, ScopeManager &sm, CompilerMetaData *meta,
+  Vec<Vec<spp::utils::InternedId>> const &taken_apart) -> void {
+  // Each value the path reaches *through* is asked in turn: the root first, then one step further in for each name
+  // the path passes on its way. The place it lands on is not one of them - taking a whole field out hands that
+  // field's destructor to whoever received it, and only taking something from inside a value strands the value's
+  // own. That is what stops the last step being walked, and what makes "let x = o.inner" fine where
+  // "let x = o.inner.val" is not.
+  for (auto i = 0uz; i < steps.size(); ++i) {
+    const auto [part_ref, part_scope] = regions::DescendToPart(root, *sm.CurrentScope, steps, i);
+    if (part_ref.Symbol == nullptr or part_scope == nullptr) { break; }
+    const auto apart = genex::any_of(taken_apart, [&](auto const &path) {
+      return path.size() == i and std::equal(path.begin(), path.end(), steps.begin(), [](auto id, auto const &step) {
+        return id == step.Name;
+      });
+    });
+    if (apart) { continue; }
+    const auto destructor = FindDropOverload(*part_ref.Symbol, sm, meta);
+    if (destructor == nullptr) { continue; }
+
+    // Held in a local so the view handed to the error outlives it.
+    const auto owner_name = part_ref.Symbol->FqName()->WithoutGns()->ToString();
+    Raise<errors::SppPartialMoveOfDestructibleValueError>(
+      ERR_ARGS(exit_point, move, *destructor->Name, StrView(owner_name)));
+  }
+}
+
+auto spp::analyse::utils::drop_utils::IsOwnedIn(
+  VariableSymbol const &sym, memory_state::MemoryState const &state, ScopeManager const &sm) -> bool {
+  // Only a local owns a value it has to answer for. A generic or a constant has no runtime existence, and a
+  // flow-narrowing symbol is a view of another symbol's value (which owns it). A "$" temporary a desugaring made is a
+  // local like any other. So is a capture taken by value, in the closure's body: such a closure is a "FunMov", so a
+  // call consumes it, and its body owns what it captured as a function's owns its parameters, dropping what it did
+  // not move out (the caller then only frees the environment). A borrowed capture owns nothing ("IsBorrow" below).
+  if (sym.Kind != VariableKind::Local and sym.Kind != VariableKind::Temporary and sym.Kind != VariableKind::Capture) {
+    return false;
+  }
+
+  // A closed pack holds nothing itself: its elements are parameters of their own, each answering for its value.
+  // An open one holds what its elements are: nothing owned when each is copied ("..xs: S32", "..xs: Ts" with
+  // "Ts: Copy"), whatever its tuple of unknown length says.
+  if (sym.Pack.has_value() and not sym.Pack->Open) { return false; }
+  if (sym.Pack.has_value()) {
+    const auto element = sm.CurrentScope->FindTypeSymbol(
+      sym.Pack->Element->WithoutConvention().get());
+    if (element != nullptr and element->IsCopyable()) { return false; }
+  }
+  if (sym.Type == nullptr or sym.MemInfo == nullptr) {
+    Ice(*sym.Name, *sm.CurrentScope, "local variable has no type");
+  }
+
+  // A borrow points at a value that belongs to someone else; a copyable value is never owned by one place, as
+  // copying leaves the original in place; and a "!" value never exists, the code binding it cannot finish.
+  if (sym.IsBorrow()) { return false; }
+  const auto type = TypeRef::Of(*sym.Type, *sm.CurrentScope);
+  if (not type.IsMoveOnly()) { return false; }
+
+
+  // Taken on some of the paths that met and not on others, whole or in part: a path that did not take a part
+  // still owns it. The witnesses kept are the first path's, so the value can read as taken while another path
+  // still owns it.
+  const auto owned_on_some_path = state.MaybeInit.has_value() or not state.MaybePartialMoves.empty();
+
+  // The value already left, whole.
+  if (state.AstInitialization == nullptr and not owned_on_some_path) { return false; }
+
+  // A holder of loans (a "&mut"-capturing closure, a borrowing generator or future) is owned like any other value:
+  // it owns its environment or frame. It cannot be moved away, but a drop ends it and its loans together.
+
+  // Taking every non-copyable part off a value leaves nothing to own. A destructure is the usual way that happens,
+  // and a case pattern's destructure only ever records the parts it bound, never the value itself, so the parts are
+  // all there is to go on.
+  if (state.PartialMoves.empty() or owned_on_some_path) { return true; }
+  return not regions::RegionConsumed(
+    regions::Place{.Root = const_cast<VariableSymbol*>(&sym), .Steps = {}}, type, *sm.CurrentScope,
+    state.PartialMoves);
+}
+
+auto spp::analyse::utils::drop_utils::OwnedOnPath(
+  VariableSymbol const &sym, memory_state::MemoryState const &state, Scope const &owner_scope,
+  Ast const &at, ScopeManager &sm, CompilerMetaData *meta) -> Opt<OwnedValue> {
+  if (not IsOwnedIn(sym, state, sm)) { return Nullopt; }
+
+  // Held on only some of the paths that met before this one: each path that still held it dropped it before they met,
+  // the whole of it, or a part ("OwnedOnJoinPath"), which is then gone on every path.
+  if (state.MaybeInit.has_value()) { return Nullopt; }
+  auto moved = MovedPathsUnder(PartsGone(state), {});
+  if (not moved.has_value()) { return Nullopt; }
+
+  // What a destructure took apart is dropped field by field, its type's own "drop" not run, and so is "self" left at
+  // the end of its own type's "drop" (running that "drop" again would recurse): a part moved out of either strands
+  // nothing. Any other value's own "drop" cannot be run on what is left of it with a part missing (E106).
+  const auto ref = sym.TypeRefIn(owner_scope);
+  auto taken_apart = TakenApartPathsUnder(state.TakenApart, {});
+  if (IsSelfInItsOwnDrop(sym, ref, sm, meta)) { taken_apart.emplace_back(); }
+  else { CheckDestructorStillReachable(sym, state, at, sm, meta); }
+
+  // Nothing written calls this drop, so its destructor may never have been instantiated, and destroying it without
+  // one would go field by field: a "Vec" frees its buffer without dropping the elements in it.
+  EnsureDropInstantiated(ref, sm, meta, taken_apart);
+  return OwnedValue{
+    .Name = sym.Name, .Moved = std::move(*moved), .DeclaredAt = sym.Name->PosStart(),
+    .TakenApart = std::move(taken_apart)};
+}
+
+auto spp::analyse::utils::drop_utils::EndRegion(
+  Scope const &scope, Ast const &at, ScopeManager &sm,
+  CompilerMetaData *meta) -> Vec<OwnedValue> {
+  auto owned = Vec<OwnedValue>();
+  for (auto *const sym : scope.GetOwners()) {
+    // A part taken from inside a value with its own "drop" strands it (E106), even when the part was all it owned:
+    // only a whole destructure in the type's own methods takes such a value apart.
+    if (sym->Type != nullptr and not IsSelfInItsOwnDrop(*sym, sym->TypeRefIn(scope), sm, meta)) {
+      CheckDestructorStillReachable(*sym, memory_state::StateOf(*sm.CurrentScope, *sym), at, sm, meta);
+    }
+    if (auto value = OwnedOnPath(*sym, memory_state::StateOf(*sm.CurrentScope, *sym), scope, at, sm, meta)) {
+      owned.emplace_back(std::move(*value));
     }
   }
+  SortNewestFirst(owned);
+  return owned;
+}
+
+auto spp::analyse::utils::drop_utils::SortNewestFirst(
+  Vec<OwnedValue> &owned) -> void {
+  // As a type drops its fields: by where each is declared, a table having no order of its own.
+  genex::actions::sort(owned, std::greater{}, [](auto const &value) { return value.DeclaredAt.value_or(0uz); });
+}
+
+auto spp::analyse::utils::drop_utils::OwnersAround(
+  Scope const &scope, CompilerMetaData const *meta) -> Map<VariableSymbol const*, Scope const*> {
+  auto owners = Map<VariableSymbol const*, Scope const*>();
+  if (meta == nullptr or meta->EnclosingFnScope == nullptr or &scope == meta->EnclosingFnScope) { return owners; }
+  for (auto const *s = scope.Parent; s != nullptr; s = s->Parent) {
+    for (auto *const sym : s->GetOwners()) { owners.emplace(sym, s); }
+    if (s == meta->EnclosingFnScope) { break; }
+  }
+  return owners;
+}
+
+auto spp::analyse::utils::drop_utils::OwnedOnJoinPath(
+  VariableSymbol const &sym, memory_state::MemoryState const &joined, memory_state::MemoryState const &path,
+  Map<VariableSymbol const*, Scope const*> const &owners, Ast const &at,
+  ScopeManager &sm, CompilerMetaData *meta) -> Opt<OwnedValue> {
+  if (not joined.MaybeInit.has_value() and joined.MaybePartialMoves.empty()) { return Nullopt; }
+  const auto owner = owners.find(&sym);
+  if (owner == owners.end()) { return Nullopt; }
+  if (joined.MaybeInit.has_value()) { return OwnedOnPath(sym, path, *owner->second, at, sm, meta); }
+
+  // The paths disagree only about parts: this path drops those of them it still holds, and nothing else, so what they
+  // agree it holds is still held after the join (it is the value less those parts: everything outside them counts as
+  // moved here, "PathsOutside").
+  auto drops = Vec<Vec<spp::utils::InternedId>>();
+  for (auto const &[part, _] : joined.MaybePartialMoves) {
+    const auto gone_here = genex::any_of(path.PartialMoves, [&](auto const &move) {
+      return regions::Relate(*move.Of, *part.Of) == regions::MemRegionRelation::Contains;
+    }) or genex::any_of(path.MaybePartialMoves, [&](auto const &maybe) { return *maybe.Part.Of == *part.Of; });
+    if (gone_here) { continue; }
+    if (genex::any_of(part.Of->Steps, [](auto const &step) { return step.Opaque; })) { return Nullopt; }
+    drops.emplace_back(part.Of->Steps | genex::views::transform([](auto const &step) { return step.Name; })
+      | genex::to<Vec>());
+  }
+  if (drops.empty()) { return Nullopt; }
+  auto value = OwnedOnPath(sym, path, *owner->second, at, sm, meta);
+  if (value.has_value()) {
+    value->Moved.append_range(PathsOutside(sym.TypeRefIn(*owner->second), *owner->second, drops));
+  }
+  return value;
+}
+
+auto spp::analyse::utils::drop_utils::PathsOutside(
+  TypeRef const &root, Scope const &scope, Vec<Vec<spp::utils::InternedId>> const &keep)
+  -> Vec<Vec<spp::utils::InternedId>> {
+  auto outside = Vec<Vec<spp::utils::InternedId>>();
+  auto path = Vec<spp::utils::InternedId>();
+  const auto starts_with = [](auto const &whole, auto const &prefix) {
+    return whole.size() >= prefix.size() and std::equal(prefix.begin(), prefix.end(), whole.begin());
+  };
+  const auto walk = [&](auto const &self, TypeRef const &ref) -> void {
+    auto children = Vec<Pair<spp::utils::InternedId, TypeRef>>();
+    for (auto const &member : type_members::VariantMemberRefs(ref, scope)) {
+      children.emplace_back(type_members::VariantMemberStep(member), member);
+    }
+    if (children.empty()) {
+      for (auto const &part : type_members::GetAllParts(ref, scope, true)) {
+        children.emplace_back(part.Step->NameId(), part.Ref);
+      }
+    }
+    for (auto const &[step, child] : children) {
+      path.emplace_back(step);
+      if (genex::any_of(keep, [&](auto const &kept) { return kept == path; })) {}
+      else if (genex::any_of(keep, [&](auto const &kept) { return starts_with(kept, path); })) { self(self, child); }
+      else { outside.emplace_back(path); }
+      path.pop_back();
+    }
+  };
+  if (genex::none_of(keep, [](auto const &kept) { return kept.empty(); })) { walk(walk, root); }
+  return outside;
+}
+
+auto spp::analyse::utils::drop_utils::ReleaseOwnedLoans(
+  Scope const &scope) -> void {
+  // What matters is where the holder was declared, not where
+  // the borrow was made: a handle declared further out carries
+  // its borrow on past this scope.
+  auto &loans = memory_state::LoansOf(scope);
+  for (auto const *const sym : scope.GetOwners()) { memory_state::ReleaseLoans(loans, *sym); }
+}
+
+auto spp::analyse::utils::drop_utils::AddDrops(
+  Vec<OwnedValue> &into, Vec<OwnedValue> drops) -> void {
+  if (drops.empty()) { return; }
+  into.append_range(std::move(drops));
+  SortNewestFirst(into);
+}
+
+auto spp::analyse::utils::drop_utils::JoinPaths(
+  Vec<VariableSymbol*> const &syms, Vec<JoinPath> const &paths,
+  Map<VariableSymbol const*, Scope const*> const &owners, ScopeManager &sm, CompilerMetaData *meta,
+  Opt<JoinPath> const &carried) -> Vec<Vec<OwnedValue>> {
+  auto drops = Vec<Vec<OwnedValue>>(paths.size());
+  for (auto *const sym : syms) {
+    const auto state_on = [&](JoinPath const &path) {
+      return path.State == nullptr
+        ? memory_state::StateOf(*sm.CurrentScope, *sym)
+        : memory_state::StateIn(*path.State, *sym);
+    };
+    auto on_paths = paths | genex::views::transform(state_on) | genex::to<Vec>();
+    auto states = Vec<Pair<memory_state::MemoryState, Ast*>>();
+    if (carried.has_value()) { states.emplace_back(state_on(*carried), carried->At); }
+    for (auto i = 0uz; i < paths.size(); ++i) { states.emplace_back(on_paths[i], paths[i].At); }
+    auto joined = memory_state::JoinAll(std::move(states), *sym, *sm.CurrentScope);
+    for (auto i = 0uz; i < paths.size(); ++i) {
+      if (auto value = OwnedOnJoinPath(*sym, joined, on_paths[i], owners, *paths[i].End, sm, meta)) {
+        drops[i].emplace_back(std::move(*value));
+      }
+    }
+    memory_state::StateOf(*sm.CurrentScope, *sym) = std::move(joined);
+  }
+  for (auto &path_drops : drops) { SortNewestFirst(path_drops); }
+  return drops;
+}
+
+SPP_MOD_BEGIN
+spp::analyse::utils::drop_utils::TemporaryRegion::TemporaryRegion(
+  Scope const &scope) :
+  _Scope(&scope),
+  _From(scope.Declarations.size()) {
+}
+
+auto spp::analyse::utils::drop_utils::TemporaryRegion::Whole(
+  Scope const &scope) -> TemporaryRegion {
+  auto region = TemporaryRegion(scope);
+  region._From = 0;
+  return region;
+}
+
+auto spp::analyse::utils::drop_utils::TemporaryRegion::Declared() const -> Vec<VariableSymbol*> {
+  auto declared = Vec<VariableSymbol*>();
+  for (auto *const sym : _Scope->Declarations | genex::views::drop(_From)) {
+    if (sym->Kind == VariableKind::Temporary and not genex::contains(declared, sym)) { declared.emplace_back(sym); }
+  }
+  return declared;
+}
+
+auto spp::analyse::utils::drop_utils::TemporaryRegion::End(
+  Ast const &end, ScopeManager &sm, CompilerMetaData *meta, IdentifierAst const *const own_let) const
+  -> Vec<OwnedValue> {
+  auto owned = Vec<OwnedValue>();
+  for (auto *const sym : Declared()) {
+    if (own_let != nullptr and sym->Name->NameId() == own_let->NameId()) { continue; }
+
+    // Dropped here, the temporary is gone: the scope's end does not
+    // drop it again (one a destructure took apart is still owned).
+    auto &state = memory_state::StateOf(*sm.CurrentScope, *sym);
+    if (auto value = OwnedOnPath(*sym, state, *_Scope, end, sm, meta)) {
+      owned.emplace_back(std::move(*value));
+      state.MovedBy(end);
+    }
+  }
+  SortNewestFirst(owned);
+  return owned;
+}
+
+auto spp::analyse::utils::drop_utils::TemporaryRegion::Held(
+  Ast const &end, ScopeManager &sm, CompilerMetaData *meta, Vec<VariableSymbol*> const &except) const
+  -> Vec<OwnedValue> {
+  auto owned = Vec<OwnedValue>();
+  for (auto *const sym : Declared()) {
+    if (genex::contains(except, sym)) { continue; }
+    if (auto value = OwnedOnPath(*sym, memory_state::StateOf(*sm.CurrentScope, *sym), *_Scope, end, sm, meta)) {
+      owned.emplace_back(std::move(*value));
+    }
+  }
+  SortNewestFirst(owned);
+  return owned;
+}
+SPP_MOD_END
+
+auto spp::analyse::utils::drop_utils::ForgetIterationBindings(
+  Scope const &loop_scope) -> void {
+  // A state no longer in the flow is read from the symbol again,
+  // as Stage 7 left it: as the first iteration reads it.
+  auto *const flow = memory_state::FlowOf(loop_scope);
+  if (flow == nullptr) { return; }
+  for (auto const &sym : loop_scope.LetBindings) { flow->States.erase(sym.get()); }
+}
+
+auto spp::analyse::utils::drop_utils::OwnedUpToFn(
+  Ast const &exit_point,
+  ScopeManager &sm, CompilerMetaData *meta) -> OwnedScopes {
+  // Outside a function there is nothing to drop: a module-level
+  // constant outlives every scope that reads it. Every scope out
+  // to the function's is left: an exit out of more loops than
+  // there are.
+  if (meta->EnclosingFnScope == nullptr) { return {}; }
+  auto iteration = Vec<OwnedValue>();
+  return OwnedUpToLoop(exit_point, std::numeric_limits<std::size_t>::max(), false, sm, meta, iteration);
+}
+
+auto spp::analyse::utils::drop_utils::OwnedAtSuspend(
+  Ast const &suspend_point, ScopeManager &sm,
+  CompilerMetaData *meta) -> OwnedScopes {
+  // Destroying the frame ends every borrow there is: what holds one in the frame goes with it, and the caller gave up
+  // whatever was lent out to it (a yield) before the frame could be destroyed. Otherwise it leaves every scope out to
+  // the coroutine's as a "ret" would, on a state put back afterwards: the path goes on past the suspension untouched.
+  const auto saved = memory_state::SnapshotFlow(*sm.CurrentScope);
+  memory_state::LoansOf(*sm.CurrentScope).clear();
+  auto owned = OwnedUpToFn(suspend_point, sm, meta);
+  memory_state::RestoreSnapshot(saved);
+  return owned;
+}
+
+auto spp::analyse::utils::drop_utils::OwnedUpToLoop(
+  Ast const &exit_point, const std::size_t num_exits,
+  const bool has_skip, ScopeManager &sm, CompilerMetaData *meta,
+  Vec<OwnedValue> &iteration) -> OwnedScopes {
+  // Walked on a copy of the state, put back afterwards: stage 8
+  // walks statements in order rather than following branches.
+  auto loops_seen = 0uz;
+  auto owned = OwnedScopes();
+  const auto saved = memory_state::SnapshotFlow(*sm.CurrentScope);
+
+  for (auto const *scope = sm.CurrentScope; scope != nullptr; scope = scope->Parent) {
+    // An iterable loop is rewritten into a conditional one
+    // before this stage, so matching the conditional form
+    // covers both.
+    const auto is_loop = scope->AstNode != nullptr
+      and asts::AstAs<LoopConditionalExpressionAst>(scope->AstNode) != nullptr;
+
+    if (is_loop) {
+      // The loop after the ones being exited is the one a
+      // trailing "skip" continues, so its own scope survives
+      // this statement, but the iteration it is in ends.
+      loops_seen += 1;
+      if (loops_seen > num_exits) {
+        if (has_skip) {
+          iteration = TemporaryRegion::Whole(*scope).End(exit_point, sm, meta);
+        }
+        break;
+      }
+    }
+
+    owned.emplace_back(EndRegion(*scope, exit_point, sm, meta));
+    if (is_loop and loops_seen == num_exits and not has_skip) { break; }
+    if (scope == meta->EnclosingFnScope) { break; }
+  }
+
+  memory_state::RestoreSnapshot(saved);
+  return owned;
+}
+
+auto spp::analyse::utils::drop_utils::OwnedBeforeWrite(
+  VariableSymbol const *sym, ExpressionAst &target, ScopeManager &sm,
+  CompilerMetaData *meta) -> Opt<OwnedValue> {
+  // A "Copy" value is never dropped.
+  const auto ref = target.InferTypeRef(&sm, meta).WithoutConvention();
+  if (not ref.IsMoveOnly()) { return Nullopt; }
+
+  // An abstract type ("Self" in a default method: "self@ = source.clone()" in "Clone::clone_from") says nothing about
+  // what is dropped until a class is chosen; each class that inherits the method gets a copy with "Self" pinned, which
+  // is checked here like any other body.
+  auto const *const ref_scope = ref.Symbol->LinkedScope;
+  if (ref_scope != nullptr and not type_members::GetUnimplementedAbstractMethods(*ref_scope).empty()) {
+    return Nullopt;
+  }
+
+  // Through a borrow ("self.a = .." with "&mut self", "x@ = .."), the value written over belongs to whoever is
+  // borrowed from, and nothing can have been taken out of it: it is there, whole.
+  if (sym == nullptr or sym->IsBorrow()) {
+    EnsureDropInstantiated(ref, sm, meta);
+    return OwnedValue{};
+  }
+
+  // Of a value this scope owns, only a part still standing is dropped, less what was taken out of it.
+  auto const &state = memory_state::StateOf(*sm.CurrentScope, *sym);
+  if (sym->Kind != scopes::VariableKind::Local or state.AstInitialization == nullptr) { return Nullopt; }
+  if (state.MaybeInit.has_value()) { return Nullopt; }
+  const auto place = regions::PlaceOf(target, *sm.CurrentScope);
+  if (not place.has_value()) { return Nullopt; }
+
+  // A part moved on only some of the paths that met is gone on every path, as a part moved on all of them is.
+  const auto gone = PartsGone(state);
+  if (regions::RegionConsumed(*place, ref, *sm.CurrentScope, gone)) { return Nullopt; }
+  // What a destructure took apart in it is dropped field by field.
+  auto moved = MovedPathsUnder(gone, place->Steps);
+  if (not moved.has_value()) { return Nullopt; }
+  auto taken_apart = TakenApartPathsUnder(state.TakenApart, place->Steps);
+
+  // Overwritten, what is left of it is destroyed, as at its scope's end: a part moved from inside a value with its own
+  // "drop" strands that "drop" (E106).
+  for (auto const &move : gone) {
+    auto const &steps = move.Of->Steps;
+    if (steps.size() <= place->Steps.size() or not std::equal(place->Steps.begin(), place->Steps.end(), steps.begin())) {
+      continue;
+    }
+    const auto rel = Vec<regions::PlaceStep>(steps.begin() + static_cast<std::ptrdiff_t>(place->Steps.size()), steps.end());
+    RaiseIfPathStrandsDestructor(ref, rel, *move.Site, target, sm, meta, taken_apart);
+  }
+  EnsureDropInstantiated(ref, sm, meta, taken_apart);
+  return OwnedValue{.Moved = std::move(*moved), .TakenApart = std::move(taken_apart)};
+}
+
+auto spp::analyse::utils::drop_utils::FieldReadOffTemporary(
+  ExpressionAst &expr, ScopeManager &sm, CompilerMetaData *meta)
+  -> asts::PostfixExpressionOperatorRuntimeMemberAccessAst* {
+  using asts::PostfixExpressionAst;
+  using asts::PostfixExpressionOperatorRuntimeMemberAccessAst;
+  auto *const postfix = expr.To<PostfixExpressionAst>();
+  auto *const field = postfix != nullptr ? postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() : nullptr;
+  if (field == nullptr) { return nullptr; }
+  auto *first = postfix;
+  while (auto *const inner = first->Lhs->To<PostfixExpressionAst>()) {
+    if (inner->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { break; }
+    first = inner;
+  }
+  return IsTemporary(*first->Lhs, sm, meta) ? field : nullptr;
+}
+
+auto spp::analyse::utils::drop_utils::IsTemporary(
+  ExpressionAst &expr, ScopeManager &sm,
+  CompilerMetaData *meta) -> bool {
+  // A value naming a place belongs to that place; a borrow
+  // belongs to whatever it borrows; a value made at compile
+  // time never exists at run time.
+  // A call is never a place for this: "PlaceOf" derives a method call on a place from its receiver ("v.clone()" is
+  // "v", one opaque step in), which is what a borrow the call hands back is reached through. An owned result is a
+  // new value all the same, and only the borrow test below lets the call's result go.
+  if (meta != nullptr and meta->InCompTimeValue) { return false; }
+  const auto is_call = asts::IsFuncCall(&expr);
+  if (not is_call and regions::PlaceOf(expr, *sm.CurrentScope).has_value()) { return false; }
+  const auto ref = expr.InferTypeRef(&sm, meta);
+  if (not ref.IsMoveOnly()) { return false; }
+
+  // Dropped where nothing written calls its "drop", so it is instantiated here.
+  EnsureDropInstantiated(ref, sm, meta);
+  return true;
+}
+
+auto spp::analyse::utils::drop_utils::MovedPathsUnder(
+  Vec<regions::PlaceAt> const &moves, Vec<regions::PlaceStep> const &prefix)
+  -> Opt<Vec<Vec<spp::utils::InternedId>>> {
+  auto moved = Vec<Vec<spp::utils::InternedId>>();
+  for (auto const &move : moves) {
+    auto const &steps = move.Of->Steps;
+    if (steps.size() <= prefix.size() and not prefix.empty()) { continue; }
+    if (not std::equal(prefix.begin(), prefix.end(), steps.begin())) { continue; }
+    auto &path = moved.emplace_back();
+    for (auto i = prefix.size(); i < steps.size(); ++i) {
+      if (steps[i].Opaque) { return Nullopt; }
+      path.emplace_back(steps[i].Name);
+    }
+  }
+  return moved;
+}
+
+auto spp::analyse::utils::drop_utils::IsSelfInItsOwnDrop(
+  VariableSymbol const &sym, TypeRef const &ref, ScopeManager &sm, CompilerMetaData *meta) -> bool {
+  if (meta == nullptr or meta->EnclosingFnScope == nullptr or sym.Name->Val != "self" or ref.Symbol == nullptr) {
+    return false;
+  }
+  auto const *const fn = asts::AstAs<FunctionPrototypeAst>(meta->EnclosingFnScope->AstNode);
+  return fn != nullptr and fn->Name->Val == "drop" and FindDropOverload(*ref.Symbol, sm, meta) != nullptr;
 }

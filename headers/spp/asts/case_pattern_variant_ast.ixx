@@ -51,7 +51,7 @@ protected:
   /// Stage 7 for a destructuring pattern: map it to a "let" over @p cond introducing its bindings, analysed here. The
   /// nested elements are analysed by the "let"; the literals they test are the "case"'s plan's ("PatternSolver").
   auto AnalyseDestructure(
-    ExpressionAst const *cond, Vec<CasePatternVariantAst*> const &elems,
+    ExpressionAst const *cond, Span<Unique<CasePatternVariantAst> const> elems,
     ScopeManager *sm, CompilerMetaData *meta) -> void;
 
   /// Comp-time evaluation of a destructuring pattern: resolve its "let". It matches; the "case"'s plan tests its

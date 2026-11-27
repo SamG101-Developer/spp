@@ -31,6 +31,11 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : Ast, mixins::OrderableAs
   /// positional and keyword arguments have a value.
   Unique<ExpressionAst> Val;
 
+  /// A temporary borrowed here ("f(&mk())"): nothing holds it past
+  /// the call, so its statement drops it at its end. Set by memory
+  /// checking ("borrows").
+  mutable bool DropsTemporary = false;
+
   FunctionCallArgumentAst(
     decltype(Conv) &&conv,
     decltype(Val) &&val,

@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.gen_expression_ast;
-import spp.analyse.utils.linear_utils;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
@@ -78,7 +78,7 @@ SPP_EXP_CLS struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
   /// coroutine's body), which so has no "OwnedAtSuspend" of its own: what
   /// destroying the frame at this suspension drops, as that records it.
   auto SetOwnedAtSuspend(
-    Vec<Vec<analyse::utils::linear_utils::OwnedValue>> owned) -> void;
+    analyse::utils::drop_utils::OwnedScopes owned) -> void;
 
 private:
   Shared<TypeAst> _GenType;
@@ -92,5 +92,5 @@ private:
   /// at this suspension to drop: per scope, from this one out to
   /// the coroutine's own, newest first ("OwnedAtSuspend"). Names,
   /// read where this is generated, so an instance finds its own.
-  Vec<Vec<analyse::utils::linear_utils::OwnedValue>> _OwnedAtSuspend;
+  analyse::utils::drop_utils::OwnedScopes _OwnedAtSuspend;
 };

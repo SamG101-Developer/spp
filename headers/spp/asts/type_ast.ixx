@@ -100,6 +100,17 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
   SPP_ATTR_NODISCARD auto WithSourceSpanAt(
     Ast const &site) const -> Shared<TypeAst>;
 
+  /// "WithSourceSpanOf" for a type the caller gives up: stamped in
+  /// place when nothing else holds it (a type "TypeAstOf" just
+  /// built), and copied otherwise (a symbol's cached "FqName").
+  SPP_ATTR_NODISCARD static auto WithSourceSpanOf(
+    Shared<TypeAst> &&type, TypeAst const &written) -> Shared<TypeAst>;
+
+  /// "WithSourceSpanAt" for a type the caller gives up; see the
+  /// "WithSourceSpanOf" overload above.
+  SPP_ATTR_NODISCARD static auto WithSourceSpanAt(
+    Shared<TypeAst> &&type, Ast const &site) -> Shared<TypeAst>;
+
   /// The text of the type written in source that this one was
   /// rebuilt from (see "WithSourceSpanOf"), for error messages
   /// to show beside the rebuilt, qualified form. Empty when this

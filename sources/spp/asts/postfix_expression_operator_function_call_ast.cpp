@@ -12,6 +12,7 @@ import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
 import spp.analyse.utils.comp_time_intrinsics;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.marker_sups;
@@ -57,7 +58,9 @@ import spp.asts.literal_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.statement_ast;
 import spp.asts.subroutine_prototype_ast;
 import spp.asts.sup_prototype_extension_ast;
@@ -76,6 +79,7 @@ import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_drop;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
@@ -94,7 +98,6 @@ use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeKind);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, TypeSymbol);
-use_alias(spp::asts::meta, AllowPackWholeGuard);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
@@ -158,7 +161,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Clone() const -> Uniqu
   ast->_FoldCallee = _FoldCallee;
   ast->_FoldArgsScope = _FoldArgsScope;
   ast->_FoldTemps = AstCloneVec(_FoldTemps);
-  ast->_FoldDrops = AstCloneVec(_FoldDrops);
+  ast->_FoldUnconsumed = _FoldUnconsumed;
+  ast->_Drops = _Drops;
   ast->_OpenFoldPacks = AstCloneVec(_OpenFoldPacks);
   ast->_OpenFoldType = _OpenFoldType;
   ast->_FoldIsVoid = _FoldIsVoid;
@@ -196,9 +200,15 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
-    solver.emplace(*this, *Lhs, *sm, *meta);
-    const auto expected_comp = solver->ExpectedCompArgTypes();
-    for (auto i = 0uz; i < GnArgGroup->Args.size(); ++i) { GnArgGroup->Args[i]->ExpectedCompType = expected_comp[i]; }
+
+    // A static receiver left for this call ("Vec" in "Vec::from(&[1, 2])") has no candidates to analyse the arguments
+    // against until the arguments infer it ("_InferStaticReceiver", below), so they are analysed against none.
+    auto *const deferred = _DeferredStaticAccess();
+    if (deferred == nullptr) {
+      solver.emplace(*this, *Lhs, *sm, *meta);
+      const auto expected_comp = solver->ExpectedCompArgTypes();
+      for (auto i = 0uz; i < GnArgGroup->Args.size(); ++i) { GnArgGroup->Args[i]->ExpectedCompType = expected_comp[i]; }
+    }
     GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
 
     // A borrow cannot be a generic argument: binding "T" to "&Str"
@@ -208,7 +218,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
     for (auto const *const arg : GnArgGroup->GetTypeArgs()) {
       common_errors::RequireNotBorrowed(*arg->TypeVal, *arg->TypeVal, "generic argument", *sm, false);
     }
-    FnArgGroup->ExpectedTypes = solver->ExpectedArgTypes();
+    if (solver.has_value()) { FnArgGroup->ExpectedTypes = solver->ExpectedArgTypes(); }
 
     // A fold's arguments are analysed in a scope of their own (see
     // "_FoldArgsScope").
@@ -221,10 +231,16 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
     }
     {
       // A fold's arguments may name a pack whole ("j(xs).."), each argument passing that on to its name alone.
-      const auto _pack_guard = AllowPackWholeGuard(meta, Fold != nullptr);
+      const auto _pack_guard = spp::utils::functions::ScopedAssign(meta->AllowPackWhole, Fold != nullptr);
       FnArgGroup->Stage7_AnalyseSemantics(sm, meta);
     }
     if (Fold != nullptr) { sm->MoveOutOfCurrentScope(); }
+
+    // The receiver written from the arguments, and the call's candidates found on it, as if it had been written.
+    if (deferred != nullptr) {
+      _InferStaticReceiver(*deferred, sm, meta);
+      solver.emplace(*this, *Lhs, *sm, *meta);
+    }
   }
 
   // If we are function folding, create transformed asts.
@@ -232,7 +248,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
     // Every call calls the one callee, so a method's receiver is evaluated once ("expr_utils::HoistOnce"), as a binary
     // fold's operand is: "make().m(xs).." calls "m" on one "make()", not one per element.
     _FoldCallee = AstCloneShared(Lhs);
-    _FoldDrops.clear();
     auto receiver = Shared<IdentifierAst>(nullptr);
     auto const *const access = Lhs->To<PostfixExpressionAst>();
     auto const *const member = access != nullptr ? access->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() : nullptr;
@@ -248,8 +263,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
     }
 
     // Each element is a whole call over that callee.
-    auto unconsumed = Vec<Shared<IdentifierAst>>();
-    _FoldedAsts = _HandleFnFolding(sm, meta, unconsumed);
+    _FoldUnconsumed.clear();
+    _FoldedAsts = _HandleFnFolding(sm, meta, _FoldUnconsumed);
     for (auto const &ast : _FoldedAsts) { ast->Stage7_AnalyseSemantics(sm, meta); }
 
     // The calls consume a hoisted receiver only if the method takes "self" by value, and only if there is a call.
@@ -258,12 +273,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
       auto const *const self_param = first != nullptr and first->_OverloadInfo.has_value()
         ? first->_OverloadInfo->Proto->FnParamGroup->GetSelfParam()
         : nullptr;
-      if (self_param == nullptr or self_param->Conv != nullptr) { unconsumed.emplace_back(receiver); }
-    }
-    for (auto const &name : unconsumed) {
-      auto drop = expr_utils::DropCall(*name);
-      drop->Stage7_AnalyseSemantics(sm, meta);
-      _FoldDrops.emplace_back(std::move(drop));
+      if (self_param == nullptr or self_param->Conv != nullptr) { _FoldUnconsumed.emplace_back(receiver); }
     }
 
     // A callee returning "Void" makes the fold "Void": it is run for its effects, and every element calls the one
@@ -321,8 +331,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
     // taking "self" by value has (see "FunctionCallArgumentGroupAst"
     // ::Stage8_CheckMemory). The function type has its borrow
     // stripped, so the expression's own type is read.
-    if (conv != ConventionTag::MUT and callee.IsBorrowed() and callee.Symbol != nullptr
-      and not callee.Symbol->IsCopyable()) {
+    if (conv != ConventionTag::MUT and callee.IsBorrowed() and callee.WithoutConvention().IsMoveOnly()) {
       const auto [lhs_sym, _] = sm->CurrentScope->FindVarSymbolOutermost(lhs);
       auto const &borrowed_at = lhs_sym != nullptr and lhs_sym->MemInfo->AstBorrowed != nullptr
         ? *lhs_sym->MemInfo->AstBorrowed
@@ -421,7 +430,19 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
       mem_utils::ValidateSymbolMemory(*pack, *this, *sm, meta, {.MarkMoves = false});
     }
     for (auto const &ast : _FoldedAsts) { ast->Stage8_CheckMemory(sm, meta); }
-    for (auto const &drop : _FoldDrops) { drop->Stage8_CheckMemory(sm, meta); }
+    // A temporary no call took (a receiver or argument only borrowed, or any, when no call reads it) is dropped
+    // after the calls: what it still holds, then it is gone.
+    auto fold_drops = Vec<drop_utils::OwnedValue>();
+    for (auto const &name : _FoldUnconsumed) {
+      auto *const sym = sm->CurrentScope->FindVarSymbol(name.get());
+      if (sym == nullptr) { continue; }
+      auto &state = memory_state::StateOf(*sm->CurrentScope, *sym);
+      if (auto value = drop_utils::OwnedOnPath(*sym, state, *sm->CurrentScope, *this, *sm, meta)) {
+        fold_drops.emplace_back(std::move(*value));
+        state.MovedBy(*this);
+      }
+    }
+    _Drops.Fold = std::move(fold_drops);
     for (auto const &pack_name : _OpenFoldPacks) {
       auto *const pack = sm->CurrentScope->FindVarSymbol(pack_name.get());
       auto borrows = false;
@@ -497,7 +518,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     for (auto const &temp : _FoldTemps) { temp->Stage11_CodeGen(sm, meta, ctx); }
     auto results = Vec<llvm::Value*>();
     for (auto const &ast : _FoldedAsts) { results.emplace_back(AstClone(ast)->Stage11_CodeGen(sm, meta, ctx)); }
-    for (auto const &drop : _FoldDrops) { AstClone(drop)->Stage11_CodeGen(sm, meta, ctx); }
+    codegen::EmitOuterDrops(_Drops.Fold, *this, sm, meta, ctx);
 
     const auto tuple_ref = InferTypeRef(sm, meta).WithoutConvention();
     const auto tuple_sym = tuple_ref.Symbol;
@@ -551,8 +572,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
 
     // Generate the argument values, prepending the environment
     // pointer.
-    auto closure_args = FnArgGroup->Args
-      | genex::views::transform([sm, meta, ctx](auto const &x) { return x->Stage11_CodeGen(sm, meta, ctx); })
+    auto closure_args = _ArgValues(sm, meta, ctx)
+      | genex::views::transform([](auto const &arg) { return arg.second; })
       | genex::to<Vec>();
     closure_args.insert(closure_args.begin(), env_ptr);
 
@@ -647,12 +668,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   auto llvm_func_args = Vec<llvm::Value*>();
   llvm_func_args.reserve(FnArgGroup->Args.size());
 
-  for (auto i = 0uz, p = 0uz; i < FnArgGroup->Args.size(); ++i) {
-    auto const &arg = FnArgGroup->Args[i];
-    const auto arg_is_void = type_predicates::IsTypeVoid(arg->InferTypeRef(sm, meta), *sm->CurrentScope);
-
-    auto llvm_arg = arg->Stage11_CodeGen(sm, meta, ctx);
-    if (arg_is_void) { continue; }
+  const auto arg_values = _ArgValues(sm, meta, ctx);
+  for (auto const &[p, arg_value] : arg_values | genex::views::enumerate) {
+    auto [arg, llvm_arg] = arg_value;
     SPP_ASSERT(llvm_arg != nullptr);
 
     // The parameter's type by identity, keyed where the overload
@@ -698,7 +716,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     }
 
     llvm_func_args.emplace_back(llvm_arg);
-    ++p;
   }
 
   // A builtin whose lowering has to sit in this function's own code (a branch
@@ -789,7 +806,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::EvaluateCompTime(
   auto args = Vec<Pair<Shared<IdentifierAst>, Unique<ExpressionAst>>>();
   auto mut_places = Vec<Pair<Shared<IdentifierAst>, ExpressionAst*>>();
   for (auto *arg : FnArgGroup->GetAllArgs()) {
-    auto name = arg->As<FunctionCallArgumentKeywordAst>()->Name;
+    // The one positional argument left is a "Void" one no parameter took ("ElaborateCall" keeps it for what it does at
+    // run time): no argument, and a comp-time call has nothing for it to do.
+    auto const *const kw_arg = arg->To<FunctionCallArgumentKeywordAst>();
+    if (kw_arg == nullptr) { continue; }
+    auto name = kw_arg->Name;
     const auto params = fn_proto->FnParamGroup->GetAllParams();
     const auto param = genex::find_if(params, [&](auto const *p) {
       const auto param_name = p->ExtractName();
@@ -847,9 +868,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::EvaluateCompTime(
   // ParamsBoundByArgs"): its keyword's, or, given by position, the
   // next comp parameter. A variadic parameter takes several, so
   // none of them binds it by name.
-  const auto all_args = GnArgGroup->Args | genex::views::ptr | genex::to<Vec>();
-  const auto bound = type_resolution::ParamsBoundByArgs(
-    all_args, fn_proto->GnParamGroup->Params | genex::views::ptr | genex::to<Vec>());
+  auto const &all_args = GnArgGroup->Args;
+  const auto bound = type_resolution::ParamsBoundByArgs(all_args, fn_proto->GnParamGroup->Params);
   for (auto i = 0uz; i < all_args.size(); ++i) {
     if (not all_args[i]->IsCompArg()) { continue; }
     gn_arg_comp_map.emplace_back(sm->CurrentScope->CompIdOf(*all_args[i]->CompVal));
@@ -974,6 +994,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
     proto.InstanceReturnTypeId, *ret_type, _OverloadInfo->OverloadScope, _OverloadInfo->SelfId);
   if (ret_id != nullptr) {
     if (auto spelled = sm->CurrentScope->TypeAstOf(ret_id); spelled != nullptr) {
+      // Analysed, as every other path's result is, so an instantiation this scope has not made yet has a symbol for
+      // whoever resolves it: an open one is only made by analysing it ("Res[K[A], E]" in a template, from a "Res[Self,
+      // E]" called through "K[A]").
+      spelled->Stage7_AnalyseSemantics(sm, meta);
       ret_type = std::move(spelled);
     }
   }
@@ -993,7 +1017,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
       *Lhs, [&] { return ret_type; }, "function call"));
     // Read off the generator's identity, shared by every spelling of it, so it points at the return type the callee
     // wrote.
-    ret_type = yield_ref.AstIn(*sm->CurrentScope)->WithSourceSpanAt(*proto.ReturnType);
+    ret_type = TypeAst::WithSourceSpanAt(yield_ref.AstIn(*sm->CurrentScope), *proto.ReturnType);
   }
 
   _Inferred = AstCloneShared(ret_type);
@@ -1011,9 +1035,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferTypeRef(
   // type written in terms of "Self" build the type they return, so they are inferred as one - as is any return type
   // whose instantiation is not filed under that identity here.
   if (_FoldedAsts.empty() and not _IsCoroAndAutoResume and _OverloadInfo->OverloadScope != nullptr) {
-    // An instantiation's return type by identity, "Self" what the call decided.
-    if (const auto ret_id = analyse::scopes::SubstituteSelfId(
-        _OverloadInfo->Proto->InstanceReturnTypeId, _OverloadInfo->SelfId);
+    // The return type by identity, "Self" what the call decided, as "InferType" reads it: an instantiation's own, or
+    // one written naming "Self" keyed where the overload is ("Res[Self, E]" called through "K[A]" in a template).
+    auto const &proto = *_OverloadInfo->Proto;
+    if (const auto ret_id = self_type::TypeIdWithSelf(
+        proto.InstanceReturnTypeId, *proto.ReturnType, _OverloadInfo->OverloadScope, _OverloadInfo->SelfId);
       ret_id != nullptr) {
       if (not ret_id->HasSelf) {
         if (const auto read = TypeRef::Of(ret_id, *sm->CurrentScope); read.Symbol != nullptr) {
@@ -1022,7 +1048,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferTypeRef(
       }
       return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope);
     }
-    auto const &ret_type = _OverloadInfo->Proto->ReturnType;
+    auto const &ret_type = proto.ReturnType;
     if (not type_predicates::DoesTypeNameSelf(*ret_type)) {
       auto *ret_sym = _OverloadInfo->OverloadScope->FindTypeSymbol(ret_type.get());
       if (ret_sym == nullptr) { ret_sym = sm->CurrentScope->FindTypeSymbol(ret_type.get()); }
@@ -1047,10 +1073,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Target() const -> Func
   const auto target_proto = _OverloadInfo->Proto;
   if (const auto coro_proto = target_proto->To<CoroutinePrototypeAst>(); coro_proto != nullptr and coro_proto->
     IsOnce()) {
-    // Not every "GenOnce" is lowered: one whose body defers
-    // stays a real coroutine, because the deferred expression
-    // has to outlive the yield (see "_LowerGenOnce"). Such a
-    // call targets the coroutine itself.
+    // A "GenOnce" is lowered to a subroutine ("_LowerGenOnce"),
+    // which the call targets instead of the coroutine.
     if (const auto lowered = coro_proto->GenOnceLowered(); lowered != nullptr) { return lowered; }
   }
   return target_proto;
@@ -1071,6 +1095,21 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::ResolvedProto() const 
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::IsAsync() const -> bool {
   return _IsAsync != nullptr;
+}
+
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_ArgValues(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const
+  -> Vec<Pair<FunctionCallArgumentAst*, llvm::Value*>> {
+  // Every argument is generated where it is written, a "Void" one included, so
+  // what it does happens; only the values are passed.
+  auto out = Vec<Pair<FunctionCallArgumentAst*, llvm::Value*>>();
+  out.reserve(FnArgGroup->Args.size());
+  for (auto const &arg : FnArgGroup->Args) {
+    const auto value = arg->Stage11_CodeGen(sm, meta, ctx);
+    if (FunctionCallArgumentGroupAst::IsVoidArg(*arg, sm, meta)) { continue; }
+    out.emplace_back(arg.get(), value);
+  }
+  return out;
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_SkipFoldArgsScope(
@@ -1270,6 +1309,31 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_ResolveOpenSpread(
     }
   }
   _OpenSpreadType = ret_type;
+}
+
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_DeferredStaticAccess() const
+  -> PostfixExpressionOperatorStaticMemberAccessAst* {
+  auto *const callee = Lhs != nullptr ? Lhs->To<PostfixExpressionAst>() : nullptr;
+  auto *const access = callee != nullptr ? callee->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>() : nullptr;
+  return access != nullptr and access->IsReceiverLeftToCall() ? access : nullptr;
+}
+
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_InferStaticReceiver(
+  PostfixExpressionOperatorStaticMemberAccessAst &access, ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+  // Written as what the arguments infer, and analysed again. When nothing is inferred, it is analysed as written, no
+  // longer left for the call, so its own error (E72) is the one reported.
+  auto &callee = *Lhs->As<PostfixExpressionAst>();
+  auto const &written = *callee.Lhs->As<TypeAst>();
+  if (const auto self = overload_resolution::InferTemplateReceiver(*this, written, *access.Name, sm, meta);
+    self != nullptr) {
+    callee.Lhs = AstClone(self->WithSourceSpanOf(written));
+  }
+  else {
+    access.MarkCalleeOfCall(false);
+  }
+  access.LeaveReceiverToCall(false);
+  callee.Stage7_AnalyseSemantics(sm, meta);
 }
 
 SPP_MOD_END

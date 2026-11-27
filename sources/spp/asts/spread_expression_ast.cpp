@@ -9,6 +9,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.utils.functions;
 import spp.utils.ice;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
@@ -52,8 +53,8 @@ auto spp::asts::SpreadExpressionAst::ToString() const -> Str {
 auto spp::asts::SpreadExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // A spread may name a pack whole ("(..xs)"); nothing under it may.
-  const auto _pack_guard = meta::AllowPackWholeGuard(
-    meta, Expr->To<IdentifierAst>() != nullptr);
+  const auto _pack_guard = spp::utils::functions::ScopedAssign(
+    meta->AllowPackWhole, Expr->To<IdentifierAst>() != nullptr);
   Expr->Stage7_AnalyseSemantics(sm, meta);
 }
 

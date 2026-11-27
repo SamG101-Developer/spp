@@ -1,30 +1,28 @@
-______________________________________________________________________
+---
+name: spp-soundness-audit-2026-09
+description: "2026-09-27 hole-hunt (~95 tests, red ones for open bugs): its linear checks are gone with affine ownership; what still holds from it"
+updated: 2026-11-24
+---
 
-## name: spp-soundness-audit-2026-09 description: 2026-09-27 hole-hunt - the branch-consumption check is ON (std leaks fixed in project/vcs/std only), the assign-overwrite check is still reverted, and where the red tests live updated: 2026-09-27
+Superseded in part by affine ownership (2026-11-23, [[affine-ownership]]): the linear checks this audit tuned (the
+branch-consumption check in `linear_utils::IsLive`, and the reverted assign-over-live-value `CheckOverwrite`) are
+deleted with `linear_utils`. A value held on only some paths is now dropped on each path still holding it, and an
+overwrite drops the old value first.
 
-A probe-driven audit on 2026-09-27 added ~95 tests (red ones document open bugs; fixed ones carry `// FIXED`).
+A probe-driven audit on 2026-09-27 added ~95 tests (red ones document open bugs; fixed ones carry `// FIXED`). What
+still holds from it:
 
-**Branch consumption check - enabled (same day, follow-up):** `IsLive` (`linear_utils.cpp`) treats
-`IsInconsistentlyMoved`/`Initialized` as still owned, and `ValidateInconsistentMemory` (`case_utils.cpp`) now counts
-the fall-through path of an `else`-less `case` and treats a branch ending in a `!` call as divergent. Never use
-`IsInconsistentlyPartiallyMoved` for it (compares move-site pointers; two branches taking the same field "differ").
-It exposed ~20 real std leaks (fs/file, fs/path, option, result, iterator adaptors, range) plus `Iterator::step_by`
-yielding everything. Those std fixes were merged to std master (ecb6981) and pulled into `tests/test_outputs/vcs/std` the same day. A generic `T` cannot bind a borrow, so std got
-an overload `drop[T](val: &T)` (no-op) for adaptors over `iter_ref`.
+- A generic instance with a `Copy` sup is `Copy` only when all its attributes are.
+- Loop exit states are merged (2026-09-28): every `exit` snapshots into its target loop's frame
+  (`memory_state::LoopFrame::ExitStates`, `ExitStmts`), and `LoopConditionalExpressionAst::Stage8` joins all paths out
+  as `case` branches are (`drop_utils::JoinPaths`).
+- Pattern-guard moves were E114 from here; since 2026-11-24 a guard may move a value, and E114 is only for one moving
+  its branch's own bindings or the subject.
+- Polymorphic recursion is stopped by the instantiation depth limit (E109; the `test_invalid_polymorphic_recursion_*`
+  tests in `test_msc_generic_inference.cpp`). The open-bug list is `../../../.triages/open-bugs.md`.
 
-**Assign-over-live-value check - still reverted:** `linear_utils::CheckOverwrite` works (used for same-scope
-shadowing), but in `AssignmentStatementAst::Stage8` it breaks ~43 tests that use `let mut x = f(1); x = 2` as a
-type-check idiom (and `S32 or Bool` is not `Copy`). A semantics decision for the maintainer.
+**Why:** the audit's red tests and fixes are spread across the suites; this says which of its rules outlived the
+linear checks.
 
-**Why:** knowing which fixes are gated on std or on test idioms avoids re-deriving it. **How to apply:** check whether
-std has been synced into `tests/test_outputs` before trusting a suite run; to test compiler changes against the
-project's std without touching the fixture, run `spp_tests` from `<dir>/w1/w2` with a copied `<dir>/tests/test_outputs`.
-
-Fixed later the same day: loop dataflow (zero-iteration merge, and skip-moves via the `LoopSkipMoves` meta field),
-recursive types through tuple/generic/variant (`HoldsByValue`), `Copy` over non-Copy attributes, pattern-guard moves
-(new E114), tuple aliases, and `f.await` carrying a generator's borrows. Semantics chosen: a generic instance with a
-`Copy` sup is Copy only when all its attributes are. Still open: linear temporaries (`test_lin_temporaries.cpp`) and
-polymorphic recursion OOMs (DISABLED\_). Loop exit states were merged 2026-09-28: every `exit` snapshots into
-`CompilerMetaData::LoopExitStates` for its target loop, and `LoopConditionalExpressionAst::Stage8` merges all paths out
-like case branches. The open-bug list lives in `../../../.triages/open-bugs.md`.
-Related: \[[spp-linear-types]\], \[[add-tests-even-if-failing]\], \[[spp-probe-harness]\].
+**How to apply:** check std has been synced into the test fixture before trusting a suite run
+([[spp-test-harness-stale-std]]). Related: [[add-tests-even-if-failing]], [[spp-probe-harness]].

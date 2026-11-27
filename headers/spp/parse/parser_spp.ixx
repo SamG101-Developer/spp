@@ -70,7 +70,6 @@ use(spp::asts, struct FoldExpressionAst);
 use(spp::asts, struct LiteralAst);
 use(spp::asts, struct FloatLiteralAst);
 use(spp::asts, struct IntegerLiteralAst);
-use(spp::asts, struct ArrayLiteralAst);
 use(spp::asts, struct ArrayLiteralRepeatedElementAst);
 use(spp::asts, struct ArrayLiteralExplicitElementsAst);
 use(spp::asts, struct StringLiteralAst);
@@ -118,7 +117,6 @@ use(spp::asts, struct UnaryExpressionOperatorAst);
 use(spp::asts, struct UnaryExpressionOperatorAsyncAst);
 use(spp::asts, struct PostfixExpressionOperatorDerefAst);
 use(spp::asts, struct ParenthesisedExpressionAst);
-use(spp::asts, struct DeferStatementAst);
 use(spp::asts, struct RetStatementAst);
 use(spp::asts, struct StatementAst);
 use(spp::asts, struct TokenAst);
@@ -300,7 +298,6 @@ public:
   auto ParseAssignmentTargetPrimaryExpression() -> Unique<ExpressionAst>;
 
   auto ParseRetStatement() -> Unique<RetStatementAst>;
-  auto ParseDeferStatement() -> Unique<DeferStatementAst>;
   auto ParseExitStatement() -> Unique<LoopControlFlowStatementAst>;
   auto ParseExitStatementWithValue() -> Unique<LoopControlFlowStatementAst>;
   auto ParseSkipStatement() -> Unique<LoopControlFlowStatementAst>;
@@ -399,7 +396,7 @@ public:
   auto ParseLiteralInteger() -> Unique<IntegerLiteralAst>;
   auto ParseLiteralBoolean() -> Unique<BooleanLiteralAst>;
   auto ParseLiteralTuple(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<TupleLiteralAst>;
-  auto ParseLiteralArray(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<ArrayLiteralAst>;
+  auto ParseLiteralArray(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<LiteralAst>;
 
   auto ParseLiteralFloatB10() -> Unique<FloatLiteralAst>;
   auto ParseLiteralIntegerB10() -> Unique<IntegerLiteralAst>;
@@ -516,7 +513,6 @@ public:
   auto ParseKeywordRet() -> Unique<TokenAst>;
   auto ParseKeywordExit() -> Unique<TokenAst>;
   auto ParseKeywordSkip() -> Unique<TokenAst>;
-  auto ParseKeywordDefer() -> Unique<TokenAst>;
   auto ParseKeywordIs() -> Unique<TokenAst>;
   auto ParseKeywordAs() -> Unique<TokenAst>;
   auto ParseKeywordOr() -> Unique<TokenAst>;

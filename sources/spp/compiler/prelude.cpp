@@ -17,6 +17,7 @@ use std::annotations::abstract_method
 use std::annotations::ffi
 use std::annotations::conv
 use std::annotations::zero_type
+use std::annotations::must_use
 use std::annotations::test
 use std::annotations::cfg
 use std::annotations::Annotation

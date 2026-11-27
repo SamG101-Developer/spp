@@ -5,16 +5,20 @@ module;
 module spp.asts.inner_scope_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_ast;
+import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.ret_statement_ast;
 import spp.asts.statement_ast;
@@ -23,21 +27,40 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_debug;
-import spp.codegen.llvm_defer;
+import spp.codegen.llvm_drop;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
 import spp.utils.ice;
 import spp.utils.ptr;
+import spp.utils.uid;
 import genex;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeBlockName);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
+
+namespace spp::asts {
+  /// The name a member that is a "let" of one name declares: a
+  /// lowering's "let $x = .." is read by the members after it, so
+  /// its own statement does not end it.
+  static auto OwnLetName(StatementAst const &member) -> IdentifierAst const*;
+
+}
+
+auto spp::asts::OwnLetName(
+  StatementAst const &member) -> IdentifierAst const* {
+  auto const *const let = member.To<LetStatementInitializedAst>();
+  if (let == nullptr) { return nullptr; }
+  auto const *const var = let->Var->To<LocalVariableSingleIdentifierAst>();
+  return var != nullptr ? var->Name.get() : nullptr;
+}
 
 SPP_MOD_BEGIN
 auto spp::asts::InnerScopeExpressionAst::NewEmpty() -> Unique<InnerScopeExpressionAst> {
@@ -76,6 +99,10 @@ auto spp::asts::InnerScopeExpressionAst::Clone() const -> Unique<Ast> {
     AstCloneVec(Members),
     AstClone(TokR));
   i->_Scope = _Scope;
+  i->_BoundOnEntry = _BoundOnEntry;
+  i->_DropsDiscarded = _DropsDiscarded;
+  i->_Drops = _Drops;
+  i->ValueDiscarded = ValueDiscarded;
   return i;
 }
 
@@ -104,30 +131,21 @@ auto spp::asts::InnerScopeExpressionAst::Stage7_AnalyseSemantics(
     "inner-scope-expression", {}, PosStart());
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
   _Scope = sm->CurrentScope;
+  sm->CurrentScope->DeclareBoundWhenTrue(_BoundOnEntry);
 
   // Analyse the members of the inner scope. Only the final one
   // is the block's value, so only it sees what the block is
   // being assigned to; a "case" statement before it would be
   // checked against that type otherwise.
-  for (auto const &[i, x] : this->Members | genex::views::ptr | genex::views::enumerate) {
-    // What an "is" in this statement bound does not outlive the
-    // statement ("let b = o is Some(val)" leaves no "val").
-    const auto bound_before = meta->AddedIsBindings.size();
-    const auto expire_is_bindings = [&] {
-      for (auto j = bound_before; j < meta->AddedIsBindings.size(); ++j) {
-        meta->ExpiredIsBindings.emplace_back(meta->AddedIsBindings[j]);
-      }
-    };
-
+  for (auto const &[i, x] : this->Members | genex::views::enumerate) {
+    if (i + 1 < Members.size() or DiscardsFinalMember()) { expr_utils::MarkValueDiscarded(*x); }
     if (i + 1 == Members.size()) {
       x->Stage7_AnalyseSemantics(sm, meta);
-      expire_is_bindings();
       continue;
     }
     const auto _meta_guard = MetaGuard(meta);
     meta->ClearAssignmentTarget();
     x->Stage7_AnalyseSemantics(sm, meta);
-    expire_is_bindings();
 
     // Nothing may follow a statement that never finishes. Checked
     // before the next statement is analysed, so the dead code is
@@ -141,10 +159,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage7_AnalyseSemantics(
   // where nobody does, which "DiscardsFinalMember" reports.
   if (not Members.empty()) {
     const auto discarded = DiscardsFinalMember() ? Members.size() : Members.size() - 1;
-    for (auto const &[i, m] : Members | genex::views::ptr | genex::views::enumerate) {
-      if (i >= discarded) { break; }
-      expr_utils::ValidateDiscardedValue(*m, sm->CurrentScope, *sm, meta);
-    }
+    for (auto i = 0uz; i < discarded; ++i) { expr_utils::DiscardValue(*this, i, *sm, meta); }
   }
 
   // What can be written in this block - a function's body among
@@ -164,15 +179,16 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
   // Move into the next scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  sm->CurrentScope->DeclareBoundWhenTrue(_BoundOnEntry);
 
-  // Nothing has been deferred in this scope yet. Cleared on entry
-  // because a loop body is checked twice against the same scope,
-  // and the first pass's registrations would otherwise run at an
-  // exit written above the "defer" on the second.
-  sm->CurrentScope->Deferred.clear();
-
-  // Check the memory of each member.
-  for (auto const &m : Members) { m->Stage8_CheckMemory(sm, meta); }
+  // Check the memory of each member. The hidden temporaries a
+  // statement made end with it.
+  _Drops.StatementTemporaries.assign(Members.size(), {});
+  for (auto const &[i, m] : Members | genex::views::enumerate) {
+    const auto statement = drop_utils::TemporaryRegion(*sm->CurrentScope);
+    m->Stage8_CheckMemory(sm, meta);
+    _Drops.StatementTemporaries[i] = statement.End(*m, *sm, meta, OwnLetName(*m));
+  }
 
   // The final statement is the scope's value, so unless nothing
   // receives it, it leaves the scope here - and leaving is a
@@ -180,9 +196,9 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
   // set for an assignment, so gating on it missed every other
   // way a scope's value gets used: a "ret case ... { .. x }"
   // never recorded the move of "x", which then read as a value
-  // still owed at the closing brace even though it had just
+  // still owned at the closing brace even though it had just
   // been returned.
-  if (not Members.empty() and not DiscardsFinalMember()) {
+  if (not Members.empty() and not DiscardsFinalMember() and not ValueDiscarded) {
     if (const auto expr_member = FinalMember()->template To<ExpressionAst>(); expr_member != nullptr) {
       const auto move = meta->AssignmentTarget != nullptr
         ? static_cast<Ast const*>(meta->AssignmentTarget.get())
@@ -191,31 +207,18 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
     }
   }
 
-  // Ownership is linear, so nothing declared in this scope may
-  // still own a value once the scope ends. Checked after the
-  // members, so a value consumed by the last statement is already
-  // gone, and before the escaping borrows below are released,
-  // because releasing them is what clears the very state the
-  // check reads to tell that a symbol holding borrows is not
-  // something this scope owes.
+  // What this scope still owns at its end is dropped there. Read
+  // after the members, so a value the last statement took is gone.
   if (not Diverges(sm, meta)) {
-    linear_utils::CheckDeferredForScope(
-      *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this,
-      "Scope end", *sm, meta);
-    linear_utils::CheckScopeExit(
-      *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this,
-      "Scope end", *sm, meta);
+    _Drops.End = drop_utils::EndRegion(
+      *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this, *sm, meta);
   }
 
   // At the end of a scope, every symbol declared *in* this
-  // scope dies, so the loans it holds end with it. What matters
-  // is where the holder was declared, not where the borrow was
-  // made: a handle declared further out ("let h: Gen[..]" and
-  // then "{ h = c(&p) }") carries the borrow on past this point.
-  auto &loans = memory_state::LoansOf(*sm->CurrentScope);
-  for (const auto sym : sm->CurrentScope->GetAllVarSymbols(true)) {
-    memory_state::ReleaseLoans(loans, *sym);
-  }
+  // scope dies, so the loans it holds end with it ("let h:
+  // Gen[..]" further out, then "{ h = c(&p) }", carries its
+  // borrow on).
+  drop_utils::ReleaseOwnedLoans(*sm->CurrentScope);
 
   sm->MoveOutOfCurrentScope();
 }
@@ -225,13 +228,13 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   // Add all the expressions/statements into the current scope.
   sm->MoveToNextScope();
   // SPP_ASSERT(sm->CurrentScope == _Scope);
+  sm->CurrentScope->DeclareBoundWhenTrue(_BoundOnEntry);
 
   // Nothing has been reached in this scope yet. Reset on entry
   // rather than left from a previous walk, because a generic
   // base and its instantiations share this scope object across
   // separate codegen passes, and a deferred block is generated
   // once for each exit that runs it.
-  codegen::EnterDeferScope(*sm->CurrentScope, ctx);
 
   // The block's own lexical block, so its variables show only
   // inside it, and one shadowing an outer one in its place.
@@ -245,17 +248,33 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   // generated towards what the scope is assigned to (as in
   // stage 7).
   auto ret_val = static_cast<llvm::Value*>(nullptr);
-  for (auto const &[i, m] : this->Members | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, m] : this->Members | genex::views::enumerate) {
     // Each member at its own line, for the debug info.
     codegen::SetDebugLocation(*ctx, m->PosStart());
+    static const auto no_drops = Vec<analyse::utils::drop_utils::OwnedValue>();
+    auto const &statement_drops = i < _Drops.StatementTemporaries.size() ? _Drops.StatementTemporaries[i] : no_drops;
+    const auto temporaries = codegen::TemporaryDepth(ctx);
+    const auto end_statement = [&] {
+      codegen::EndTemporaryRegion(temporaries, *sm->CurrentScope, statement_drops, m.get(), sm, meta, ctx);
+    };
+    const auto drop_discarded = [&](llvm::Value *val) {
+      if (val == nullptr or i >= _DropsDiscarded.size() or not _DropsDiscarded[i]) { return val; }
+      const auto ref = m->To<ExpressionAst>()->InferTypeRef(sm, meta).WithoutConvention();
+      const auto slot = codegen::LlvmEntryAlloca(val->getType(), "discarded." + spp::utils::Uid(), ctx);
+      ctx->Builder.CreateStore(val, slot);
+      codegen::EmitDrop(ref, slot, sm, meta, ctx);
+      return static_cast<llvm::Value*>(nullptr);
+    };
     if (i + 1 == Members.size()) {
-      ret_val = m->Stage11_CodeGen(sm, meta, ctx);
+      ret_val = drop_discarded(m->Stage11_CodeGen(sm, meta, ctx));
+      end_statement();
       continue;
     }
     const auto _meta_guard = MetaGuard(meta);
     meta->ClearAssignmentTarget();
     meta->LlvmAssignmentTarget = nullptr;
-    m->Stage11_CodeGen(sm, meta, ctx);
+    ignore = drop_discarded(m->Stage11_CodeGen(sm, meta, ctx));
+    end_statement();
 
     // Nothing after a member that never finishes is reachable,
     // so none of it is generated, and the walk steps over the
@@ -271,6 +290,7 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   // Whatever this scope deferred runs as it is left, after
   // the value it hands out has been produced.
   codegen::EmitScopeExit(sm->CurrentScope->Parent, sm, meta, ctx);
+  codegen::EmitOwnedDrops(*sm->CurrentScope, _Drops.End, this, sm, meta, ctx);
 
   // Exit the scope.
   codegen::LeaveDebugBlock(*ctx);
@@ -283,10 +303,16 @@ auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   return ret_val;
 }
 
+auto spp::asts::InnerScopeExpressionAst::SetBoundOnEntry(
+  Vec<Shared<VariableSymbol>> bound) -> void {
+  _BoundOnEntry = std::move(bound);
+}
+
 auto spp::asts::InnerScopeExpressionAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Comptime resolve each member of the inner scope.
   sm->MoveToNextScope();
+  sm->CurrentScope->DeclareBoundWhenTrue(_BoundOnEntry);
   for (auto const &m : this->Members) {
     m->EvaluateCompTime(sm, meta);
     if (meta->CompTimeReturned) { break; }
@@ -335,6 +361,12 @@ auto spp::asts::InnerScopeExpressionAst::IsAllowedInDefault() const -> bool {
   // A block creates a scope, which a default cannot.
   // Banned for now.
   return false;
+}
+
+auto spp::asts::InnerScopeExpressionAst::SetDropsDiscarded(
+  const std::size_t i) -> void {
+  if (_DropsDiscarded.size() < Members.size()) { _DropsDiscarded.resize(Members.size(), false); }
+  _DropsDiscarded[i] = true;
 }
 
 SPP_MOD_END

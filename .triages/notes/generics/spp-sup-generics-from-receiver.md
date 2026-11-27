@@ -1,33 +1,38 @@
 ---
 name: spp-sup-generics-from-receiver
-description: "Blanket \\\"sup [T] T\\\" and variadic-pack sup generics were never bound on a method call; fixed by reading them off the receiver in overload resolution"
-updated: 2026-09-14
+description: "Blanket \"sup [T] T\" and pack sup generics stay unbound at attach; a call binds them off its receiver (ReceiverGns, UnifyInHierarchy), then the block's own (BoundGnsOf)"
+updated: 2026-11-19
 ---
 
-Attaching a "sup" block to a type (`AttachSpecificSuperScopesImpl`, scope_manager.cpp) binds its generics by
-`RelaxedTypeEq` - except two kinds, which stay unbound: a trailing variadic pack (`sup [First, ..Rest] Tup[First, Rest]`
-- the arity match checks the pack's constraints but never binds it) and a blanket block's own type (`sup [T] T` - blanket
-blocks are excluded from substitution, line ~246). A method in such a block then reached codegen still generic
-(`f[..Rest](&self)`), so no declaration existed: "Call target has no llvm declaration" (13 gtests once codegen ran).
+Attaching a `sup` block to a type (`sup_attachment::AttachSpecificSuperScopesImpl`) binds the block's generics by
+matching the type against its pattern. Two kinds stay unbound:
+- **A trailing variadic pack** (`sup [First, ..Rest] Tup[First, Rest]`). The block is attached with its pack unbound:
+  it stands for every element set at once.
+- **A blanket block's own type** (`sup [T] T`). Blanket blocks take the unsubstituted branch, on
+  `not genex::contains(GnSupBlocks, sup_scope)`.
 
-**Fix (2026-09-12):** `BindBlanketAndPackGenericsFromReceiver` in overload_resolution.cpp, called per candidate in `DetermineOverload`
-*before* `candidate.SupGns` is merged (MergeGenerics is first-wins, and the attached scope offers unbound identity
-bindings that would otherwise win). Blanket: bind `T` = receiver. Pack: bind it to `TupleType(...)` of the receiver's
-remaining args - the same `Tup[...]` form a variadic generic is bound to everywhere else.
+A method in such a block reached codegen still generic (`f[..Rest](&self)`) until 2026-09-12: "Call target has no llvm
+declaration" (13 gtests once codegen ran).
 
-**Traps hit on the way:**
-- A candidate's `FnScope` is the method's own lowered `sup $F ext FunXxx { fun }` block, not the block it was written in;
-  walk up past `$`-patterned blocks to find the generics.
-- `asts::AstName` *throws* ("ast_name: Unsupported AST type ModulePrototypeAst") on anything but a type/sup node - guard
-  the walk to `SupPrototypeFunctionsAst`/`SupPrototypeExtensionAst` before calling it.
+**How a call binds them now** (`overload_resolution::CheckCandidate`, as given layers below the written arguments; see
+[[generic-inference-engine-shape]]):
+- **`ReceiverGns`** matches the receiver against the block's pattern: the receiver itself, else the first class it is
+  superimposed as (`type_members::UnifyInHierarchy`). It keeps only the block's own parameters (`BindingsFor`). A
+  blanket `T` binds to the receiver; a pack binds to the receiver's remaining arguments as one `Tup[...]`, the form a
+  variadic generic is bound to everywhere else. It replaced `BindBlanketAndPackGenericsFromReceiver` (2026-09-12),
+  which bound them separately.
+- **`BoundGnsOf(ReachedThrough)`** then gives what the block binds already. It comes after, because the attached scope
+  offers unbound identity bindings that would otherwise win (first binding wins).
 
-**Binding these at attach time instead was designed and dropped (2026-09-14).** Blanket blocks are sent to the
-unsubstituted branch by `not genex::contains(GnSupBlocks, sup_scope)` in `AttachSpecificSuperScopesImpl` (no
-recorded reason). Packs are only arity-checked by `MatchArgListArity`. Doing it at attach time needs three things:
-- a thread-local recursion guard, since `sup [T] T ext CanBorrowRef[T]` recurses forever
-- pack rechecks run against the template scope, because a bound `Items` no longer counts as a pack
-- this function anyway, for the level the guard cuts off
+**Traps:**
+- A candidate's `FnScope` is the method's own lowered `sup $F ext FunXxx { fun }` block, not the block it was written
+  in. `sup_blocks::EnclosingSupBlock` walks up past `$`-patterned blocks to it.
+- `asts::AstName` *throws* ("ast_name: Unsupported AST type ModulePrototypeAst") on anything but a type or sup node, so
+  reach it through `EnclosingSupBlock`, never on an arbitrary scope's node.
 
-That's more machinery than it deletes, so keep this function.
+**Binding these at attach time instead was designed and dropped (2026-09-14).** It needed a thread-local recursion
+guard (`sup [T] T ext CanBorrowRef[T]` recurses forever), pack rechecks against the template scope (a bound `Items` no
+longer counts as a pack), and the receiver binding anyway, for the level the guard cuts off. That's more machinery
+than it deletes.
 
 Related: [[spp-dollar-mock-types]], [[tuple-sup-matching-broken]], [[generic-param-sym-links-dummy-scope]].

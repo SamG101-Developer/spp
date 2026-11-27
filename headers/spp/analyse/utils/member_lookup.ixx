@@ -10,12 +10,14 @@ import sys;
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct NamespaceSymbol);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
+use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::member_lookup {
   SPP_EXP_CLS enum class MemberAccessForm {
@@ -133,5 +135,32 @@ namespace spp::analyse::utils::member_lookup {
   SPP_EXP_FUN auto RaiseIfAmbiguous(
     Vec<DeclaringTypeScope> const &closest,
     Ast const &access)
+    -> void;
+
+  /// A method of "type_scope" named "name" ("$" mocks), declared in
+  /// one "sup" block or several: the access is fine if any of them
+  /// is visible, else the last is reported. The method's mock (for
+  /// the resolution index), or none when the name names no method.
+  SPP_EXP_FUN auto CheckMethodVisible(
+    Scope &type_scope, IdentifierAst const &name,
+    ScopeManager const &sm, CompilerMetaData const &meta)
+    -> VariableSymbol*;
+
+  /// The declaration an access "name" resolves to, the first of
+  /// "closest" ("ClosestMembers"), is visible from here, and is the
+  /// only one that near ("RaiseIfAmbiguous"). Visibility is read off
+  /// the non-generic scope, where the member was written. The
+  /// declaration (for the resolution index), or none for no member.
+  SPP_EXP_FUN auto CheckClosestMember(
+    Vec<DeclaringVarScope> const &closest, IdentifierAst const &name,
+    ScopeManager const &sm, CompilerMetaData const &meta)
+    -> VariableSymbol*;
+
+  /// "name" is no member of "owner" (whose type is "owner_ref") that
+  /// "form" reaches, nor of a type it forwards to: raise, suggesting
+  /// the closest of those that "form" reaches.
+  SPP_EXP_FUN SPP_ATTR_NORETURN auto RaiseMemberNotFound(
+    TypeSymbol const &owner, TypeRef const &owner_ref, IdentifierAst const &name,
+    MemberAccessForm form, Scope const &scope)
     -> void;
 }

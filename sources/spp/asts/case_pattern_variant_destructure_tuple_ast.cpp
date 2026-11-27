@@ -76,8 +76,7 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Map the pattern to a "let" over the condition, introducing
   // its bindings.
-  AnalyseDestructure(
-    meta->CaseCondition, Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
+  AnalyseDestructure(meta->CaseCondition, Elems, sm, meta);
 }
 
 auto spp::asts::CasePatternVariantDestructureTupleAst::Stage8_CheckMemory(

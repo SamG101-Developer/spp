@@ -172,7 +172,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
     // Analysed before they are keyed, so a written "Str" is the
     // instance with its defaults ("Str[GlobalAlloc]").
     written_args->Stage7_AnalyseSemantics(sm, meta);
-    bindings = BindArgs(*own_params, written_args->GetAllArgs(), *sm->CurrentScope);
+    bindings = BindArgs(*own_params, written_args->Args, *sm->CurrentScope);
   }
 
   // Analyse the arguments in the group.
@@ -338,13 +338,6 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the memory of the arguments.
   for (auto const &arg : Args) { arg->Stage8_CheckMemory(sm, meta); }
-}
-
-auto spp::asts::ObjectInitializerArgumentGroupAst::GetAllArgs() -> Vec<ObjectInitializerArgumentAst*> {
-  // Get all arguments in the group.
-  return Args
-    | genex::views::ptr
-    | genex::to<Vec>();
 }
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::GetAutoFillArg() -> ObjectInitializerArgumentShorthandAst* {

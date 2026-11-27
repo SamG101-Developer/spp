@@ -41,9 +41,12 @@ namespace spp::analyse::utils::overload_resolution {
   /// How well an argument matched its parameter, best first: the
   /// same type, a type it widens into ("Some" into "Opt", "!" into
   /// anything), a type the argument chose by binding one of the
-  /// callee's generics ("f[T](x: T)"), or reached through forwarding.
-  /// Overloads are chosen by it ("OverloadSolver::Resolve").
-  SPP_EXP_CLS enum class MatchRank : std::uint8_t { Exact, Widened, Bound, Forwarded };
+  /// callee's generics ("f[T](x: T)"), reached through forwarding, or
+  /// taken by no parameter at all (a "Void" argument, which is no
+  /// argument, "BindSlots"): a callee that takes the argument beats one
+  /// that only leaves it out. Overloads are chosen by it
+  /// ("OverloadSolver::Resolve").
+  SPP_EXP_CLS enum class MatchRank : std::uint8_t { Exact, Widened, Bound, Forwarded, Unbound };
 
   /// Where one parameter's value comes from at a call, as the
   /// check of an overload decided it: arguments of the call (one,
@@ -151,6 +154,17 @@ namespace spp::analyse::utils::overload_resolution {
     Shared<TypeAst const> IndirectFnType;
     Vec<FnOverload> Overloads;
   };
+
+  /// The type a static call's receiver, a generic class written
+  /// without its arguments, stands for ("Vec" in "Vec::from(&[1, 2])"
+  /// is "Vec[S32]"): each block written over the class that declares
+  /// the method is a candidate, solved against the call's analysed
+  /// arguments; one block left gives its pattern, solved. None when
+  /// none is left (the receiver's own error then stands); more than
+  /// one is E130.
+  SPP_EXP_FUN auto InferTemplateReceiver(
+    PostfixExpressionOperatorFunctionCallAst const &fn_call, TypeAst const &receiver, IdentifierAst const &fn_name,
+    ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;
 
   /// Rewrite a call's arguments into what the chosen overload
   /// takes: one keyword argument per parameter, in parameter

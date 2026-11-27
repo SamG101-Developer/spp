@@ -42,8 +42,8 @@ namespace spp::asts {
   /// that did not run to the end is skipped past, so the walk
   /// continues at the next member. The walk only moves forwards,
   /// and an error can be raised after the member has walked past
-  /// its own scopes (a value left unconsumed is found as the
-  /// function's scope is left), so it is first put back where it
+  /// its own scopes (a value left partly moved, E106, is found as
+  /// the function's scope is left), so it is first put back where it
   /// stood before the member, from where the member's scopes are
   /// all still ahead.
   template <typename F>

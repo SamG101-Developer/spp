@@ -15,6 +15,7 @@ import spp.analyse.utils.member_lookup;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
+import spp.asts.array_literal_repeated_element_ast;
 import spp.asts.ast;
 import spp.asts.binary_expression_ast;
 import spp.asts.expression_ast;
@@ -25,9 +26,7 @@ import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.literal_ast;
 import spp.asts.parenthesised_expression_ast;
-import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
@@ -56,10 +55,9 @@ use_alias(spp::asts, ExpressionAst);
 use_alias(spp::asts, GenericArgumentGroupAst);
 use_alias(spp::asts, GenericParameterGroupAst);
 use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, ArrayLiteralRepeatedElementAst);
 use_alias(spp::asts, LiteralAst);
 use_alias(spp::asts, ParenthesisedExpressionAst);
-use_alias(spp::asts, PostfixExpressionAst);
-use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
 use_alias(spp::asts, TypeAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 
@@ -136,10 +134,12 @@ auto spp::analyse::utils::comp_generics::FindCompMemberId(
 /// [CHECKED]
 auto spp::analyse::utils::comp_generics::NeedsSupScopesToType(
   ExpressionAst const &value) -> bool {
-  // Asked of the value itself, or of each element of a pack's
-  // tuple: anything but a bare literal or name answers at once,
-  // so an operand is never reached.
+  // Asked of the value itself first: anything but a bare literal
+  // or name answers at once, so an operand is never reached. A
+  // repeated array is a literal, but checks its element is "Copy"
+  // through the element type's "sup" scopes.
   return type_predicates::AnyCompPart(value, nullptr, nullptr, [](ExpressionAst const &part) {
+    if (part.To<ArrayLiteralRepeatedElementAst>() != nullptr) { return true; }
     return part.To<LiteralAst>() == nullptr and part.To<IdentifierAst>() == nullptr;
   });
 }
@@ -148,8 +148,8 @@ auto spp::analyse::utils::comp_generics::ExpectCompParamTypes(
   GenericArgumentGroupAst const &args, GenericParameterGroupAst const &params, Scope const &params_scope) -> void {
   // A parameter typed by another one ("cmp n: T") has no type to
   // give until that one is bound, and a pack's is its elements'.
-  const auto all_args = args.Args | genex::views::ptr | genex::to<Vec>();
-  const auto bound = type_resolution::ParamsBoundByArgs(all_args, params.Params | genex::views::ptr | genex::to<Vec>());
+  auto const &all_args = args.Args;
+  const auto bound = type_resolution::ParamsBoundByArgs(all_args, params.Params);
   for (auto i = 0uz; i < all_args.size(); ++i) {
     auto const *const param = bound[i];
     if (not all_args[i]->IsCompArg() or param == nullptr or param->IsVariadic() or param->CompType == nullptr
@@ -162,8 +162,7 @@ auto spp::analyse::utils::comp_generics::FoldCompCall(
   ExpressionAst &value, ScopeManager *sm, CompilerMetaData *meta) -> Unique<ExpressionAst> {
   IMPORT_UTILS;
   const auto has_call = type_predicates::AnyCompPart(value, nullptr, nullptr, [](ExpressionAst const &part) {
-    const auto postfix = part.To<PostfixExpressionAst>();
-    return postfix != nullptr and postfix->Op->To<PostfixExpressionOperatorFunctionCallAst>() != nullptr;
+    return asts::IsFuncCall(&part);
   });
   const auto unfolded_op = [&] {
     if (not IsCompOperator(value)) { return false; }

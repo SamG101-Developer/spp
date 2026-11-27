@@ -8,7 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.linear_utils;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.regions;
 import spp.analyse.utils.type_predicates;
@@ -141,12 +141,13 @@ auto spp::analyse::utils::borrows::ValidateUnnamedArgumentBorrow(
     : arg.Val->InferTypeRef(&sm, meta).Conv;
   if (conv == ConventionTag::MOV) { return; }
 
-  // A borrow of a linear temporary leaves nothing holding the
-  // value once the call is done.
-  if (linear_utils::IsLinearTemporary(*arg.Val, sm, meta)) {
-    linear_utils::RaiseTemporaryNotConsumed(
-      *arg.Val, arg, "Borrowed here, so nothing owns it after this expression", sm, meta);
-  }
+  // A borrowed temporary is held by nothing once the call is
+  // done, so its statement drops it. A field borrowed off one
+  // ("&mk().a") is part of the temporary its read makes, which
+  // is dropped whole.
+  arg.DropsTemporary =
+    drop_utils::FieldReadOffTemporary(*arg.Val, sm, meta) == nullptr
+    and drop_utils::IsTemporary(*arg.Val, sm, meta);
 
   // Cross check with the loans held and the call's own borrows,
   // raising an error on conflict, and hold this one too, so the

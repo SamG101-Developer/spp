@@ -9,7 +9,10 @@
 # SPPC_LIB, if set, replaces the vendored libsppc.so in every project, to check
 # a runtime that has not been shipped into SPP-STL yet. STD_BRANCH (master by
 # default) is the SPP-STL branch every project builds against, for a compiler
-# change that needs a std change not merged yet.
+# change that needs a std change not merged yet. STD_DIR, if set, is a local
+# SPP-STL checkout (../spp-stl) whose tracked changes, committed or not, are
+# applied over master's: a compiler and std change made together, before
+# either is pushed. New untracked files in it are not carried.
 
 set -uo pipefail
 
@@ -23,6 +26,7 @@ HOST_FFI="$(uname -m)-linux-gnu"
 readonly HOST_FFI
 readonly STD_GIT="https://github.com/SamG101-Developer/SPP-STL"
 readonly STD_BRANCH="${STD_BRANCH:-master}"
+readonly STD_DIR="${STD_DIR:-}"
 
 WORK="$(mktemp -d)"
 readonly WORK
@@ -34,12 +38,32 @@ failures=0
 # (it is on master), or else one clone per script run, rather than one per
 # build. Each build still pulls it, so either is current.
 std_vcs() {
-    if [[ "${STD_BRANCH}" == master && -d "${FIXTURE}/vcs/std" ]]; then
+    if [[ -z "${STD_DIR}" && "${STD_BRANCH}" == master && -d "${FIXTURE}/vcs/std" ]]; then
         echo "${FIXTURE}/vcs"
         return
     fi
     if [[ ! -d "${WORK}/vcs/std" ]]; then
-        git clone -q --branch "${STD_BRANCH}" "${STD_GIT}" "${WORK}/vcs/std" >&2
+        if [[ -n "${STD_DIR}" && "${STD_BRANCH}" == master && -d "${FIXTURE}/vcs/std" ]]; then
+            # The gtest fixture's copy may be behind master, which a build
+            # would fast-forward to, refused over the uncommitted diff.
+            mkdir -p "${WORK}/vcs" && cp -r "${FIXTURE}/vcs/std" "${WORK}/vcs/std"
+            git -C "${WORK}/vcs/std" pull -q --ff-only origin "${STD_BRANCH}" >&2
+        else
+            git clone -q --branch "${STD_BRANCH}" "${STD_GIT}" "${WORK}/vcs/std" >&2
+        fi
+        # Master stays checked out, so each build's pull of it is a no-op; the
+        # local tree's difference from it rides on top, uncommitted.
+        # A failed apply removes the checkout, so every later project fails
+        # too rather than building against plain master ("exit" only leaves
+        # the "$(std_vcs)" subshell).
+        if [[ -n "${STD_DIR}" ]]; then
+            git -C "${STD_DIR}" diff --binary "$(git -C "${WORK}/vcs/std" rev-parse HEAD)" \
+                | git -C "${WORK}/vcs/std" apply --allow-empty - >&2 || {
+                echo "STD_DIR: the diff did not apply" >&2
+                rm -rf "${WORK}/vcs/std"
+                exit 1
+            }
+        fi
     fi
     echo "${WORK}/vcs"
 }

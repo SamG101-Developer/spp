@@ -3,6 +3,7 @@ module;
 
 module spp.codegen.builtins;
 import spp.analyse.utils.comp_time_intrinsics;
+import spp.analyse.utils.drop_utils;
 import spp.asts.boolean_literal_ast;
 import spp.asts.float_literal_ast;
 import spp.asts.integer_literal_ast;
@@ -61,6 +62,12 @@ namespace spp::codegen::builtins {
 
   static auto FunnelShift(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn;
 
+  static auto WideMul(const bool is_signed) -> LlvmImplFn;
+
+  static auto BytesMask(const bool match_byte) -> LlvmImplFn;
+
+  static auto Prefetch(const bool for_write) -> LlvmImplFn;
+
   static auto AtomicRmw(const AtomicRmwOp op) -> LlvmImplFn;
 
   static auto CoroIter(const bool reverse) -> LlvmImplFn;
@@ -76,6 +83,17 @@ namespace spp::codegen::builtins {
   /// A branch hint, lowered at the call site to the condition expected to be
   /// "expected".
   static auto Expect(const bool expected) -> decltype(LoweredFnImpl::CallSiteImpl);
+
+  /// "needs_drop[T]()" at compile time. The drop lookup resolves "Drop::drop" overloads, so it needs the mutable
+  /// scope manager and the metadata the generic "CompTimeFnImpl" signatures do not pass: it is a "CompTimeFn" of its
+  /// own.
+  namespace {
+    struct NeedsDropCompTimeFn final : ct::CompTimeFn {
+      auto Invoke(Vec<Unique<asts::ExpressionAst>> const &) -> Unique<asts::ExpressionAst> override {
+        return asts::BooleanLiteralAst::FromCppVal(analyse::utils::drop_utils::NeedsDrop(*GnTypeArgs[0], *Sm, Meta));
+      }
+    };
+  }
 }
 
 auto spp::codegen::builtins::Register(
@@ -180,6 +198,27 @@ auto spp::codegen::builtins::FunnelShift(
   };
 }
 
+auto spp::codegen::builtins::WideMul(
+  const bool is_signed) -> LlvmImplFn {
+  return [is_signed](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleWideMul(sm, proto, meta, ctx, ty, is_signed);
+  };
+}
+
+auto spp::codegen::builtins::BytesMask(
+  const bool match_byte) -> LlvmImplFn {
+  return [match_byte](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimpleBytesMask(sm, proto, meta, ctx, ty, match_byte);
+  };
+}
+
+auto spp::codegen::builtins::Prefetch(
+  const bool for_write) -> LlvmImplFn {
+  return [for_write](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+    fn_impls::SimplePrefetch(sm, proto, meta, ctx, ty, for_write);
+  };
+}
+
 auto spp::codegen::builtins::AtomicRmw(
   const AtomicRmwOp op) -> LlvmImplFn {
   return [op](auto sm, auto proto, auto meta, auto ctx, auto) {
@@ -269,14 +308,16 @@ auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
   Register(map, "std.mem.raw_buf.RawBuf.take_at", fn_impls::StdRawBufTakeAt);
   Register(map, "std.mem.raw_buf.RawBuf.place_at", fn_impls::StdRawBufPlaceAt);
   Register(map, "std.mem.raw_buf.RawBuf.shift", fn_impls::StdRawBufShift);
-  Register(map, "std.mem.raw_buf.RawBuf.clear_range", fn_impls::StdRawBufClearRange);
+  Register(map, "std.mem.raw_buf.RawBuf.clear_range", fn_impls::StdRawBufClearRange, nullptr, "T");
 
   Register(map, "std.mem.ops.size_of", fn_impls::StdMemOpsSizeOf, ct::MakeCompTimeFn<true>(ct::StdMemOpsSizeOf));
+  Register(map, "std.mem.ops.needs_drop", fn_impls::StdMemOpsNeedsDrop, MakeUnique<NeedsDropCompTimeFn>());
   Register(map, "std.mem.ops.size_of_val", fn_impls::StdMemOpsSizeOfVal);
   Register(map, "std.mem.ops.align_of", fn_impls::StdMemOpsAlignOf, ct::MakeCompTimeFn<true>(ct::StdMemOpsAlignOf));
   Register(map, "std.mem.ops.align_of_val", fn_impls::StdMemOpsAlignOfVal);
   Register(map, "std.mem.ops.replace", fn_impls::StdMemOpsReplace);
   Register(map, "std.mem.ops.swap", fn_impls::StdMemOpsSwap);
+  Register(map, "std.mem.ops.transmute", fn_impls::StdMemOpsTransmute);
   Register(map, "std.mem.ops.mem_copy", fn_impls::StdMemOpsMemCopy);
   Register(map, "std.mem.ops.mem_set", fn_impls::StdMemOpsMemSet);
   Register(map, "std.mem.ops.drop", fn_impls::StdMemOpsDrop, nullptr, "T");
@@ -530,6 +571,15 @@ auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
   Register(map, "std.intrinsics.ctpop", BitCount(llvm::Intrinsic::ctpop));
   Register(map, "std.intrinsics.fshl", FunnelShift(llvm::Intrinsic::fshl));
   Register(map, "std.intrinsics.fshr", FunnelShift(llvm::Intrinsic::fshr));
+
+  Register(map, "std.intrinsics.umul_wide", WideMul(false));
+  Register(map, "std.intrinsics.smul_wide", WideMul(true));
+  Register(map, "std.intrinsics.load_unaligned", fn_impls::StdIntrinsicsLoadUnaligned);
+  Register(map, "std.intrinsics.store_unaligned", fn_impls::StdIntrinsicsStoreUnaligned);
+  Register(map, "std.intrinsics.bytes_eq_mask", BytesMask(true));
+  Register(map, "std.intrinsics.bytes_msb_mask", BytesMask(false));
+  Register(map, "std.intrinsics.prefetch_read", Prefetch(false));
+  Register(map, "std.intrinsics.prefetch_write", Prefetch(true));
 
   Register(map, "std.intrinsics.sadd_overflow", OverflowIntrinsic(llvm::Intrinsic::sadd_with_overflow));
   Register(map, "std.intrinsics.uadd_overflow", OverflowIntrinsic(llvm::Intrinsic::uadd_with_overflow));

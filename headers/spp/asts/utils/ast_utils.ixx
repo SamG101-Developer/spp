@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.utils.ast_utils;
 import spp.asts.ast;
+import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
@@ -21,6 +22,19 @@ namespace spp::asts {
   inline auto CloneAs(Ast *clone) -> T* {
     if constexpr (std::derived_from<T, Ast>) { return static_cast<T*>(clone); }
     else { return dynamic_cast<T*>(clone); }
+  }
+
+  /// A shared clone of "ast" as a "T": its one-allocation
+  /// "CloneShared" where it has one, else its "Clone" wrapped as a
+  /// "Shared<T>", which sets an "enable_shared_from_this" base of "T".
+  template <typename T, typename A>
+  SPP_ATTR_ALWAYS_INLINE
+  inline auto CloneSharedOf(A const &ast) -> Shared<T> {
+    if (auto clone = ast.CloneShared(); clone != nullptr) {
+      if constexpr (std::derived_from<T, Ast>) { return static_shared_cast<T>(std::move(clone)); }
+      else { return dynamic_shared_case<T>(std::move(clone)); }
+    }
+    return Shared<T>(CloneAs<T>(ast.Clone().release()));
   }
 
   SPP_EXP_FUN template <typename T>
@@ -52,7 +66,7 @@ namespace spp::asts {
   inline auto AstCloneShared(Shared<T> const &ast) -> Shared<std::remove_cvref_t<T>> {
     if (ast == nullptr) { return nullptr; }
     using ResultT = std::remove_cvref_t<T>;
-    return Shared<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
+    return CloneSharedOf<ResultT>(*ast);
   }
 
   SPP_EXP_FUN template <typename T>
@@ -60,7 +74,7 @@ namespace spp::asts {
   inline auto AstCloneShared(T *ast) -> Shared<std::remove_cvref_t<T>> {
     if (ast == nullptr) { return nullptr; }
     using ResultT = std::remove_cvref_t<T>;
-    return Shared<ResultT>(CloneAs<ResultT>(ast->Clone().release()));
+    return CloneSharedOf<ResultT>(*ast);
   }
 
   SPP_EXP_FUN template <typename T>
@@ -113,30 +127,29 @@ namespace spp::asts {
 
   SPP_EXP_FUN auto AstBody(Ast *ast) -> Vec<Ast*>;
 
-  /**
-   * Check if an AST is a runtime member access ("a.b"), that is a @c PostfixExpressionAst whose operator is a
-   * @c PostfixExpressionOperatorRuntimeMemberAccessAst. Code generation uses this to know that an expression can
-   * produce the address of what it names, rather than only a value.
-   * @param[in] ast The AST to check.
-   * @return If the AST is a runtime member access expression.
-   */
+  /// Check if an expression is a postfix expression whose operator is a runtime
+  /// member access. For example, "a.b" is.
   SPP_EXP_FUN auto IsRuntimeMemberAccess(Ast const *ast) -> bool;
 
-  /**
-   * Check if an AST is a static member access ("a::b"), that is a @c PostfixExpressionAst whose operator is a
-   * @c PostfixExpressionOperatorStaticMemberAccessAst. The left-hand side is a type or a namespace.
-   * @param[in] ast The AST to check.
-   * @return If the AST is a static member access expression.
-   */
+  /// Check if an expression is a postfix expression whose operator is a static
+  /// member access. For example, "Type::b" is.
   SPP_EXP_FUN auto IsStaticMemberAccess(Ast const *ast) -> bool;
 
-  /**
-   * Check if an AST is a dereference ("a@"), that is a @c PostfixExpressionAst whose operator is a
-   * @c PostfixExpressionOperatorDerefAst.
-   * @param[in] ast The AST to check.
-   * @return If the AST is a dereference expression.
-   */
+  /// Check if an expression is a postfix expression whose operator is a deref
+  /// operation. For example, "a@" is.
   SPP_EXP_FUN auto IsDeref(Ast const *ast) -> bool;
+
+  /// The expression inside any parentheses around "ast": "(x)" is the place
+  /// "x", the same storage (code generation reads it straight from "x").
+  SPP_EXP_FUN auto Unparenthesised(Ast const *ast) -> Ast const*;
+
+  /// Check if an expression is a postfix expression whose operator is a
+  /// function call. For example, "a()" is.
+  SPP_EXP_FUN auto IsFuncCall(Ast const *ast) -> bool;
+
+  /// Check if an expression is a postfix expression whose operator is a not
+  /// expression. For example, "a.not" is.
+  SPP_EXP_FUN auto IsNotExpression(Ast const *ast) -> bool;
 
   /**
    * Bind an expression to a fresh local. @code let $uid = <expr>@endcode is appended to the prelude, and the expression

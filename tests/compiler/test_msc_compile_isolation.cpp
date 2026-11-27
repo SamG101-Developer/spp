@@ -6,39 +6,38 @@
 
 TEST(TestCompileIsolation, test_same_named_class_laid_out_again_in_a_later_compile) {
   build_temp_project(R"(
-    cls T { }
-    cls A { !public v: T }
-    cls B { }
-    type AB = A or B
+  cls T { }
+  cls A { !public v: T }
+  cls B { }
+  type AB = A or B
 
-    fun f(x: &AB) -> Void {
-        case x of {
-            is A(&v) { }
-            else { }
-        }
+  fun f(x: &AB) -> Void {
+    case x of {
+      is A(&v) { }
+      else { }
     }
+  }
 )");
 
   build_temp_project(R"(
-    cls B {
-        !public a: std::number::S32
-    }
+  cls B {
+    !public a: std::number::S32
+  }
 
-    cls C {
-        !public a: std::string::Str
-    }
+  cls C {
+    !public a: std::string::Str
+  }
 
-    cls A {
-        !public a: std::boolean::Bool
-    }
+  cls A {
+    !public a: std::boolean::Bool
+  }
 
-    sup A ext B { }
-    sup A ext C { }
+  sup A ext B { }
+  sup A ext C { }
 
-    fun f() -> std::void::Void {
-        let obj = A()
-        let x = obj.a
-        std::mem::ops::drop(obj)
-    }
+  fun f() -> std::void::Void {
+    let obj = A()
+    let x = obj.a
+  }
 )");
 }

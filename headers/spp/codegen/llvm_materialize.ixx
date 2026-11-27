@@ -12,8 +12,7 @@ use(spp::asts, struct IdentifierAst);
 
 namespace spp::codegen {
   /// A single place to materialise anything at the LLVM level, where we might
-  /// need to hand out an address to a temporary. Todo: This might be dead code
-  /// now that the linear type system has been tightened.
+  /// need to hand out an address to a temporary.
   SPP_EXP_FUN auto LlvmMaterialize(
     ExpressionAst &ast, ScopeManager *sm, CompilerMetaData *meta,
     LlvmCtx *ctx) -> IdentifierAst*;

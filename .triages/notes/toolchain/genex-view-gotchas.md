@@ -1,7 +1,7 @@
 ---
 name: genex-view-gotchas
 description: "Recurring genex (GenEx lib) view/pipeline compile pitfalls on the spp compiler and how to fix them"
-updated: 2026-11-01
+updated: 2026-11-25
 ---
 
 The `spp` compiler uses the GenEx range library (installed at `/usr/local/lib/cmake/GenEx/modules/genex/`, its own `genex::` concepts, NOT `std::ranges`). Several genex limitations cause hard compile errors when migrating pipelines; each has a standard fix:
@@ -17,5 +17,15 @@ The `spp` compiler uses the GenEx range library (installed at `/usr/local/lib/cm
 - **`join_with` needs a non-const range of containers** (GenEx `b5c0fc1`): its `inner_it` is `iterator_t<iter_value_t<I>>`, which drops `const`, so a `const Vec<Str>`, or a temporary `Vec<Str>` piped in (`owning_view::begin` runs through `const`), fails with "no match for `operator=`" inside `join_with.cpp`. **Fix:** hold the `Vec` in a non-const named local, then pipe that (`llvm_mangle.cpp`). The real fix is `iter_reference_t<I>` in GenEx.
 
 - **Since `b5c0fc1`, `views::cast_dynamic<T*>` and `actions::pop_front` are closure objects**: write them without `()`. `cast_dynamic<T*>()` is "no match for call", and the variables it fed then report `position` and "expected primary-expression" errors further down.
+
+- **`views::enumerate` yields the underlying reference** since GenEx `fb508b9` (2026-11-25): `pair<size_t,
+  iter_reference_t<I>>`, as `std::views::enumerate` does, so a `Vec` or `Span` of `Unique<T>` enumerates directly
+  (the element is a `Unique<T> const&`; `.get()` where a raw pointer is wanted). Before, it copied each element
+  (`make_pair`), and a `unique_ptr` failed with "no matching function for call to `std::pair<...>`", so every such
+  loop piped through `views::ptr` first; those are gone (2026-11-25). A by-value binding (`auto [i, x]`) now aliases
+  the element.
+- In a `.cpp` helper template over such ranges, give the element pointer a concrete type (`p->To<T>()` on a dependent
+  `p` needs `template`), and define the template above `SPP_MOD_BEGIN` ("conflicting declaration ... in global
+  module").
 
 `Unique<T>` = `std::unique_ptr<T>` (headers/spp/utils/types.ixx); a custom `Unique` with capital `.Release()` is commented out — don't write `.Release()`, use `.release()`.

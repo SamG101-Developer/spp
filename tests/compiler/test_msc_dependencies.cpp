@@ -60,7 +60,7 @@ namespace {
     auto Modules(spp::compiler::TestScope const &tests = {}) const -> spp::Vec<spp::Str> {
       auto tree = spp::compiler::ModuleTree(Root, spp::compiler::BuildMode::DEV, tests);
       auto paths = spp::Vec<spp::Str>();
-      for (auto const *const m : tree.GetModules()) {
+      for (auto const &m : tree.ViewModules()) {
         paths.emplace_back(m->Path.lexically_relative(Root).generic_string());
       }
       return paths;
@@ -532,7 +532,7 @@ TEST(Dependencies, test_module_tree_reads_a_transitive_dependency) {
   ASSERT_TRUE(remotes.Fetch());
   project.Write("vcs/b/src/b/kept.spp");
   auto tree = spp::compiler::ModuleTree(project.Root);
-  const auto modules = tree.GetModules();
+  const auto modules = tree.ViewModules();
   ASSERT_EQ(modules.size(), 1uz);
   EXPECT_EQ(modules[0]->Owner, spp::Str("b"));
   EXPECT_EQ(modules[0]->NsParts, (spp::Vec<spp::Str>{"b", "kept"}));
@@ -660,7 +660,7 @@ TEST(Dependencies, test_modules_know_what_their_package_declares) {
   project.Write("vcs/b/src/b/x.spp");
   auto tree = spp::compiler::ModuleTree(project.Root);
   const auto declares_of = [&](spp::Str const &root) {
-    for (auto const *const m : tree.GetModules()) {
+    for (auto const &m : tree.ViewModules()) {
       if (m->NsParts.front() == root) { return m->Declares; }
     }
     return spp::Vec<spp::Str>{"none"};
@@ -677,7 +677,7 @@ TEST(Dependencies, test_google_test_code_replaces_main_when_it_is_not_the_first_
   project.Write("src/main.spp", "second");
   const auto tree = spp::compiler::ModuleTree::ForCppGoogleTest(
     project.Root, spp::compiler::BuildMode::DEV, "replaced");
-  const auto modules = tree->GetModules();
+  const auto modules = tree->ViewModules();
   ASSERT_EQ(modules.size(), 2uz);
   EXPECT_EQ(modules[0]->Path, project.Root / "src" / "a.spp");
   EXPECT_EQ(modules[0]->Code, "first");

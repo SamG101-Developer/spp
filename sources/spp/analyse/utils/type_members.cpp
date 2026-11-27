@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.member_lookup;
@@ -102,7 +103,7 @@ namespace spp::analyse::utils::type_members {
    * to walk separately - one over the symbol table, one over the class prototype's members, and only one of them
    * skipping generic symbols - so a single generic-typed attribute silently desynchronised them.
    * @param cls_sym The symbol of the type whose attributes are wanted.
-   * @return One pair per attribute, ordered by the type itself then its super scopes.
+   * @return One pair per attribute, ordered by the type itself then its super scopes, each in declaration order.
    */
   SPP_ATTR_HOT static auto CollectAttrSymbols(
     TypeSymbol const &cls_sym)
@@ -190,11 +191,18 @@ SPP_ATTR_HOT auto spp::analyse::utils::type_members::CollectAttrSymbols(
   auto all_scopes = Vec{cls_sym.LinkedScope};
   all_scopes.append_range(cls_sym.LinkedScope->GetSupScopes());
 
+  // Walked in the order the class declares them, each symbol found in that class's own table: the table's order is
+  // incidental (re-binding a comp parameter on instantiation moves entries), and a "!conv("C")" layout and
+  // "transmute" read this order.
   auto attrs = Vec<Pair<Scope*, VariableSymbol*>>{};
   for (auto *sup_scope : all_scopes) {
-    if (AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
-    for (auto *sym : sup_scope->GetAllVarSymbols(true)) {
-      if (sym->Kind != VariableKind::Attribute) { continue; }
+    const auto cls = AstAs<ClassPrototypeAst>(sup_scope->AstNode);
+    if (cls == nullptr) { continue; }
+    for (auto const &member : cls->Impl->Members) {
+      const auto attr = member->To<ClassAttributeAst>();
+      if (attr == nullptr) { continue; }
+      const auto sym = sup_scope->FindVarSymbol(attr->Name.get(), true, false);
+      if (sym == nullptr or sym->Kind != VariableKind::Attribute) { continue; }
       attrs.push_back(MakePair(sup_scope, sym));
     }
   }
@@ -447,6 +455,27 @@ auto spp::analyse::utils::type_members::SuperClsReads(
   return out;
 }
 
+auto spp::analyse::utils::type_members::UnifyInHierarchy(
+  const scopes::TypeId given, Scope const &given_scope, const scopes::TypeId declared, Scope const &declared_scope,
+  scopes::GenericSubst &bindings, const bool check_variant, const bool check_constraints)
+  -> bool {
+  if (scopes::UnifyTypeIds(given, declared, given_scope, declared_scope, bindings, check_variant, check_constraints)) {
+    return true;
+  }
+  auto const *const given_sym = TypeRef::Of(given, given_scope).Symbol;
+  if (given_sym == nullptr or given_sym->LinkedScope == nullptr) { return false; }
+  for (auto const &[cls, cls_scope] : SuperClsReads(given_sym->LinkedScope->GetSupScopes())) {
+    if (cls.Id == nullptr) { continue; }
+    auto sup_bindings = scopes::GenericSubst();
+    if (scopes::UnifyTypeIds(
+      scopes::BareOf(cls.Id), declared, *cls_scope, declared_scope, sup_bindings, check_variant, check_constraints)) {
+      bindings = std::move(sup_bindings);
+      return true;
+    }
+  }
+  return false;
+}
+
 auto spp::analyse::utils::type_members::FatPointerWidthOf(
   TypeRef const &ref, Scope const &scope)
   -> std::size_t {
@@ -543,6 +572,19 @@ auto spp::analyse::utils::type_members::VariantMembers(
 }
 
 /// [CHECKED]
+auto spp::analyse::utils::type_members::VariantMemberStep(
+  TypeRef const &member) -> spp::utils::InternedId {
+  return spp::utils::Intern("<" + member.Symbol->AsBound()->FqName()->ToString() + ">");
+}
+
+auto spp::analyse::utils::type_members::VariantMemberAt(
+  TypeRef const &ref, const spp::utils::InternedId step, Scope const &scope) -> Opt<TypeRef> {
+  for (auto const &member : VariantMemberRefs(ref, scope)) {
+    if (member.Symbol != nullptr and VariantMemberStep(member) == step) { return member; }
+  }
+  return Nullopt;
+}
+
 auto spp::analyse::utils::type_members::VariantMemberRefs(
   TypeRef const &ref, Scope const &scope) -> Vec<TypeRef> {
   // Never types won't have variant members so guard against

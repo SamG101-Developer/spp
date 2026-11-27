@@ -13,7 +13,6 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
 import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.fn_values;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_join;
@@ -108,6 +107,7 @@ auto spp::asts::ClosureExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Body));
   c->_TrueRetType = _TrueRetType;
   c->_MockType = _MockType;
+  c->_Drops = _Drops;
   return c;
 }
 
@@ -203,12 +203,6 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
       meta->EnclosingFnRetType = ReturnType;
       meta->EnclosingFnSourceRetType = written_ret;
     }
-
-    // A "ret" or "?" in the body leaves the closure rather
-    // than the function the closure is written in, so a
-    // closure written inside a deferred expression is past
-    // the point that restriction applies to.
-    meta->WithinDeferTok = nullptr;
 
     // A closure that is defined inside of a loop cannot touch
     // the loop with "exit"/"skip" as it's not actually running
@@ -309,15 +303,14 @@ auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
 
     // Check the memory of the body of the closure. A "ret" inside
     // it leaves the closure, not the function the closure is written
-    // in, so the linearity walk stops at the closure's own scope.
+    // in, so the drops it collects stop at the closure's own scope.
     sm->MoveToNextScope();
     Body->Stage8_CheckMemory(sm, meta);
 
-    // A body that falls off its end discharges its parameters there,
-    // as a function's does.
+    // A body that falls off its end drops what its parameters still
+    // own there, as a function's does.
     if (not Body->Diverges(sm, meta)) {
-      linear_utils::CheckScopeExit(
-        *outer_scope, *Body, "Closure end", *sm, meta);
+      _Drops.End = drop_utils::EndRegion(*outer_scope, *Body, *sm, meta);
     }
 
     // Leave both closure scopes reading as Stage 7 left them. They
@@ -337,7 +330,7 @@ auto spp::asts::ClosureExpressionAst::_BuildDropCaptures(
   // owns nothing, and a value needing no drop leaves nothing to do. So a
   // closure with neither has no destructor at all.
   auto owned = Vec<Pair<unsigned, TypeRef>>();
-  for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::enumerate) {
     if (capture->Conv != nullptr) { continue; }
     const auto cap_ref = TypeRef::Of(*capture->InferType(sm, meta), *sm->CurrentScope);
     if (drop_utils::NeedsDrop(cap_ref, *sm, meta)) { owned.emplace_back(codegen::ClosureEnvCaptureIndex(i), cap_ref); }
@@ -446,6 +439,8 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     sm->CurrentScope->AstNode = this;
     _LlvmFn = MakeShared<codegen::LlvmFnWrapper>(llvm_fn);
     meta->EnclosingFnScope = sm->CurrentScope;
+    const auto closure_temporaries = codegen::TemporaryDepth(ctx);
+    meta->TemporaryBase = closure_temporaries;
     meta->EnclosingFnRetType = _TrueRetType;
     meta->EnclosingFnSourceRetType = Source._OriginalRetType;
     meta->EnclosingFnFlavour = Tok.get();
@@ -468,29 +463,38 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
       auto body_val = Body->Stage11_CodeGen(sm, meta, ctx);
 
       // Terminate the closure function with a return of the body's
-      // value (closures return their body implicitly). A borrow
-      // returned as the value it points at - a copyable capture
-      // like "|caps &a| -> S32 { a }" - is read through first,
-      // the way a borrowed argument is for a by-value parameter.
-      // A closure never returns a borrow (second class), so a
-      // borrowed body is always one of these.
+      // value (closures return their body implicitly), as a "ret"
+      // returns one: the value is made first, while everything it
+      // reads is alive. A borrow returned as the value it points
+      // at - a copyable capture like "|caps &a| -> S32 { a }", or
+      // "|v: Vec[S32]| -> S32 { v[0_uz] }" - is read through, the
+      // way a borrowed argument is for a by-value parameter (a
+      // closure never returns a borrow: second class). Then what
+      // the body still holds is dropped: an expression body's
+      // temporaries (a block drops its own), then the parameters
+      // and captures still owned.
       if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
         const auto body_ref = Body->InferTypeRef(sm, meta);
         if (body_val != nullptr and body_ref.IsBorrowed() and not llvm_ret_ty->isVoidTy()) {
           body_val = ctx->Builder.CreateLoad(llvm_ret_ty, body_val, "closure.ret.copy" + uid);
         }
 
-        // The body's value is returned as a "ret" would return it,
-        // so it is coerced the same way: a member into a variant
-        // return type, and a named function into a function type.
+        // Coerced as a "ret" coerces: a member into a variant return
+        // type, and a named function into a function type.
         if (body_val != nullptr and not llvm_ret_ty->isVoidTy() and _TrueRetType != nullptr) {
           const auto ret_ref = TypeRef::Of(*_TrueRetType, *sm->CurrentScope);
           body_val = codegen::CoerceToSlot(body_val, ret_ref, body_ref, *sm, "closure.ret.variant" + uid, ctx);
         }
+        codegen::EmitTemporaryDrops(closure_temporaries, sm, meta, ctx);
+        codegen::EmitOwnedDrops(*outer_scope, _Drops.End, this, sm, meta, ctx);
         if (llvm_ret_ty->isVoidTy()) { ctx->Builder.CreateRetVoid(); }
         else if (body_val != nullptr) { ctx->Builder.CreateRet(body_val); }
         else { ctx->Builder.CreateUnreachable(); }
       }
+
+      // The closure's temporaries belong to its own function: none is
+      // left for the statement the closure is written in.
+      codegen::PopTemporaries(closure_temporaries, ctx);
 
       // Leave both closure scopes reading as Stage 7 left them
       // (see Stage 8).
@@ -517,7 +521,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     ? static_cast<llvm::Value*>(llvm::ConstantPointerNull::get(llvm::PointerType::get(*ctx->Context, 0)))
     : codegen::EmitNewClosureEnv(closure_env_ty, on_heap, drop_captures, "closure.env" + uid, ctx);
 
-  for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::enumerate) {
     const auto field_ptr = ctx->Builder.CreateStructGEP(
       closure_env_ty, env, codegen::ClosureEnvCaptureIndex(i), "closure.env.gep." + std::to_string(i));
 
@@ -574,48 +578,23 @@ auto spp::asts::ClosureExpressionAst::_FnType(
   using generate::common_types::FunMutType;
   using generate::common_types::FunMovType;
   using generate::common_types::TupleType;
-  // Create the type as a nullptr, so it can be analysed
-  // later.
-  Shared<TypeAst> ty = nullptr;
+  auto param_types = PcGroup->ParamGroup->Params
+    | genex::views::transform([](auto const &x) { return x->Type; })
+    | genex::to<Vec>();
+  auto args = TupleType(PosStart(), std::move(param_types));
 
-  auto is_ref_cap = [](auto const &cap) { return cap->Conv and *cap->Conv == ConventionTag::REF; };
-  auto is_mut_cap = [](auto const &cap) { return cap->Conv and *cap->Conv == ConventionTag::MUT; };
-
-  // If there are no captures, return a FunRef type with
-  // the parameters and return type.
-  if (PcGroup->CaptureGroup->Captures.empty()) {
-    auto param_types = PcGroup->ParamGroup->Params
-      | genex::views::transform([](auto const &x) { return x->Type; })
-      | genex::to<Vec>();
-    ty = FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), _TrueRetType);
-  }
-
-  // If there are captures, but no borrowed captures, return
-  // a FunMov type with the parameters and return type.
-  else if (genex::any_of(PcGroup->CaptureGroup->Captures, [](auto const &x) { return x->Conv == nullptr; })) {
-    auto param_types = PcGroup->ParamGroup->Params
-      | genex::views::transform([](auto const &x) { return x->Type; })
-      | genex::to<Vec>();
-    ty = FunMovType(PosStart(), TupleType(PosStart(), std::move(param_types)), _TrueRetType);
-  }
-
-  // If there are mutably borrowed captures, return a FunMut
-  // type with the parameters and return type.
-  else if (genex::any_of(PcGroup->CaptureGroup->Captures, is_mut_cap)) {
-    auto param_types = PcGroup->ParamGroup->Params
-      | genex::views::transform([](auto const &x) { return x->Type; })
-      | genex::to<Vec>();
-    ty = FunMutType(PosStart(), TupleType(PosStart(), std::move(param_types)), _TrueRetType);
-  }
-
-  // If there are immutable borrowed captures, return a FunRef
-  // type with the parameters and return type.
-  else if (genex::any_of(PcGroup->CaptureGroup->Captures, is_ref_cap)) {
-    auto param_types = PcGroup->ParamGroup->Params
-      | genex::views::transform([](auto const &x) { return x->Type; })
-      | genex::to<Vec>();
-    ty = FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), _TrueRetType);
-  }
+  // The most constraining capture decides the kind: any by-value
+  // capture makes a FunMov, a "&mut" one a FunMut, and "&" ones or
+  // none a FunRef. A copied capture still makes a FunMov: its env
+  // is on the heap, and a FunRef is Copy and never dropped, so the
+  // env would leak; the consuming call is what frees it.
+  auto const &caps = PcGroup->CaptureGroup->Captures;
+  const auto is_mut_cap = [](auto const &cap) { return cap->Conv and *cap->Conv == ConventionTag::MUT; };
+  const auto is_mov_cap = [](auto const &cap) { return cap->Conv == nullptr; };
+  const auto ty =
+    genex::any_of(caps, is_mov_cap) ? FunMovType(PosStart(), std::move(args), _TrueRetType) :
+    genex::any_of(caps, is_mut_cap) ? FunMutType(PosStart(), std::move(args), _TrueRetType) :
+    FunRefType(PosStart(), std::move(args), _TrueRetType);
 
   // Analyse the type and return it.
   ty->Stage7_AnalyseSemantics(sm, meta);

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_expression_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
@@ -53,6 +54,18 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
   /// "else" branch returns.
   bool LoweredFromTryOperator = false;
 
+  /// Set when nothing takes this "case"'s value (a statement, a
+  /// loop body's final one: "expr_utils::MarkValueDiscarded"). Its
+  /// branches need not agree on a type: each one's value is
+  /// discarded, and dropped as that ("expr_utils::DiscardValue").
+  bool ValueDiscarded = false;
+
+  /// Record the drops that need to take place when no branches match. This is
+  /// only applicable for non-exhaustive "case of" blocks.
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> FallThrough;
+  } _Drops;
+
   CaseExpressionAst(
     decltype(TokCase) &&tok_case,
     decltype(Cond) &&cond,
@@ -102,4 +115,13 @@ private:
   /// before the branches compare it.
   Shared<TypeAst> _SubjectType;
   Shared<VariableSymbol> _SubjectValue;
+
+  /// The "case" is over a temporary that falling through every
+  /// branch keeps, so it is dropped on that path.
+  bool _KeepsTemporaryOnFallThrough = false;
+
+  /// Without "of", the condition is what the first branch tests
+  /// directly (against "true", with no operator). "TokOf" is filled
+  /// in either way, so the form is told apart by that first branch.
+  SPP_ATTR_NODISCARD auto _TestsConditionDirectly() const -> bool;
 };

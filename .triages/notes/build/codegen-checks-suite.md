@@ -1,7 +1,7 @@
 ---
 name: codegen-checks-suite
 description: "tests/codegen/run.sh runs the check-*.sh hardening checks (~3 min, ~60 builds); new checks go on lib.sh; not part of gtest"
-updated: 2026-11-17
+updated: 2026-11-24
 ---
 
 Since 2026-10-18 (codegen-test-plan.md P1-P4) the tests are split by suite: `tests/compiler/` is the gtest suite
@@ -19,7 +19,11 @@ macos windows` line (second line) names, Linux alone without one; `run.sh` skips
 `check-self.sh`. A check made portable gets the line; `lib.sh`'s FFI builder (`add_ffi`, `cc -shared … .so`) and GNU
 `timeout` (`run_exe`) are still Linux's. The project is named after its directory, and so is the executable. `SPPC_LIB=`
 works for every check. std is copied from `tests/test_outputs/vcs`, or cloned once per script when there is no fixture
-(CI).
+(CI). **`STD_DIR=../spp-stl`** builds every check against a local SPP-STL checkout instead: its tracked changes
+(committed or not, binaries included; new untracked files are not carried) are applied over a copy of master's
+checkout, so each build's own pull of master has nothing to merge. The fixture's copy is pulled to master first: a
+stale one made every build fail ("local changes would be overwritten by merge"). Use it for a compiler change that
+lands with a std change.
 
 CI (P6): the `codegen` cell of `_test.yaml` (`_build.yaml` input `codegen: true`, on the pr.yaml/post_merge.yaml Linux
 GCC lanes) runs `bash tests/codegen/run.sh build/spp`. Advisory (`continue-on-error`) until a green run proves the

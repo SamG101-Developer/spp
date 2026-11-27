@@ -51,6 +51,7 @@ TEST(TestSourcePositions, test_a_line_after_a_multi_line_string) {
   const auto z = spp::asts::IdentifierAst(file->PositionOf(index), "z");
   const auto quoted = file->ErrorAst(&z, "", "here");
   EXPECT_NE(quoted.find("on line 3"), spp::Str::npos) << quoted;
+  EXPECT_NE(quoted.find("'positions.spp:3:5'"), spp::Str::npos) << quoted;
   EXPECT_NE(quoted.find("let z = 1"), spp::Str::npos) << quoted;
   EXPECT_EQ(quoted.find("b\""), spp::Str::npos) << quoted;
 }

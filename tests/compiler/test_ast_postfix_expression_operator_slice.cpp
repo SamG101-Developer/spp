@@ -4,107 +4,101 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_invalid_slicing_on_non_sliceable_type,
   SppIdentifierUnknownError, R"(
-    fun f() -> Void {
-        123[0 to 2]
-    }
+  fun f() -> Void {
+    123[0 to 2]
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_valid_slicing_ref, R"(
-    fun f(a: Vec[S32]) -> Void {
-        {
-            let x = a[0_uz to 2_uz]
-        }
-        std::mem::ops::drop(a)
+  fun f(a: Vec[S32]) -> Void {
+    {
+      let x = a[0_uz to 2_uz]
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_valid_slicing_mut, R"(
-    fun f(mut a: Vec[S32]) -> Void {
-        {
-            let x = a[mut 0_uz to 2_uz]
-        }
-        std::mem::ops::drop(a)
+  fun f(mut a: Vec[S32]) -> Void {
+    {
+      let x = a[mut 0_uz to 2_uz]
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_valid_slicing_ref_infer_type, R"(
-    fun f(a: Vec[S32]) -> Void {
-        {
-            let x: &View[S32] = a[0_uz to 2_uz]
-        }
-        std::mem::ops::drop(a)
+  fun f(a: Vec[S32]) -> Void {
+    {
+      let x: &View[S32] = a[0_uz to 2_uz]
     }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_valid_slicing_mut_infer_type, R"(
-    fun f(mut a: Vec[S32]) -> Void {
-        {
-            let x: &mut View[S32] = a[mut 0_uz to 2_uz]
-        }
-        std::mem::ops::drop(a)
+  fun f(mut a: Vec[S32]) -> Void {
+    {
+      let x: &mut View[S32] = a[mut 0_uz to 2_uz]
     }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_invalid_slicing_bound_type_mismatch,
   SppFunctionCallNoValidSignaturesError, R"(
-    fun f(a: Vec[S32]) -> Void {
-        let x: &View[S32] = a["hello" to 2_uz]
-    }
+  fun f(a: Vec[S32]) -> Void {
+    let x: &View[S32] = a["hello" to 2_uz]
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_invalid_slicing_a_function,
   SppMemberAccessNonIndexableError, R"(
-    cls Holder[T] { }
+  cls Holder[T] { }
 
-    sup [T] Holder[T] {
-        !public fun pick() -> U8 { ret 7_u8 }
-    }
+  sup [T] Holder[T] {
+    !public fun pick() -> U8 { ret 7_u8 }
+  }
 
-    fun f() -> Void {
-        let x = Holder[S32]::pick[0_uz to 1_uz]
-    }
+  fun f() -> Void {
+    let x = Holder[S32]::pick[0_uz to 1_uz]
+  }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
-  test_invalid_slicing_an_early_return,
-  SppLinearValueNotConsumedError, R"(
-    fun g() -> Opt[Vec[U64]] { ret None }
-    fun f() -> Opt[U64] {
-        {
-            let s = g()?[0_uz to 1_uz]
-        }
-        ret None
+  test_valid_slicing_an_early_return, R"(
+  fun g() -> Opt[Vec[U64]] { ret None }
+  fun f() -> Opt[U64] {
+    {
+      let s = g()?[0_uz to 1_uz]
     }
+    ret None
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_valid_slicing_open_ended_bounds, R"(
-    fun f(a: Vec[S32]) -> Void {
-        {
-            let x = a[to 2_uz]
-        }
-        {
-            let y = a[1_uz to]
-        }
-        {
-            let z = a[to]
-        }
-        std::mem::ops::drop(a)
+  fun f(a: Vec[S32]) -> Void {
+    {
+      let x = a[to 2_uz]
     }
+    {
+      let y = a[1_uz to]
+    }
+    {
+      let z = a[to]
+    }
+  }
 )");
 
 // An instance's default is read from the template's ("ReadExpr", monomorphization.cpp), and an open-ended slice's
@@ -112,11 +106,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_valid_open_ended_slice_as_a_generic_function_default, R"(
-    fun f[T](x: T, s: &StrView = "hello"[to 2_uz]) -> T {
-        ret x
-    }
+  fun f[T](x: T, s: &StrView = "hello"[to 2_uz]) -> T {
+    ret x
+  }
 
-    fun g() -> Void {
-        let y = f[S32](1)
-    }
+  fun g() -> Void {
+    let y = f[S32](1)
+  }
 )");

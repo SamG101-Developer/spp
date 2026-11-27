@@ -65,136 +65,136 @@ TEST(TestCfg, test_keys_are_the_annotations_parameters) {
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestCfg,
   test_valid_unmet_function_is_dropped, R"(
-    !cfg(mode="!dev|rel")
-    fun f() -> Void { no_such_function() }
+  !cfg(mode="!dev|rel")
+  fun f() -> Void { no_such_function() }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCfg,
   test_invalid_met_function_is_kept,
   SppIdentifierUnknownError, R"(
-    !cfg(mode="dev|rel")
-    fun f() -> Void { no_such_function() }
+  !cfg(mode="dev|rel")
+  fun f() -> Void { no_such_function() }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCfg,
   test_invalid_every_key_must_be_met,
   SppIdentifierUnknownError, R"(
-    !cfg(mode="dev|rel", pointer_width="16|32|64")
-    fun f() -> Void { no_such_function() }
+  !cfg(mode="dev|rel", pointer_width="16|32|64")
+  fun f() -> Void { no_such_function() }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestCfg,
   test_valid_one_unmet_key_drops, R"(
-    !cfg(mode="dev|rel", pointer_width="!16|32|64")
-    fun f() -> Void { no_such_function() }
+  !cfg(mode="dev|rel", pointer_width="!16|32|64")
+  fun f() -> Void { no_such_function() }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestCfg,
   test_valid_alias_chosen_by_condition, R"(
-    !cfg(mode="dev|rel") type T = S32
-    !cfg(mode="!dev|rel") type T = Bool
-    fun f() -> T { ret 1_s32 }
+  !cfg(mode="dev|rel") type T = S32
+  !cfg(mode="!dev|rel") type T = Bool
+  fun f() -> T { ret 1_s32 }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestCfg,
   test_valid_unmet_attribute_is_dropped, R"(
-    cls A {
-        x: S32
-        !cfg(mode="!dev|rel") y: NoSuchType
-    }
+  cls A {
+    x: S32
+    !cfg(mode="!dev|rel") y: NoSuchType
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestCfg,
   test_valid_unmet_sup_method_is_dropped, R"(
-    cls A { }
-    sup A {
-        !cfg(mode="!dev|rel")
-        fun g(&self) -> Void { no_such_function() }
-    }
+  cls A { }
+  sup A {
+    !cfg(mode="!dev|rel")
+    fun g(&self) -> Void { no_such_function() }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCfg,
   test_invalid_unknown_key,
   SppCfgUnknownKeyError, R"(
-    !cfg(planet="earth")
-    fun f() -> Void { }
+  !cfg(planet="earth")
+  fun f() -> Void { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCfg,
   test_invalid_unknown_value,
   SppCfgInvalidValueError, R"(
-    !cfg(os="no_such_os")
-    fun f() -> Void { }
+  !cfg(os="no_such_os")
+  fun f() -> Void { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCfg,
   test_invalid_unknown_alternative,
   SppCfgInvalidValueError, R"(
-    !cfg(mode="!dev|debug")
-    fun f() -> Void { }
+  !cfg(mode="!dev|debug")
+  fun f() -> Void { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCfg,
   test_invalid_value_not_a_string,
   SppCfgInvalidValueError, R"(
-    !cfg(pointer_width=64)
-    fun f() -> Void { }
+  !cfg(pointer_width=64)
+  fun f() -> Void { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCfg,
   test_invalid_unmet_condition_still_checked,
   SppCfgInvalidValueError, R"(
-    !cfg(mode="!dev|rel", os="no_such_os")
-    fun f() -> Void { }
+  !cfg(mode="!dev|rel", os="no_such_os")
+  fun f() -> Void { }
 )");
 
 // A whole "sup" block, as std's "F128" ones are compiled only where the type is.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestCfg,
   test_valid_unmet_sup_block_is_dropped, R"(
-    !cfg(mode="!dev|rel")
-    sup NoSuchType {
-        fun g(&self) -> Void { no_such_function() }
-    }
+  !cfg(mode="!dev|rel")
+  sup NoSuchType {
+    fun g(&self) -> Void { no_such_function() }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCfg,
   test_invalid_met_sup_block_is_kept,
   SppIdentifierUnknownError, R"(
-    cls A { }
-    !cfg(mode="dev|rel")
-    sup A {
-        fun g(&self) -> Void { no_such_function() }
-    }
+  cls A { }
+  !cfg(mode="dev|rel")
+  sup A {
+    fun g(&self) -> Void { no_such_function() }
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestCfg,
   test_valid_unmet_sup_ext_block_is_dropped, R"(
-    cls A { }
-    !cfg(mode="!dev|rel")
-    sup A ext NoSuchType { }
+  cls A { }
+  !cfg(mode="!dev|rel")
+  sup A ext NoSuchType { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCfg,
   test_invalid_unmet_sup_condition_still_checked,
   SppCfgInvalidValueError, R"(
-    cls A { }
-    !cfg(mode="!dev|rel", os="no_such_os")
-    sup A { }
+  cls A { }
+  !cfg(mode="!dev|rel", os="no_such_os")
+  sup A { }
 )");
 
 // A sup block takes only annotations whose target includes "Annotation::sup_block".
@@ -202,7 +202,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCfg,
   test_invalid_other_annotation_on_sup_block,
   SppCalledAnnotationAppliedToInvalidAstError, R"(
-    cls A { }
-    !public
-    sup A { }
+  cls A { }
+  !public
+  sup A { }
 )");

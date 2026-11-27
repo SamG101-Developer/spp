@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.postfix_expression_operator_function_call_ast;
 import spp.analyse.scopes.type_key;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast_kind;
 import spp.asts.convention_ast;
 import spp.asts.postfix_expression_operator_ast;
@@ -26,6 +27,7 @@ use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct PostfixExpressionAst);
+use(spp::asts, struct PostfixExpressionOperatorStaticMemberAccessAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct TypeAst);
@@ -50,6 +52,12 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
   struct {
     Ast *OriginalExpr;
   } Source;
+
+  /// Handle drops for temporaries created from folding, so they all last as
+  /// long as the fold.
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> Fold;
+  } _Drops;
 
   explicit PostfixExpressionOperatorFunctionCallAst(
     decltype(GnArgGroup) &&generic_arg_group,
@@ -166,11 +174,12 @@ private:
   /// is no place, folded or not. Each call reads the temporaries.
   Vec<Unique<LetStatementInitializedAst>> _FoldTemps;
 
-  /// A temporary in "_FoldTemps" its calls do not consume (a
+  /// The temporaries in "_FoldTemps" its calls do not take (a
   /// receiver or argument only borrowed, or any, when no call reads
-  /// it) is consumed by the fold after them, as a linear value must
-  /// be ("expr_utils::DropCall").
-  Vec<Unique<PostfixExpressionAst>> _FoldDrops;
+  /// it), and what of them is still owned after the calls: dropped
+  /// there ("_Drops.Fold"), so each lasts as long as
+  /// the fold.
+  Vec<Shared<IdentifierAst>> _FoldUnconsumed;
 
   /// A template's open packs this fold is over ("j(xs).."): one call is checked, on their first element, and the memory
   /// checks take each pack whole (pack-design.md phase 7).
@@ -187,6 +196,22 @@ private:
   /// Step the walk past "_FoldArgsScope", before the temporaries'
   /// and the folded calls' scopes (it was created before them).
   auto _SkipFoldArgsScope(ScopeManager *sm) const -> void;
+
+  /// Generate every argument, in order, for what it does, and give back the
+  /// ones that are values, each with its value: a "Void" one is no argument
+  /// ("FunctionCallArgumentGroupAst::IsVoidArg"), so the call is not given it.
+  auto _ArgValues(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const
+    -> Vec<Pair<FunctionCallArgumentAst*, llvm::Value*>>;
+
+  /// The callee's static access, when it left its receiver for this
+  /// call to infer ("Vec" in "Vec::from(&[1, 2])"); null otherwise.
+  SPP_ATTR_NODISCARD auto _DeferredStaticAccess() const -> PostfixExpressionOperatorStaticMemberAccessAst*;
+
+  /// Write the deferred receiver as the analysed arguments infer it
+  /// ("overload_resolution::InferTemplateReceiver"), and analyse the
+  /// callee again; as written when nothing is inferred.
+  auto _InferStaticReceiver(
+    PostfixExpressionOperatorStaticMemberAccessAst &access, ScopeManager *sm, CompilerMetaData *meta) -> void;
 
   Ast *_IsAsync;
   bool _IsCoroAndAutoResume;

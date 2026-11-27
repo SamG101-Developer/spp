@@ -70,8 +70,13 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
   /// The types of these elements, which is used by "_BuildType" when creating
   /// the type to cache or return (like for the type inference methods).
   static auto ElementTypes(
-    Vec<ExpressionAst*> const &elems, ScopeManager *sm, CompilerMetaData *meta,
-    bool strip_conventions = false) -> Vec<Shared<TypeAst>>;
+    Span<Unique<ExpressionAst> const> elems, ScopeManager *sm, CompilerMetaData *meta) -> Vec<Shared<TypeAst>>;
+
+  /// The types one element adds to "out": a spread moved from adds
+  /// its pack's, anything else its own ("ElementTypes" per element).
+  static auto AppendElementTypes(
+    Vec<Shared<TypeAst>> &out, ExpressionAst &elem, ScopeManager *sm, CompilerMetaData *meta,
+    bool strip_conventions = false) -> void;
 
 private:
   /// The type, built and analysed once in stage 7. Rebuilding it for every

@@ -51,7 +51,22 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst fin
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
+  /// Mark this access as a call's callee ("Vec::from(..)"), so a
+  /// generic class named without arguments can be left for the call
+  /// to infer ("LeaveReceiverToCall"), as only the call has the arguments.
+  auto MarkCalleeOfCall(const bool callee = true) -> void { _IsCalleeOfCall = callee; }
+  SPP_ATTR_NODISCARD auto IsCalleeOfCall() const -> bool { return _IsCalleeOfCall; }
+
+  /// Leave the receiver type, a generic class named without its
+  /// arguments, for the call ("overload_resolution::InferTemplateReceiver");
+  /// the call analyses this access again once it is written.
+  auto LeaveReceiverToCall(const bool left) -> void { _IsReceiverLeftToCall = left; }
+  SPP_ATTR_NODISCARD auto IsReceiverLeftToCall() const -> bool { return _IsReceiverLeftToCall; }
+
 private:
+  bool _IsCalleeOfCall = false;
+  bool _IsReceiverLeftToCall = false;
+
   /// The type a type left-hand-side names, or the type it forwards
   /// to when the member is reached that way ("_Resolve").
   TypeSymbol *_LhsTypeSymbol;
@@ -76,4 +91,12 @@ private:
   /// forwarded-to type's; a namespace's own. Stage 7 resolves it
   /// again in its own scope; every later read reuses it.
   auto _Resolve(ScopeManager const *sm) -> VariableSymbol*;
+
+  /// Stage 7 with a type on the left ("T::x"): a method or a
+  /// constant of it, or of the type it forwards to, visible here.
+  auto _AnalyseTypeMember(ScopeManager *sm, CompilerMetaData *meta) -> void;
+
+  /// Stage 7 with a namespace on the left ("ns::x"): a constant or a
+  /// namespace it declares itself, visible here.
+  auto _AnalyseNsMember(ScopeManager *sm, CompilerMetaData *meta) -> void;
 };

@@ -119,7 +119,7 @@ auto spp::compiler::Compiler::Compile() -> bool {
   // The global scope is anchored to the first module in the tree, and every
   // stage below walks that tree, so an empty one has nothing to compile and
   // nowhere to put it. Error here to prevent empty vector reads later on.
-  if (_Modules->GetModules().empty()) {
+  if (_Modules->ViewModules().empty()) {
     std::cerr
       << "Error: No modules found. A project needs at"
       << "least one '.spp' file under 'src'.\n";
@@ -134,7 +134,7 @@ auto spp::compiler::Compiler::Compile() -> bool {
   // points.
   const auto is_exe = _BuildType == BuildType::EXE;
   auto num_modules = static_cast<std::uint32_t>(
-    _Modules->GetModules().size());
+    _Modules->ViewModules().size());
 
   // One bar at a time: each is created as its stage begins and torn down as the
   // next one replaces it, because a bar animates itself and only one of them
@@ -174,7 +174,7 @@ auto spp::compiler::Compiler::Compile() -> bool {
     // this compilation. Initialise the precompiled types.
     _ScopeManager = nullptr;
     _ScopeTree = MakeUnique<analyse::scopes::ScopeTree>(
-      analyse::scopes::Scope::NewGlobal(*_Modules->GetModules()[0]));
+      analyse::scopes::Scope::NewGlobal(*_Modules->ViewModules()[0]));
     _ScopeManager = MakeUnique<analyse::scopes::ScopeManager>(
       analyse::scopes::ScopeManager::ForTree(*_ScopeTree));
     asts::generate::common_types_precompiled::InitTypes();
@@ -282,9 +282,9 @@ auto spp::compiler::Compiler::CollectCompTimeConstants() -> void {
   // not held in any particular order, so the main module is found by its path
   // rather than by position.
   const auto main_path = _Modules->RootPath() / "src" / "main.spp";
-  const auto modules = _Modules->GetModules();
+  const auto modules = _Modules->ViewModules();
   const auto main_module = genex::find_if(
-    modules, [&](const auto mod) {
+    modules, [&](auto const &mod) {
       return mod->Path == main_path and mod->ModuleAst != nullptr;
     });
   if (main_module == modules.end()) { return; }

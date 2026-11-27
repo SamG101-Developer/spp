@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.function_implementation_ast;
@@ -24,6 +25,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_debug;
+import spp.codegen.llvm_drop;
 import spp.lex.tokens;
 import spp.utils.ice;
 import genex;
@@ -32,7 +34,6 @@ MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, CompilerMetaData);
-use_alias(spp::asts::meta, IsBindingsScope);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
@@ -102,10 +103,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
     meta->ClosureRetJoin = nullptr;
     meta->EnclosingFnScope = sm->CurrentScope;
     meta->EnclosingFnCmp = TokCmp.get();
-    {
-      const auto _is_bindings = IsBindingsScope(meta);
-      Impl->Stage7_AnalyseSemantics(sm, meta);
-    }
+    Impl->Stage7_AnalyseSemantics(sm, meta);
 
     // Check for a void return type.
     const auto is_void = type_predicates::IsTypeVoid(
@@ -208,6 +206,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
     meta->EnclosingFnSourceRetType = ReturnType;
     meta->ClosureRetJoin = nullptr;
     meta->EnclosingFnScope = sm->CurrentScope;
+    meta->TemporaryBase = codegen::TemporaryDepth(ctx);
 
     // If there is an implementation, generate its code.
     if (BuiltinAnnotation or FfiAnnotation) {
@@ -226,6 +225,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
       // Add a return instruction inside the function if there isn't
       // one (abstract methods will never be called due to previous
       // semantic analysis on abstracts, but to satisfy LLVM analysis).
+      codegen::EmitOwnedDrops(*sm->CurrentScope, _Drops.End, this, sm, meta, ctx);
       const auto insert_bb = ctx->Builder.GetInsertBlock();
       if (not insert_bb->hasTerminator()) {
         const auto ret_void = insert_bb->getParent()->getReturnType()->isVoidTy();

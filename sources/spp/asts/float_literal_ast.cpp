@@ -109,9 +109,10 @@ auto spp::asts::FloatLiteralAst::Stage7_AnalyseSemantics(
   // type, named at the literal.
   Type = TypeOrDefault();
   auto const &type = _PrecompiledType(sm);
+  const auto what = "float type " + type.ToString();
   RaiseIf<SppIdentifierUnknownError>(
     sm->CurrentScope->FindTypeSymbol(&type) == nullptr,
-    ERR_ARGS(*this, "float type " + type.ToString()));
+    ERR_ARGS(*this, StrView(what)));
 
   // Check the written value is one the type can hold.
   ValidateBounds(*this);

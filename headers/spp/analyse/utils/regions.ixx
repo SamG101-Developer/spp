@@ -76,6 +76,12 @@ namespace spp::analyse::utils::regions {
   SPP_EXP_FUN auto PlaceOf(
     Ast const &ast, Scope const &scope) -> Opt<Place>;
 
+  /// Whether "sym" is a view ("VariableSymbol::ViewRoot"): an "is"
+  /// binding, naming a part of its owner, so a place rooted at it is
+  /// that part of the owner ("PlaceOf").
+  SPP_EXP_FUN auto IsView(
+    VariableSymbol const &sym) -> bool;
+
   /// How two places relate: disjoint unless they hang off the
   /// same variable and one's steps begin with the other's; then
   /// the one with fewer steps contains the other ("a" contains

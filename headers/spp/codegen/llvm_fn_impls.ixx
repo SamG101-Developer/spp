@@ -163,6 +163,22 @@ export namespace spp::codegen::fn_impls {
   auto SimpleCheckedFloatMath(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, FloatMathFn fn) -> void;
 
+  /// "(T, T) -> (T, T)": the full product at twice the width, as its
+  /// (low, high) halves; signed or unsigned per "is_signed".
+  auto SimpleWideMul(
+    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, bool is_signed) -> void;
+
+  /// "[cmp lanes](&NonNull[U8], (U8,) USize) -> U64": a bit per byte of
+  /// the "lanes" bytes read, set where it equals the byte ("match_byte")
+  /// or has its top bit set.
+  auto SimpleBytesMask(
+    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, bool match_byte) -> void;
+
+  /// "[T, cmp locality](&NonNull[T], USize) -> Void": llvm's "prefetch"
+  /// for a read or "for_write".
+  auto SimplePrefetch(
+    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, bool for_write) -> void;
+
   /// "(T) -> T": call a one-operand LLVM intrinsic directly (e.g. "llvm.sqrt")
   /// and return its result.
   auto SimpleUnaryIntrinsicCall(
@@ -346,17 +362,25 @@ export namespace spp::codegen::fn_impls {
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdMemOpsAlignOf(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto StdMemOpsNeedsDrop(
+    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdMemOpsSizeOfVal(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdMemOpsAlignOfVal(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdMemOpsReplace(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto StdMemOpsTransmute(
+    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdMemOpsSwap(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdMemOpsMemCopy(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdMemOpsMemSet(
+    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto StdIntrinsicsLoadUnaligned(
+    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto StdIntrinsicsStoreUnaligned(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdMemOpsDrop(
     SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;

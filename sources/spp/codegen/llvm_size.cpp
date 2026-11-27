@@ -74,6 +74,7 @@ auto spp::codegen::LayoutOf(
   using analyse::utils::type_members::VariantMemberRefs;
   using analyse::utils::type_predicates::IsTypeArray;
   using analyse::utils::type_predicates::IsTypeFunction;
+  using analyse::utils::type_predicates::IsTypePointer;
   using analyse::utils::type_predicates::IsTypeGenerator;
   using analyse::utils::type_predicates::IsTypeTuple;
   using analyse::utils::type_predicates::IsTypeVariant;
@@ -147,11 +148,11 @@ auto spp::codegen::LayoutOf(
     return kFatPointerLayout;
   }
 
-  // "NonNull[T]" is lowered to a bare llvm pointer rather
-  // than to a struct wrapping one (see "RegisterLlvmTypeInfo"),
-  // so it measures as a pointer; walking its attributes
-  // would measure it as empty.
-  if (ref.IsA(*NON_NULL, scope)) {
+  // "NonNull[T]" and "Ptr[T]" are lowered to a bare llvm
+  // pointer rather than to a struct wrapping one (see
+  // "RegisterLlvmTypeInfo"), so they measure as a pointer;
+  // walking their attributes would measure them as empty.
+  if (IsTypePointer(ref, scope)) {
     return ScalarLayout(sizeof(void*));
   }
 

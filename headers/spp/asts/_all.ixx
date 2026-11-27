@@ -1,6 +1,5 @@
 export module spp.asts._all;
 export import spp.asts.annotation_ast;
-export import spp.asts.array_literal_ast;
 export import spp.asts.array_literal_explicit_elements_ast;
 export import spp.asts.array_literal_repeated_element_ast;
 export import spp.asts.assignment_statement_ast;
@@ -35,7 +34,6 @@ export import spp.asts.convention_ast;
 export import spp.asts.convention_mut_ast;
 export import spp.asts.convention_ref_ast;
 export import spp.asts.coroutine_prototype_ast;
-export import spp.asts.defer_statement_ast;
 export import spp.asts.expression_ast;
 export import spp.asts.float_literal_ast;
 export import spp.asts.fold_expression_ast;

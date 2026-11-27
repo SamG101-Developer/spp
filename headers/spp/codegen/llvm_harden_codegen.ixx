@@ -25,7 +25,7 @@ namespace spp::codegen {
   /// unwind edge fails the "unwound into S++" check, naming the function.
   /// Foreign code can throw (a C++ library), and an exception a C++ frame
   /// further out catches would otherwise unwind through the S++ frames between,
-  /// running none of the defers and consuming none of their linear values. This
+  /// dropping none of the values they own. This
   /// is zero-cost on the path that returns: the edge is unwind-table data.
   SPP_EXP_FUN auto ApplyFfiUnwindGuard(llvm::Module &llvm_mod) -> bool;
 

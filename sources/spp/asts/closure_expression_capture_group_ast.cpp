@@ -168,11 +168,11 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
     }
     else {
       // Mark the symbol from the outer context as moved, unless
-      // the type of the capture is copyable, in which case no
-      // action needs to be taken.
+      // the capture copies it, in which case no action needs to
+      // be taken.
       const auto cap_sym = meta->CurrentLambdaOuterScope->FindVarSymbol(cap->Val->To<IdentifierAst>());
       const auto cap_type = cap_sym->TypeRefIn(*meta->CurrentLambdaOuterScope);
-      if (cap_type.Symbol == nullptr or not cap_type.Symbol->IsCopyable()) {
+      if (cap->ConsumesCapture(*meta->CurrentLambdaOuterScope)) {
         memory_state::StateOf(*meta->CurrentLambdaOuterScope, *cap_sym).MovedBy(*cap);
       }
 
@@ -192,7 +192,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
   // This allows the body to remain unchanged as the variables
   // get loaded from the environment struct.
   const auto uid = "." + Uid();
-  for (auto const &[i, capture] : Captures | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, capture] : Captures | genex::views::enumerate) {
 
     // For the capture x, mock "let x = env.x".
     const auto cap_val = capture->Val->To<IdentifierAst>();

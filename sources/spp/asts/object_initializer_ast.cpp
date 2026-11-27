@@ -9,8 +9,8 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
+import spp.analyse.utils.generic_inference;
 import spp.analyse.utils.marker_sups;
-import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
@@ -147,25 +147,20 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
 
   // The attributes' types are what the type's arguments are inferred from: each argument's type (pointed at the
   // argument, so a conflict names where it came from rather than "<generated code>") against the declared type of the
-  // attribute it initialises.
+  // attribute it initialises, its own or one it inherits ("GetAllAttrs"), read in the class's terms.
   auto equations = Vec<Tup<Shared<IdentifierAst>, Shared<TypeAst>, Shared<TypeAst>>>();
   if (not base_cls_sym->IsGn()) {
-    for (const auto attr : base_cls_sym->Type->Impl->Members
-         | genex::views::ptr
-         | genex::views::cast_dynamic<ClassAttributeAst*>) {
-      const auto attr_sym = base_cls_sym->LinkedScope->FindTypeSymbol(attr->Type.get());
-      if (attr_sym == nullptr) { continue; }
+    for (auto const &[name, attr_ref, attr_scope] : type_members::GetAllAttrs(*base_cls_sym)) {
+      if (attr_ref.Symbol == nullptr) { continue; }
       for (auto const &arg : ArgGroup->Args) {
-        if (arg->Name == nullptr or *arg->Name != *attr->Name) { continue; }
-        equations.emplace_back(attr->Name, arg->Val->InferType(sm, meta)->WithSourceSpanAt(*arg->Val), attr_sym->FqName());
+        if (arg->Name == nullptr or *arg->Name != *name) { continue; }
+        equations.emplace_back(
+          name, arg->Val->InferType(sm, meta)->WithSourceSpanAt(*arg->Val), attr_ref.AstIn(*base_cls_sym->LinkedScope));
       }
     }
   }
 
-  Type = self_type::SubstituteSelf(*Type, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope)
-    ->WithSourceSpanOf(*Type);
-  Type->LastTypePart()->InferFromAttributes(std::move(equations));
-  Type->Stage7_AnalyseSemantics(sm, meta);
+  Type = type_resolution::AnalyseInferredType(*Type, {.Equations = std::move(equations)}, *sm, *meta);
 
   // A generator cannot be initialized either.
   auto const *const gen_sym = marker_sups::FindGenSup(

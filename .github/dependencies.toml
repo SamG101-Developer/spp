@@ -8,7 +8,7 @@
 version = "16.2"
 
 [pin.cmake]
-version = "4.5.0-rc3"
+version = "4.5.1"
 
 [pin.ninja]
 version = "1.13.2"
@@ -94,8 +94,8 @@ version = "18.1"
 sha256 = "cd9fc3fe2b47743840e42c1592d3d87f8302eb18639c0b8b4ba0898002e2348f"
 
 [pin.qemu-user]
-tag = "spp-2026.11.16"
-sha256 = "6c239a0f8f9709a19345c535c04f1cacbeb4997d6f6c4e4065be678e8d8621d7"
+tag = "spp-2026.11.23"
+sha256 = "b91156c70aac50493f881e98dcf43462ae44e414d515b813f0b6b751701b4ecd"
 
 [pin.arm-gnu]
 version = "15.3.rel2"
@@ -119,9 +119,9 @@ sha256-linux-aarch64 = "4b0ecece7929cbaf548ff1ab9a24074b240132ab8176bc3865a27d88
 sha256-darwin = "764dd2a8100ff83e6bbd7b9a1e2016cc401be34bee8a70ea99698186622c34d5"
 
 [pin.sccache]
-version = "0.19.0"
-sha256-x86-64 = "130e4f8eb672e76590e9993c2ab890c4763b88238577bb11d8062158c7698353"
-sha256-aarch64 = "a680e8e6058b033cd6ff56d56b2219ca13f1c1a45f50fb3b04f4ed80851f5c2b"
+version = "0.20.1"
+sha256-x86-64 = "d96117e04c04449151a84818596356df7887026809f6fb988817ff76460d1073"
+sha256-aarch64 = "5c6ccc53c310bbcfaf5909f1ca77ea0b8fe237c4c6c553ae342a7c88e23170c2"
 
 [pin.osv-scanner]
 version = "2.7.1"
@@ -180,25 +180,25 @@ commit = "bcc2bb5801fb920a1df06a2ee205b93b2514964e"
 [[library]]
 name = "mimalloc"
 repo = "https://github.com/microsoft/mimalloc.git"
-commit = "1d8fd85aa3abe719cd9c42c855f1fc27dbccf84d"
+commit = "bc44251a1198409399bca17e319914795e8903d1"
 cmake-flags = ["-DMI_SECURE=OFF", "-DMI_BUILD_TESTS=OFF"]
 cmake-flags-windows = ["-DMI_OVERRIDE=OFF"]
 
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "d732d616badc771ab1e85876b3a9eb8191fdf4c0"
+commit = "322063822f66533bb81ef8e938fd07e5f6394917"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
 name = "tomlplusplus"
 repo = "https://github.com/marzer/tomlplusplus.git"
-commit = "c38c9b922a68fc9772b25d7f606133d3ec4decfd"
+commit = "efd80e03356af65c7d4e61c56ffb326b34f8d0f4"
 
 [[library]]
 name = "magic_enum"
 repo = "https://github.com/Neargye/magic_enum.git"
-commit = "9a0b6ef556d71c571be6adaecb776a16aeb17c0f"
+commit = "8b69251a96d755dc9364fdf31c0f4056efdad365"
 cmake-flags = [
   "-DMAGIC_ENUM_OPT_BUILD_TESTS=OFF",
   "-DMAGIC_ENUM_OPT_BUILD_EXAMPLES=OFF",
@@ -216,7 +216,7 @@ cmake-flags = [
 [[library]]
 name = "CLI11"
 repo = "https://github.com/CLIUtils/CLI11.git"
-commit = "301c80eff2debf088b8213d9c153c76e1e97a854"
+commit = "e0081476ab5ce61a4efc2d8e7f3196a9cb3f137f"
 cmake-flags = ["-DCLI11_BUILD_TESTS=OFF", "-DCLI11_BUILD_EXAMPLES=OFF"]
 
 [[library]]
@@ -242,7 +242,7 @@ commit = "9ad6bafe4d9fe9e2d588a3e620299b81ce8814c2"
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "521e68f6bbb55d4f3371690e74d3ed6b637c4070"
+commit = "fb508b99d1c7827d5b6e58642c9ef361e95352ec"
 
 [[library]]
 name = "NumEx"

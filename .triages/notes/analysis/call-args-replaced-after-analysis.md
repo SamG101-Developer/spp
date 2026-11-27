@@ -1,16 +1,17 @@
 ---
 name: call-args-replaced-after-analysis
 description: "Since the call-check rewrite (2026-09-28) the analysed arg values are MOVED into the elaborated args (ElaborateCall), never copied/freed; the old swap freed them and scopes dangled - the intermittent CheckLiveUpToLoop segfault"
-updated: 2026-09-28
+updated: 2026-11-23
 ---
 
-`PostfixExpressionOperatorFunctionCallAst::Stage7` swaps its arguments for the matched overload's copies:
-`FnArgGroup->Args = std::move(overload.FnArgs->Args)`. `DetermineOverload` clones the argument group once per candidate,
-and the copies carry the `self` convention that matching set. Stages 8 and 11 therefore run on **copies**, while every
-scope created while analysing the **originals** (an argument `loop`, a closure, a block) names the original as its
-`AstNode`.
+Until the call-check rewrite (2026-09-28), `PostfixExpressionOperatorFunctionCallAst::Stage7` swapped its arguments
+for the matched overload's copies (`FnArgGroup->Args = std::move(overload.FnArgs->Args)`): `DetermineOverload` cloned
+the argument group once per candidate, and the copies carried the `self` convention that matching set. Stages 8 and 11
+therefore ran on **copies**, while every scope created while analysing the **originals** (an argument `loop`, a
+closure, a block) named the original as its `AstNode`. Today `ElaborateCall` moves the analysed values instead (see
+"Superseded design" below).
 
-**The bug (2026-09-28):** the originals were freed by that swap. `CheckLiveUpToLoop` reads each ancestor scope's
+**The bug (2026-09-28):** the originals were freed by that swap. `CheckLiveUpToLoop` (now `drop_utils::OwnedUpToLoop`) reads each ancestor scope's
 `AstNode` (via `AstAs<LoopConditionalExpressionAst>`), so an `exit` inside `h(loop true { .. exit v })` hit freed memory.
 - It crashed about 1 run in 6, and only under `spp_tests`, never `spp` (allocation-pattern dependent).
 - It showed as "killed by signal" with no output, and passed on some full runs and failed on others.

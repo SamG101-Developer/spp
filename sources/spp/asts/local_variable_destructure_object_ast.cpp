@@ -10,7 +10,10 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.destructure_utils;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.generic_inference;
+import spp.analyse.utils.regions;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.class_attribute_ast;
@@ -112,17 +115,18 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   // Get the value and analyse it and the type.
   const auto val = meta->LetStatementValue;
   const auto val_type = val->InferType(sm, meta);
-  // Todo: in a generic sup, "let Box[T](v) = self" (or "Self(v)") raises E105 though "v" is bound -
-  //  LocalVariableDestructureObjectGeneric.test_valid_destructure_of_a_generic_class_in_its_sup.
-  Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta);
+  // The arguments not written are the value's ("let Box(v) = b").
+  Type = type_resolution::AnalyseInferredType(*Type, {.Subject = val_type}, *sm, *meta);
 
   auto const *const cls_sym = sm->CurrentScope->FindTypeSymbol(Type.get());
   const auto cls_proto = cls_sym->Type;
+  using Members = decltype(cls_proto->Impl->Members);
   const auto cls_attrs = cls_proto != nullptr
-    ? cls_proto->Impl->Members | genex::views::ptr | genex::to<Vec>()
-    : Vec<Ast*>{};
+    ? Span<typename Members::value_type const>(cls_proto->Impl->Members)
+    : Span<typename Members::value_type const>();
 
   const auto attributes = cls_attrs
+    | genex::views::ptr
     | genex::views::cast_dynamic<ClassAttributeAst*>
     | genex::to<Vec>();
 
@@ -207,9 +211,24 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
       nullptr, std::move(uid_var), nullptr, nullptr, AstClone(effective_val));
     _CondLet->Stage7_AnalyseSemantics(sm, meta);
     _CondSymbol = sm->CurrentScope->FindVarSymbol(uid_name.get())->SharedFromThis<VariableSymbol>();
+
+    // The copy names the value it narrows, which keeps owning it: a view of that value ("regions::IsView"), and the
+    // narrowed symbol is it held as the member it narrows to ("o.<Some[T]>"). Binding it takes nothing, and nothing
+    // drops it (the value's owner does).
+    const auto viewed = regions::PlaceOf(*effective_val, *sm->CurrentScope);
+    const auto addressable = viewed.has_value()
+      and genex::none_of(viewed->Steps, [](auto const &step) { return step.Opaque; });
+    if (addressable) {
+      _CondSymbol->Kind = analyse::scopes::VariableKind::FlowNarrowing;
+      _CondSymbol->ViewRoot = viewed->Root;
+      _CondSymbol->ViewSteps = viewed->Steps | genex::views::transform(&regions::PlaceStep::Name) | genex::to<Vec>();
+    }
     _FlowSymbol = MakeShared<VariableSymbol>(*_CondSymbol);
     _FlowSymbol->LlvmInfo = _CondSymbol->LlvmInfo;
     _FlowSymbol->Type = Type;
+    if (addressable and type_predicates::IsTypeVariant(val_ref, *sm->CurrentScope)) {
+      _FlowSymbol->ViewSteps.emplace_back(type_members::VariantMemberStep(type_ref));
+    }
 
     if (Type->GetConvention() != nullptr) { _FlowSymbol->MemInfo->AstBorrowed = Type.get(); }
     _CondLet->Var->As<LocalVariableSingleIdentifierAst>()->Narrow(_FlowSymbol, *sm->CurrentScope);
@@ -251,11 +270,11 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   destructure_utils::DestructureStage8(
-    *this, Elems, _NewAsts, _TmpName, _CondLet.get(), _FromCasePattern, *sm, meta);
+    *this, _NewAsts, _TmpName, _CondLet.get(), _FromCasePattern, *sm, meta);
 }
 
 auto spp::asts::LocalVariableDestructureObjectAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* {
   // Generate the value into the hidden temporary once, before
   // anything indexes it.
   IMPORT_UTILS_AND_UID;

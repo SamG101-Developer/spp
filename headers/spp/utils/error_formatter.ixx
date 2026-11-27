@@ -164,10 +164,13 @@ private:
   };
 
   /// A position quoted for an error: where it is ("on line 3"),
+  /// the same as a suffix to the file path (":3:5", which an
+  /// IDE's console turns into a link to that line and column),
   /// the line's number and text, the gutter's padding, and the
   /// caret row under the quoted text.
   struct _Quote {
     Str Location;
+    Str PathSuffix;
     Str LineNumber;
     Str LineText;
     Str LeftPadding;

@@ -72,6 +72,14 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
 private:
   /// Set by "NewOverAnalysedLhs": stage 7 does not analyse "Lhs".
   bool _LhsAnalysed = false;
+
+  /// "Lhs", when it is itself a field read ("x.a" in "x.a.b").
+  SPP_ATTR_NODISCARD auto _InnerFieldRead() const -> PostfixExpressionAst*;
+
+  /// Stage 8 for the field read ending a chain ("mk().a.b"): a chain
+  /// starting at a temporary drops the rest of it as the statement ends,
+  /// less what is moved out ("DropsReceiverRest" on the first read).
+  auto _TakeFieldsOffTemporary(ScopeManager &sm, CompilerMetaData *meta) -> void;
 };
 
 /// While it lives, a clone of "xs.N", for "xs" a closed pack it names, is the identifier of that element's parameter

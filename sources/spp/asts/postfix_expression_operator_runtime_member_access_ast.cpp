@@ -39,6 +39,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_drop;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
@@ -118,6 +119,9 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Clone() const -
   ast->_MappedFwd = _MappedFwd;
   ast->Source.OriginalExpr = Source.OriginalExpr;
   ast->Source.Lowered = Source.Lowered;
+  ast->DropsReceiverRest = DropsReceiverRest;
+  ast->ReadOnwards = ReadOnwards;
+  ast->ReadByBorrow = ReadByBorrow;
   return ast;
 }
 
@@ -130,19 +134,15 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ToString() cons
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  //
   IMPORT_UTILS;
-  using member_lookup::MemberAccessForm;
 
   // Already rewritten against a forwarded-to value by an
   // earlier pass, which analysed the rewrite as it built
   // it.
   if (_MappedFwd != nullptr) { return; }
 
-  // Prevent zero-type types on the left-hand-side of a
-  // runtime member access - except for a zero type, whose
-  // name is its one value ("GlobalAlloc.allocate(..)",
-  // "None").
+  // A type is reached with "::", except a zero type, whose name
+  // is its one value ("GlobalAlloc.allocate(..)", "None").
   {
     auto const *const lhs_type = Lhs->To<TypeAst>();
     auto const *const lhs_sym = lhs_type != nullptr ? sm->CurrentScope->FindTypeSymbol(lhs_type) : nullptr;
@@ -151,160 +151,102 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
       ERR_ARGS(*Lhs, *TokDot, "type"));
   }
 
-  // Numeric index access (for tuples). An unbound pack's length
-  // is only known per instantiation, where it is a tuple and is
-  // checked as one; here it only has an element type.
-  if (std::isdigit(Name->Val[0])) {
-    if (UnboundPack(*Lhs, *sm) != nullptr) { return; }
+  if (std::isdigit(Name->Val[0])) { _CheckIndexAccess(sm, meta); }
+  else { _CheckNamedAccess(sm, meta); }
+}
 
-    // The lhs's type is only spelled out for the errors. An open
-    // tuple ("Tup[Ts]", a variadic parameter as a whole) has no
-    // length here either.
-    const auto lhs_ref = Lhs->InferTypeRef(sm, meta).WithoutConvention();
-    if (type_compare::IsOpenTuple(lhs_ref, *sm->CurrentScope)) { return; }
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::_CheckIndexAccess(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
 
-    // Check the lhs is a tuple/array (the only indexable
-    // types).
-    if (not type_predicates::IsTypeCompTimeIndexable(lhs_ref, *sm->CurrentScope)) {
-      const auto lhs_type = Lhs->InferType(sm, meta);
-      Raise<SppMemberAccessNonIndexableError>(ERR_ARGS(*Lhs, *lhs_type, *TokDot));
+  // An unbound pack's length is only known per instantiation,
+  // where it is a tuple and is checked as one; here it only has
+  // an element type. An open tuple ("Tup[Ts]", a variadic
+  // parameter as a whole) has no length here either.
+  if (UnboundPack(*Lhs, *sm) != nullptr) { return; }
+  const auto lhs_ref = Lhs->InferTypeRef(sm, meta).WithoutConvention();
+  if (type_compare::IsOpenTuple(lhs_ref, *sm->CurrentScope)) { return; }
+
+  // Only a tuple or an array is indexed, within its bounds. The
+  // lhs's type is only spelled out for the errors, held in a local:
+  // "ERR_ARGS" keeps references, so a temporary would be freed
+  // before the error reads it (a call's type is a fresh clone).
+  if (not type_predicates::IsTypeCompTimeIndexable(lhs_ref, *sm->CurrentScope)) {
+    const auto lhs_type = Lhs->InferType(sm, meta);
+    Raise<SppMemberAccessNonIndexableError>(ERR_ARGS(*Lhs, *lhs_type, *TokDot));
+  }
+  if (const auto n = type_members::IndexBoundOf(lhs_ref, *sm->CurrentScope); std::stoul(Name->Val) >= n) {
+    const auto lhs_type = Lhs->InferType(sm, meta);
+    Raise<SppMemberAccessOutOfBoundsError>(ERR_ARGS(*Lhs, *lhs_type, n, *TokDot));
+  }
+}
+
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::_CheckNamedAccess(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+  using member_lookup::MemberAccessForm;
+
+  // A namespace is reached with "::", checked before the lhs's
+  // type is read: a namespace has none.
+  auto const *const lhs_ident = Lhs->To<IdentifierAst>();
+  RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
+    lhs_ident != nullptr and sm->CurrentScope->FindVarSymbol(lhs_ident) == nullptr
+      and sm->CurrentScope->FindNsSymbol(lhs_ident) != nullptr,
+    ERR_ARGS(*Lhs, *TokDot, "namespace"));
+
+  const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
+  auto const *const owner = lhs_ref.Symbol;
+  if (owner == nullptr) { Ice(*Lhs, *sm->CurrentScope, "member access on a value whose type has no symbol"); }
+
+  // Declared nowhere on the type (supers included): reached by
+  // forwarding, analysed as the rewritten access in its place,
+  // else an error - a "Try" member the "?" lowering reached for
+  // means the operand is no "Try" type.
+  const auto declaring = member_lookup::ScopesDeclaringVar(*owner->LinkedScope, *Name);
+  if (declaring.empty()) {
+    if (auto fwd_call = marker_sups::BuildFwdCall(*Lhs, lhs_ref, sm, meta, Name.get()); fwd_call != nullptr) {
+      _MappedFwd = MakeShared<PostfixExpressionAst>(
+        std::move(fwd_call), MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, Name));
+      _MappedFwd->Stage7_AnalyseSemantics(sm, meta);
+      return;
     }
-
-    // Check the index is within the bounds of the tuple
-    // or array.
-    if (const auto n = type_members::IndexBoundOf(lhs_ref, *sm->CurrentScope); std::stoul(Name->Val) >= n) {
+    if (const auto try_op = AstAs<PostfixExpressionOperatorEarlyReturnAst>(Source.OriginalExpr); try_op != nullptr) {
       const auto lhs_type = Lhs->InferType(sm, meta);
-      Raise<SppMemberAccessOutOfBoundsError>(ERR_ARGS(*Lhs, *lhs_type, n, *TokDot));
+      Raise<SppExpressionNotTryError>(ERR_ARGS(*try_op, *lhs_type));
+    }
+    member_lookup::RaiseMemberNotFound(*owner, lhs_ref, *Name, MemberAccessForm::Runtime, *sm->CurrentScope);
+  }
+
+  // The member, as "." reaches it, for every later read.
+  _Owner = nullptr;
+  ignore = _Resolve(sm, meta);
+
+  // A method, visible through any block declaring it (not checked
+  // for a lowering's own access).
+  if (not Source.Lowered) {
+    if (auto *const method = member_lookup::CheckMethodVisible(*owner->LinkedScope, *Name, *sm, *meta)) {
+      lsp::resolution_index::RecordVariable(*Name, *sm, *meta, method);
     }
   }
 
-  // Accessing a regular attribute/method on an instance.
-  else {
-    const auto lhs_as_ident_raw = Lhs->To<IdentifierAst>();
-    const auto lhs_as_ident = lhs_as_ident_raw
-      ? MakeShared<IdentifierAst>(lhs_as_ident_raw->PosStart(), lhs_as_ident_raw->Val)
-      : nullptr;
-    const auto lhs_ns_sym = sm->CurrentScope->FindNsSymbol(lhs_as_ident.get());
-    const auto lhs_var_sym = sm->CurrentScope->FindVarSymbol(lhs_as_ident.get());
-    const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
-    const auto lhs_type_sym = lhs_ref.Symbol;
-
-    // Check the lhs is a variable and not a namespace.
-    RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
-      // Todo: this error message uses "Type" -> accept param for ctx (ns)
-      lhs_var_sym == nullptr and lhs_ns_sym != nullptr,
-      ERR_ARGS(*Lhs, *TokDot, "namespace"));
-
-    // Check whether the target field exists on the type (a scope
-    // declaring it, supers included), or on the forwarded type.
-    _Owner = nullptr;
-    auto all_scopes_and_syms = member_lookup::ScopesDeclaringVar(*lhs_type_sym->LinkedScope, *Name);
-    if (all_scopes_and_syms.empty()) {
-      // If we are accessing via forwarding, then build the
-      // forward call, and store it for later analysis.
-      auto fwd_call = marker_sups::BuildFwdCall(*Lhs, lhs_ref, sm, meta, Name.get());
-      if (fwd_call != nullptr) {
-        _MappedFwd = MakeShared<PostfixExpressionAst>(
-          std::move(fwd_call),
-          MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, Name));
-        _MappedFwd->Stage7_AnalyseSemantics(sm, meta);
-        return;
-      }
-
-      // An access the "?" lowering, generated to reach a "Try"
-      // member, so failing to find it means the operand is not
-      // a "Try" type - provide a more refined error.
-      const auto try_op = AstAs<PostfixExpressionOperatorEarlyReturnAst>(Source.OriginalExpr);
-      if (try_op != nullptr) {
-        const auto lhs_type = Lhs->InferType(sm, meta);
-        Raise<SppExpressionNotTryError>(ERR_ARGS(*try_op, *lhs_type));
-      }
-
-      // Type field was not found on this type, or the
-      // forwarding type (includes nested forwarding checks). The
-      // candidates are what "." reaches on either: attributes and
-      // methods, not "cmp" constants.
-      auto candidates = lhs_type_sym->LinkedScope->GetAllVarSymbols(true, true);
-      const auto [fwd_ref, fwd_mut] = marker_sups::FindFwdSups(lhs_ref, *sm->CurrentScope);
-      for (auto const &fwd : {fwd_ref, fwd_mut}) {
-        if (auto const *const target = marker_sups::FwdTargetOf(fwd).Symbol;
-          target != nullptr and target->LinkedScope != nullptr) {
-          candidates.append_range(target->LinkedScope->GetAllVarSymbols(true, true));
-        }
-      }
-      member_lookup::RaiseMissingIdentifierAndClosestOptions(
-        *Name, candidates | genex::views::filter([](auto const *sym) {
-          return member_lookup::MemberReachableBy(*sym, member_lookup::MemberAccessForm::Runtime);
-        }) | genex::to<Vec>(), {});
-    }
-
-    // The member, as "." reaches it, for every later read ("_Resolve").
-    _Owner = lhs_type_sym;
-    _Member = member_lookup::MemberOf(*lhs_type_sym->LinkedScope, *Name, MemberAccessForm::Runtime);
-
-    // Enforce visibility on functional (method) members.
-    // Their mock ("$"-typed) symbols are excluded from the
-    // attribute handling below, so without this the
-    // visibility check never runs for method accesses.
-    auto fn_scopes_and_syms = all_scopes_and_syms
-      | genex::views::filter([](auto const &x) { return x.Symbol->Kind == VariableKind::FnMock; })
-      | genex::to<Vec>();
-
-    // Use the hook to record information for the resolution and
-    // completion plugin.
-    if (not fn_scopes_and_syms.empty()) {
-      lsp::resolution_index::RecordVariable(
-        *Name, *sm, *meta, fn_scopes_and_syms.back().Symbol);
-    }
-
-    if (not fn_scopes_and_syms.empty() and not Source.Lowered) {
-      const auto cls_scope = lhs_type_sym->LinkedScope->NonGnScope;
-      const auto any_visible = genex::any_of(fn_scopes_and_syms, [&](auto const &x) {
-        return visibility_utils::IsTypeMemberVisible(*x.Symbol, *cls_scope, *sm, *meta);
-      });
-      if (not any_visible) {
-        visibility_utils::CheckTypeMemberVisibility(*fn_scopes_and_syms.back().Symbol, *Name, *cls_scope, *sm, *meta);
-      }
-    }
-
-    const auto members = all_scopes_and_syms
-      | genex::views::filter([](auto const &x) { return x.Symbol->Kind != VariableKind::FnMock; })
-      | genex::to<Vec>();
-
-    const auto runtime_members = member_lookup::MembersReachableBy(
-      members, MemberAccessForm::Runtime);
-
-    // A "cmp" constant belongs to the type rather than to any
-    // value of it, so it is reached with "::" instead. This
-    // is also what picks an attribute out where the type declares
-    // a constant of the same name: the two are different members,
-    // and only how the access is written says which one was meant.
-    RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
-      runtime_members.empty() and not members.empty(),
-      ERR_ARGS(*Name, *TokDot, "constant"));
-
-    // If we only have functional types, just return.
-    if (runtime_members.size() < 1) { return; }
-    const auto closest = member_lookup::ClosestScopes(runtime_members);
-
-    // Enforce visibility on the accessed member.
-    if (not closest.empty()) {
-      const auto scope = closest[0].Where->NonGnScope;
-      const auto member_sym = scope->FindVarSymbol(Name.get(), true);
-      visibility_utils::CheckTypeMemberVisibility(*member_sym, *Name, *scope, *sm, *meta);
-
-      // Use the hook to record information for the resolution and
-      // completion plugin.
-      lsp::resolution_index::RecordVariable(*Name, *sm, *meta, member_sym);
-    }
-
-    member_lookup::RaiseIfAmbiguous(closest, *Name);
+  // An attribute. A "cmp" constant of the name belongs to the type,
+  // so it is reached with "::": the form written is what picks an
+  // attribute out where a constant shares its name.
+  const auto members = declaring
+    | genex::views::filter([](auto const &x) { return x.Symbol->Kind != VariableKind::FnMock; })
+    | genex::to<Vec>();
+  const auto runtime_members = member_lookup::MembersReachableBy(members, MemberAccessForm::Runtime);
+  RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
+    runtime_members.empty() and not members.empty(),
+    ERR_ARGS(*Name, *TokDot, "constant"));
+  if (auto *const member = member_lookup::CheckClosestMember(
+    member_lookup::ClosestScopes(runtime_members), *Name, *sm, *meta); member != nullptr) {
+    lsp::resolution_index::RecordVariable(*Name, *sm, *meta, member);
   }
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  //
   IMPORT_UTILS_AND_UID;
 
   // A member reached by forwarding lives on the forwarded-to
@@ -313,127 +255,110 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
   // into.
   if (_MappedFwd != nullptr) { return _MappedFwd->Stage11_CodeGen(sm, meta, ctx); }
 
-  // This expression names storage, so it can produce either
-  // the address of the field or the value held in it. The
-  // consume ast picks: assignment targets and borrows want
-  // the address, every other context wants the value.
+  // This expression names storage, so it can produce either the
+  // address of the field or the value held in it: assignment
+  // targets and borrows want the address, every other context the
+  // value.
   const auto want_address = meta->LlvmWantAddress;
-
-  // Get the type of the left-hand-side expression.
   const auto uid = "." + Uid();
   const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
-  const auto lhs_type_sym = lhs_ref.Symbol;
-
-  // Index through the object's own type, not a borrow's pointer
-  // type.
-  const auto is_borrow = lhs_ref.IsBorrowed();
-  const auto llvm_type = lhs_type_sym->LlvmInfo->LlvmType;
-  SPP_ASSERT(llvm_type != nullptr);
-  const auto lhs_is_member_access = IsRuntimeMemberAccess(Lhs);
-
-  // For attribute access on an object, the base pointer will
-  // be the field immediately left of this specific access
-  // operator. For "a.b.c", it is "a.b" etc.
-  auto base_ptr = static_cast<llvm::Value*>(nullptr);
-  {
-    const auto _meta_guard = MetaGuard(meta);
-    meta->LlvmWantAddress = lhs_is_member_access;
-
-    if (lhs_is_member_access) {
-      base_ptr = Lhs->Stage11_CodeGen(sm, meta, ctx);
-      if (is_borrow) {
-        base_ptr = ctx->Builder.CreateLoad(
-          llvm::PointerType::get(*ctx->Context, 0), base_ptr, "load.member_access.base_ptr" + uid);
-      }
-    }
-
-    // If the lhs is symbolic, get the address of the outermost
-    // part. The symbol's alloca is already the address of the
-    // object (the base pointer). Load borrows to get value.
-    else if (const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*Lhs).first;
-      sym != nullptr) {
-      SPP_ASSERT(sym->LlvmInfo->Alloca != nullptr);
-
-      // A "cmp" constant is a global, and a global belongs to
-      // the one module that defines it, so indexing into one
-      // from another module goes through that module's own
-      // declaration of the symbol.
-      auto object_ptr = sym->LlvmInfo->Alloca;
-      if (const auto global_var = llvm::dyn_cast_or_null<llvm::GlobalVariable>(object_ptr); global_var != nullptr) {
-        object_ptr = codegen::GetOrAddGlobalIntoCurrentModule(*global_var, *ctx->Module);
-      }
-
-      base_ptr = is_borrow
-        ? ctx->Builder.CreateLoad(
-          llvm::PointerType::get(*ctx->Context, 0), object_ptr, "load.member_access.base_ptr" + uid)
-        : object_ptr;
-    }
-
-    // A borrowed expression already evaluates to the address
-    // of the object.
-    else if (is_borrow) {
-      base_ptr = Lhs->Stage11_CodeGen(sm, meta, ctx);
-    }
-
-    // Materialize the lhs expression into a temporary, to have
-    // an address to index through.
-    else {
-      const auto lhs_val = Lhs->Stage11_CodeGen(sm, meta, ctx);
-      const auto temp = codegen::LlvmEntryAlloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
-      ctx->Builder.CreateStore(lhs_val, temp);
-      base_ptr = temp;
-    }
-  }
+  const auto base_ptr = _EmitBasePtr(lhs_ref, uid, sm, meta, ctx);
 
   // A field carrying no value is not laid out, so there is
-  // nothing to index to and nothing to read: llvm has no value
-  // of that type, no member for it in the struct, and "load
-  // void" is not valid ir.
+  // nothing to index to and nothing to read: llvm has no value of
+  // that type, no member for it in the struct, and "load void" is
+  // not valid ir.
   const auto field_llvm_type = codegen::GetLlvmTypeOf(InferTypeRef(sm, meta).WithoutConvention(), ctx);
   if (codegen::IsValuelessType(field_llvm_type)) { return nullptr; }
-
-  // Resolve the address of the member. A numeric name indexes
-  // a tuple or array positionally; any other name is an
-  // attribute, whose physical position depends on how the
-  // owning type was laid out.
-  auto field_ptr = static_cast<llvm::Value*>(nullptr);
-  if (std::isdigit(Name->Val[0])) {
-    const auto index = static_cast<std::uint32_t>(std::stoul(Name->Val));
-
-    // An array lowers to "[n x T]" rather than to a struct,
-    // so it is indexed through the array itself: the leading
-    // zero index steps over the pointer to the array, and the
-    // second one selects the element.
-    if (type_predicates::IsTypeArray(TypeRef::ForKindCheck(*lhs_type_sym, *sm->CurrentScope), *sm->CurrentScope)) {
-      const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
-      field_ptr = ctx->Builder.CreateGEP(
-        llvm_type, base_ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
-        "member_access.arr.elem_ptr" + uid);
-    }
-
-    // A tuple lowers to a struct whose fields keep declaration
-    // order, so element "n" is field "n".
-    else {
-      field_ptr = ctx->Builder.CreateStructGEP(llvm_type, base_ptr, index, "member_access.tup.elem_ptr" + uid);
-    }
-  }
-
-  else {
-    // The physical field order isn't the declaration order,
-    // because the S++ layout re-orders the fields to minimize
-    // padding, so the declaration index has to be resolved
-    // through the type's field index map.
-    const auto decl_index = type_members::GetFieldIndexInType(*lhs_type_sym, *Name);
-    const auto field_index = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, decl_index);
-    field_ptr = ctx->Builder.CreateStructGEP(llvm_type, base_ptr, field_index, "member_access.field_ptr" + uid);
-  }
+  const auto field_ptr = _EmitFieldPtr(lhs_ref, base_ptr, uid, sm, ctx);
   if (want_address) { return field_ptr; }
 
-  // Otherwise read the field out. Fields are never borrows
-  // (the second class borrow rules forbid storing one), so
-  // the field's own lowered type is always the type held in
-  // the slot.
+  // Fields are never borrows (the second class borrow rules
+  // forbid storing one), so the field's own lowered type is
+  // always the type held in the slot.
   return ctx->Builder.CreateLoad(field_llvm_type, field_ptr, "member_access.field" + uid);
+}
+
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::_EmitBasePtr(
+  analyse::scopes::TypeRef const &lhs_ref, Str const &uid, ScopeManager *sm, CompilerMetaData *meta,
+  codegen::LlvmCtx *ctx) -> llvm::Value* {
+  // The address of the object the field is in: for "a.b.c", that
+  // of "a.b". A borrow holds the address, so it is loaded out.
+  const auto is_borrow = lhs_ref.IsBorrowed();
+  const auto through_borrow = [&](llvm::Value *slot) -> llvm::Value* {
+    return is_borrow
+      ? ctx->Builder.CreateLoad(llvm::PointerType::get(*ctx->Context, 0), slot, "load.member_access.base_ptr" + uid)
+      : slot;
+  };
+  const auto _meta_guard = MetaGuard(meta);
+
+  // Another member access, asked for its field's address.
+  if (IsRuntimeMemberAccess(Lhs)) {
+    meta->LlvmWantAddress = true;
+    return through_borrow(Lhs->Stage11_CodeGen(sm, meta, ctx));
+  }
+  meta->LlvmWantAddress = false;
+
+  // A symbol: its storage is the object. A "cmp" constant is a
+  // global, which belongs to the one module that defines it, so
+  // another module reaches it through its own declaration.
+  if (const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*Lhs).first; sym != nullptr) {
+    SPP_ASSERT(sym->LlvmInfo->Alloca != nullptr);
+    auto object_ptr = sym->LlvmInfo->Alloca;
+    if (const auto global_var = llvm::dyn_cast_or_null<llvm::GlobalVariable>(object_ptr); global_var != nullptr) {
+      object_ptr = codegen::GetOrAddGlobalIntoCurrentModule(*global_var, *ctx->Module);
+    }
+    return through_borrow(object_ptr);
+  }
+
+  // A borrow made on the spot already is the object's address.
+  if (is_borrow) { return Lhs->Stage11_CodeGen(sm, meta, ctx); }
+
+  // Any other value is put in a temporary to index through: one
+  // read off a temporary ("mk().a") drops the rest of it as its
+  // statement ends.
+  const auto llvm_type = lhs_ref.Symbol->LlvmInfo->LlvmType;
+  SPP_ASSERT(llvm_type != nullptr);
+  const auto temp = codegen::LlvmEntryAlloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
+  ctx->Builder.CreateStore(Lhs->Stage11_CodeGen(sm, meta, ctx), temp);
+  if (DropsReceiverRest.has_value()) {
+    codegen::PushTemporary(temp, lhs_ref.WithoutConvention(), *DropsReceiverRest, ctx);
+  }
+  return temp;
+}
+
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::_EmitFieldPtr(
+  analyse::scopes::TypeRef const &lhs_ref, llvm::Value *base_ptr, Str const &uid, ScopeManager *sm,
+  codegen::LlvmCtx *ctx) -> llvm::Value* {
+  // Indexed through the object's own type, not a borrow's pointer
+  // type.
+  IMPORT_UTILS;
+  auto const &owner = *lhs_ref.Symbol;
+  const auto llvm_type = owner.LlvmInfo->LlvmType;
+  SPP_ASSERT(llvm_type != nullptr);
+
+  // A named field is found through the type's field index map:
+  // the S++ layout re-orders fields to minimise padding, so the
+  // physical position is not the declaration's.
+  if (not std::isdigit(Name->Val[0])) {
+    const auto field_index = codegen::GetPhysicalFieldIndex(
+      *owner.LlvmInfo, type_members::GetFieldIndexInType(owner, *Name));
+    return ctx->Builder.CreateStructGEP(llvm_type, base_ptr, field_index, "member_access.field_ptr" + uid);
+  }
+
+  // An array lowers to "[n x T]", indexed through the array itself
+  // (the leading zero steps over the pointer); a tuple to a struct
+  // whose fields keep declaration order less its valueless elements,
+  // so element "n" is found through the layout's index map.
+  const auto index = static_cast<std::uint32_t>(std::stoul(Name->Val));
+  if (type_predicates::IsTypeArray(TypeRef::ForKindCheck(owner, *sm->CurrentScope), *sm->CurrentScope)) {
+    const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
+    return ctx->Builder.CreateInBoundsGEP(
+      llvm_type, base_ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
+      "member_access.arr.elem_ptr" + uid);
+  }
+  return ctx->Builder.CreateStructGEP(
+    llvm_type, base_ptr, codegen::GetPhysicalFieldIndex(*owner.LlvmInfo, index), "member_access.tup.elem_ptr" + uid);
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::EvaluateCompTime(
@@ -451,22 +376,15 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::EvaluateCompTim
   // Resolve the left-hand-side expression.
   Lhs->EvaluateCompTime(sm, meta);
 
-  // Handle numeric index access (for tuples).
-  if (std::isdigit(Name->Val[0]) and meta->CompTimeResult->To<TupleLiteralAst>()) {
-    const auto cmp_tup = meta->CompTimeResult->To<TupleLiteralAst>();
-    const auto index = std::stoul(Name->Val);
-    auto cmp_field = AstClone(cmp_tup->Elems[index]);
-    meta->CompTimeResult = std::move(cmp_field);
-    return;
-  }
-
-  // Handle numeric index access (for arrays).
-  if (std::isdigit(Name->Val[0]) and meta->CompTimeResult->To<ArrayLiteralExplicitElementsAst>()) {
-    const auto cmp_tup = meta->CompTimeResult->To<ArrayLiteralExplicitElementsAst>();
-    const auto index = std::stoul(Name->Val);
-    auto cmp_field = AstClone(cmp_tup->Elems[index]);
-    meta->CompTimeResult = std::move(cmp_field);
-    return;
+  // Numeric index access, of a tuple or an array.
+  if (std::isdigit(Name->Val[0])) {
+    auto const *const tup = meta->CompTimeResult->To<TupleLiteralAst>();
+    auto const *const arr = meta->CompTimeResult->To<ArrayLiteralExplicitElementsAst>();
+    if (tup != nullptr or arr != nullptr) {
+      auto const &elems = tup != nullptr ? tup->Elems : arr->Elems;
+      meta->CompTimeResult = AstClone(elems[std::stoul(Name->Val)]);
+      return;
+    }
   }
 
   // Handle normal attribute access (for objects).
@@ -532,6 +450,10 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::_Resolve(
   _Owner = Lhs->InferTypeRef(sm, meta).Symbol;
   _Member = member_lookup::MemberOf(*_Owner->LinkedScope, *Name, member_lookup::MemberAccessForm::Runtime);
   return _Member;
+}
+
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::GetFwdAccess() const -> PostfixExpressionAst* {
+  return _MappedFwd.get();
 }
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::GetFwdReceiver() const -> PostfixExpressionAst* {

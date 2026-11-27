@@ -9,7 +9,7 @@ import std;
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeSymbol);
-use(spp::codegen, struct DeferredReached);
+use(spp::codegen, struct PendingTemporaries);
 use(spp::codegen, struct LlvmCtx);
 use(spp::codegen, struct LlvmGenerator);
 
@@ -65,10 +65,9 @@ SPP_EXP_CLS struct spp::codegen::LlvmCtx {
   /// doubt it.
   Scope *CurrentClosureScope = nullptr;
 
-  /// The "defer" statements that the walk has reached in each scope, kept here
-  /// rather than on the scope, which a generic template and its instantiations
-  /// share.
-  Unique<DeferredReached> Deferred;
+  /// The temporaries the walk holds until their statement ends (set from
+  /// "PushTemporary").
+  Unique<PendingTemporaries> Pending;
 
   /// Build a new context from the module name that is about to run stage 10/11,
   /// emitting into "context".

@@ -72,7 +72,7 @@ jobs:
       codegen: false
       differential: false
       shard-count: 4
-      gtest-filter: "TestMem*:TestAstMemory*:TestAstEscapingBorrows.*:TestAstYieldedBorrow.*:TestLinear*:CaseExpressionAst.*:CasePattern*:TestVariantNarrowing.*:TestGenericInference_*:TestTypeCompSymmetry.*:TestOverrides.*:Closure*:TestFirstClassFunctions.*:TestShadowing.*"
+      gtest-filter: "TestMem*:TestAstMemory*:TestAstEscapingBorrows.*:TestAstYieldedBorrow.*:TestDrop*:CaseExpressionAst.*:CasePattern*:TestVariantNarrowing.*:TestGenericInference_*:TestTypeCompSymmetry.*:TestOverrides.*:Closure*:TestFirstClassFunctions.*:TestShadowing.*"
       asan-options: "malloc_context_size=0:quarantine_size_mb=0"
 
   # Grades what cannot be seen from inside a workflow: token

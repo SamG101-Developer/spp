@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.closure_expression_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
@@ -51,6 +52,12 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
   struct {
     Shared<TypeAst> _OriginalRetType;
   } Source;
+
+  /// A closure is its own scope, so record owned values that need to be dropped
+  /// at the end of the closure.
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> End;
+  } _Drops;
 
   ClosureExpressionAst(
     decltype(Tok) &&tok,

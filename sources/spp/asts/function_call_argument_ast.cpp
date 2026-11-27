@@ -19,13 +19,14 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
+import spp.codegen.llvm_drop;
 import spp.codegen.llvm_type;
+import spp.utils.functions;
 import spp.utils.types;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
-use_alias(spp::asts::meta, AllowPackWholeGuard);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
@@ -76,8 +77,8 @@ auto spp::asts::FunctionCallArgumentAst::Stage7_AnalyseSemantics(
   const auto _target_guard = WithoutCallersTarget(meta);
   const auto pos = To<FunctionCallArgumentPositionalAst>();
   const auto spreads = pos != nullptr and pos->TokUnpack != nullptr;
-  const auto _pack_guard = AllowPackWholeGuard(
-    meta, (spreads or meta->AllowPackWhole) and Val->To<IdentifierAst>() != nullptr);
+  const auto _pack_guard = spp::utils::functions::ScopedAssign(
+    meta->AllowPackWhole, (spreads or meta->AllowPackWhole) and Val->To<IdentifierAst>() != nullptr);
   Val->Stage7_AnalyseSemantics(sm, meta);
   common_errors::RequirePrimary(*Val, *sm);
 }
@@ -93,7 +94,9 @@ auto spp::asts::FunctionCallArgumentAst::Stage11_CodeGen(
   // An argument passed by value is generated as a value; a borrowed one lowers to the address of what it borrows.
   const auto _target_guard = WithoutCallersTarget(meta);
   if (Conv == nullptr) { return Val->Stage11_CodeGen(sm, meta, ctx); }
-  return codegen::LlvmAddrOf(*Val, sm, meta, ctx);
+  const auto addr = codegen::LlvmAddrOf(*Val, sm, meta, ctx);
+  if (DropsTemporary) { codegen::PushTemporary(addr, Val->InferTypeRef(sm, meta).WithoutConvention(), {}, ctx); }
+  return addr;
 }
 
 auto spp::asts::FunctionCallArgumentAst::EvaluateCompTime(

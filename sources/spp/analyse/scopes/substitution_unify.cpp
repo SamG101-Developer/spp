@@ -123,9 +123,9 @@ auto spp::analyse::scopes::CompPackParamOf(sc::CompId declared) -> std::uint64_t
 
 auto spp::analyse::scopes::UnifyArgs(
   sc::TypeKeyHeader const &given, sc::TypeKeyHeader const &declared, sc::TypeSymbol const &tmpl, Ctx &ctx) -> bool {
-  const auto declared_args = declared.Args != nullptr ? sc::ArgsOf(declared.Args) : spp::Vec<sc::TypeIdArg>();
+  const auto declared_args = sc::ArgsOf(declared.Args);
   const auto bare = given.Kind == sc::TypeKey::Tag::Symbol;
-  const auto given_args = not bare and given.Args != nullptr ? sc::ArgsOf(given.Args) : spp::Vec<sc::TypeIdArg>();
+  const auto given_args = sc::ArgsOf(bare ? nullptr : given.Args);
   const auto is_variadic = tmpl.Type != nullptr and tmpl.Type->GnParamGroup->GetVariadicParam() != nullptr;
 
   // A pattern with no arguments takes any instance of its class, of a fixed number of parameters.
@@ -258,10 +258,11 @@ auto spp::analyse::scopes::UnifyCompIds(
   if (given == nullptr or declared == nullptr) { return false; }
   if (declared->Kind == scopes::CompKey::Part::Param) { return BindComp(declared->ParamId, given, bindings); }
 
-  // Two comp packs' lists (or two tuples) element by element; a trailing variadic parameter of the pattern takes the
-  // rest of a list as its own.
+  // Two comp packs' lists (or two tuples, or two arrays) element by element; a
+  // trailing variadic parameter of the pattern takes the rest of a list as its
+  // own.
   const auto both = [&](const scopes::CompKey::Part kind) { return declared->Kind == kind and given->Kind == kind; };
-  if (both(scopes::CompKey::Part::Tuple)) {
+  if (both(scopes::CompKey::Part::Tuple) or both(scopes::CompKey::Part::Array)) {
     if (declared->Kids.size() != given->Kids.size()) { return false; }
     for (auto i = 0uz; i < declared->Kids.size(); ++i) {
       if (not UnifyCompIds(given->Kids[i], declared->Kids[i], bindings)) { return false; }
@@ -296,4 +297,14 @@ auto spp::analyse::scopes::UnifyTypeIds(
     .CheckConstraints = check_constraints
   };
   return UnifyType(given, declared, ctx);
+}
+
+auto spp::analyse::scopes::PatternsOverlap(
+  const scopes::TypeId a, Scope const &a_scope, const scopes::TypeId b, Scope const &b_scope,
+  const bool check_constraints)
+  -> bool {
+  auto fwd = GenericSubst();
+  auto rev = GenericSubst();
+  return UnifyTypeIds(a, b, a_scope, b_scope, fwd, false, check_constraints)
+    or UnifyTypeIds(b, a, b_scope, a_scope, rev, false, check_constraints);
 }

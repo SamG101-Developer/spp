@@ -48,11 +48,6 @@ namespace spp::analyse::utils::sup_attachment {
     };
   }
 
-  /// Universal generic parameter grabber from "sup" and "sup-ext"
-  /// blocks. The returning type is the same so easy to unify.
-  static auto GetSupGnParamsFromScope(
-    Scope const &sup_scope) -> GenericParameterGroupAst const*;
-
   /// Types in sup-matches are already constrained to the same
   /// base-type, to save on massive amounts of type-matching;
   /// that's the "coarse" check. The refined check includes
@@ -211,11 +206,8 @@ auto spp::analyse::utils::sup_attachment::CheckConflictingTypeOrCmpStatements(
     | genex::views::filter([&](auto *scope) {
       auto const &theirs_scope = *scope->AstNode->GetAstScope();
       const auto theirs_id = theirs_scope.TypeIdOf(*AstName(scope->AstNode));
-      if (mine_id == nullptr or theirs_id == nullptr) { return false; }
-      auto fwd = GenericSubst();
-      auto rev = GenericSubst();
-      return UnifyTypeIds(mine_id, theirs_id, sup_scope, theirs_scope, fwd)
-        or UnifyTypeIds(theirs_id, mine_id, theirs_scope, sup_scope, rev);
+      return mine_id != nullptr and theirs_id != nullptr
+        and PatternsOverlap(mine_id, sup_scope, theirs_id, theirs_scope);
     })
     | genex::to<Vec>();
 
@@ -315,14 +307,12 @@ auto spp::analyse::utils::sup_attachment::AttachSpecificSuperScopesImpl(
   scope.DirectSupScopes.clear();
 
   // Matched as a pattern: a template as itself over its own
-  // parameters. For example, from Vec, get Vec[T=T]. Grab
-  // other metadata.
-  const auto fq_type = scope.LinkedTypeSymbol->GnSelfName();
+  // parameters ("GnSelfId"). For example, from Vec, get
+  // Vec[T=T]. Grab other metadata.
   auto const &cls_sym = scope.LinkedTypeSymbol;
   const auto is_mock = scope.LinkedTypeSymbol->IsMock();
   auto const &type_scope = *scope.LinkedTypeSymbol->ScopeDefinedIn;
-  auto type_id = type_scope.TypeIdOf(*fq_type);
-  if (type_id == nullptr) { type_id = type_scope.TypeIdOfSymbol(*scope.LinkedTypeSymbol); }
+  const auto type_id = scope.LinkedTypeSymbol->GnSelfId();
 
   // Iterate through all the super scopes and check if the
   // name matches.

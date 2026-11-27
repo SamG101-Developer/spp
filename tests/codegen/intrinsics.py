@@ -703,6 +703,32 @@ def size_cases() -> None:
         )
 
 
+def needs_drop_cases() -> None:
+    # Copyable types and tuples of them destroy to nothing; anything owning memory, or holding something that does,
+    # needs a drop.
+    covers("std.mem.ops.needs_drop")
+    for t, v in (
+        ("S32", False),
+        ("F64", False),
+        ("Bool", False),
+        ("(S32, U8)", False),
+        ("Str", True),
+        ("Vec[S32]", True),
+        ("(S32, Str)", True),
+    ):
+        CASES.append(
+            Case(
+                "sizes",
+                f"needs_drop {t}",
+                "Bool",
+                f"std::mem::ops::needs_drop[{t}]()",
+                [],
+                f"std::mem::ops::needs_drop[{t}]()",
+                v,
+            )
+        )
+
+
 def hint_cases() -> None:
     # A branch hint returns its condition unchanged; the weights it adds are checked by check-branch-hints.sh.
     covers("std.hints.likely", "std.hints.unlikely")
@@ -717,6 +743,62 @@ def hint_cases() -> None:
 
 
 # -- Run time only ----------------------------------------------------------------------------------------------------
+
+
+def transmute_cases() -> None:
+    # "transmute" is std's own ("!package"): reached through the array methods that take an array apart with it, each
+    # reinterpreting it as two arrays ("ArrParts"), then a one-element array as its element. The element types differ in
+    # size and alignment, so a wrong size check or an over-aligned load shows.
+    covers("std.mem.ops.transmute")
+    prog = "runtime-transmute"
+    for t in ("U8", "S32", "S64", "U128"):
+        e = [int_lit(t, v) for v in (1, 2, 3, 4, 5)]
+        whole = ", ".join(f"hide({x})" for x in e)
+        CASES.append(
+            Case(
+                prog,
+                f"pop_front Arr[{t}, 5]",
+                t,
+                None,
+                [
+                    f"let (head, rest) = [{whole}].pop_front()",
+                    f"case rest[0_uz]@ != {e[1]} or rest[3_uz]@ != {e[4]} "
+                    f'{{ bad = bad + note("pop_front Arr[{t}, 5]: rest") }}',
+                ],
+                "head",
+                1,
+            )
+        )
+        CASES.append(
+            Case(
+                prog,
+                f"pop_back Arr[{t}, 5]",
+                t,
+                None,
+                [
+                    f"let (init, last) = [{whole}].pop_back()",
+                    f"case init[0_uz]@ != {e[0]} or init[3_uz]@ != {e[3]} "
+                    f'{{ bad = bad + note("pop_back Arr[{t}, 5]: init") }}',
+                ],
+                "last",
+                5,
+            )
+        )
+        CASES.append(
+            Case(
+                prog,
+                f"split_at[2] Arr[{t}, 5]",
+                t,
+                None,
+                [
+                    f"let (l, r) = [{whole}].split_at[2_uz]()",
+                    f"case l[0_uz]@ != {e[0]} or l[1_uz]@ != {e[1]} or r[2_uz]@ != {e[4]} "
+                    f'{{ bad = bad + note("split_at[2] Arr[{t}, 5]: parts") }}',
+                ],
+                "r[0_uz]@",
+                3,
+            )
+        )
 
 
 def runtime_int_cases() -> None:
@@ -758,6 +840,23 @@ def runtime_int_cases() -> None:
                             wrap(t, raw),
                         )
                     )
+                    if op == "mul":
+                        # The product's two halves; ">>" on a negative Python int is arithmetic, as the high half is.
+                        covers(f"{p}mul_wide")
+                        CASES.append(
+                            Case(
+                                prog,
+                                f"{p}mul_wide {t} ({a}, {b})",
+                                t,
+                                None,
+                                [
+                                    f"let (wlo, whi) = std::intrinsics::{p}mul_wide(hide({la}), hide({lb}))",
+                                    f'case whi != {int_lit(t, wrap(t, raw >> w))} {{ bad = bad + note("{p}mul_wide {t} ({a}, {b}): high value") }}',
+                                ],
+                                "wlo",
+                                wrap(t, raw),
+                            )
+                        )
                     if op != "mul":
                         covers(f"{p}{op}_saturating")
                         CASES.append(
@@ -1501,6 +1600,11 @@ EXCLUDED: dict[str, str] = {
     "std.single.": "a singleton",
     "std.allocator.": "allocation",
     "std.abort.": "aborting",
+    "std.intrinsics.load_unaligned": "std's own (!package), for the hash table; probed by hand",
+    "std.intrinsics.store_unaligned": "std's own (!package), for the hash table; probed by hand",
+    "std.intrinsics.bytes_eq_mask": "std's own (!package), for the hash table; probed by hand",
+    "std.intrinsics.bytes_msb_mask": "std's own (!package), for the hash table; probed by hand",
+    "std.intrinsics.prefetch_": "a cache hint with no value (std's own, !package)",
     "std.hints.black_box": "an optimisation barrier with no compile-time form",
     "std.hints.cold_path": "a branch hint with no value; its weights are checked by check-branch-hints.sh",
 }
@@ -1578,11 +1682,13 @@ def emit(builtins: str, std_src: str, out: str) -> None:
     int_cases()
     float_cases()
     size_cases()
+    needs_drop_cases()
     hint_cases()
     f8_cases()
     runtime_int_cases()
     runtime_float_cases()
     atomic_cases()
+    transmute_cases()
 
     # Every intrinsic in the registry is checked here, or excluded with a reason. One std does not declare cannot be
     # called, so it is noted, and its cases dropped.
@@ -1597,10 +1703,10 @@ def emit(builtins: str, std_src: str, out: str) -> None:
     # each in the module it names: "std::intrinsics::one" is not "SizedFloatingPoint::one", also an intrinsic.
     callable_fns = {
         (module, m)
-        for module in ("intrinsics", "hints")
+        for module in ("intrinsics", "hints", "mem::ops")
         for m in re.findall(
             r'!intrinsic\(name="[^"]+"\)\s*\n(?:\s*!.*\n)*\s*(?:cmp\s+)?fun\s+(\w+)',
-            (Path(std_src) / "std" / f"{module}.spp").read_text(),
+            (Path(std_src) / "std" / f"{module.replace('::', '/')}.spp").read_text(),
         )
     }
     CASES[:] = [
@@ -1608,7 +1714,9 @@ def emit(builtins: str, std_src: str, out: str) -> None:
         for c in CASES
         if all(
             x in callable_fns
-            for x in re.findall(r"std::(intrinsics|hints)::(\w+)", f"{c.cmp} {c.rt_val} {' '.join(c.rt_stmts)}")
+            for x in re.findall(
+                r"std::(intrinsics|hints|mem::ops)::(\w+)", f"{c.cmp} {c.rt_val} {' '.join(c.rt_stmts)}"
+            )
         )
     ]
     missing = sorted(

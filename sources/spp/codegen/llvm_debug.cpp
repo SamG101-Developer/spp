@@ -489,7 +489,7 @@ auto spp::codegen::DebugTypeOf(
 
   // "NonNull[T]" and "Ptr[T]": a pointer to "T". Remembered before "T" is
   // described, as "T" may point back here.
-  if (is(*NON_NULL) or is(*PTR)) {
+  if (analyse::utils::type_predicates::IsTypePointer(cls_ref, *scope)) {
     auto *const pointer = di.createPointerType(nullptr, ptr_bits, ptr_align, Nullopt, name);
     remember(pointer);
     const auto pointee = DebugTypeOf(ctx, sym->TypeArgRef("T"));

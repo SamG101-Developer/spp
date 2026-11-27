@@ -7,6 +7,7 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts::meta, struct CompilerMetaData);
 
 /// Attaching each type's super scopes - the "sup" blocks over it,
@@ -38,4 +39,9 @@ namespace spp::analyse::utils::sup_attachment {
   /// Forget the sup statements gathered per scope, for the end of
   /// a compile ("ScopeTree").
   SPP_EXP_FUN auto ClearSupStatementsCache() -> void;
+
+  /// A "sup" or "sup ext" block's generic parameters; null for any
+  /// other scope.
+  SPP_EXP_FUN auto GetSupGnParamsFromScope(
+    Scope const &sup_scope) -> GenericParameterGroupAst const*;
 }

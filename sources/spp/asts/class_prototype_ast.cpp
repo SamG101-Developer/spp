@@ -236,7 +236,7 @@ auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
   // A "!zero_type" class is guaranteed to occupy no storage -
   // every use of one assumes as much - so it cannot declare
   // state of its own. Being zero-sized says nothing about
-  // copying: a marker is still linear unless it is "Copy".
+  // copying: a marker moves unless it is "Copy".
   RaiseIf<SppEmptyBodyRequiredError>(
     ZeroTypeAnnotation != nullptr and not Impl->Members.empty(),
     ERR_ARGS(

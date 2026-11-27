@@ -8,9 +8,12 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.marker_sups;
+import spp.analyse.utils.visibility_utils;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.strings;
 import genex;
@@ -20,6 +23,7 @@ MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, NamespaceSymbol);
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, TypeSymbol);
 use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
@@ -27,6 +31,7 @@ use_alias(spp::asts, Ast);
 use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, TypeAst);
 use_alias(spp::asts, TypeIdentifierAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::member_lookup {
   /// The body that both the wrapper function "ScopesDeclaringVar"
@@ -246,4 +251,47 @@ auto spp::analyse::utils::member_lookup::RaiseIfAmbiguous(
   // if there are more than 1 scopes at the equal minimum
   // level => ambiguous lookup.
   RaiseIfAmbiguousImpl(closest, access);
+}
+
+auto spp::analyse::utils::member_lookup::CheckMethodVisible(
+  Scope &type_scope, IdentifierAst const &name,
+  ScopeManager const &sm, CompilerMetaData const &meta) -> VariableSymbol* {
+  const auto methods = ScopesDeclaringVar(type_scope, name)
+    | genex::views::filter([](auto const &x) { return x.Symbol->Kind == scopes::VariableKind::FnMock; })
+    | genex::to<Vec>();
+  if (methods.empty()) { return nullptr; }
+  auto const &cls_scope = *type_scope.NonGnScope;
+  const auto any_visible = genex::any_of(methods, [&](auto const &x) {
+    return visibility_utils::IsTypeMemberVisible(*x.Symbol, cls_scope, sm, meta);
+  });
+  if (not any_visible) { visibility_utils::CheckTypeMemberVisibility(*methods.back().Symbol, name, cls_scope, sm, meta); }
+  return methods.back().Symbol;
+}
+
+auto spp::analyse::utils::member_lookup::CheckClosestMember(
+  Vec<DeclaringVarScope> const &closest, IdentifierAst const &name,
+  ScopeManager const &sm, CompilerMetaData const &meta) -> VariableSymbol* {
+  if (closest.empty()) { return nullptr; }
+  auto const &declared_in = *closest[0].Where->NonGnScope;
+  auto *const declared = declared_in.FindVarSymbol(&name, true);
+  if (declared != nullptr) { visibility_utils::CheckTypeMemberVisibility(*declared, name, declared_in, sm, meta); }
+  else { visibility_utils::CheckTypeMemberVisibility(*closest[0].Symbol, name, *closest[0].Where, sm, meta); }
+  RaiseIfAmbiguous(closest, name);
+  return declared != nullptr ? declared : closest[0].Symbol;
+}
+
+auto spp::analyse::utils::member_lookup::RaiseMemberNotFound(
+  TypeSymbol const &owner, TypeRef const &owner_ref, IdentifierAst const &name,
+  const MemberAccessForm form, Scope const &scope) -> void {
+  auto candidates = owner.LinkedScope->GetAllVarSymbols(true, true);
+  const auto [fwd_ref, fwd_mut] = marker_sups::FindFwdSups(owner_ref, scope);
+  for (auto const &fwd : {fwd_ref, fwd_mut}) {
+    if (auto const *const target = marker_sups::FwdTargetOf(fwd).Symbol; target != nullptr and target->LinkedScope != nullptr) {
+      candidates.append_range(target->LinkedScope->GetAllVarSymbols(true, true));
+    }
+  }
+  RaiseMissingIdentifierAndClosestOptions(
+    name, candidates | genex::views::filter([form](auto const *sym) { return MemberReachableBy(*sym, form); })
+      | genex::to<Vec>(), {});
+  std::unreachable();
 }

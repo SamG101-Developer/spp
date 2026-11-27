@@ -2,12 +2,16 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.closure_expression_capture_ast;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.symbols;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);
@@ -20,6 +24,16 @@ spp::asts::ClosureExpressionCaptureAst::ClosureExpressionCaptureAst(
 }
 
 spp::asts::ClosureExpressionCaptureAst::~ClosureExpressionCaptureAst() = default;
+
+auto spp::asts::ClosureExpressionCaptureAst::ConsumesCapture(
+  Scope const &scope) const -> bool {
+  // A borrow owns nothing; a copyable value is copied in, so
+  // the outer variable and the closure each have their own.
+  if (Conv != nullptr) { return false; }
+  const auto sym = scope.FindVarSymbol(Val->To<IdentifierAst>());
+  const auto type_sym = sym != nullptr ? sym->TypeRefIn(scope).Symbol : nullptr;
+  return type_sym == nullptr or not type_sym->IsCopyable();
+}
 
 auto spp::asts::ClosureExpressionCaptureAst::PosStart() const -> std::size_t {
   // Use the convention or the value.

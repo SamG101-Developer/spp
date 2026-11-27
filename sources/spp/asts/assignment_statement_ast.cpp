@@ -10,8 +10,8 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.borrows;
 import spp.analyse.utils.comp_time_intrinsics;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.fn_values;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.regions;
@@ -30,6 +30,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_debug;
+import spp.codegen.llvm_drop;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.ice;
@@ -71,10 +72,12 @@ auto spp::asts::AssignmentStatementAst::PosEnd() const -> std::size_t {
 
 auto spp::asts::AssignmentStatementAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<AssignmentStatementAst>(
+  auto a = MakeUnique<AssignmentStatementAst>(
     AstCloneVec(Lhs),
     AstClone(TokAssign),
     AstCloneVec(Rhs));
+  a->_Drops = _Drops;
+  return a;
 }
 
 auto spp::asts::AssignmentStatementAst::ToString() const -> Str {
@@ -91,9 +94,8 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
-  // For each part of the LHS, ensure it is semantically valid.
-  // Use the deref helper to allow a "move"-looking ast on the
-  // left side.
+  // For each part of the LHS, ensure it is semantically valid. Use the deref
+  // helper to allow a "move"-looking ast on the left side.
   for (auto const &lhs_expr : Lhs) {
     SPP_DEREF_ALLOW_MOVE_HELPER(lhs_expr) {
       const auto _meta_guard = MetaGuard(meta);
@@ -106,37 +108,35 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
   }
 
   // For each part of the RHS, ensure it is semantically valid.
-  for (auto [i, rhs_expr] : Rhs | genex::views::ptr | genex::views::enumerate) {
+  for (auto [i, rhs_expr] : Rhs | genex::views::enumerate) {
     const auto _meta_guard = MetaGuard(meta);
 
-    // Handle return type overloading matching from the lhs
-    // elem type. Todo: RHS not analysed yet -> bad expr being
-    // inferred? Maybe make failures on inference be nullptr.
+    // Handle return type overloading matching from the lhs elem type. Todo: RHS
+    // not analysed yet -> bad expr being inferred? Maybe make failures on
+    // inference be nullptr.
     SPP_RETURN_TYPE_OVERLOAD_HELPER(rhs_expr) {
       meta->ReturnTypeOverloadResolverType = MakeShared<TypeRef>(
         Lhs[i]->InferTypeRef(sm, meta));
     }
 
-    // Analyse the RHS expression. Bind the lhs target and
-    // target type for each RHS element.
+    // Analyse the RHS expression. Bind the lhs target and target type for each
+    // RHS element.
     meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
     meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
     rhs_expr->Stage7_AnalyseSemantics(sm, meta);
   }
 
-  // For each assignment, get the outermost symbol of the
-  // expression.
+  // For each assignment, get the outermost symbol of the expression.
   auto lhs_syms = Lhs | genex::views::transform([sm](auto const &x) {
     return sm->CurrentScope->FindVarSymbolOutermost(*x);
   });
 
-  // Full mutation checks, for identifiers, attribute
-  // accesses, mutable/immutable values, mutable/immutable
-  // borrows.
-  for (auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(
-         Lhs | genex::views::ptr,
-         Rhs | genex::views::ptr,
-         lhs_syms) | genex::to<Vec>()) {
+  // Full mutation checks, for identifiers, attribute accesses, mutable/
+  // immutable values, mutable/immutable borrows.
+  for (
+    auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] :
+    genex::views::zip(Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms)) {
+
     auto const &[lhs_sym, _] = lhs_sym_and_scope;
     const auto lhs_state = [&]() -> memory_state::MemoryState& {
       return memory_state::StateOf(*sm->CurrentScope, *lhs_sym);
@@ -192,12 +192,20 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
     return sm->CurrentScope->FindVarSymbolOutermost(*x);
   }) | genex::to<Vec>();
 
-  for (auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(
-         Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms)) {
+  // Every value is read before any target is written, as code
+  // generation does: in "a, b = b, a" the second value reads the
+  // "a" the statement started with, so it is moved there, and no
+  // old value it took is dropped by the write over "a".
+  // What each write replaces is dropped first ("_Drops.Overwrite": none, or the one value).
+  const auto drops_old = [&](const std::size_t i, Opt<drop_utils::OwnedValue> old) {
+    _Drops.Overwrite[i] = std::move(old);
+  };
+  _Drops.Overwrite.assign(Lhs.size(), Nullopt);
+  auto &loans = memory_state::LoansOf(*sm->CurrentScope);
+  const auto targets = genex::views::zip(
+    genex::views::iota(0uz, Lhs.size()), Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms);
+  for (auto const &[i, lhs_expr, rhs_expr, lhs_sym_and_scope] : targets) {
     auto const &[lhs_sym, _] = lhs_sym_and_scope;
-    const auto lhs_state = [&]() -> memory_state::MemoryState& {
-      return memory_state::StateOf(*sm->CurrentScope, *lhs_sym);
-    };
 
     // Partially validate the memory of the right-hand-side
     // expression, if it is an attribute being set. Don't mark
@@ -208,10 +216,8 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
       {.CheckMove = regions::IsAttr(lhs_expr, sm), .CheckPartialMove = false, .MarkMoves = false});
 
     // When we assign a replacement value, we need to release
-    // the loans that were present on the symbol. Get the loans
-    // in the scope, and remove them by comparing the holder
-    // symbol.
-    auto &loans = memory_state::LoansOf(*sm->CurrentScope);
+    // the loans that were present on the symbol, by comparing
+    // the holder symbol.
     if (lhs_expr->To<IdentifierAst>() != nullptr and lhs_sym != nullptr) {
       loans |= genex::actions::remove_if([&](auto const &loan) {
         return loan.Holder == lhs_sym and not loan.Yielded;
@@ -239,6 +245,14 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
     // than refusing the move on sight.
     mem_utils::ValidateSymbolMemory(
       *rhs_expr, *TokAssign, *sm, meta, {.CheckEscapingBorrowMove = false});
+  }
+
+  // Then each target is written.
+  for (auto const &[i, lhs_expr, rhs_expr, lhs_sym_and_scope] : targets) {
+    auto const &[lhs_sym, _] = lhs_sym_and_scope;
+    const auto lhs_state = [&]() -> memory_state::MemoryState& {
+      return memory_state::StateOf(*sm->CurrentScope, *lhs_sym);
+    };
 
     // Writing over a value that a live coroutine, future or
     // iterator borrows changes what that borrow points at, just
@@ -254,13 +268,13 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
     // For an attribute-based left-hand-side, we ensure that
     // the object is valid and mark it as being written in
     // place, to fine tune the memory error system. Resolve
-    // the partial move. Check we are abiding by linear rules
-    // by not overwriting a linear value (not discarded).
+    // the partial move. What the part still holds is dropped
+    // before it is written over.
     if (regions::IsAttr(lhs_expr, sm)) {
       mem_utils::ValidateSymbolMemory(
         *lhs_expr, *TokAssign, *sm, meta,
         {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false, .IsPlaceWritten = true});
-      linear_utils::CheckOverwritePart(*lhs_sym, *lhs_expr, *this, "Assignment", *sm, meta);
+      drops_old(i, drop_utils::OwnedBeforeWrite(lhs_sym, *lhs_expr, *sm, meta));
       lhs_state().RemovePartialMoves(*lhs_expr, sm->CurrentScope);
     }
 
@@ -272,7 +286,7 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
           borrows::RaiseIfConflictedUse(*borrow_sym, *sm->CurrentScope);
         }
       }
-      linear_utils::CheckOverwriteThroughBorrow(*lhs_expr, *sm, meta);
+      drops_old(i, drop_utils::OwnedBeforeWrite(nullptr, *lhs_expr, *sm, meta));
     }
 
     // Otherwise, resolve the moved identifier's memory status
@@ -293,7 +307,7 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
           *lhs_sym->Name, *TokAssign,
           *(state.AstInitialization != nullptr ? state.AstInitialization : state.AstMoved), "immutable sym"));
 
-      linear_utils::CheckOverwrite(*lhs_sym, *this, "Assignment", *sm);
+      drops_old(i, drop_utils::OwnedOnPath(*lhs_sym, lhs_state(), *sm->CurrentScope, *this, *sm, meta));
       lhs_state().InitializedBy(*this);
     }
 
@@ -313,6 +327,13 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
   }
 }
 
+/// [CHECKED]
+auto spp::asts::AssignmentStatementAst::DropsOldAt(
+  const std::size_t i) const -> bool {
+  // The ith target drops the value it held if Stage 8 recorded one there.
+  return i < _Drops.Overwrite.size() and _Drops.Overwrite[i].has_value();
+}
+
 auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -327,7 +348,9 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
       const auto _meta_guard = MetaGuard(meta);
       meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
       meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
-      if (Lhs[i]->To<IdentifierAst>() != nullptr) {
+      // Built straight into the target's slot only when it is the one
+      // target: with more, a later value may still read that target.
+      if (Lhs.size() == 1 and Lhs[i]->To<IdentifierAst>() != nullptr and not DropsOldAt(i)) {
         meta->LlvmAssignmentTarget = sm->CurrentScope->FindVarSymbol(
           Lhs[i]->To<IdentifierAst>())->LlvmInfo->Alloca;
       }
@@ -389,6 +412,11 @@ auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
   for (auto i = 0uz; i < Lhs.size(); ++i) {
     if (llvm_lhs_locs[i] == nullptr and llvm_rhs_vals[i] == nullptr) { continue; }
     SPP_ASSERT(llvm_lhs_locs[i] != nullptr and llvm_rhs_vals[i] != nullptr);
+    if (DropsOldAt(i)) {
+      auto const &old = *_Drops.Overwrite[i];
+      codegen::EmitDrop(
+        Lhs[i]->InferTypeRef(sm, meta).WithoutConvention(), llvm_lhs_locs[i], sm, meta, ctx, old.Moved, old.TakenApart);
+    }
     ctx->Builder.CreateStore(llvm_rhs_vals[i], llvm_lhs_locs[i]);
 
     // A binding a move left empty holds a value again: a debugger shows it.

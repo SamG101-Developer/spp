@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.case_utils;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.type_join;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.types;
@@ -22,14 +23,13 @@ use(spp::codegen, struct LlvmCtx);
 use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::case_utils {
-  /// The match edge of "branch", once its patterns and guard have
+  /// A branch's match edge, once its patterns and guard have
   /// matched: what "meta.CaseSubjectOnMatch" says is done to
   /// "meta.CaseSubject" (taken whole, or the part the condition
-  /// names; found to owe nothing; or kept). What is taken has to
-  /// have every owned part bound by the patterns first.
+  /// names; or kept). Patterns leaving an owned part unbound take
+  /// only what they bind, so the subject's owner drops the rest.
   SPP_EXP_FUN auto ApplySubjectOnMatch(
-    CaseExpressionBranchAst const &branch, ScopeManager &sm,
-    CompilerMetaData const &meta) -> void;
+    ScopeManager &sm, CompilerMetaData const &meta) -> void;
 
   /// Point the hidden borrow of a "case" subject (the plan's
   /// "Subject") at the subject's generated value "llvm_subject": a
@@ -37,7 +37,7 @@ namespace spp::analyse::utils::case_utils {
   /// other is stored in a slot of its own.
   SPP_EXP_FUN auto BindSubjectValue(
     MatchPlan const &plan, llvm::Value *llvm_subject,
-    LlvmCtx *ctx) -> void;
+    LlvmCtx *ctx) -> llvm::Value*;
 
   /// Generate "checks" (one pattern's, from the plan) against the
   /// subject its hidden borrow points at, in order, each only once the
@@ -64,21 +64,25 @@ namespace spp::analyse::utils::case_utils {
   /// by ("type_join::TypeJoin"): each branch's final member and
   /// type, read here, onto what the case is assigned to, if it is.
   SPP_EXP_FUN auto JoinBranches(
-    Vec<CaseExpressionBranchAst*> const &branches,
+    Span<Unique<CaseExpressionBranchAst> const> branches,
     ScopeManager &sm, CompilerMetaData *meta)
     -> type_join::TypeJoin;
 
-  /// Similar to the type check validation, but for memory. This
-  /// is more complex as we must check every symbol, and reset
-  /// its status to the original snapshots. The final symbol
-  /// status is based off the consistent status's of every branch.
-  /// Errors are not thrown if one branch moves a symbol and
-  /// another doesn't; but the symbol mem-info is updated such
-  /// that *using* that symbol later in the function would
-  /// cause an error.
+  /// Check each branch's memory from the state before the "case"
+  /// (carrying a guard's moves past its branch), then join the
+  /// paths out into the state after it: what the paths disagree
+  /// about is no error until it is used ("maybe" states). A value
+  /// of an enclosing scope held on only some paths is dropped on
+  /// each path still holding it: each branch is given its own
+  /// (its "_Drops.End"), and what the path falling through every
+  /// branch drops is returned. The temporaries the condition made
+  /// ("condition_temporaries", "drop_utils::TemporaryRegion") are
+  /// held on every path out, each dropping what it still holds, but
+  /// those held only where a boolean condition is true
+  /// ("held_in_first_branch") are held in its first branch alone.
   SPP_EXP_FUN auto ValidateInconsistentMemory(
-    Ast *parent, Vec<CaseExpressionBranchAst*> const &branches,
-    CaseCoverage const &coverage, VariableSymbol *subject,
-    SubjectEdges const *subject_edges, ScopeManager *sm,
-    CompilerMetaData *meta) -> void;
+    Ast *parent, Span<Unique<CaseExpressionBranchAst> const> branches,
+    CaseCoverage const &coverage, SubjectEdges const *subject_edges,
+    Vec<VariableSymbol*> const &condition_temporaries, Vec<VariableSymbol*> const &held_in_first_branch,
+    ScopeManager *sm, CompilerMetaData *meta) -> Vec<drop_utils::OwnedValue>;
 }

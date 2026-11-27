@@ -129,6 +129,7 @@ export namespace llvm {
   using ::llvm::DiagnosticPrinterRawOStream;
   using ::llvm::DWARFContext;
   using ::llvm::LoadedObjectInfo;
+  using ::llvm::FixedVectorType;
   using ::llvm::Function;
   using ::llvm::FunctionType;
   using ::llvm::GlobalValue;

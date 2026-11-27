@@ -103,12 +103,7 @@ auto spp::asts::FindMatchingExtension(
     if (ext == nullptr or sc->TypeIdOf(*ext->SuperCls) != super_id) { continue; }
     const auto ext_id = sc->TypeIdOf(*ext->Name);
     if (ext_id == nullptr) { continue; }
-    auto fwd = analyse::scopes::GenericSubst();
-    auto rev = analyse::scopes::GenericSubst();
-    if (analyse::scopes::UnifyTypeIds(ext_id, name_id, *sc, check_scope, fwd, false, check_constraints)
-      or analyse::scopes::UnifyTypeIds(name_id, ext_id, check_scope, *sc, rev, false, check_constraints)) {
-      return {sc, ext};
-    }
+    if (analyse::scopes::PatternsOverlap(ext_id, *sc, name_id, check_scope, check_constraints)) { return {sc, ext}; }
   }
   return {nullptr, nullptr};
 }
@@ -368,6 +363,14 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     const auto cls_sym = sm->CurrentScope->FindTypeSymbol(Name.get());
 
     SuperCls->Stage7_AnalyseSemantics(sm, meta);
+
+    // A copy holds whatever the original does, so a destructor would release it once per copy: a "Copy" type has no
+    // destructor of its own. Every "Copy" is marked by stage 6, so this sees it whichever block comes first.
+    RaiseIf<SppSuperimpositionCopyAndDropError>(
+      cls_sym->IsCopyable()
+        and marker_sups::IsDropMarker(TypeRef::ForKindCheck(*SuperCls, *sm->CurrentScope), *sm->CurrentScope),
+      ERR_ARGS(*Name, *SuperCls));
+
     if (cls_sym->Type and not cls_sym->IsMock()) {
       const auto sup_sym = sm->CurrentScope->FindTypeSymbol(SuperCls.get());
 

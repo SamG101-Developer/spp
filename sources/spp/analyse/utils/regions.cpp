@@ -85,8 +85,9 @@ auto spp::analyse::utils::regions::PlaceOf(
   // none. A call of anything else (a function, a value)
   // hands back a temporary, which is no place.
   auto steps = Vec<PlaceStep>();
-  auto cur = &ast;
-  while (const auto postfix = cur->To<PostfixExpressionAst>()) {
+  auto cur = asts::Unparenthesised(&ast);
+  for (; cur->To<PostfixExpressionAst>() != nullptr; cur = asts::Unparenthesised(cur)) {
+    const auto postfix = cur->To<PostfixExpressionAst>();
     // For a runtime member access, get the interned if of
     // the member being accessed, and add it to the steps.
     const auto member = postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
@@ -145,15 +146,30 @@ auto spp::analyse::utils::regions::PlaceOf(
 
   // The root: a variable named outright, or a static member
   // reached through its type or namespace.
-  const auto root = cur->To<IdentifierAst>() != nullptr or IsStaticMemberAccess(cur)
+  auto root = cur->To<IdentifierAst>() != nullptr or IsStaticMemberAccess(cur)
     ? scope.FindVarSymbolOutermost(*cur).first
     : nullptr;
   if (root == nullptr) { return Nullopt; }
 
   // Reverse the steps (they were built in reverse order).
-  // and bind the root into the "Place" instance.
   steps | genex::actions::reverse;
+
+  // An "is" binding is a view: a name for a part of its owner, so
+  // the place it names is that part ("y.a" is "o.val.a" for "o is
+  // P(val as y)"), and every check of a place sees through it.
+  while (IsView(*root)) {
+    auto view_steps = root->ViewSteps
+      | genex::views::transform([](const auto id) { return PlaceStep{.Name = id}; })
+      | genex::to<Vec>();
+    steps.insert(steps.begin(), view_steps.begin(), view_steps.end());
+    root = root->ViewRoot;
+  }
   return Place{.Root = root, .Steps = std::move(steps)};
+}
+
+auto spp::analyse::utils::regions::IsView(
+  VariableSymbol const &sym) -> bool {
+  return sym.Kind == scopes::VariableKind::FlowNarrowing and sym.ViewRoot != nullptr and sym.ViewRoot != &sym;
 }
 
 auto spp::analyse::utils::regions::Relate(
@@ -246,6 +262,13 @@ auto spp::analyse::utils::regions::DescendToPart(
   for (auto i = 0uz; i < count and i < steps.size(); ++i) {
     if (part.first.Symbol == nullptr or part.second == nullptr) { break; }
 
+    // A step into a variant names the member it holds there
+    // ("type_members::VariantMemberStep").
+    if (const auto member = type_members::VariantMemberAt(part.first, steps[i].Name, *part.second)) {
+      part = {*member, part.second};
+      continue;
+    }
+
     // For all the parts (field / tuple indexes) on the type,
     // if we find a match by interned id, save the type of it.
     auto next = Pair<TypeRef, Scope const*>{};
@@ -287,17 +310,28 @@ auto spp::analyse::utils::regions::RegionConsumed(
     return false;
   }
 
+  // A variant has no parts of its own to account for, but a move into
+  // it went through the member it held there ("o.<Some[T]>.val"): that
+  // member is then what has to be accounted for.
+  for (auto const &member : type_members::VariantMemberRefs(type, scope)) {
+    auto into = region;
+    into.Steps.push_back({.Name = type_members::VariantMemberStep(member)});
+    if (genex::any_of(moves, [&](auto const &move) { return Relate(*move.Of, into) != MemRegionRelation::Disjoint; })) {
+      return RegionConsumed(into, member, scope, moves, unaccounted, descend_regardless);
+    }
+  }
+
   auto part = region;
   part.Steps.push_back({}); // Extra spot for temp "final" part.
 
   // Each part is checked on its own, under the name a
   // destructure would have recorded it by - an attribute's
   // own name, or an element's index. A copyable part was
-  // never owed to anyone, so it never has to be accounted
+  // never moved, so it never has to be accounted
   // for. If any part is unaccounted for, then nor is the
   // value holding it.
   for (auto const &[step, _, part_type, part_ref, part_scope] : type_members::GetAllParts(type, scope)) {
-    if (part_ref.Symbol == nullptr or part_ref.Symbol->IsCopyable()) { continue; }
+    if (not part_ref.IsMoveOnly()) { continue; }
     part.Steps.back() = {.Name = step->NameId()};
     if (not RegionConsumed(part, part_ref, *part_scope, moves, unaccounted)) { return false; }
   }

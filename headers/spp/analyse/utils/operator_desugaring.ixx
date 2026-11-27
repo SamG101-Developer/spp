@@ -76,10 +76,13 @@ namespace spp::analyse::utils::operator_desugaring {
 
   /// Convert the is expression to the equivalent "case"
   /// expression: "a is P" becomes "case a { P { true } else
-  /// { false } }", marked as lowered from an "is". Its
-  /// pattern's bindings are what the "is" binds.
+  /// { false } }", over "subject" (what holds "a"), marked as
+  /// lowered from an "is". Its pattern's bindings are what the
+  /// "is" binds. The "is" keeps its operands, so a clone of it
+  /// can be analysed again.
   SPP_EXP_FUN auto ConvertIsExprToCase(
-    IsExpressionAst &is_expr,
+    IsExpressionAst const &is_expr,
+    Unique<ExpressionAst> &&subject,
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> Unique<CaseExpressionAst>;

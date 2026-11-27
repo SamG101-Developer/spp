@@ -42,6 +42,7 @@ auto spp::asts::FunctionCallArgumentPositionalAst::Clone() const -> Unique<Ast> 
     AstClone(Conv),
     AstClone(TokUnpack),
     AstClone(Val));
+  ast->DropsTemporary = DropsTemporary;
   return ast;
 }
 

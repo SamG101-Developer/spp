@@ -1,261 +1,254 @@
 #include "test_macros.hpp"
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericConstraints,
-    test_invalid_function_constraint_mismatch,
-    SppFunctionCallNoValidSignaturesError, R"(
-    cls A { }
-    fun g[T: A](t: T) -> Void { }
+  TestAstGenericConstraints,
+  test_invalid_function_constraint_mismatch,
+  SppFunctionCallNoValidSignaturesError, R"(
+  cls A { }
+  fun g[T: A](t: T) -> Void { }
 
-    fun f() -> Void {
-        g(123)
-    }
+  fun f() -> Void {
+    g(123)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericConstraints,
-    test_invalid_function_constraint_multiple_mismatch,
-    SppFunctionCallNoValidSignaturesError, R"(
-    cls A { }
-    cls B { }
+  TestAstGenericConstraints,
+  test_invalid_function_constraint_multiple_mismatch,
+  SppFunctionCallNoValidSignaturesError, R"(
+  cls A { }
+  cls B { }
 
-    cls C { }
-    sup C ext A { }
-    fun g[T: A and B](t: T) -> Void { }
+  cls C { }
+  sup C ext A { }
+  fun g[T: A and B](t: T) -> Void { }
 
-    fun f() -> Void {
-        let c = C()
-        g(c)
-    }
+  fun f() -> Void {
+    let c = C()
+    g(c)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstGenericConstraints,
-    test_valid_function_constraint, R"(
-    cls A { }
-    fun g[T: A](t: T) -> Void {
-        std::mem::ops::drop(t)
-    }
+  TestAstGenericConstraints,
+  test_valid_function_constraint, R"(
+  cls A { }
+  fun g[T: A](t: T) -> Void {
+  }
 
-    fun f() -> Void {
-        let a = A()
-        g(a)
-    }
+  fun f() -> Void {
+    let a = A()
+    g(a)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstGenericConstraints,
-    test_valid_function_constraint_multiple, R"(
-    cls A { }
-    cls B { }
+  TestAstGenericConstraints,
+  test_valid_function_constraint_multiple, R"(
+  cls A { }
+  cls B { }
 
-    cls C { }
-    sup C ext A { }
-    sup C ext B { }
+  cls C { }
+  sup C ext A { }
+  sup C ext B { }
 
-    fun g[T: A and B](t: T) -> Void {
-        std::mem::ops::drop(t)
-    }
+  fun g[T: A and B](t: T) -> Void {
+  }
 
-    fun f() -> Void {
-        let c = C()
-        g(c)
-    }
+  fun f() -> Void {
+    let c = C()
+    g(c)
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericConstraints,
-    test_invalid_class_constraint_mismatch,
-    SppGenericConstraintError, R"(
-    cls A { }
-    cls B[T: A] { }
+  TestAstGenericConstraints,
+  test_invalid_class_constraint_mismatch,
+  SppGenericConstraintError, R"(
+  cls A { }
+  cls B[T: A] { }
 
-    fun f() -> Void {
-        let b = B[U32]()
-    }
+  fun f() -> Void {
+    let b = B[U32]()
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericConstraints,
-    test_invalid_class_constraint_multiple_mismatch,
-    SppGenericConstraintError, R"(
-    cls A { }
-    cls B { }
+  TestAstGenericConstraints,
+  test_invalid_class_constraint_multiple_mismatch,
+  SppGenericConstraintError, R"(
+  cls A { }
+  cls B { }
 
-    cls C { }
-    sup C ext A { }
-    cls D[T: A and B] { }
+  cls C { }
+  sup C ext A { }
+  cls D[T: A and B] { }
 
-    fun f() -> Void {
-        let c = C()
-        let d = D[C]()
-    }
+  fun f() -> Void {
+    let c = C()
+    let d = D[C]()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstGenericConstraints,
-    test_valid_class_constraint, R"(
-    cls A { }
-    cls B[T: A] { }
+  TestAstGenericConstraints,
+  test_valid_class_constraint, R"(
+  cls A { }
+  cls B[T: A] { }
 
-    fun f() -> Void {
-        let a = A()
-        let b = B[A]()
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
-    }
+  fun f() -> Void {
+    let a = A()
+    let b = B[A]()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstGenericConstraints,
-    test_valid_class_constraint_multiple, R"(
-    cls A { }
-    cls B { }
+  TestAstGenericConstraints,
+  test_valid_class_constraint_multiple, R"(
+  cls A { }
+  cls B { }
 
-    cls C { }
-    sup C ext A { }
-    sup C ext B { }
-    cls D[T: A and B] { }
+  cls C { }
+  sup C ext A { }
+  sup C ext B { }
+  cls D[T: A and B] { }
 
-    fun f() -> Void {
-        let c = C()
-        let d = D[C]()
-        std::mem::ops::drop(c)
-        std::mem::ops::drop(d)
-    }
+  fun f() -> Void {
+    let c = C()
+    let d = D[C]()
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericConstraints,
-    test_invalid_alias_constraint_mismatch,
-    SppGenericConstraintError, R"(
-    cls A { }
-    cls B[T: A] { }
-    type C[U] = B[U]
+  TestAstGenericConstraints,
+  test_invalid_alias_constraint_mismatch,
+  SppGenericConstraintError, R"(
+  cls A { }
+  cls B[T: A] { }
+  type C[U] = B[U]
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstGenericConstraints,
-    test_valid_alias_constraint, R"(
-    cls A { }
-    cls B[T: A] { }
-    type C[U: A] = B[U]
+  TestAstGenericConstraints,
+  test_valid_alias_constraint, R"(
+  cls A { }
+  cls B[T: A] { }
+  type C[U: A] = B[U]
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericConstraints,
-    test_invalid_sup_constraint_mismatch,
-    SppGenericConstraintError, R"(
-    cls A { }
-    cls B[T: A] { }
-    sup [X] B[X] { }
+  TestAstGenericConstraints,
+  test_invalid_sup_constraint_mismatch,
+  SppGenericConstraintError, R"(
+  cls A { }
+  cls B[T: A] { }
+  sup [X] B[X] { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstGenericConstraints,
-    test_valid_sup_constraint, R"(
-    cls A { }
-    cls B[T: A] { }
-    sup [X: A] B[X] { }
+  TestAstGenericConstraints,
+  test_valid_sup_constraint, R"(
+  cls A { }
+  cls B[T: A] { }
+  sup [X: A] B[X] { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericConstraints,
-    test_invalid_ext_constraint_mismatch,
-    SppGenericConstraintError, R"(
-    cls A { }
-    cls B[T: A] { }
-    cls C { }
-    sup [X] C ext B[X] { }
+  TestAstGenericConstraints,
+  test_invalid_ext_constraint_mismatch,
+  SppGenericConstraintError, R"(
+  cls A { }
+  cls B[T: A] { }
+  cls C { }
+  sup [X] C ext B[X] { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstGenericConstraints,
-    test_valid_ext_constraint, R"(
-    cls A { }
-    cls B[T: A] { }
-    cls C { }
+  TestAstGenericConstraints,
+  test_valid_ext_constraint, R"(
+  cls A { }
+  cls B[T: A] { }
+  cls C { }
 
-    sup [X: A] C ext B[X] { }
+  sup [X: A] C ext B[X] { }
 )");
 
 // A "sup" block's parameters reach the target's by the arguments it writes ("B[S, T]"), not by name: the block's "T"
 // below is the class's "S", so the class's constraint on its "T" is checked against the block's "S".
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericConstraints,
-    test_invalid_sup_constraint_swapped_names,
-    SppGenericConstraintError, R"(
-    cls A { }
-    cls B[T: A, S] { }
-    sup [S, T: A] B[S, T] { }
+  TestAstGenericConstraints,
+  test_invalid_sup_constraint_swapped_names,
+  SppGenericConstraintError, R"(
+  cls A { }
+  cls B[T: A, S] { }
+  sup [S, T: A] B[S, T] { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstGenericConstraints,
-    test_valid_sup_constraint_swapped_names, R"(
-    cls A { }
-    cls B[T: A, S] { }
-    sup [S: A, T] B[S, T] { }
+  TestAstGenericConstraints,
+  test_valid_sup_constraint_swapped_names, R"(
+  cls A { }
+  cls B[T: A, S] { }
+  sup [S: A, T] B[S, T] { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericConstraints,
-    test_invalid_ext_constraint_swapped_names,
-    SppGenericConstraintError, R"(
-    cls A { }
-    cls B[T: A, S] { }
-    cls C[T, S] { }
-    sup [S, T: A] C[S, T] ext B[S, T] { }
+  TestAstGenericConstraints,
+  test_invalid_ext_constraint_swapped_names,
+  SppGenericConstraintError, R"(
+  cls A { }
+  cls B[T: A, S] { }
+  cls C[T, S] { }
+  sup [S, T: A] C[S, T] ext B[S, T] { }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstGenericConstraints,
-    test_valid_ext_constraint_swapped_names, R"(
-    cls A { }
-    cls B[T: A, S] { }
-    cls C[T, S] { }
-    sup [S: A, T] C[T, S] ext B[S, T] { }
+  TestAstGenericConstraints,
+  test_valid_ext_constraint_swapped_names, R"(
+  cls A { }
+  cls B[T: A, S] { }
+  cls C[T, S] { }
+  sup [S: A, T] C[T, S] ext B[S, T] { }
 )");
 
 // A comp parameter's constraint is its type: the class's "n" is the block's "m".
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstGenericConstraints,
-    test_valid_sup_comp_param_renamed, R"(
-    cls A[cmp n: USize] { }
-    sup [cmp m: USize] A[m] { }
+  TestAstGenericConstraints,
+  test_valid_sup_comp_param_renamed, R"(
+  cls A[cmp n: USize] { }
+  sup [cmp m: USize] A[m] { }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericConstraints,
-    test_invalid_sup_function_for_constraint_mismatch,
-    SppIdentifierUnknownError, R"(
-    cls A[T] { }
+  TestAstGenericConstraints,
+  test_invalid_sup_function_for_constraint_mismatch,
+  SppIdentifierUnknownError, R"(
+  cls A[T] { }
 
-    sup [T: Copy] A[T] {
-        !public fun my_function(&self) -> Void { }
-    }
+  sup [T: Copy] A[T] {
+    !public fun my_function(&self) -> Void { }
+  }
 
-    fun f() -> Void {
-        let a = A[Str]()
-        a.my_function()  # invalid; Str is not Copy
-    }
+  fun f() -> Void {
+    let a = A[Str]()
+    a.my_function()  # invalid; Str is not Copy
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstGenericConstraints,
-    test_valid_sup_function_for_constraint,
-    R"(
-    cls A[T] { }
+  TestAstGenericConstraints,
+  test_valid_sup_function_for_constraint,
+  R"(
+  cls A[T] { }
 
-    sup [T: Copy] A[T] {
-        !public fun my_function(&self) -> Void { }
-    }
+  sup [T: Copy] A[T] {
+    !public fun my_function(&self) -> Void { }
+  }
 
-    fun f() -> Void {
-        let a = A[U32]()
-        a.my_function()  # valid; U32 is Copy
-        std::mem::ops::drop(a)
-    }
+  fun f() -> Void {
+    let a = A[U32]()
+    a.my_function()  # valid; U32 is Copy
+  }
 )");
 
 // A variadic parameter stands for however many arguments were left, so its constraint describes each of them rather
@@ -263,87 +256,86 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 // argument to one parameter, and the variadic case was read as a question about the tuple holding the pack - which a
 // "sup [..Ts: Copy] Tup[Ts] ext Copy" answers with the very impl the constraint exists to gate.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstGenericConstraints,
-    test_valid_variadic_constraint_all_satisfy, R"(
-    cls A[..Ts] { }
+  TestAstGenericConstraints,
+  test_valid_variadic_constraint_all_satisfy, R"(
+  cls A[..Ts] { }
 
-    sup [..Ts: Copy] A[Ts] {
-        !public fun my_function(&self) -> Void { }
-    }
+  sup [..Ts: Copy] A[Ts] {
+    !public fun my_function(&self) -> Void { }
+  }
 
-    fun f() -> Void {
-        let a = A[U32, Bool]()
-        a.my_function()
-        std::mem::ops::drop(a)
-    }
+  fun f() -> Void {
+    let a = A[U32, Bool]()
+    a.my_function()
+  }
 )");
 
 // One element that does not satisfy it is enough to reject the pack. Declared on the class rather than on a "sup",
 // because an unsatisfied "sup" constraint means that superimposition simply does not apply - the method is then not
 // found, which is a weaker thing to assert than the constraint itself being enforced.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericConstraints,
-    test_invalid_variadic_constraint_one_element_fails,
-    SppGenericConstraintError, R"(
-    cls NotCopy { }
-    cls A[..Ts: Copy] { }
+  TestAstGenericConstraints,
+  test_invalid_variadic_constraint_one_element_fails,
+  SppGenericConstraintError, R"(
+  cls NotCopy { }
+  cls A[..Ts: Copy] { }
 
-    fun f() -> Void {
-        let a = A[U32, NotCopy]()
-        std::mem::ops::drop(a)
-    }
+  fun f() -> Void {
+    let a = A[U32, NotCopy]()
+    std::mem::ops::drop(a)
+  }
 )");
 
 // ...including when it is the only element, which is the shape a single-argument pack takes, and the one most easily
 // confused with the bare argument the check used to be handed.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericConstraints,
-    test_invalid_variadic_constraint_single_element_fails,
-    SppGenericConstraintError, R"(
-    cls NotCopy { }
-    cls A[..Ts: Copy] { }
+  TestAstGenericConstraints,
+  test_invalid_variadic_constraint_single_element_fails,
+  SppGenericConstraintError, R"(
+  cls NotCopy { }
+  cls A[..Ts: Copy] { }
 
-    fun f() -> Void {
-        let a = A[NotCopy]()
-        std::mem::ops::drop(a)
-    }
+  fun f() -> Void {
+    let a = A[NotCopy]()
+    std::mem::ops::drop(a)
+  }
 )");
 
 // An empty pack has nothing to violate the constraint, so it satisfies it. Written against a function, because that
 // is where an empty pack arises on its own - a call that gives the variadic parameter no arguments at all.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestAstGenericConstraints,
-    test_valid_variadic_constraint_empty_pack, R"(
-    fun g[..Ts: Copy](..a: Ts) -> Void { }
+  TestAstGenericConstraints,
+  test_valid_variadic_constraint_empty_pack, R"(
+  fun g[..Ts: Copy](..a: Ts) -> Void { }
 
-    fun f() -> Void {
-        g()
-    }
+  fun f() -> Void {
+    g()
+  }
 )");
 
 // A variadic function generic is the same rule on the call side.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericConstraints,
-    test_invalid_variadic_function_constraint_one_element_fails,
-    SppFunctionCallNoValidSignaturesError, R"(
-    cls NotCopy { }
+  TestAstGenericConstraints,
+  test_invalid_variadic_function_constraint_one_element_fails,
+  SppFunctionCallNoValidSignaturesError, R"(
+  cls NotCopy { }
 
-    fun g[..Ts: Copy](..a: Ts) -> Void { }
+  fun g[..Ts: Copy](..a: Ts) -> Void { }
 
-    fun f() -> Void {
-        g(1, NotCopy())
-    }
+  fun f() -> Void {
+    g(1, NotCopy())
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericConstraints,
-    test_invalid_constraint_naming_another_generic_mismatch,
-    SppFunctionCallNoValidSignaturesError, R"(
-    cls Wrap[T] { }
-    fun g[U, P: Wrap[U]](p: P) -> Void { }
-    fun f() -> Void {
-        g(5_s32)
-    }
+  TestAstGenericConstraints,
+  test_invalid_constraint_naming_another_generic_mismatch,
+  SppFunctionCallNoValidSignaturesError, R"(
+  cls Wrap[T] { }
+  fun g[U, P: Wrap[U]](p: P) -> Void { }
+  fun f() -> Void {
+    g(5_s32)
+  }
 )");
 
 // A constraint with its arguments written ("Add[S32]", which is "Add[Rhs=S32, Ret=Self]") is met by a type
@@ -352,13 +344,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstGenericConstraints,
   test_valid_constraint_with_arguments_met_by_a_sup_with_self_defaults, R"(
-    fun f[T: std::ops::add::Add[S32]](x: T) -> Void {
-        std::mem::ops::drop(x)
-    }
+  fun f[T: std::ops::add::Add[S32]](x: T) -> Void {
+  }
 
-    fun g() -> Void {
-        f(1_s32)
-    }
+  fun g() -> Void {
+    f(1_s32)
+  }
 )");
 
 // ...but not by one superimposing it over other arguments.
@@ -366,11 +357,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstGenericConstraints,
   test_invalid_constraint_with_arguments_not_met_by_a_sup_with_other_arguments,
   SppFunctionCallNoValidSignaturesError, R"(
-    fun f[T: std::ops::add::Add[U8]](x: T) -> Void {
-        std::mem::ops::drop(x)
-    }
+  fun f[T: std::ops::add::Add[U8]](x: T) -> Void {
+    std::mem::ops::drop(x)
+  }
 
-    fun g() -> Void {
-        f(1_s32)
-    }
+  fun g() -> Void {
+    f(1_s32)
+  }
 )");

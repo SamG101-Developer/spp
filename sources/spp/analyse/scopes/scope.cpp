@@ -16,6 +16,8 @@ import spp.analyse.utils.packs;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
+import spp.asts.array_literal_explicit_elements_ast;
+import spp.asts.array_literal_repeated_element_ast;
 import spp.asts.ast;
 import spp.asts.binary_expression_ast;
 import spp.asts.boolean_literal_ast;
@@ -70,12 +72,12 @@ import numex.big_int;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, TypeKey);
+use_alias(spp::asts, ArrayLiteralExplicitElementsAst);
 use_alias(spp::asts, Ast);
 use_alias(spp::asts, AstCloneShared);
 use_alias(spp::asts, BinaryExpressionAst);
 use_alias(spp::asts, ClosureExpressionParameterAndCaptureGroupAst);
 use_alias(spp::asts, ConventionTag);
-use_alias(spp::asts, DeferStatementAst);
 use_alias(spp::asts, ExpressionAst);
 use_alias(spp::asts, GenericArgumentAst);
 use_alias(spp::asts, GenericArgumentGroupAst);
@@ -450,7 +452,7 @@ auto spp::analyse::scopes::NamedInstance(
 
   // Otherwise, return the template and the identity the
   // name's generic args give its instance here.
-  return {tmpl, scope.InstanceIdOf(*tmpl, name.GnArgGroup->GetAllArgs(), tmpl->GnParams())};
+  return {tmpl, scope.InstanceIdOf(*tmpl, name.GnArgGroup->Args, tmpl->GnParams())};
 }
 
 SPP_ATTR_HOT auto spp::analyse::scopes::AppendKeyId(
@@ -558,9 +560,8 @@ auto spp::analyse::scopes::KeyUnmade(
     if (keying.Inserted() and alias.Params != nullptr and alias.WrittenIn != nullptr) {
       const auto recorded = spp::analyse::utils::type_resolution::RecordedArgsFor(
         written_args, *alias.Params, scope, *alias.WrittenIn);
-      const auto recorded_args = recorded | genex::views::ptr | genex::to<spp::Vec>();
       if (not recorded.empty()) {
-        if (const auto id = named->AliasTargetId(scope.ArgsIdOf(recorded_args, alias.Params.get())); id !=
+        if (const auto id = named->AliasTargetId(scope.ArgsIdOf(recorded, alias.Params.get())); id !=
           nullptr) {
           AppendKeyId(out, id);
           return true;
@@ -577,7 +578,7 @@ auto spp::analyse::scopes::KeyUnmade(
   const auto recorded = spp::analyse::utils::type_resolution::RecordedArgsFor(
     written_args, *head->Type->GnParamGroup, scope, *head->LinkedScope);
   if (recorded.empty()) { return false; }
-  AppendKeyId(out, scope.InstanceIdOf(*head, recorded | genex::views::ptr | genex::to<spp::Vec>()));
+  AppendKeyId(out, scope.InstanceIdOf(*head, recorded));
   return true;
 }
 
@@ -791,10 +792,33 @@ auto spp::analyse::scopes::RawCompKey(ExpressionAst const &expr, Scope const &sc
 
   // A tuple value of elements, recursively interning the
   // inner elements.
+  const auto elems_of = [&scope](auto const &elems) {
+    auto out = Vec<CompId>();
+    for (auto const &elem : elems) { out.push_back(InternCompKey(RawCompKey(*elem, scope))); }
+    return out;
+  };
   if (const auto tup = expr.To<TupleLiteralAst>(); tup != nullptr) {
-    auto elems = Vec<CompId>();
-    for (auto const &elem : tup->Elems) { elems.push_back(InternCompKey(RawCompKey(*elem, scope))); }
-    return CompKey::OfTuple(std::move(elems));
+    return CompKey::OfTuple(elems_of(tup->Elems));
+  }
+
+  // An array value of elements, as a tuple's. A repeated one
+  // ("[x; 2_uz]") is the array of its copies once its count is
+  // a value, so "[1_u64; 2_uz]" and "[1_u64, 1_u64]" are one
+  // value; a count that is not ("[x; k]"), is too large to write
+  // out as a key ("kMaxExpandedRepeat"), or is 0 (no elements to
+  // rebuild the literal from, "CompAstOf"), keeps its spelling.
+  if (const auto arr = expr.To<ArrayLiteralExplicitElementsAst>(); arr != nullptr) {
+    return CompKey::OfArray(elems_of(arr->Elems));
+  }
+
+  if (const auto rep = expr.To<ArrayLiteralRepeatedElementAst>(); rep != nullptr) {
+    const auto size = RawCompKey(*rep->Size, scope);
+    const auto count = size.AsInt() != nullptr ? spp::utils::numbers::ToU64(*size.AsInt()) : Nullopt;
+    constexpr auto kMaxExpandedRepeat = 4096uz;
+    if (count.has_value() and *count > 0 and *count <= kMaxExpandedRepeat) {
+      const auto elem = InternCompKey(RawCompKey(*rep->Elem, scope));
+      return CompKey::OfArray(Vec<CompId>(static_cast<std::size_t>(*count), elem));
+    }
   }
 
   // For a parenthesis expression, extract the inner
@@ -870,6 +894,8 @@ auto spp::analyse::scopes::RawCompKey(ExpressionAst const &expr, Scope const &sc
   }
 
   // Anything else is its spelling ("x.f()").
+  // Todo: an object value ("Some(val=n)") has no part either, so it never unifies with another spelling, nor is it
+  //  rewritten under a substitution (".triages/docs_open/comp-object-keys.md").
   return RecordedOpaque(expr, scope);
 }
 
@@ -932,7 +958,6 @@ spp::analyse::scopes::Scope::Scope(Scope const &other, const std::size_t depth) 
   LinkedTypeSymbol(other.LinkedTypeSymbol),
   LinkedNamespaceSymbol(other.LinkedNamespaceSymbol),
   NonGnScope(other.NonGnScope),
-  Deferred(other.Deferred),
   _ErrorFormatter(nullptr) {
   spp::utils::stats::Bump(spp::utils::stats::Counter::ScopesCopied);
   InternalTable.ShallowCopyFrom(other.InternalTable);
@@ -1154,10 +1179,33 @@ auto spp::analyse::scopes::Scope::RecordLetBinding(Shared<VariableSymbol> const 
   if (not genex::contains(LetBindings, sym)) { LetBindings.emplace_back(sym); }
 }
 
+auto spp::analyse::scopes::Scope::DeclareLetBinding(Shared<VariableSymbol> const &sym) -> void {
+  // A loop's second pass declares the same binding again.
+  AddVarSymbol(sym);
+  if (not genex::contains(Reached, sym.get())) { Reached.emplace_back(sym.get()); }
+  Declarations.emplace_back(sym.get());
+}
+
+auto spp::analyse::scopes::Scope::TemporaryHome() -> Scope* {
+  auto *home = this;
+  while (home->IsOperandScope and home->Parent != nullptr) { home = home->Parent; }
+  return home;
+}
+
+auto spp::analyse::scopes::Scope::DeclareBoundWhenTrue(
+  Vec<Shared<VariableSymbol>> const &bindings) -> void {
+  for (auto const &binding : bindings) {
+    RecordLetBinding(binding);
+    DeclareLetBinding(binding);
+  }
+}
+
 /// [CHECKED]
 auto spp::analyse::scopes::Scope::HideLetBindings() -> void {
   // Earlier shadows have already been replaced, so remove the
   // instance from this symbol table that remains.
+  Reached.clear();
+  Declarations.clear();
   for (auto const &sym : LetBindings) {
     if (InternalTable.VarTable.Find(sym->Name.get()) == sym.get()) {
       InternalTable.VarTable.Rem(sym->Name.get());
@@ -1176,6 +1224,7 @@ auto spp::analyse::scopes::Scope::RevealLetBindings() -> void {
   const auto own = [this](VariableSymbol const *held) {
     return genex::any_of(LetBindings, [held](auto const &b) { return b.get() == held; });
   };
+  Reached = LetBindings | genex::views::transform([](auto const &b) { return b.get(); }) | genex::to<Vec>();
   auto placed = Set<spp::utils::InternedId>();
   for (auto const &sym : LetBindings | genex::views::reverse) {
     if (not placed.insert(sym->Name->NameId()).second) { continue; }
@@ -1201,6 +1250,8 @@ auto spp::analyse::scopes::Scope::UnrecordLetBinding(IdentifierAst const &name) 
   // this to hide the captures post-processing.
   LetBindings |= genex::actions::remove_if(
     [&name](auto const &sym) { return *sym->Name == name; });
+  Reached |= genex::actions::remove_if(
+    [&name](auto const *sym) { return *sym->Name == name; });
 }
 
 /// [CHECKED]
@@ -1222,6 +1273,15 @@ auto spp::analyse::scopes::Scope::GetAllVarSymbols(
   const bool exclusive, const bool sup_scope_search) const -> Vec<VariableSymbol*> {
   return AllSymbols<VariableSymbol>(
     *this, &SymbolTable::VarTable, exclusive, sup_scope_search);
+}
+
+auto spp::analyse::scopes::Scope::GetOwners() const -> Vec<VariableSymbol*> {
+  // The table first, in its own order, so a scope's errors come as they did before displaced bindings were seen.
+  auto owners = GetAllVarSymbols(true);
+  for (auto *const sym : Reached) {
+    if (not genex::contains(owners, sym)) { owners.emplace_back(sym); }
+  }
+  return owners;
 }
 
 /// [CHECKED]
@@ -1306,13 +1366,15 @@ auto spp::analyse::scopes::Scope::FindBoundVarSymbolById(
 
 /// [CHECKED]
 auto spp::analyse::scopes::Scope::FindVarSymbolOutermost(
-  Ast const &expr) const -> Pair<VariableSymbol*, Scope const*> {
+  Ast const &expr_written) const -> Pair<VariableSymbol*, Scope const*> {
+  // "(x)" is "x" ("asts::Unparenthesised").
+  auto const &expr = *asts::Unparenthesised(&expr_written);
   if (IsRuntimeMemberAccess(&expr)) {
     // Keep moving into the left-hand-side until there is
     // no left-hand-side: "a.b.c" becomes "a".
     auto adjusted_name = &expr;
     while (IsRuntimeMemberAccess(adjusted_name) or IsDeref(adjusted_name)) {
-      adjusted_name = adjusted_name->To<PostfixExpressionAst>()->Lhs.get();
+      adjusted_name = asts::Unparenthesised(adjusted_name->To<PostfixExpressionAst>()->Lhs.get());
     }
 
     // Get the symbol (will be in this scope), and return
@@ -1531,7 +1593,7 @@ auto spp::analyse::scopes::Scope::_BindingsOf(TypeIdParams const &params) const 
 
 /// [CHECKED]
 auto spp::analyse::scopes::Scope::ArgsIdOf(
-  Vec<GenericArgumentAst*> const &args,
+  const Span<Unique<GenericArgumentAst> const> args,
   GenericParameterGroupAst const *params) const -> TypeId {
   // Start with an empty instance key. This will get built upon
   // as the generics are considered.
@@ -1545,7 +1607,7 @@ auto spp::analyse::scopes::Scope::ArgsIdOf(
   // fills are one; an element that is a bound pack is spliced in. Anything past the parameters stays positional. A keyword naming no parameter is rejected before anything is keyed (E46), so reaching one here is a
   // bug. A comp argument is its value's identity: folded where closed, its parameters by identity where not.
   const auto targets = params != nullptr
-    ? utils::type_resolution::ParamsBoundByArgs(args, params->GetAllParams())
+    ? utils::type_resolution::ParamsBoundByArgs(args, params->Params)
     : Vec<GenericParameterAst*>();
   // The parameter a keyword names: the one its name records ("Self", 0, included), else the one of that name in
   // "params"; none for a name that is no parameter.
@@ -1555,7 +1617,7 @@ auto spp::analyse::scopes::Scope::ArgsIdOf(
       if (head.Kind == TypeKey::Tag::TypeParam) { return head.TypeParamId; }
     }
     if (params == nullptr) { return Nullopt; }
-    for (auto const *param : params->GetAllParams()) {
+    for (auto const &param : params->Params) {
       if (param->ParamId() != 0 and param->Name->As<TypeIdentifierAst>()->ToView() == name.ToView()) {
         return param->ParamId();
       }
@@ -1574,7 +1636,7 @@ auto spp::analyse::scopes::Scope::ArgsIdOf(
   auto comp_pack_unkeyed = false;
 
   for (auto i = 0uz; i < args.size(); ++i) {
-    const auto arg = args[i];
+    auto const *const arg = args[i].get();
     const auto param = arg->KeywordName() == nullptr and i < targets.size() ? targets[i] : nullptr;
 
     // An element of the type pack: gathered into its list, keyed below.
@@ -1646,7 +1708,7 @@ auto spp::analyse::scopes::Scope::PackIdOfElements(
 
 /// [CHECKED]
 auto spp::analyse::scopes::Scope::InstanceIdOf(
-  TypeSymbol const &named, Vec<GenericArgumentAst*> const &args,
+  TypeSymbol const &named, const Span<Unique<GenericArgumentAst> const> args,
   GenericParameterGroupAst const *params) const -> TypeId {
   // Keyed under the template its instances are filed under: through
   // a "use" of a class, that class, so the instance has one identity
@@ -1666,7 +1728,7 @@ auto spp::analyse::scopes::Scope::InstanceIdOf(
     // member that stands for all of them, as a pattern binds it,
     // or its list where it is bound ("VariantKey").
     auto members = Vec<TypeAst const*>();
-    for (const auto arg : args) {
+    for (auto const &arg : args) {
       if (arg->KeywordName() == nullptr and arg->IsTypeArg()) { members.emplace_back(arg->TypeVal.get()); }
     }
 
@@ -1847,14 +1909,19 @@ auto spp::analyse::scopes::Scope::CompAstOf(const CompId id) const -> Unique<Exp
 
     // For a tuple, or a comp pack (an instance binds one to its
     // tuple), convert each element, and then wrap the load inside
-    // a tuple literal ast.
+    // a tuple literal ast; an array's inside an array literal ast
+    // (a repeated one is spelled as its copies).
     case CompKey::Part::Tuple:
-    case CompKey::Part::Pack: {
+    case CompKey::Part::Pack:
+    case CompKey::Part::Array: {
       auto values = Vec<Unique<ExpressionAst>>();
       for (const auto elem : node.Kids) {
         auto value = CompAstOf(elem);
         if (value == nullptr) { return nullptr; }
         values.emplace_back(std::move(value));
+      }
+      if (node.Kind == CompKey::Part::Array) {
+        return MakeUnique<ArrayLiteralExplicitElementsAst>(nullptr, std::move(values), nullptr);
       }
       return MakeUnique<TupleLiteralAst>(nullptr, std::move(values), nullptr);
     }
@@ -2099,7 +2166,7 @@ auto spp::analyse::scopes::Scope::GetSupScopes() const -> SupScopeList {
 
 /// [CHECKED]
 auto spp::analyse::scopes::Scope::FindNsScope(
-  Vec<IdentifierAst const*> const &parts) const -> Scope const* {
+  const Span<IdentifierAst const* const> parts) const -> Scope const* {
   // Starting from this scope (acting current scope), find each
   // part in the list, ["a", "b", "c"] from the below example,
   // moving towards the most nested scope.
@@ -2115,30 +2182,25 @@ auto spp::analyse::scopes::Scope::FindNsScope(
 /// [CHECKED]
 auto spp::analyse::scopes::Scope::FindNsScope(
   ExpressionAst const *postfix_ast) const -> Scope const* {
-  // For the static member access like "a::b::c", this is stored
-  // as "(a::b)::c", which is read as "c", "b", "a".
-  auto parts = Vec<IdentifierAst const*>();
-  auto lhs = postfix_ast;
-
-  // Any other postfix ("f()::c", "a.b::c") makes it a value, not a namespace
-  // path.
-  while (const auto postfix_lhs = lhs->To<PostfixExpressionAst>()) {
-    const auto ns_op = postfix_lhs->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>();
+  // A static member access like "a::b::c" is stored as "(a::b)::c": find
+  // the scope its left side names, then the last part in that. Any other
+  // postfix ("f()::c", "a.b::c") makes it a value, not a namespace path.
+  if (const auto postfix = postfix_ast->To<PostfixExpressionAst>()) {
+    const auto ns_op = postfix->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>();
     if (ns_op == nullptr) { return nullptr; }
-    parts.emplace_back(ns_op->Name.get());
-    lhs = postfix_lhs->Lhs.get();
+    const auto lhs_scope = FindNsScope(postfix->Lhs.get());
+    if (lhs_scope == nullptr) { return nullptr; }
+    const auto sym = lhs_scope->FindNsSymbol(ns_op->Name.get());
+    return sym != nullptr ? sym->LinkedScope : nullptr;
   }
 
-  // The final part isn't a postfix, but it is an identifier, so
-  // add it to the end of the list ("a").
-  if (const auto lhs_as_ident = lhs->To<IdentifierAst>(); lhs_as_ident != nullptr) {
-    parts.emplace_back(lhs_as_ident);
+  // The innermost left side names the first part ("a"), looked up here; a
+  // left side that is not an identifier starts the path here.
+  if (const auto ident = postfix_ast->To<IdentifierAst>()) {
+    const auto sym = FindNsSymbol(ident);
+    return sym != nullptr ? sym->LinkedScope : nullptr;
   }
-
-  // Reverse the list into the actual order "a", "b", "c", and then
-  // find the namespace scope.
-  parts |= genex::actions::reverse;
-  return FindNsScope(parts);
+  return this;
 }
 
 /// [CHECKED]

@@ -140,10 +140,7 @@ auto spp::analyse::utils::fn_signatures::_SupBlocksOverlap(
   auto const &scope_b = *sup_b->GetAstScope();
   const auto a = scope_a.TypeIdOf(*AstName(sup_a));
   const auto b = scope_b.TypeIdOf(*AstName(sup_b));
-  if (a == nullptr or b == nullptr) { return false; }
-  auto fwd = scopes::GenericSubst();
-  auto rev = scopes::GenericSubst();
-  return scopes::UnifyTypeIds(a, b, scope_a, scope_b, fwd) or scopes::UnifyTypeIds(b, a, scope_b, scope_a, rev);
+  return a != nullptr and b != nullptr and scopes::PatternsOverlap(a, scope_a, b, scope_b);
 }
 
 auto spp::analyse::utils::fn_signatures::IdTermsOf(
@@ -178,7 +175,8 @@ auto spp::analyse::utils::fn_signatures::IdTermsOf(
   };
 
   const auto own_params = [](FunctionPrototypeAst const &f) {
-    return f.GnParamGroup->GetAllParams()
+    return f.GnParamGroup->Params
+      | genex::views::ptr
       | genex::views::filter([](auto const *p) { return not p->IsInherited; })
       | genex::to<Vec>();
   };
@@ -299,12 +297,10 @@ auto spp::analyse::utils::fn_signatures::CheckForConflictingOverload(
 
     // If neither parameter list contains a required
     // parameter, throw an error.
-    const auto tmp = genex::views::concat(
-      params_new | genex::views::ptr,
-      params_old | genex::views::ptr) | genex::to<Vec>();
-    if (genex::operations::empty(tmp
-      | genex::views::cast_dynamic<FunctionParameterRequiredAst*>
-      | genex::to<Vec>())) {
+    const auto is_required = [](Unique<asts::FunctionParameterAst> const &param) {
+      return param->To<FunctionParameterRequiredAst>() != nullptr;
+    };
+    if (genex::none_of(params_new, is_required) and genex::none_of(params_old, is_required)) {
       return {old_fn, old_scope};
     }
   }

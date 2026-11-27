@@ -1,0 +1,290 @@
+#include "test_macros.hpp"
+
+// A non-Copy temporary that is not moved somewhere, but borrowed, read from, compared or matched on, is dropped at the
+// end of its statement, as a named value is at its scope's end (see test_drop_scope_exit.cpp).
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_attribute_moved_off_a_temporary, R"(
+  cls TmpPairA {
+    !public a: Str
+    !public b: Str
+  }
+
+  fun mk() -> TmpPairA { ret TmpPairA(a=Str::from("a"), b=Str::from("b")) }
+
+  fun f() -> Void {
+    let a = mk().a
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_copyable_attribute_read_off_a_temporary, R"(
+  cls TmpPairB {
+    !public a: S32
+    !public b: Str
+  }
+
+  fun mk() -> TmpPairB { ret TmpPairB(a=1, b=Str::from("b")) }
+
+  fun f() -> S32 {
+    ret mk().a
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_borrowing_method_called_on_a_temporary, R"(
+  cls TmpPeek { !public b: Str }
+
+  sup TmpPeek {
+    !public fun peek(&self) -> S32 { ret 1 }
+  }
+
+  fun mk() -> TmpPeek { ret TmpPeek(b=Str::from("b")) }
+
+  fun f() -> S32 {
+    ret mk().peek()
+  }
+)");
+
+// A method's result is a new value even though "PlaceOf" derives it from the receiver's place ("v.dup()" is "v", one
+// opaque step in, for the borrows a call hands back); std's "rfind_if" leaked through "self.to_reverse().chars()".
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_borrowing_method_called_on_a_method_result, R"(
+  cls TmpDup { !public b: Str }
+
+  sup TmpDup {
+    !public fun dup(&self) -> TmpDup { ret TmpDup(b=Str::from("b")) }
+    !public fun peek(&self) -> S32 { ret 1 }
+  }
+
+  fun f() -> S32 {
+    let v = TmpDup(b=Str::from("b"))
+    let n = v.dup().peek()
+    ret n
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_method_result_borrowed_as_an_argument, R"(
+  cls TmpArg { !public b: Str }
+
+  sup TmpArg {
+    !public fun dup(&self) -> TmpArg { ret TmpArg(b=Str::from("b")) }
+  }
+
+  fun look(x: &TmpArg) -> S32 { ret 1 }
+
+  fun f() -> S32 {
+    let v = TmpArg(b=Str::from("b"))
+    let n = look(&v.dup())
+    ret n
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_borrow_handed_back_by_a_call_is_no_temporary, R"(
+  fun f() -> USize {
+    let mut v = std::vector::Vec[Str]::new()
+    v.append(Str::from("a"))
+    let n = v[0_uz].len()
+    ret n
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_element_taken_off_a_temporary_tuple, R"(
+  cls TmpElem { }
+
+  fun eat(l: TmpElem) -> Void { let TmpElem() = l }
+
+  fun f() -> Void {
+    let x = (TmpElem(), TmpElem()).0
+    eat(x)
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_temporary_passed_by_borrow, R"(
+  cls TmpBorrowed { }
+
+  fun peek(l: &TmpBorrowed) -> Void { }
+
+  fun f() -> Void {
+    peek(&TmpBorrowed())
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_temporary_case_subject, R"(
+  cls TmpSubject { }
+
+  fun mk() -> TmpSubject or S32 { ret TmpSubject() }
+
+  fun f() -> Void {
+    case mk() of {
+      is S32() { }
+      else { }
+    }
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_temporaries_compared, R"(
+  fun f() -> Bool {
+    ret Str::from("a") == Str::from("b")
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_temporary_consumed_by_a_chain, R"(
+  cls TmpChain { }
+
+  sup TmpChain {
+    !public fun next(self) -> TmpChain { ret self }
+    !public fun eat(self) -> Void { let TmpChain() = self }
+  }
+
+  fun f() -> Void {
+    TmpChain().next().next().eat()
+  }
+)");
+
+// A branch that keeps the temporary and never finishes still drops it on the edge that leaves the branch.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_temporary_case_subject_kept_by_a_branch_that_returns, R"(
+  cls TmpSubject { }
+
+  fun mk() -> TmpSubject or S32 { ret TmpSubject() }
+
+  fun f() -> Void {
+    case mk() of {
+      is S32() { }
+      else { ret }
+    }
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_temporary_case_subject_kept_by_a_branch_that_exits_a_loop, R"(
+  cls TmpSubject { }
+
+  fun mk() -> TmpSubject or S32 { ret TmpSubject() }
+
+  fun f() -> Void {
+    loop true {
+      case mk() of {
+        is S32() { }
+        else { exit }
+      }
+    }
+  }
+)");
+
+// One that never leaves at all (an abort) has no edge to drop it on; nor does an "exit" from a loop inside the branch.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_temporary_case_subject_kept_by_a_branch_that_aborts, R"(
+  cls TmpSubject { }
+
+  fun mk() -> TmpSubject or S32 { ret TmpSubject() }
+
+  fun f() -> Void {
+    case mk() of {
+      is S32() { }
+      else {
+        let mut i = 0
+        loop i < 3 {
+          i = i + 1
+          exit
+        }
+        std::abort::abort()
+      }
+    }
+  }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_temporary_case_subject_kept_by_falling_through, R"(
+  cls TmpSubject { }
+
+  fun mk() -> TmpSubject or S32 { ret TmpSubject() }
+
+  fun f() -> Void {
+    case mk() of {
+      is S32() { }
+    }
+  }
+)");
+
+// A field moved out of a temporary whose type has its own "drop" strands that destructor, as for a named value (E106).
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestDropTemporaries,
+  test_invalid_field_moved_out_of_a_destructible_temporary,
+  SppPartialMoveOfDestructibleValueError, R"(
+  cls TmpDestructible { !public a: Str }
+
+  sup TmpDestructible ext std::ops::drop::Drop {
+    fun drop(self) -> Void { }
+  }
+
+  fun mk() -> TmpDestructible { ret TmpDestructible(a=Str::from("x")) }
+
+  fun f() -> Void {
+    let a = mk().a
+  }
+)");
+
+// A copy read off a temporary moves nothing out of it, so its own "drop" still runs whole.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDropTemporaries,
+  test_valid_copy_read_off_a_destructible_temporary,
+  R"(
+  cls TmpDestructibleCopy {
+    !public a: Str
+    !public n: S32
+  }
+
+  sup TmpDestructibleCopy ext std::ops::drop::Drop {
+    fun drop(self) -> Void { }
+  }
+
+  fun mk() -> TmpDestructibleCopy { ret TmpDestructibleCopy(a=Str::from("x"), n=1) }
+
+  fun f() -> Void {
+    let n = mk().n
+  }
+)");
+
+// Through a chain, the path moved runs through every value on it ("mk().a.b" leaves "mk().a" with a hole).
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestDropTemporaries,
+  test_invalid_field_moved_through_a_destructible_part_of_a_temporary,
+  SppPartialMoveOfDestructibleValueError, R"(
+  cls TmpInnerD { !public b: Str }
+
+  sup TmpInnerD ext std::ops::drop::Drop {
+    fun drop(self) -> Void { }
+  }
+
+  cls TmpOuterD { !public a: TmpInnerD }
+
+  fun mk() -> TmpOuterD { ret TmpOuterD(a=TmpInnerD(b=Str::from("x"))) }
+
+  fun f() -> Void {
+    let b = mk().a.b
+  }
+)");

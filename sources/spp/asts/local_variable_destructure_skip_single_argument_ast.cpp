@@ -55,4 +55,8 @@ auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::ExtractName() con
   return destructure_utils::UnmatchableSingleIdentifier(PosStart());
 }
 
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::EvaluateCompTime(
+  ScopeManager *, CompilerMetaData *) -> void {
+}
+
 SPP_MOD_END

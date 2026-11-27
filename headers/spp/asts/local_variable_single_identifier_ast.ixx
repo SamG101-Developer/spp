@@ -82,7 +82,18 @@ SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVari
   /// a later walk finds under the name, where the "let" is written.
   auto Narrow(Shared<VariableSymbol> const &flow, Scope &scope) -> void;
 
+  /// The scope this binding is declared in, when not the one it is
+  /// written in: a lowering's hidden temporary made inside an "and"'s
+  /// right operand lives in the condition around it
+  /// ("Scope::TemporaryHome", "expr_utils::HoistOnce").
+  Scope *DeclareIn = nullptr;
+
 private:
+  /// The scope this binding is declared in ("DeclareIn", else the
+  /// current one).
+  SPP_ATTR_NODISCARD auto _Home(
+    ScopeManager const *sm) const -> Scope*;
+
   /// The symbol this binding's Stage 7 created. This helps
   /// avoid issues with shadowing / redeclaring; the true
   /// symbol is stamped onto this AST.

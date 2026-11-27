@@ -8,9 +8,11 @@ import sys;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct InnerScopeExpressionAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct StatementAst);
@@ -38,6 +40,14 @@ namespace spp::analyse::utils::expr_utils {
     ExpressionAst const &expr, ScopeManager const &sm,
     PrimaryExpressionOptions &&options = {}) -> bool;
 
+  /// What the condition "cond" binds where it is true, for what it leads
+  /// into to declare (an "and"'s right operand, a body): an "is"'s bindings
+  /// and the subject it narrows ("IsExpressionAst::Bound"), both operands'
+  /// of an "and", through parentheses. Nothing else's: an "or" is true where
+  /// either side may have failed to match, a "not" where it did not match.
+  SPP_EXP_FUN auto BoundWhenTrue(
+    ExpressionAst const &cond) -> Vec<Shared<VariableSymbol>>;
+
   /// Whether an expression names existing storage: a variable, or a field path
   /// off one ("t", "t.items"). Anything else ("g()", "x?") makes a new value.
   SPP_EXP_FUN auto IsPlace(
@@ -50,12 +60,6 @@ namespace spp::analyse::utils::expr_utils {
     ExpressionAst const &value, StrView uid_prefix, ScopeManager *sm,
     CompilerMetaData *meta, bool analyse = true) -> Hoisted;
 
-  /// Write "std::mem::ops::drop(value)", un-analysed. This is how a lowering
-  /// consumes a temporary of its own that nothing else does (a loop's iterator,
-  /// variable, or a fold's receiver its calls only borrow), as a linear value
-  /// must be.
-  SPP_EXP_FUN auto DropCall(
-    ExpressionAst const &value) -> Unique<PostfixExpressionAst>;
 
   /// Get "tuple.i", un-analysed. This an element read off a tuple (or a pack,
   /// in a template) by position.
@@ -83,15 +87,20 @@ namespace spp::analyse::utils::expr_utils {
     ExpressionAst &tuple, Ast const &tok, ScopeManager *sm,
     CompilerMetaData *meta) -> Opt<TupleSpread>;
 
-  /// Prevent statements/expressions from being used whose
-  /// value is unbound and falls away. For example, just
-  /// writing "1" in a function body is wrong. It is never
-  /// required and often the source of bugs; prevent at
-  /// compile time.
-  SPP_EXP_FUN auto ValidateDiscardedValue(
-    Ast &member,
-    Scope *scope,
-    ScopeManager const &sm,
-    CompilerMetaData *meta)
-    -> void;
+  /// Tell "member", a statement whose value nothing takes, before
+  /// it is analysed: a "case" (through a block's final member)
+  /// then lets its branches disagree on type, so a value in one is
+  /// reported as discarded ("DiscardValue"), not as a
+  /// type mismatch with the others.
+  SPP_EXP_FUN auto MarkValueDiscarded(
+    Ast &member) -> void;
+
+  /// The value of "owner"'s member "i" goes nowhere: a temporary is
+  /// dropped once it is made ("SetDropsDiscarded"), unless its type
+  /// is "!must_use" (E95). A "case" or a block written as the member
+  /// discards each value it ends on, in the block that ends on it.
+  SPP_EXP_FUN auto DiscardValue(
+    InnerScopeExpressionAst &owner, std::size_t i,
+    ScopeManager const &sm, CompilerMetaData *meta) -> void;
+
 }

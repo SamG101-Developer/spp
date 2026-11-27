@@ -58,8 +58,8 @@ public:
   /// child. Positioning allocates nothing ("ScopeIterator").
   SPP_ATTR_NODISCARD auto NewManagerAt(Scope *scope) const -> ScopeManager;
 
-  /// A new manager resuming a walk where "pos" stood (replaying
-  /// a "defer", walking a loop body again).
+  /// A new manager resuming a walk where "pos" stood (walking a
+  /// loop body again).
   SPP_ATTR_NODISCARD auto NewManagerAt(ScopePosition const &pos) const -> ScopeManager;
 
   /// Where this manager's walk stands: its scope and iterator.

@@ -8,30 +8,38 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.packs;
+import spp.analyse.utils.regions;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.function_call_argument_keyword_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lsp.resolution_index;
+import spp.utils.functions;
+import spp.utils.interner;
 import genex;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
-use_alias(spp::asts::meta, AllowPackWholeGuard);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
@@ -40,6 +48,7 @@ namespace spp::asts {
   /// "PackElementCloneGuard": the closed packs whose elements a clone renames, by name, to their element counts.
   static thread_local auto pack_elements = spp::Map<spp::Str, std::size_t>();
 }
+
 
 SPP_MOD_BEGIN
 spp::asts::PackElementCloneGuard::PackElementCloneGuard(
@@ -129,7 +138,22 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
     meta->ReturnTypeOverloadResolverType = nullptr;
     if (Lhs->To<TypeAst>() != nullptr) {
       auto temp_lhs = Shared<TypeAst>(Lhs.release()->As<TypeAst>());
-      temp_lhs = type_resolution::AnalyseWrittenType(*temp_lhs, *sm, *meta);
+
+      // A call's static receiver written without the arguments it needs ("Vec" in "Vec::from(&[1, 2])") is left for
+      // the call, which has the arguments to infer it from ("InferTemplateReceiver"), and analyses this again.
+      auto *const access = Op->To<PostfixExpressionOperatorStaticMemberAccessAst>();
+      try {
+        temp_lhs = type_resolution::AnalyseWrittenType(*temp_lhs, *sm, *meta);
+      }
+      catch (SppGenericParameterNotInferredError const &) {
+        if (access == nullptr or not access->IsCalleeOfCall() or not temp_lhs->LastTypePart()->GnArgGroup->Args.empty()) {
+          throw;
+        }
+        access->LeaveReceiverToCall(true);
+        Lhs = AstClone(temp_lhs);
+        return;
+      }
+      if (access != nullptr) { access->LeaveReceiverToCall(false); }
       Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }
     else {
@@ -144,9 +168,24 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
       // checking that the lhs is a valid form of primary expression.
       // An element of a pack ("xs.0") names the pack whole, as a spread does.
       if (not _LhsAnalysed) {
+        // A static access called ("Vec::from(..)") may leave its receiver for the call (see above).
+        if (auto const *const call = Op->To<PostfixExpressionOperatorFunctionCallAst>(); call != nullptr and call->Fold == nullptr) {
+          if (auto *const callee = Lhs->To<PostfixExpressionAst>(); callee != nullptr) {
+            if (auto *const callee_access = callee->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>()) {
+              callee_access->MarkCalleeOfCall();
+            }
+          }
+        }
         auto const *const access = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
-        const auto _pack_guard = AllowPackWholeGuard(
-          meta, access != nullptr and std::isdigit(access->Name->Val[0]) and Lhs->To<IdentifierAst>() != nullptr);
+        const auto names_element = access != nullptr and std::isdigit(access->Name->Val[0]);
+        const auto _pack_guard = spp::utils::functions::ScopedAssign(
+          meta->AllowPackWhole, names_element and Lhs->To<IdentifierAst>() != nullptr);
+        // A namespace may name the left of a member access: "::" reads it, and "." reports it (E: "::" expected).
+        // Only that identifier: nothing analysed inside a left side ("foo(std).x", "[std].x") is one.
+        const auto _ns_guard = spp::utils::functions::ScopedAssign(
+          meta->AllowNamespaceName,
+          (Op->To<PostfixExpressionOperatorStaticMemberAccessAst>() != nullptr or access != nullptr)
+            and Lhs->To<IdentifierAst>() != nullptr);
         Lhs->Stage7_AnalyseSemantics(sm, meta);
         common_errors::RequirePrimary(*Lhs, *sm, {.AllowTypeAst = true});
       }
@@ -188,6 +227,12 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
     return;
   }
 
+  // A member read off another member's value ("mk().a.b") leaves the inner read no end of a chain.
+  auto const *const field = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
+  if (auto *const inner = field != nullptr ? _InnerFieldRead() : nullptr; inner != nullptr) {
+    inner->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()->ReadOnwards = true;
+  }
+
   // A dereference copies out of the borrow its lhs produced, so the value this expression is being assigned to holds
   // a copy and not the borrow. Any escaping borrow the lhs establishes on the way ("xs[i]@" resolving through the
   // "index_ref" coroutine) belongs to that temporary, not to the assignment target, so clear the target while the lhs
@@ -199,27 +244,7 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
     if (Lhs != nullptr) { Lhs->Stage8_CheckMemory(sm, meta); }
   }
 
-  // An attribute read off a linear temporary takes that attribute and leaves the rest with no owner, unless the
-  // attribute is the one owned part there is ("mk().a" on a value whose other parts are all "Copy").
-  // Todo: CLEAN
-  if (auto const *const field = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>(); field != nullptr
-    and Lhs != nullptr and linear_utils::IsLinearTemporary(*Lhs, *sm, meta)) {
-    const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
-    auto is_part = false;
-    auto leaves_owned = false;
-    for (auto const &[step, _, type, ref, where] : type_members::GetAllParts(lhs_ref, *sm->CurrentScope)) {
-      const auto owned = ref.Symbol != nullptr and not ref.Symbol->IsCopyable();
-      if (step->NameId() == field->Name->NameId()) {
-        is_part = true;
-        leaves_owned |= not owned;
-      }
-      else { leaves_owned |= owned; }
-    }
-    if (is_part and leaves_owned) {
-      linear_utils::RaiseTemporaryNotConsumed(
-        *Lhs, *this, "A part is read off it here, leaving the rest with no owner", *sm, meta);
-    }
-  }
+  if (field != nullptr and not field->ReadOnwards) { _TakeFieldsOffTemporary(*sm, meta); }
 
   const auto _meta_guard = MetaGuard(meta);
   Op->Lhs = Lhs.get();
@@ -231,6 +256,58 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
       {.CheckMove = false, .CheckPartialMove = false, .CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
   }
   Op->Stage8_CheckMemory(sm, meta);
+}
+
+auto spp::asts::PostfixExpressionAst::_InnerFieldRead() const -> PostfixExpressionAst* {
+  auto *const inner = Lhs != nullptr ? Lhs->To<PostfixExpressionAst>() : nullptr;
+  return inner != nullptr and inner->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr
+    ? inner
+    : nullptr;
+}
+
+auto spp::asts::PostfixExpressionAst::_TakeFieldsOffTemporary(
+  ScopeManager &sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+
+  // The fields the chain this read ends reads ("mk().a.b": "a", "b"), back
+  // to the value it starts at. Only the first read holds a list of its own.
+  auto path = Vec<regions::PlaceStep>();
+  auto *first = this;
+  for (auto *at = this; at != nullptr; at = at->_InnerFieldRead()) {
+    auto *const read = at->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
+    read->DropsReceiverRest = Nullopt;
+    path.insert(path.begin(), regions::PlaceStep{.Name = read->Name->NameId()});
+    first = at;
+  }
+
+  // Off a temporary, the first read makes it and drops the rest of it as the
+  // statement ends: less the path if the value read here is moved out, all of
+  // it if it is a copy or only borrowed ("ReadByBorrow"). The path leaves a hole in every value it runs through,
+  // which is E106 for one with its own "drop", as for a named value.
+  if (not drop_utils::IsTemporary(*first->Lhs, sm, meta)) { return; }
+
+  // Reached by forwarding ("mk().n", "n" a field of what "mk()" forwards to), the read is through the borrow the
+  // forwarding call hands back: nothing is taken off the temporary, which that call borrows as its "self", and drops
+  // as any temporary argument it borrows.
+  auto const *const first_read = first->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
+  if (auto *const fwd_call = first_read->GetFwdReceiver(); fwd_call != nullptr) {
+    if (auto const *const call = fwd_call->Op->To<PostfixExpressionOperatorFunctionCallAst>(); call != nullptr) {
+      for (auto *const arg : call->FnArgGroup->GetKeywordArgs()) {
+        if (arg->Name->Val == "self") { arg->DropsTemporary = true; }
+      }
+    }
+    return;
+  }
+  auto &rest = first->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()->DropsReceiverRest;
+  const auto read_by_borrow = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()->ReadByBorrow;
+  if (read_by_borrow or not InferTypeRef(&sm, meta).IsMoveOnly()) {
+    rest = Vec<Vec<spp::utils::InternedId>>();
+    return;
+  }
+  rest = Vec<Vec<spp::utils::InternedId>>{path | genex::views::transform(&regions::PlaceStep::Name) | genex::to<Vec>()};
+  const auto field_name = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()->Name;
+  drop_utils::RaiseIfPathStrandsDestructor(
+    first->Lhs->InferTypeRef(&sm, meta).WithoutConvention(), path, *field_name, *this, sm, meta);
 }
 
 auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(

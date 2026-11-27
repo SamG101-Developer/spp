@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_expression_branch_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast;
 import spp.asts.ast_kind;
 import spp.asts.mixins.type_inferrable_ast;
@@ -11,6 +12,7 @@ import llvm;
 import std;
 
 use_common(CaseExpressionBranchAst);
+use(spp::analyse::utils::memory_state, struct ScopeSnapshot);
 use(spp::analyse::utils::pattern_solver, struct MatchPlan);
 use(spp::asts, struct BinaryExpressionAst);
 use(spp::asts, struct CasePatternVariantAst);
@@ -41,6 +43,16 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
   /// The statements executed if the branch matches.
   Unique<InnerScopeExpressionAst> Body;
 
+  /// There are 3 ways out of a case branch: either the pattern never matched
+  /// (but bindings may have been introduced); the guard after the matched
+  /// patterns is false (again pattern bindings could exist); or the end of the
+  /// branch is reached normally.
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> End;
+    Vec<analyse::utils::drop_utils::OwnedValue> BadMatch;
+    Vec<analyse::utils::drop_utils::OwnedValue> BadGuard;
+  } _Drops;
+
   CaseExpressionBranchAst(
     decltype(Op) &&op,
     decltype(Patterns) &&patterns,
@@ -65,7 +77,28 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
   /// is in it: the tests its patterns make are read from there.
   auto UsePlan(MatchPlan const *plan, std::size_t index) -> void;
 
+  /// Whether this branch drops its patterns' bindings at its end,
+  /// set by its "case": not for a lowered "is", whose bindings are
+  /// views of its subject, handed on to the statement it is in.
+  auto SetDropsBindings(bool patterns) -> void;
+
+  /// The states just before and just after the guard ran, as stage
+  /// 8 last left them (the patterns' own effects are in both); none
+  /// without a guard.
+  SPP_ATTR_NODISCARD auto StateBeforeGuard() const -> analyse::utils::memory_state::ScopeSnapshot const*;
+  SPP_ATTR_NODISCARD auto StateAfterGuard() const -> analyse::utils::memory_state::ScopeSnapshot const*;
+
+  /// See "_KeepsTemporary".
+  auto SetKeepsTemporary(bool keeps) -> void;
+  SPP_ATTR_NODISCARD auto KeepsTemporary() const -> bool;
+
 private:
+  /// The block an edge passing this branch over leads to: "next_bb",
+  /// or one dropping "drops" (the edge's, in "_Drops") first.
+  auto _EdgeToNext(
+    Vec<analyse::utils::drop_utils::OwnedValue> const &drops, Str const &name, llvm::BasicBlock *next_bb,
+    ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::BasicBlock*;
+
   /// Save the generated combined pattern expressions for
   /// codegen, without re-walking asts and scopes, which messes
   /// up the scope manager's alignment.
@@ -74,6 +107,19 @@ private:
   /// See "UsePlan". Not carried by "Clone": a copy is analysed afresh.
   MatchPlan const *_CasePlan = nullptr;
   std::size_t _CaseIndex = 0;
+
+  /// See "SetDropsBindings". Not carried by "Clone": a copy's "case" sets them again.
+  bool _DropsPatternBindings = false;
+
+  /// See "StateAfterGuard". Not carried by "Clone": read only by the
+  /// "case" analysing this branch, straight after.
+  Shared<analyse::utils::memory_state::ScopeSnapshot> _StateBeforeGuard;
+  Shared<analyse::utils::memory_state::ScopeSnapshot> _StateAfterGuard;
+
+  /// The "case" is over a temporary this branch does not take: it
+  /// is dropped at the branch's end, or where the branch is left
+  /// early ("meta->LlvmCaseTemporary").
+  bool _KeepsTemporary = false;
 
   /// With multiple patterns, the llvm value is a logical OR of
   /// all the pattern matches (analysis guarantees they are all

@@ -16,6 +16,7 @@ import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.order_utils;
 import spp.analyse.utils.regions;
+import spp.analyse.utils.type_predicates;
 import spp.asts.closure_expression_ast;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.closure_expression_capture_group_ast;
@@ -35,6 +36,7 @@ import spp.asts.let_statement_initialized_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -95,6 +97,14 @@ auto spp::asts::FunctionCallArgumentGroupAst::ToString() const -> Str {
   SPP_STRING_EXTEND(Args, ", ");
   SPP_STRING_APPEND_RAW(")");
   SPP_STRING_END;
+}
+
+auto spp::asts::FunctionCallArgumentGroupAst::IsVoidArg(
+  FunctionCallArgumentAst const &arg, ScopeManager *sm,
+  CompilerMetaData *meta) -> bool {
+  IMPORT_UTILS;
+  return type_predicates::IsTypeVoid(
+    arg.Val->InferTypeRef(sm, meta), *sm->CurrentScope);
 }
 
 auto spp::asts::FunctionCallArgumentGroupAst::GetAllArgs() const -> Vec<FunctionCallArgumentAst*> {
@@ -172,7 +182,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   // checks are deferred to Stage8, because the "self" argument's
   // convention (for method calls) is only applied after overload
   // resolution.
-  for (auto const &[i, arg] : Args | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, arg] : Args | genex::views::enumerate) {
     const auto _meta_guard = MetaGuard(meta);
     SPP_RETURN_TYPE_OVERLOAD_HELPER(arg->Val.get()) {
       meta->ReturnTypeOverloadResolverType = i < ExpectedTypes.size() ? ExpectedTypes[i] : nullptr;
@@ -238,6 +248,17 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       : nullptr;
     const auto arg_carries_borrows = closure_arg != nullptr and closure_arg->HasBorrowedCaptures();
 
+    // A field read off a temporary and passed by borrow ("f(&mk().a)", "mk().a.len()" with "&self") is not moved
+    // out of it: the temporary stays whole, and is dropped whole as the statement ends.
+    const auto receiver_self = is_receiver and target != nullptr ? target->FnParamGroup->GetSelfParam() : nullptr;
+    if (arg->Conv != nullptr or (receiver_self != nullptr and receiver_self->Conv != nullptr)) {
+      if (auto const *const postfix = arg->Val->To<PostfixExpressionAst>(); postfix != nullptr) {
+        if (auto *const field = postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>()) {
+          field->ReadByBorrow = true;
+        }
+      }
+    }
+
     {
       const auto _meta_guard = MetaGuard(meta);
       if ((arg->Conv == nullptr or not pins_required) and not arg_carries_borrows) {
@@ -272,7 +293,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       const auto self_param = target->FnParamGroup->GetSelfParam();
       const auto receiver = arg->Val->InferTypeRef(sm, meta);
       if (self_param != nullptr and self_param->Conv == nullptr and receiver.IsBorrowed()
-        and receiver.Symbol != nullptr and not receiver.Symbol->IsCopyable()) {
+        and receiver.WithoutConvention().IsMoveOnly()) {
         auto const *where_borrow = sym != nullptr and sym->MemInfo->AstBorrowed != nullptr
           ? sym->MemInfo->AstBorrowed
           : static_cast<Ast const*>(arg->Val.get());
@@ -304,12 +325,12 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       continue;
     }
 
-    // Ensure the argument isn't moved or partially moved (applies to all conventions). For non-symbolic arguments,
-    // nested checking is done via the argument itself (tuples, arrays, etc). Can borrow attributes so don't check
-    // for moving from borrowed context right here.
+    // Ensure the argument isn't moved or partially moved (applies to all conventions: a borrow of a value with a part
+    // missing hands the callee the hole). For non-symbolic arguments, nested checking is done via the argument itself
+    // (tuples, arrays, etc). Can borrow attributes so don't check for moving from borrowed context right here.
     mem_utils::ValidateSymbolMemory(
       *arg->Val, *arg, *sm, meta,
-      {.CheckMove = false, .CheckPartialMove = false, .CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
+      {.CheckMove = false, .CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
 
     // An argument rooted at a holder of loans (a borrow binding passed on, a closure or generator given or borrowed)
     // hands the callee the ways to what those loans borrow: the call holds them beside its other arguments' borrows,

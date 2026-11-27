@@ -45,6 +45,14 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
   /// copied over too.
   SPP_ATTR_NODISCARD virtual auto Clone() const -> Unique<Ast> = 0;
 
+  /// "Clone", owned shared, with the ast and its count in one
+  /// allocation; null for an ast that does not override it, which
+  /// "AstCloneShared" then clones and wraps as the type it is asked
+  /// for. Not wrapped here: a "Shared<Ast>" leaves an
+  /// "enable_shared_from_this" base below "Ast" (an identifier's, a
+  /// type's) unset, so "shared_from_this" on the clone would throw.
+  SPP_ATTR_NODISCARD virtual auto CloneShared() const -> Shared<Ast>;
+
   /// Convert an ast into a string, for debugging purposes or
   /// writing translated asts out to a file. Not critically
   /// needed, and a macro suite is available to help.

@@ -125,8 +125,13 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSema
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
   CaptureGroup->Captures = ArgsAsCaptures(cap_group->Args);
 
-  // Analyse the parameters and captures.
+  // Analyse the parameters and captures. A parameter whose type
+  // is "Void" is no parameter, as a function's is not
+  // ("FunctionPrototypeAst"): its symbol stays, as the body may
+  // name it, but the closure's type and its generated function
+  // take no argument for it.
   ParamGroup->Stage7_AnalyseSemantics(sm, meta);
+  ParamGroup->RemoveVoidParams(*sm->CurrentScope);
   CaptureGroup->Stage7_AnalyseSemantics(sm, meta);
 }
 

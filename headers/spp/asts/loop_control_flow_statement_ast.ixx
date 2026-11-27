@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.loop_control_flow_statement_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast_kind;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
@@ -35,6 +36,12 @@ SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
   /// a value with the "exit value" statement.
   Unique<ExpressionAst> Expr;
 
+  /// Handle the drops that the "exit" triggers, anything needing handling by
+  /// the "skip" join.
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> AfterJump;
+  } _Drops;
+
   LoopControlFlowStatementAst(
     decltype(TokSeqExit) &&tok_seq_exit,
     decltype(TokSkip) &&tok_skip,
@@ -63,6 +70,10 @@ private:
   /// Kept rather than asked for again during code generation,
   /// where a re-inference was intermittently crashing.
   bool _ExprIsNever = false;
+
+  /// What each scope the jump leaves still owns there, innermost
+  /// first ("drop_utils::OwnedUpToLoop").
+  analyse::utils::drop_utils::OwnedScopes _OwnedAtExit;
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 };

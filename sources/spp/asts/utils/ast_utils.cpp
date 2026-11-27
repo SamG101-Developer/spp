@@ -12,9 +12,12 @@ import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.module_implementation_ast;
 import spp.asts.module_prototype_ast;
+import spp.asts.parenthesised_expression_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_deref_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_keyword_not_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.statement_ast;
@@ -73,31 +76,44 @@ auto spp::asts::AstBody(
   Ice(*ast, "AstBody: this kind of ast has no body");
 }
 
-auto spp::asts::IsRuntimeMemberAccess(
-  Ast const *ast) -> bool {
-  // Check the ast is a postfix expression, whose operator is
-  // the runtime member access operator.
+/// [CHECKED]
+auto spp::asts::IsRuntimeMemberAccess(Ast const *ast) -> bool {
   const auto postfix = ast->To<PostfixExpressionAst>();
   return postfix != nullptr
     and postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr;
 }
 
-auto spp::asts::IsStaticMemberAccess(
-  Ast const *ast) -> bool {
-  // Check the ast is a postfix expression, whose operator is
-  // the static member access operator.
+/// [CHECKED]
+auto spp::asts::IsStaticMemberAccess(Ast const *ast) -> bool {
   const auto postfix = ast->To<PostfixExpressionAst>();
   return postfix != nullptr
     and postfix->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>() != nullptr;
 }
 
-auto spp::asts::IsDeref(
-  Ast const *ast) -> bool {
-  // Check the ast is a postfix expression, whose operator is
-  // the deref operator.
+/// [CHECKED]
+auto spp::asts::IsDeref(Ast const *ast) -> bool {
   const auto postfix = ast->To<PostfixExpressionAst>();
   return postfix != nullptr
     and postfix->Op->To<PostfixExpressionOperatorDerefAst>() != nullptr;
+}
+
+auto spp::asts::Unparenthesised(Ast const *ast) -> Ast const* {
+  while (const auto paren = ast->To<ParenthesisedExpressionAst>()) { ast = paren->Expr.get(); }
+  return ast;
+}
+
+/// [CHECKED]
+auto spp::asts::IsFuncCall(Ast const *ast) -> bool {
+  const auto postfix = ast->To<PostfixExpressionAst>();
+  return postfix != nullptr
+    and postfix->Op->To<PostfixExpressionOperatorFunctionCallAst>() != nullptr;
+}
+
+/// [CHECKED]
+auto spp::asts::IsNotExpression(Ast const *ast) -> bool {
+  const auto postfix = ast->To<PostfixExpressionAst>();
+  return postfix != nullptr
+    and postfix->Op->To<PostfixExpressionOperatorKeywordNotAst>() != nullptr;
 }
 
 auto spp::asts::BindLocal(

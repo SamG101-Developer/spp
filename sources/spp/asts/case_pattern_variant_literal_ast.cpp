@@ -6,15 +6,13 @@ module spp.asts.case_pattern_variant_literal_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.utils.case_utils;
 import spp.asts.boolean_literal_ast;
-import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.literal_ast;
-import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.local_variable_destructure_skip_single_argument_ast;
 import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.utils.uid;
+import spp.lex.tokens;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
@@ -53,12 +51,11 @@ auto spp::asts::CasePatternVariantLiteralAst::ToString() const -> Str {
 
 auto spp::asts::CasePatternVariantLiteralAst::ConvToVar(
   CompilerMetaData *) -> Unique<LocalVariableAst> {
-  IMPORT_UTILS_AND_UID;
-  // Create the local variable literal binding AST.
-  const auto uid = Uid();
-  auto var_name = MakeShared<IdentifierAst>(PosStart(), uid);
-  auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
-    nullptr, std::move(var_name), nullptr);
+  // A literal is tested by the "case"'s plan, not bound: in the
+  // pattern's "let" it is a skip ("_"), which takes nothing, so a
+  // pattern of literals only tests the shape of its value.
+  auto var = MakeUnique<LocalVariableDestructureSkipSingleArgumentAst>(
+    MakeUnique<TokenAst>(PosStart(), lex::SppTokenType::TK_UNDERSCORE, "_"));
   var->MarkFromCasePattern();
   return var;
 }

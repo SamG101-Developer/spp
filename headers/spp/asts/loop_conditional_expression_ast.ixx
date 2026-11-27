@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.loop_conditional_expression_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast_kind;
 import spp.asts.loop_expression_ast;
 import spp.codegen.llvm_ctx;
@@ -11,7 +12,6 @@ import std;
 
 use_common(LoopConditionalExpressionAst);
 use(spp::analyse::scopes, struct TypeRef);
-use(spp::asts, struct DeferStatementAst);
 use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressionAst {
@@ -20,17 +20,28 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
   /// The loop condition, an expression evaluating to a boolean.
   Unique<ExpressionAst> Cond;
 
-  /// A "defer" in the loop's own scope: it runs as the loop is
-  /// left - by an "exit", by the condition ending it (after the
-  /// "else"), or by a "ret" from inside it - but not between
-  /// iterations. Never written: an iterable loop's desugaring
-  /// gives one, to drop its iterator.
-  Unique<DeferStatementAst> LoopDefer;
+  /// A value of the scope around the loop that ends with it: each
+  /// way out of the loop (an "exit", the condition ending it) drops
+  /// it, and after the loop it is gone. Never written: an iterable
+  /// loop's desugaring names its iterator ("$_iter"), so the borrow
+  /// it holds ends with the loop. A "ret" or an "exit" past this
+  /// loop drops it with the scope it is declared in.
+  Shared<IdentifierAst> EndsWithLoop;
 
   /// The iterable loop this one was lowered from, which an error
   /// about the loop as a whole points at (this one has no "loop"
   /// written); nullptr for a loop written as one.
   Ast const *LoweredFrom = nullptr;
+
+  /// A loop's condition is reached from 3 different points: the initial entry
+  /// from above; a re-iteration from the end of the loop; a re-iteration from a
+  /// skip statement. Skip handles its own stuff, so only re-iteration is the
+  /// "back edge" here. "BadCond" is when the condition goes false.
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> Entry, BackEdge;
+    Vec<analyse::utils::drop_utils::OwnedValue> CondTemporaries;
+    Vec<analyse::utils::drop_utils::OwnedValue> BadCond;
+  } _Drops;
 
   LoopConditionalExpressionAst(
     decltype(TokLoop) &&tok_loop,
@@ -42,6 +53,7 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
+  // Todo: Break up and massively tidy
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
@@ -49,5 +61,4 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
-
 };

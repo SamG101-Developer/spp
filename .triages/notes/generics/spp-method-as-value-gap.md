@@ -1,7 +1,7 @@
 ---
 name: spp-method-as-value-gap
 description: "`Type::method` as a value works via nested-type naming (`main::A::$M`) + per-block mock coalescing + a mock per generic-owner instance; the traps hit on the way; `Type::method()` without self used to segfault"
-updated: 2026-11-06
+updated: 2026-11-23
 ---
 
 **Method as a value (done 2026-09-12, nested-type approach, the user's choice):** before this, `Type::method` as a value
@@ -48,7 +48,7 @@ cloned generic `sup` block owns its `$M`. `MakeSupInstance` re-links the copy to
 
 **Kinds follow `self`:** `&self` gives `FunRef`, `&mut self` gives `FunMut` and `self` gives `FunMov`. Free functions and
 static methods are `FunRef`. So `Counter::add` (`&mut self`) does not fit a `FunRef[(&mut Counter, S32), Void]`, which a
-free function with the same parameters does. Calling a `FunMut` needs a `mut` binding, and the value is linear (drop it).
+free function with the same parameters does. Calling a `FunMut` needs a `mut` binding.
 
 **Trap: shared cached FqName nodes.** Once the mock's function type named the owner (`FunRef[(&A,), Void]`), `A`'s cached
 FqName node was analysed under AllowAbstractType. `cls B { a: A }` then hit `_HasAnalysed` and skipped the abstract check

@@ -11,15 +11,16 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.case_utils;
 import spp.analyse.utils.common_errors;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_values;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.pattern_solver;
 import spp.analyse.utils.type_join;
 import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
+import spp.asts.binary_expression_ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.case_pattern_variant_ast;
@@ -37,6 +38,8 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_drop;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
@@ -106,6 +109,13 @@ auto spp::asts::CaseExpressionAst::NewNonPatternMatch(
   return out;
 }
 
+auto spp::asts::CaseExpressionAst::_TestsConditionDirectly() const -> bool {
+  return not Branches.empty()
+    and Branches[0]->Op == nullptr
+    and not Branches[0]->Patterns.empty()
+    and Branches[0]->Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
+}
+
 auto spp::asts::CaseExpressionAst::PosStart() const -> std::size_t {
   // Use the "case" token.
   return TokCase->PosStart();
@@ -125,6 +135,9 @@ auto spp::asts::CaseExpressionAst::Clone() const -> Unique<Ast> {
     AstCloneVec(Branches));
   c->LoweredFromIsExpr = LoweredFromIsExpr;
   c->LoweredFromTryOperator = LoweredFromTryOperator;
+  c->ValueDiscarded = ValueDiscarded;
+  c->_KeepsTemporaryOnFallThrough = _KeepsTemporaryOnFallThrough;
+  c->_Drops = _Drops;
   return c;
 }
 
@@ -147,7 +160,6 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), nullptr);
   Ast::Stage2_GenTopLvlScopes(sm, meta);
 
-  const auto cond_bindings_before = meta->AddedIsBindings.size();
 
   // The condition is never what the "case" is assigned to, so it
   // does not see that target: a lowered "is" as the condition has
@@ -174,14 +186,9 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
     TypeRef::Of(*_SubjectType, *sm->CurrentScope),
     Cond->PosStart(), *sm);
 
-  // Without "of", the condition is what the first branch
-  // tests directly (against "true", with no operator), so it
-  // has to be a boolean. "TokOf" is filled in either way, so
-  // the form is told apart by that first branch.
-  const auto tests_condition_directly = not Branches.empty()
-    and Branches[0]->Op == nullptr
-    and not Branches[0]->Patterns.empty()
-    and Branches[0]->Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
+  // Without "of", the condition is tested directly, so it has to be
+  // a boolean.
+  const auto tests_condition_directly = _TestsConditionDirectly();
 
   if (tests_condition_directly and not LoweredFromIsExpr
     and not type_predicates::IsTypeBool(Cond->InferTypeRef(sm, meta), *sm->CurrentScope)) {
@@ -189,19 +196,22 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
     Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Cond, *cond_ty, "case"));
   }
 
-  // What an "is" in the condition binds only holds in the branch
-  // taken when it matched - the first, for the form without "of".
-  auto cond_bindings = Vec<VariableSymbol*>();
-  if (tests_condition_directly) {
-    for (auto i = cond_bindings_before; i < meta->AddedIsBindings.size(); ++i) {
-      cond_bindings.emplace_back(meta->AddedIsBindings[i]);
-    }
+  // What a condition tested directly binds where it is true holds in
+  // the branch taken then: the first.
+  if (tests_condition_directly) { Branches[0]->Body->SetBoundOnEntry(expr_utils::BoundWhenTrue(*Cond)); }
+
+  // What each branch drops at its end. A lowered "is" hands its
+  // pattern's bindings on to the statement it is in instead.
+  for (auto const &branch : Branches) {
+    branch->SetDropsBindings(not LoweredFromIsExpr);
   }
 
-  // Analyse each branch of the case expression.
+  // Analyse each branch of the case expression. Nothing takes
+  // a branch's value when nothing takes the "case"'s.
   for (auto const &branch : Branches) {
-    const auto expired_before = meta->ExpiredIsBindings.size();
-    if (branch != Branches[0]) { meta->ExpiredIsBindings.append_range(cond_bindings); }
+    if (ValueDiscarded) { expr_utils::MarkValueDiscarded(*branch->Body); }
+  }
+  for (auto const &branch : Branches) {
     // Check the "else" branch is the last branch (also checks
     // there is only 1 "else" branch).
     RaiseIf<SppCaseBranchElseNotLastError>(
@@ -214,17 +224,17 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
       meta->CaseCondition = Cond.get();
       branch->Stage7_AnalyseSemantics(sm, meta);
     }
-    meta->ExpiredIsBindings.resize(expired_before);
   }
 
   // Enforce consistent branch type return values; either the
   // values are being propagated up to an identifier, or they
-  // should all be void.
-  {
+  // should all be void. A discarded "case" has no value to agree
+  // on: a branch's value is reported as discarded, where it is.
+  if (not ValueDiscarded) {
     const auto _meta_guard = MetaGuard(meta);
     meta->CaseCondition = Cond.get();
     meta->IgnoreMissingElseBranchForInference = true;
-    const auto join = case_utils::JoinBranches(Branches | genex::views::ptr | genex::to<Vec>(), *sm, meta);
+    const auto join = case_utils::JoinBranches(Branches, *sm, meta);
 
     // A function named as a branch's value stands for the
     // overload the case's type asks for.
@@ -238,7 +248,7 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
   // the author's to remove.
   _Plan = nullptr;
   auto const &coverage = Plan(sm, meta).Coverage;
-  for (auto const &[i, branch] : Branches | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, branch] : Branches | genex::views::enumerate) {
     if (coverage.Reachable[i] or branch->PosStart() == 0) { continue; }
     Raise<SppCaseBranchUnreachableError>(ERR_ARGS(*branch, *Branches[coverage.ShadowedBy[i].value_or(i)]));
   }
@@ -267,9 +277,9 @@ auto spp::asts::CaseExpressionAst::Plan(
   // Solve the patterns once, against the subject's type, and
   // hand each branch its part of the plan.
   auto solver = pattern_solver::PatternSolver(
-    Branches | genex::views::ptr | genex::to<Vec>(), subject, _SubjectValue, *sm->CurrentScope);
+    Branches, subject, _SubjectValue, *sm->CurrentScope);
   _Plan = MakeShared<pattern_solver::MatchPlan>(solver.Solve(*sm, *meta));
-  for (auto const &[i, branch] : Branches | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, branch] : Branches | genex::views::enumerate) {
     branch->UsePlan(_Plan.get(), i);
   }
   return *_Plan;
@@ -283,7 +293,10 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   // of the symbols in the branches.
   sm->MoveToNextScope();
 
-  // Check the memory state of the condition.
+  // Check the memory state of the condition. Tested directly, its
+  // true edge is the first branch.
+  const auto condition = drop_utils::TemporaryRegion(*sm->CurrentScope);
+  if (_TestsConditionDirectly()) { BinaryExpressionAst::MarkCondition(*Cond); }
   Cond->Stage8_CheckMemory(sm, meta);
   mem_utils::ValidateSymbolMemory(
     *Cond, *Cond, *sm, meta,
@@ -294,54 +307,24 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   // give away) and that is not "Copy" (copying leaves the
   // original in place).
   const auto cond_ref = Cond->InferTypeRef(sm, meta);
-  const auto cond_sym = cond_ref.Symbol != nullptr
-    and not cond_ref.Symbol->IsCopyable()
-    and not cond_ref.IsBorrowed()
+  const auto cond_sym = cond_ref.IsMoveOnly()
     ? sm->CurrentScope->FindVarSymbolOutermost(*Cond).first
     : nullptr;
 
-  const auto subject = cond_sym != nullptr
-    and cond_sym->MemInfo->AstBorrowed == nullptr
-    ? cond_sym
-    : nullptr;
+  const auto subject = cond_sym != nullptr and not cond_sym->IsBorrow() ? cond_sym : nullptr;
 
-  const auto branches = Branches | genex::views::ptr | genex::to<Vec>();
+  auto const &branches = Branches;
   auto const &plan = Plan(sm, meta);
   auto const &coverage = plan.Coverage;
-  const auto temporary = subject == nullptr and linear_utils::IsLinearTemporary(*Cond, *sm, meta);
-
-  // Handle unconsumed temporaries. For example, when a linear
-  // temporary is the condition "case make_str() of {", then
-  // one branch must take ownership of it. Unless its copyable.
-  const auto flow = memory_state::FlowOf(*sm->CurrentScope);
-  const auto kept_before = flow != nullptr ? flow->KeptTemporaries.size() : 0uz;
-  if (temporary) {
-    for (auto const &[i, branch] : branches | genex::views::enumerate) {
-      const auto keeps = coverage.Reachable[i] and plan.Edges.OnMatch[i] == SubjectOnMatch::kKeep;
-      if (not keeps) { continue; }
-
-      // A reachable branch that keeps the case condition temporary
-      // (does not take it) raises a linear error, unless the body
-      // of the branch diverges.
-      if (not branch->Body->Diverges(sm, meta)) {
-        linear_utils::RaiseTemporaryNotConsumed(
-          *Cond, *branch, "This branch keeps it, so nothing owns it after the \"case\"", *sm, meta);
-      }
-
-      // Log the temporary into the flow, against the branch that
-      // maintains it.
-      if (flow != nullptr) {
-        flow->KeptTemporaries.emplace_back(Cond.get(), branch);
-      }
-    }
-
-    // If the temporary falls through to the end, the same error
-    // is reported, against the case rather than the branch.
-    if (coverage.FallsThrough and plan.Edges.OnFallThrough == SubjectOnMatch::kKeep) {
-      linear_utils::RaiseTemporaryNotConsumed(
-        *Cond, *this, "Falling through keeps it, so nothing owns it after the \"case\"", *sm, meta);
-    }
+  // A temporary the "case" is over ("case mk() of") is held by
+  // nothing once a path out of it does not take it: a branch that
+  // keeps it drops it at its end (or where it is left early), and
+  // so does falling through every branch.
+  const auto temporary = subject == nullptr and drop_utils::IsTemporary(*Cond, *sm, meta);
+  for (auto const &[i, branch] : branches | genex::views::enumerate) {
+    branch->SetKeepsTemporary(temporary and coverage.Reachable[i] and plan.Edges.OnMatch[i] == SubjectOnMatch::kKeep);
   }
+  _KeepsTemporaryOnFallThrough = temporary and coverage.FallsThrough;
 
   // Validate the memory state across all branches (also calls
   // stage 8 from within).
@@ -349,10 +332,12 @@ auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
     const auto _meta_guard = MetaGuard(meta);
     meta->CaseCondition = Cond.get();
     meta->CaseSubject = subject;
-    case_utils::ValidateInconsistentMemory(
-      this, branches, coverage, subject, subject != nullptr ? &plan.Edges : nullptr, sm, meta);
+    // An "is" never takes its subject on a match: its bindings are
+    // views of it, which the subject's owner keeps owning.
+    _Drops.FallThrough = case_utils::ValidateInconsistentMemory(
+      this, branches, coverage, subject != nullptr and not LoweredFromIsExpr ? &plan.Edges : nullptr,
+      condition.Declared(), BinaryExpressionAst::HeldWhenTrue(*Cond), sm, meta);
   }
-  if (flow != nullptr) { flow->KeptTemporaries.resize(kept_before); }
 
   // Move out of the case expression scope.
   sm->MoveOutOfCurrentScope();
@@ -378,10 +363,21 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
     return Cond->Stage11_CodeGen(sm, meta, ctx);
   }();
 
-  // The subject as the branches' tests read it.
+  // The subject as the branches' tests read it. A temporary one the
+  // branches or the fall-through may keep needs a slot to drop it from.
+  auto subject_ptr = static_cast<llvm::Value*>(nullptr);
   if (auto const &plan = Plan(sm, meta); plan.ReadsSubject) {
-    case_utils::BindSubjectValue(plan, llvm_cond, ctx);
+    subject_ptr = case_utils::BindSubjectValue(plan, llvm_cond, ctx);
   }
+  const auto keeps_temporary = _KeepsTemporaryOnFallThrough or genex::any_of(
+    Branches, [](auto const &branch) { return branch->KeepsTemporary(); });
+  if (keeps_temporary and subject_ptr == nullptr and llvm_cond != nullptr) {
+    subject_ptr = codegen::LlvmEntryAlloca(llvm_cond->getType(), "case.temporary" + uid, ctx);
+    ctx->Builder.CreateStore(llvm_cond, subject_ptr);
+  }
+  const auto subject_ref = keeps_temporary
+    ? MakeShared<TypeRef>(Cond->InferTypeRef(sm, meta).WithoutConvention())
+    : nullptr;
 
   // A "case" yields a value when something is catching it, or
   // when it is the desugaring of an "is", which is a boolean
@@ -389,7 +385,9 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
   // positions that assign nothing, or being passed straight to
   // a call ("f(case b { x } else { y })")
   const auto falls_through = Plan(sm, meta).Coverage.FallsThrough;
-  const auto yields_value = not falls_through and not LoweredFromIsExpr and [&] {
+  // A "case" written as a statement ("ValueDiscarded") yields nothing: its branches' values are dropped where each
+  // ends, and need not agree on a type.
+  const auto yields_value = not falls_through and not LoweredFromIsExpr and not ValueDiscarded and [&] {
     const auto _meta_guard = MetaGuard(meta);
     meta->IgnoreMissingElseBranchForInference = true;
 
@@ -468,6 +466,8 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
     // ret values, and the body code is generated by branching (auto
     // bound).
     ctx->Builder.SetInsertPoint(case_entry_bb);
+    meta->LlvmCaseTemporary = keeps_temporary ? subject_ptr : nullptr;
+    meta->LlvmCaseTemporaryType = subject_ref;
     for (auto const &branch : Branches) {
       branch->Stage11_CodeGen(sm, meta, ctx);
     }
@@ -479,7 +479,13 @@ auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
     // and a "case" matching every value never reaches it either.
     if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
       if (is_expr or not falls_through) { ctx->Builder.CreateUnreachable(); }
-      else { ctx->Builder.CreateBr(case_end_bb); }
+      else {
+        if (_KeepsTemporaryOnFallThrough and subject_ptr != nullptr) {
+          codegen::EmitDrop(*subject_ref, subject_ptr, sm, meta, ctx);
+        }
+        codegen::EmitOuterDrops(_Drops.FallThrough, *this, sm, meta, ctx);
+        ctx->Builder.CreateBr(case_end_bb);
+      }
     }
 
     // Clean up by setting the new insertion point as the end of the
@@ -535,8 +541,7 @@ auto spp::asts::CaseExpressionAst::InferType(
   //  used as an expression that agreed type should be "Void" - "case x of { == 1 { 1 } else { 2 } }" discards an
   //  "S32" that nothing asked for. A case carries no signal for which of the two positions it is in, which is what
   //  the missing half needs; see the red test in "test_ast_case_expression.cpp".
-  const auto agreed = case_utils::JoinBranches(
-    Branches | genex::views::ptr | genex::to<Vec>(), *sm, meta).Solve();
+  const auto agreed = case_utils::JoinBranches(Branches, *sm, meta).Solve();
 
   // A "case" that can fall through every branch has no value on that path, so it needs an "else" to be one: either
   // written, or every value matched by the branches ("pattern_solver::PatternSolver").
@@ -589,7 +594,7 @@ auto spp::asts::CaseExpressionAst::Diverges(
     ? _Plan->Coverage.FallsThrough
     : not pattern_solver::IsElseBranch(*Branches.back());
   if (falls_through) { return false; }
-  for (auto const &[i, branch] : Branches | genex::views::ptr | genex::views::enumerate) {
+  for (auto const &[i, branch] : Branches | genex::views::enumerate) {
     if ((_Plan == nullptr or _Plan->Coverage.Reachable[i]) and not branch->Body->Diverges(sm, meta)) { return false; }
   }
   return true;

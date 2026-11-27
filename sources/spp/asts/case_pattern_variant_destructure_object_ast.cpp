@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.generic_inference;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
@@ -157,9 +158,6 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
-  // All factors type analysis.
-  Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta);
-
   // Handle "@" in the condition and move into it. Todo is
   // this still needed? It helps with the variant breakdown
   // within the deref type.
@@ -168,6 +166,11 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
     auto *const inner = mapped_cond->To<PostfixExpressionAst>()->Lhs.get();
     if (inner->To<IdentifierAst>() != nullptr) { mapped_cond = inner; }
   }
+
+  // All factors type analysis. The arguments not written are the
+  // subject's member of this class ("case o is Some(val)").
+  Type = type_resolution::AnalyseInferredType(
+    *Type, {.Subject = meta->CaseCondition->InferType(sm, meta)}, *sm, *meta);
 
   // Flow-type the case condition (when it's a simple
   // identifier) so that the member-access bindings inside
@@ -188,29 +191,24 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
     _FlowSymbol = MakeShared<VariableSymbol>(*_CondSymbol);
     _FlowSymbol->LlvmInfo = _CondSymbol->LlvmInfo;
 
-    // What this narrows, so that consuming through the
-    // narrowed name discharges the value itself.
-    _FlowSymbol->NarrowsSymbol = _CondSymbol;
+    // A view of the subject, held as the member it narrows to
+    // ("regions::IsView", "o.<Some[T]>"): using the narrowed name
+    // uses that part of the subject, which keeps owning it.
     _FlowSymbol->Type = Type;
     _FlowSymbol->Kind = VariableKind::FlowNarrowing;
+    _FlowSymbol->ViewRoot = _CondSymbol.get();
+    _FlowSymbol->ViewSteps = {type_members::VariantMemberStep(TypeRef::Of(*Type, *sm->CurrentScope))};
 
     if (Type->GetConvention() != nullptr) { _FlowSymbol->MemInfo->AstBorrowed = Type.get(); }
     _DeclareFlowSymbol(*sm);
   }
 
-  AnalyseDestructure(mapped_cond, Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
+  AnalyseDestructure(mapped_cond, Elems, sm, meta);
 }
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
-
-  // Snapshot the case condition memory info into the
-  // flow symbol.
-  if (_FlowSymbol != nullptr and _CondSymbol != nullptr) {
-    auto cond_state = memory_state::StateOf(*sm->CurrentScope, *_CondSymbol);
-    memory_state::StateOf(*sm->CurrentScope, *_FlowSymbol) = std::move(cond_state);
-  }
 
   // The narrowed subject is declared here, before the
   // bindings (which may reuse its name: "is Some(val)"

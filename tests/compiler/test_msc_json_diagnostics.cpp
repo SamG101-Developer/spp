@@ -75,7 +75,7 @@ TEST(MscJsonDiagnostics, test_message_colours_are_not_carried_into_the_diagnosti
     // in the middle rather than around the edges - the one shape a diagnostic must not inherit.
     build_temp_project(R"(
 fun f() -> Void {
-    let x = undefined_thing
+  let x = undefined_thing
 }
 )");
     ADD_FAILURE() << "Expected the unknown identifier error, but nothing was thrown.";
@@ -97,7 +97,7 @@ TEST(MscJsonDiagnostics, test_inline_highlights_are_kept_as_backticks) {
     // they survive the colours being stripped as backtick-quoted spans an editor can render as code.
     build_temp_project(R"(
 fun f() -> Void {
-    let x = undefined_thing
+  let x = undefined_thing
 }
 )");
     ADD_FAILURE() << "Expected the unknown identifier error, but nothing was thrown.";
@@ -134,15 +134,15 @@ TEST(MscJsonDiagnostics, test_recovery_reports_one_error_per_member) {
   // Three functions, each broken in its own right. Without recovery the first would be the only one reported.
   build_temp_project(R"(
 fun first() -> Void {
-    let a = undefined_one
+  let a = undefined_one
 }
 
 fun second() -> Void {
-    let b = undefined_two
+  let b = undefined_two
 }
 
 fun third() -> Void {
-    let c = undefined_three
+  let c = undefined_three
 }
 )");
 
@@ -171,8 +171,8 @@ TEST(MscJsonDiagnostics, test_recovery_reports_a_member_once_however_many_mistak
   // here is not reported until the first is fixed.
   build_temp_project(R"(
 fun only_one() -> Void {
-    let a = undefined_one
-    let b = undefined_two
+  let a = undefined_one
+  let b = undefined_two
 }
 )");
 
@@ -183,7 +183,7 @@ TEST(MscJsonDiagnostics, test_a_clean_module_recovers_nothing) {
   const auto recovering = RecoveringCompile();
   build_temp_project(R"(
 fun fine() -> Void {
-    let a = 1
+  let a = 1
 }
 )");
   EXPECT_FALSE(spp::analyse::errors::diagnostic_sink::HasErrors());
@@ -198,9 +198,9 @@ TEST(MscJsonDiagnostics, test_recovery_reports_pre_analysis_errors_per_member) {
 cls Abs { }
 
 sup Abs {
-    !abstract_method
-    !public
-    fun f(&self) -> Void { }
+  !abstract_method
+  !public
+  fun f(&self) -> Void { }
 }
 
 fun first(x: Abs) -> Void { }
@@ -210,15 +210,15 @@ fun second(y: Abs) -> Void { }
 cls Base { }
 
 sup Base {
-    !virtual_method
-    !public
-    fun g(&self) -> Void { }
+  !virtual_method
+  !public
+  fun g(&self) -> Void { }
 }
 
 cls Derived { }
 
 sup Derived ext Base {
-    fun h(&self) -> Void { }
+  fun h(&self) -> Void { }
 }
 )");
 
@@ -246,15 +246,15 @@ TEST(MscJsonDiagnostics, test_recovery_does_not_repeat_a_failed_override_as_abst
 cls Getter { }
 
 sup Getter {
-    !abstract_method
-    !public
-    fun get(&self) -> S32 { }
+  !abstract_method
+  !public
+  fun get(&self) -> S32 { }
 }
 
 cls Holder { }
 
 sup Holder ext Getter {
-    fun get(&self) -> S32 or Bool { ret 1_s32 }
+  fun get(&self) -> S32 or Bool { ret 1_s32 }
 }
 
 fun first(h: &Holder) -> Void { }
@@ -278,9 +278,9 @@ TEST(MscJsonDiagnostics, test_recovery_still_reports_each_use_of_a_type_left_abs
 cls Getter { }
 
 sup Getter {
-    !abstract_method
-    !public
-    fun get(&self) -> S32 { }
+  !abstract_method
+  !public
+  fun get(&self) -> S32 { }
 }
 
 cls Holder { }
@@ -304,20 +304,26 @@ fun second(h: &Holder) -> Void { }
 TEST(MscJsonDiagnostics, test_recovery_continues_past_an_error_raised_leaving_a_member) {
   const auto recovering = RecoveringCompile();
 
-  // The value is found unconsumed at the "ret", after the walk has entered the case's branches - the member's last
-  // scopes - and come back out. Skipping past the member from there used to run the walk off the end, so the next
-  // member's scopes were never walked (and the compile could crash).
+  // A value whose own "drop" lost a part is found at the "ret" (E106), after the walk has entered the case's
+  // branches - the member's last scopes - and come back out. Skipping past the member from there used to run the walk
+  // off the end, so the next member's scopes were never walked (and the compile could crash).
   build_temp_project(R"(
-cls Handle { }
+cls Handle { !public a: Str }
 
-fun first(flag: Bool) -> Res[Handle, Bool] {
-    let h = Handle()
-    ret case flag { Pass(val=h) } else { Fail(err=false) }
+sup Handle ext std::ops::drop::Drop {
+  fun drop(self) -> Void { }
 }
 
-fun second(flag: Bool) -> Res[Handle, Bool] {
-    let h = Handle()
-    ret case flag { Pass(val=h) } else { Fail(err=false) }
+fun first(flag: Bool) -> Res[Bool, Bool] {
+  let h = Handle(a=Str::from("a"))
+  let a = h.a
+  ret case flag { Pass(val=true) } else { Fail(err=false) }
+}
+
+fun second(flag: Bool) -> Res[Bool, Bool] {
+  let h = Handle(a=Str::from("a"))
+  let a = h.a
+  ret case flag { Pass(val=true) } else { Fail(err=false) }
 }
 )");
 
@@ -331,8 +337,8 @@ fun second(flag: Bool) -> Res[Handle, Bool] {
 
   found |= genex::actions::sort;
   ASSERT_EQ(found.size(), 2u);
-  EXPECT_EQ(found[0].first, "E94");
-  EXPECT_EQ(found[1].first, "E94");
+  EXPECT_EQ(found[0].first, "E106");
+  EXPECT_EQ(found[1].first, "E106");
   EXPECT_LT(found[0].second, found[1].second);
 }
 
@@ -359,7 +365,7 @@ TEST(MscJsonDiagnostics, test_the_index_says_what_a_name_means_and_where_it_was_
 cls Thing { !public v: S32 }
 
 fun read(t: &Thing) -> S32 {
-    ret t.v
+  ret t.v
 }
 )");
 
@@ -417,9 +423,9 @@ TEST(MscJsonDiagnostics, test_the_index_records_self_as_just_the_keyword) {
 cls Thing { v: S32 }
 
 sup Thing {
-    fun get(&self) -> S32 {
-        ret self.v
-    }
+  fun get(&self) -> S32 {
+    ret self.v
+  }
 }
 )");
 
@@ -439,8 +445,8 @@ TEST(MscJsonDiagnostics, test_the_index_follows_member_access_and_namespace_path
 cls Holder { !public v: S32 }
 
 fun use_them(h: &Holder) -> Void {
-    let a = h.v
-    std::mem::ops::drop(a)
+  let a = h.v
+  std::mem::ops::drop(a)
 }
 )");
 
@@ -471,8 +477,8 @@ TEST(MscJsonDiagnostics, test_the_index_lists_what_a_type_and_a_namespace_hold) 
 
   build_temp_project(R"(
 fun probe() -> Void {
-    let v = Vec[S32]()
-    std::mem::ops::drop(v)
+  let v = Vec[S32]()
+  std::mem::ops::drop(v)
 }
 )");
 
@@ -514,18 +520,18 @@ TEST(MscJsonDiagnostics, test_the_index_lists_what_an_extension_can_still_overri
   build_temp_project(R"(
 cls Shape { }
 sup Shape {
-    !abstract_method
-    fun area(&self) -> S32 { }
+  !abstract_method
+  fun area(&self) -> S32 { }
 
-    !virtual_method
-    fun describe(&self) -> Void { }
+  !virtual_method
+  fun describe(&self) -> Void { }
 
-    fun plain(&self) -> Void { }
+  fun plain(&self) -> Void { }
 }
 
 cls Square { }
 sup Square ext Shape {
-    fun area(&self) -> S32 { ret 4 }
+  fun area(&self) -> S32 { ret 4 }
 }
 
 cls Circle { }
@@ -578,15 +584,15 @@ TEST(MscJsonDiagnostics, test_the_index_lists_the_types_a_type_and_a_namespace_h
 cls Wrap[T] { }
 
 sup [T] Wrap[T] {
-    !public type Element = T
-    !private type Hidden = Bool
+  !public type Element = T
+  !private type Hidden = Bool
 }
 
 fun probe() -> Void {
-    let w = Wrap[Bool]()
-    let t = std::threading::thread::current()
-    std::mem::ops::drop(w)
-    std::mem::ops::drop(t)
+  let w = Wrap[Bool]()
+  let t = std::threading::thread::current()
+  std::mem::ops::drop(w)
+  std::mem::ops::drop(t)
 }
 )");
 
@@ -634,14 +640,14 @@ TEST(MscJsonDiagnostics, test_the_index_lists_a_non_generic_types_nested_type) {
 cls Holder { }
 
 sup Holder {
-    !public type Inner = Bool
-    !public fun m(&self) -> Void { }
+  !public type Inner = Bool
+  !public fun m(&self) -> Void { }
 }
 
 fun probe() -> Void {
-    let h = Holder()
-    h.m()
-    std::mem::ops::drop(h)
+  let h = Holder()
+  h.m()
+  std::mem::ops::drop(h)
 }
 )");
 
@@ -669,10 +675,10 @@ cls Point { !public x: S32 }
 fun shifted(base: S32) -> S32 { ret base }
 
 fun probe() -> Void {
-    let p = Point(x=1_s32)
-    let n = shifted(base=2_s32)
-    std::mem::ops::drop(n)
-    std::mem::ops::drop(p)
+  let p = Point(x=1_s32)
+  let n = shifted(base=2_s32)
+  std::mem::ops::drop(n)
+  std::mem::ops::drop(p)
 }
 )");
 
@@ -709,8 +715,8 @@ TEST(MscJsonDiagnostics, test_the_index_says_what_a_call_takes_and_what_each_pla
 fun shifted(base: S32, by: S32) -> S32 { ret base }
 
 fun probe() -> Void {
-    let total = shifted(base=1_s32, by=2_s32)
-    std::mem::ops::drop(total)
+  let total = shifted(base=1_s32, by=2_s32)
+  std::mem::ops::drop(total)
 }
 )");
 
@@ -741,12 +747,12 @@ TEST(MscJsonDiagnostics, test_the_index_stops_at_an_alias_but_walks_through_an_i
 
   build_temp_project(R"(
 fun gives() -> Opt[S32] {
-    ret Some(val=1_s32)
+  ret Some(val=1_s32)
 }
 
 fun probe() -> Void {
-    let v = Vec[S32]()
-    std::mem::ops::drop(v)
+  let v = Vec[S32]()
+  std::mem::ops::drop(v)
 }
 )");
 
@@ -773,13 +779,13 @@ TEST(MscJsonDiagnostics, test_the_index_says_what_cfg_left_out) {
   build_temp_project(R"(
 !cfg(mode="!dev|rel")
 fun gone() -> Void {
-    no_such_function()
+  no_such_function()
 }
 
 cls Holder {
-    kept: S32
-    !cfg(mode="!dev|rel")
-    dropped: S32
+  kept: S32
+  !cfg(mode="!dev|rel")
+  dropped: S32
 }
 
 !cfg(mode="dev|rel")
@@ -807,8 +813,8 @@ cmp small: S32 = 6_s32
 cmp doubled: S32 = small + small
 
 fun probe() -> Void {
-    let n = doubled
-    std::mem::ops::drop(n)
+  let n = doubled
+  std::mem::ops::drop(n)
 }
 )");
 

@@ -8,7 +8,6 @@ import spp.asts.ast_kind;
 
 namespace spp::asts {
   SPP_EXP_CLS struct AnnotationAst;
-  SPP_EXP_CLS struct ArrayLiteralAst;
   SPP_EXP_CLS struct ArrayLiteralExplicitElementsAst;
   SPP_EXP_CLS struct ArrayLiteralRepeatedElementAst;
   SPP_EXP_CLS struct AssignmentStatementAst;
@@ -42,7 +41,6 @@ namespace spp::asts {
   SPP_EXP_CLS struct ConventionMutAst;
   SPP_EXP_CLS struct ConventionRefAst;
   SPP_EXP_CLS struct CoroutinePrototypeAst;
-  SPP_EXP_CLS struct DeferStatementAst;
   SPP_EXP_CLS struct ExpressionAst;
   SPP_EXP_CLS struct FloatLiteralAst;
   SPP_EXP_CLS struct FoldExpressionAst;
@@ -148,13 +146,6 @@ namespace spp::asts {
     static constexpr auto Known = true;
     static constexpr auto First = AstKind::kAnnotationAst;
     static constexpr auto Last = AstKind::kAnnotationAst;
-  };
-
-  template <>
-  struct AstKindRange<ArrayLiteralAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kArrayLiteralAst;
-    static constexpr auto Last = AstKind::kArrayLiteralRepeatedElementAst;
   };
 
   template <>
@@ -386,13 +377,6 @@ namespace spp::asts {
     static constexpr auto Known = true;
     static constexpr auto First = AstKind::kCoroutinePrototypeAst;
     static constexpr auto Last = AstKind::kCoroutinePrototypeAst;
-  };
-
-  template <>
-  struct AstKindRange<DeferStatementAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kDeferStatementAst;
-    static constexpr auto Last = AstKind::kDeferStatementAst;
   };
 
   template <>

@@ -32,23 +32,23 @@ SPP_TEST_CMP_VALUES(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestNumericLimits,
   test_valid_wrapping_arithmetic_at_every_width, R"(
-    fun f() -> Void {
-        let a = 0_u8.sub_wrapping(1_u8)
-        let b = 0_u16.sub_wrapping(1_u16)
-        let c = 0_u32.sub_wrapping(1_u32)
-        let d = 0_u64.sub_wrapping(1_u64)
-        let e = 0_s32.sub_wrapping(1_s32)
-        let g = 0_u64.add_wrapping(1_u64)
-        let h = 2_u64.mul_wrapping(3_u64)
-    }
+  fun f() -> Void {
+    let a = 0_u8.sub_wrapping(1_u8)
+    let b = 0_u16.sub_wrapping(1_u16)
+    let c = 0_u32.sub_wrapping(1_u32)
+    let d = 0_u64.sub_wrapping(1_u64)
+    let e = 0_s32.sub_wrapping(1_s32)
+    let g = 0_u64.add_wrapping(1_u64)
+    let h = 2_u64.mul_wrapping(3_u64)
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestNumericLimits,
   test_valid_float_pow_on_both_overloads, R"(
-    fun f() -> Void {
-        let a = 2.0_f64.pow(3)
-        let b = 2.0_f64.pow(3.0_f64)
-        let c = 2.0_f32.pow(2)
-    }
+  fun f() -> Void {
+    let a = 2.0_f64.pow(3)
+    let b = 2.0_f64.pow(3.0_f64)
+    let c = 2.0_f32.pow(2)
+  }
 )");

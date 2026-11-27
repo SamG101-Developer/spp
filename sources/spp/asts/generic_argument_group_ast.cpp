@@ -225,11 +225,4 @@ auto spp::asts::GenericArgumentGroupAst::GetKeywordArgs() const -> Vec<GenericAr
     | genex::to<Vec>();
 }
 
-auto spp::asts::GenericArgumentGroupAst::GetAllArgs() const -> Vec<GenericArgumentAst*> {
-  // Convert args to raw pointers.
-  return Args
-    | genex::views::transform([](auto const &arg) { return arg.get(); })
-    | genex::to<Vec>();
-}
-
 SPP_MOD_END

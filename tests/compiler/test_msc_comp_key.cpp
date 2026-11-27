@@ -207,476 +207,429 @@ TEST(TestCompKey, test_rewrite_keeps_a_tuple_value_whole) {
 
 // An operation over a comp parameter, nested, in a return type: each instantiation reads it with its own binding.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_nested_operation_in_a_return_type, R"(
-    cls A[cmp n: USize] { }
-    fun f[cmp n: USize]() -> A[(n + 1_uz) * 2_uz] { ret A[(n + 1_uz) * 2_uz]() }
-    fun g() -> Void {
-        let x: A[4_uz] = f[1_uz]()
-        let y: A[6_uz] = f[2_uz]()
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(y)
-    }
+  TestCompKey,
+  test_valid_nested_operation_in_a_return_type, R"(
+  cls A[cmp n: USize] { }
+  fun f[cmp n: USize]() -> A[(n + 1_uz) * 2_uz] { ret A[(n + 1_uz) * 2_uz]() }
+  fun g() -> Void {
+    let x: A[4_uz] = f[1_uz]()
+    let y: A[6_uz] = f[2_uz]()
+  }
 )");
 
 // A comp default that is an operation over an earlier parameter is read with that parameter bound.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_operation_comp_default, R"(
-    cls A[cmp n: USize] { }
-    fun f[cmp n: USize, cmp m: USize = n * 2_uz]() -> A[m] { ret A[m]() }
-    fun g() -> Void {
-        let x: A[6_uz] = f[3_uz]()
-        std::mem::ops::drop(x)
-    }
+  TestCompKey,
+  test_valid_operation_comp_default, R"(
+  cls A[cmp n: USize] { }
+  fun f[cmp n: USize, cmp m: USize = n * 2_uz]() -> A[m] { ret A[m]() }
+  fun g() -> Void {
+    let x: A[6_uz] = f[3_uz]()
+  }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_shift_in_a_return_type, R"(
-    cls A[cmp n: USize] { }
-    fun f[cmp n: USize]() -> A[n << 2_u32] { ret A[n << 2_u32]() }
-    fun g() -> Void {
-        let x: A[12_uz] = f[3_uz]()
-        std::mem::ops::drop(x)
-    }
+  TestCompKey,
+  test_valid_shift_in_a_return_type, R"(
+  cls A[cmp n: USize] { }
+  fun f[cmp n: USize]() -> A[n << 2_u32] { ret A[n << 2_u32]() }
+  fun g() -> Void {
+    let x: A[12_uz] = f[3_uz]()
+  }
 )");
 
 // A float comp argument is its exact value: spellings of one value are one type.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_float_spellings_are_one_type, R"(
-    cls A[cmp x: F64] { }
-    fun g() -> Void {
-        let a: A[1.5_f64] = A[1.50_f64]()
-        let b: A[0.75_f64] = A[0.5_f64 + 0.25_f64]()
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
-    }
+  TestCompKey,
+  test_valid_float_spellings_are_one_type, R"(
+  cls A[cmp x: F64] { }
+  fun g() -> Void {
+    let a: A[1.5_f64] = A[1.50_f64]()
+    let b: A[0.75_f64] = A[0.5_f64 + 0.25_f64]()
+  }
 )");
 
 // A value with no finite decimal is still one value: a third, however it is reached.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_float_fraction_is_one_type, R"(
-    cls A[cmp x: F64] { }
-    fun g() -> Void {
-        let a: A[1.0_f64 / 3.0_f64] = A[2.0_f64 / 6.0_f64]()
-        std::mem::ops::drop(a)
-    }
+  TestCompKey,
+  test_valid_float_fraction_is_one_type, R"(
+  cls A[cmp x: F64] { }
+  fun g() -> Void {
+    let a: A[1.0_f64 / 3.0_f64] = A[2.0_f64 / 6.0_f64]()
+  }
 )");
 
 // An operation over a float comp parameter folds with the parameter bound.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_float_operation_over_a_parameter, R"(
-    cls A[cmp x: F64] { }
-    fun f[cmp x: F64]() -> A[x * 2.0_f64] { ret A[x * 2.0_f64]() }
-    fun g() -> Void {
-        let a: A[3.0_f64] = f[1.5_f64]()
-        std::mem::ops::drop(a)
-    }
+  TestCompKey,
+  test_valid_float_operation_over_a_parameter, R"(
+  cls A[cmp x: F64] { }
+  fun f[cmp x: F64]() -> A[x * 2.0_f64] { ret A[x * 2.0_f64]() }
+  fun g() -> Void {
+    let a: A[3.0_f64] = f[1.5_f64]()
+  }
 )");
 
 // A third reached through a substitution is the written third: the instance is rebuilt as "1.0 / 3.0", which folds
 // back to the same value, where a decimal cut short would be another type.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_float_fraction_through_a_substitution, R"(
-    cls A[cmp x: F64] { }
-    fun f[cmp x: F64]() -> A[x / 3.0_f64] { ret A[x / 3.0_f64]() }
-    fun g() -> Void {
-        let a: A[2.0_f64 / 6.0_f64] = f[1.0_f64]()
-        std::mem::ops::drop(a)
-    }
+  TestCompKey,
+  test_valid_float_fraction_through_a_substitution, R"(
+  cls A[cmp x: F64] { }
+  fun f[cmp x: F64]() -> A[x / 3.0_f64] { ret A[x / 3.0_f64]() }
+  fun g() -> Void {
+    let a: A[2.0_f64 / 6.0_f64] = f[1.0_f64]()
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestCompKey,
-    test_invalid_different_float_values_are_different_types,
-    SppTypeMismatchError, R"(
-    cls A[cmp x: F64] { }
-    fun g() -> Void {
-        let a: A[1.0_f64 / 3.0_f64] = A[0.333_f64]()
-        std::mem::ops::drop(a)
-    }
+  TestCompKey,
+  test_invalid_different_float_values_are_different_types,
+  SppTypeMismatchError, R"(
+  cls A[cmp x: F64] { }
+  fun g() -> Void {
+    let a: A[1.0_f64 / 3.0_f64] = A[0.333_f64]()
+    std::mem::ops::drop(a)
+  }
 )");
 
 // A comparison folds to a bool comp argument.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_comparison_folds_to_a_bool, R"(
-    cls C[cmp b: Bool] { }
-    fun f[cmp n: USize]() -> C[n == 1_uz] { ret C[n == 1_uz]() }
-    fun g() -> Void {
-        let x: C[true] = f[1_uz]()
-        let y: C[false] = f[2_uz]()
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(y)
-    }
+  TestCompKey,
+  test_valid_comparison_folds_to_a_bool, R"(
+  cls C[cmp b: Bool] { }
+  fun f[cmp n: USize]() -> C[n == 1_uz] { ret C[n == 1_uz]() }
+  fun g() -> Void {
+    let x: C[true] = f[1_uz]()
+    let y: C[false] = f[2_uz]()
+  }
 )");
 
 // A pack element that is an operation over a parameter is folded with the rest of the pack.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_operation_as_a_pack_element, R"(
-    cls P[cmp ..ns: USize] { }
-    fun f[cmp n: USize]() -> P[n, n + 1_uz] { ret P[n, n + 1_uz]() }
-    fun g() -> Void {
-        let x: P[1_uz, 2_uz] = f[1_uz]()
-        std::mem::ops::drop(x)
-    }
+  TestCompKey,
+  test_valid_operation_as_a_pack_element, R"(
+  cls P[cmp ..ns: USize] { }
+  fun f[cmp n: USize]() -> P[n, n + 1_uz] { ret P[n, n + 1_uz]() }
+  fun g() -> Void {
+    let x: P[1_uz, 2_uz] = f[1_uz]()
+  }
 )");
 
 // A class's comp default that is an operation is keyed by the value it folds to, so the defaulted and the written
 // spellings are one type.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_class_operation_comp_default_keys_as_its_value, R"(
-    cls B[cmp n: USize, cmp m: USize = n + 1_uz] { }
-    fun g() -> Void {
-        let b: B[1_uz] = B[1_uz, 2_uz]()
-        std::mem::ops::drop(b)
-    }
+  TestCompKey,
+  test_valid_class_operation_comp_default_keys_as_its_value, R"(
+  cls B[cmp n: USize, cmp m: USize = n + 1_uz] { }
+  fun g() -> Void {
+    let b: B[1_uz] = B[1_uz, 2_uz]()
+  }
 )");
 
 // A constant named through "Self" in a type's comp argument is the constant of the type it was written in, read
 // wherever the type is used: here through a receiver, from a block whose own "Self::n" is another value.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_self_member_in_a_return_type_read_through_a_receiver, R"(
-    cls A[cmp n: USize] { }
-    cls Buf { }
-    sup Buf {
-        !public cmp n: USize = 4_uz
-        !public fun make(&self) -> A[Self::n] { ret A[Self::n]() }
+  TestCompKey,
+  test_valid_self_member_in_a_return_type_read_through_a_receiver, R"(
+  cls A[cmp n: USize] { }
+  cls Buf { }
+  sup Buf {
+    !public cmp n: USize = 4_uz
+    !public fun make(&self) -> A[Self::n] { ret A[Self::n]() }
+  }
+  cls Other { }
+  sup Other {
+    !public cmp n: USize = 8_uz
+    !public fun read(&self, b: &Buf) -> Void {
+      let x: A[4_uz] = b.make()
     }
-    cls Other { }
-    sup Other {
-        !public cmp n: USize = 8_uz
-        !public fun read(&self, b: &Buf) -> Void {
-            let x: A[4_uz] = b.make()
-            std::mem::ops::drop(x)
-        }
-    }
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestCompKey,
-    test_invalid_self_member_in_a_return_type_is_not_the_callers,
-    SppTypeMismatchError, R"(
-    cls A[cmp n: USize] { }
-    cls Buf { }
-    sup Buf {
-        !public cmp n: USize = 4_uz
-        !public fun make(&self) -> A[Self::n] { ret A[Self::n]() }
+  TestCompKey,
+  test_invalid_self_member_in_a_return_type_is_not_the_callers,
+  SppTypeMismatchError, R"(
+  cls A[cmp n: USize] { }
+  cls Buf { }
+  sup Buf {
+    !public cmp n: USize = 4_uz
+    !public fun make(&self) -> A[Self::n] { ret A[Self::n]() }
+  }
+  cls Other { }
+  sup Other {
+    !public cmp n: USize = 8_uz
+    !public fun read(&self, b: &Buf) -> Void {
+      let x: A[8_uz] = b.make()
+      std::mem::ops::drop(x)
     }
-    cls Other { }
-    sup Other {
-        !public cmp n: USize = 8_uz
-        !public fun read(&self, b: &Buf) -> Void {
-            let x: A[8_uz] = b.make()
-            std::mem::ops::drop(x)
-        }
-    }
+  }
 )");
 
 // The same through a generic owner: each instantiation reads its own block's constant.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_self_member_in_a_return_type_on_a_generic_owner, R"(
-    cls A[cmp n: USize] { }
-    cls Box[T] { }
-    sup [T] Box[T] {
-        !public cmp n: USize = 2_uz
-        !public fun make(&self) -> A[Self::n] { ret A[Self::n]() }
-    }
-    fun f(b: &Box[S32]) -> Void {
-        let x: A[2_uz] = b.make()
-        std::mem::ops::drop(x)
-    }
+  TestCompKey,
+  test_valid_self_member_in_a_return_type_on_a_generic_owner, R"(
+  cls A[cmp n: USize] { }
+  cls Box[T] { }
+  sup [T] Box[T] {
+    !public cmp n: USize = 2_uz
+    !public fun make(&self) -> A[Self::n] { ret A[Self::n]() }
+  }
+  fun f(b: &Box[S32]) -> Void {
+    let x: A[2_uz] = b.make()
+  }
 )");
 
 // A method's mock is typed from outside its block (stage 1), so "Self" in a parameter's comp argument is its owner.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_self_member_in_a_method_value_parameter, R"(
-    cls A[cmp n: USize] { }
-    cls Buf { }
-    sup Buf {
-        !public cmp n: USize = 4_uz
-        !public fun take(&self, a: A[Self::n]) -> Void { std::mem::ops::drop(a) }
-    }
-    fun apply(f: std::function::FunRef[(&Buf, A[4_uz]), Void], b: &Buf) -> Void { f(b, A[4_uz]()) }
-    fun g(b: Buf) -> Void {
-        apply(Buf::take, &b)
-        std::mem::ops::drop(b)
-    }
+  TestCompKey,
+  test_valid_self_member_in_a_method_value_parameter, R"(
+  cls A[cmp n: USize] { }
+  cls Buf { }
+  sup Buf {
+    !public cmp n: USize = 4_uz
+    !public fun take(&self, a: A[Self::n]) -> Void { }
+  }
+  fun apply(f: std::function::FunRef[(&Buf, A[4_uz]), Void], b: &Buf) -> Void { f(b, A[4_uz]()) }
+  fun g(b: Buf) -> Void {
+    apply(Buf::take, &b)
+  }
 )");
 
 // A "sup" block's type alias naming "Self::n", used from outside the block.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_self_member_in_a_sup_type_alias, R"(
-    cls A[cmp n: USize] { }
-    cls Buf { }
-    sup Buf {
-        !public cmp n: USize = 4_uz
-        !public type Four = A[Self::n]
-    }
-    fun g() -> Void {
-        let x: Buf::Four = A[4_uz]()
-        std::mem::ops::drop(x)
-    }
+  TestCompKey,
+  test_valid_self_member_in_a_sup_type_alias, R"(
+  cls A[cmp n: USize] { }
+  cls Buf { }
+  sup Buf {
+    !public cmp n: USize = 4_uz
+    !public type Four = A[Self::n]
+  }
+  fun g() -> Void {
+    let x: Buf::Four = A[4_uz]()
+  }
 )");
 
 // A default naming "Self::n", carried to a call made from a block whose own "Self::n" is another value.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_self_member_in_a_default_read_at_the_call, R"(
-    cls A[cmp n: USize] { }
-    cls Buf { }
-    sup Buf {
-        !public cmp n: USize = 4_uz
-        !public fun take(&self, a: A[Self::n] = A[Self::n]()) -> A[Self::n] { ret a }
+  TestCompKey,
+  test_valid_self_member_in_a_default_read_at_the_call, R"(
+  cls A[cmp n: USize] { }
+  cls Buf { }
+  sup Buf {
+    !public cmp n: USize = 4_uz
+    !public fun take(&self, a: A[Self::n] = A[Self::n]()) -> A[Self::n] { ret a }
+  }
+  cls Other { }
+  sup Other {
+    !public cmp n: USize = 8_uz
+    !public fun read(&self, b: &Buf) -> Void {
+      let x: A[4_uz] = b.take()
     }
-    cls Other { }
-    sup Other {
-        !public cmp n: USize = 8_uz
-        !public fun read(&self, b: &Buf) -> Void {
-            let x: A[4_uz] = b.take()
-            std::mem::ops::drop(x)
-        }
-    }
+  }
 )");
 
 // A comp default named through "Self" on a generic owner, by identity.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_self_member_comp_default_on_a_generic_owner, R"(
-    cls A[cmp n: USize] { }
-    cls Box[T] { }
-    sup [T] Box[T] {
-        !public cmp k: USize = 3_uz
-        !public fun pick[cmp m: USize = Self::k](&self) -> A[m] { ret A[m]() }
-    }
-    fun f(b: &Box[S32]) -> Void {
-        let x: A[3_uz] = b.pick()
-        std::mem::ops::drop(x)
-    }
+  TestCompKey,
+  test_valid_self_member_comp_default_on_a_generic_owner, R"(
+  cls A[cmp n: USize] { }
+  cls Box[T] { }
+  sup [T] Box[T] {
+    !public cmp k: USize = 3_uz
+    !public fun pick[cmp m: USize = Self::k](&self) -> A[m] { ret A[m]() }
+  }
+  fun f(b: &Box[S32]) -> Void {
+    let x: A[3_uz] = b.pick()
+  }
 )");
 
 // A constant whose value names its generic block's parameter ("k + 1_uz") has no value of its own: it is read where an
 // instantiation binds the parameter, each instantiation its own value.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_self_member_depending_on_the_owners_parameter, R"(
-    cls A[cmp n: USize] { }
-    cls Box[cmp k: USize] { }
-    sup [cmp k: USize] Box[k] {
-        !public cmp n: USize = k + 1_uz
-        !public fun make(&self) -> A[Self::n] { ret A[Self::n]() }
-    }
-    fun f(b: &Box[3_uz], c: &Box[5_uz]) -> Void {
-        let x: A[4_uz] = b.make()
-        let y: A[6_uz] = c.make()
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(y)
-    }
+  TestCompKey,
+  test_valid_self_member_depending_on_the_owners_parameter, R"(
+  cls A[cmp n: USize] { }
+  cls Box[cmp k: USize] { }
+  sup [cmp k: USize] Box[k] {
+    !public cmp n: USize = k + 1_uz
+    !public fun make(&self) -> A[Self::n] { ret A[Self::n]() }
+  }
+  fun f(b: &Box[3_uz], c: &Box[5_uz]) -> Void {
+    let x: A[4_uz] = b.make()
+    let y: A[6_uz] = c.make()
+  }
 )");
 
 // The same constant named directly through each instantiation, and borrowed (a comparison takes its operands by
 // borrow, and a folded constant has no storage of its own).
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_generic_sup_constant_naming_the_blocks_parameter, R"(
-    cls A[cmp n: USize] { }
-    cls Box[cmp k: USize] { }
-    sup [cmp k: USize] Box[k] {
-        !public cmp n: USize = k + 1_uz
-    }
-    fun f() -> Bool {
-        let x: A[4_uz] = A[Box[3_uz]::n]()
-        std::mem::ops::drop(x)
-        ret Box[3_uz]::n == 4_uz and Box[5_uz]::n == 6_uz
-    }
+  TestCompKey,
+  test_valid_generic_sup_constant_naming_the_blocks_parameter, R"(
+  cls A[cmp n: USize] { }
+  cls Box[cmp k: USize] { }
+  sup [cmp k: USize] Box[k] {
+    !public cmp n: USize = k + 1_uz
+  }
+  fun f() -> Bool {
+    let x: A[4_uz] = A[Box[3_uz]::n]()
+    ret Box[3_uz]::n == 4_uz and Box[5_uz]::n == 6_uz
+  }
 )");
 
 // The integer comparisons and shifts fold to values in a return type, each instantiation with its own binding.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_integer_comparisons_and_shifts_fold, R"(
-    cls A[cmp n: USize] { }
-    cls C[cmp b: Bool] { }
-    fun f[cmp n: USize]() -> A[n << 2_u32] { ret A[n << 2_u32]() }
-    fun h[cmp n: USize]() -> A[n >> 1_u32] { ret A[n >> 1_u32]() }
-    fun k[cmp n: USize]() -> C[n != 1_uz] { ret C[n != 1_uz]() }
-    fun k2[cmp n: USize]() -> C[n <= 1_uz] { ret C[n <= 1_uz]() }
-    fun k3[cmp n: USize]() -> C[n >= 1_uz] { ret C[n >= 1_uz]() }
-    fun g() -> Void {
-        let x: A[12_uz] = f[3_uz]()
-        let y: A[2_uz] = h[4_uz]()
-        let z: C[true] = k[2_uz]()
-        let w: C[false] = k2[2_uz]()
-        let v: C[true] = k3[2_uz]()
-        std::mem::ops::drop(x)
-        std::mem::ops::drop(y)
-        std::mem::ops::drop(z)
-        std::mem::ops::drop(w)
-        std::mem::ops::drop(v)
-    }
+  TestCompKey,
+  test_valid_integer_comparisons_and_shifts_fold, R"(
+  cls A[cmp n: USize] { }
+  cls C[cmp b: Bool] { }
+  fun f[cmp n: USize]() -> A[n << 2_u32] { ret A[n << 2_u32]() }
+  fun h[cmp n: USize]() -> A[n >> 1_u32] { ret A[n >> 1_u32]() }
+  fun k[cmp n: USize]() -> C[n != 1_uz] { ret C[n != 1_uz]() }
+  fun k2[cmp n: USize]() -> C[n <= 1_uz] { ret C[n <= 1_uz]() }
+  fun k3[cmp n: USize]() -> C[n >= 1_uz] { ret C[n >= 1_uz]() }
+  fun g() -> Void {
+    let x: A[12_uz] = f[3_uz]()
+    let y: A[2_uz] = h[4_uz]()
+    let z: C[true] = k[2_uz]()
+    let w: C[false] = k2[2_uz]()
+    let v: C[true] = k3[2_uz]()
+  }
 )");
 
 // Bool inequality and the float orderings fold to bool comp arguments.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_bool_and_float_comparisons_fold, R"(
-    cls C[cmp b: Bool] { }
-    fun k[cmp b: Bool]() -> C[b != true] { ret C[b != true]() }
-    fun f1[cmp x: F64]() -> C[x <= 1.0_f64] { ret C[x <= 1.0_f64]() }
-    fun f2[cmp x: F64]() -> C[x > 1.0_f64] { ret C[x > 1.0_f64]() }
-    fun f3[cmp x: F64]() -> C[x >= 1.0_f64] { ret C[x >= 1.0_f64]() }
-    fun g() -> Void {
-        let a: C[true] = k[false]()
-        let b: C[false] = f1[2.0_f64]()
-        let c: C[true] = f2[2.0_f64]()
-        let d: C[true] = f3[1.0_f64]()
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
-        std::mem::ops::drop(c)
-        std::mem::ops::drop(d)
-    }
+  TestCompKey,
+  test_valid_bool_and_float_comparisons_fold, R"(
+  cls C[cmp b: Bool] { }
+  fun k[cmp b: Bool]() -> C[b != true] { ret C[b != true]() }
+  fun f1[cmp x: F64]() -> C[x <= 1.0_f64] { ret C[x <= 1.0_f64]() }
+  fun f2[cmp x: F64]() -> C[x > 1.0_f64] { ret C[x > 1.0_f64]() }
+  fun f3[cmp x: F64]() -> C[x >= 1.0_f64] { ret C[x >= 1.0_f64]() }
+  fun g() -> Void {
+    let a: C[true] = k[false]()
+    let b: C[false] = f1[2.0_f64]()
+    let c: C[true] = f2[2.0_f64]()
+    let d: C[true] = f3[1.0_f64]()
+  }
 )");
 
 // "and" over comp bools folds like the comparisons do.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_logical_and_in_a_comp_argument, R"(
-    cls C[cmp b: Bool] { }
-    fun g() -> Void {
-        let x: C[true and false] = C[false]()
-        std::mem::ops::drop(x)
-    }
+  TestCompKey,
+  test_valid_logical_and_in_a_comp_argument, R"(
+  cls C[cmp b: Bool] { }
+  fun g() -> Void {
+    let x: C[true and false] = C[false]()
+  }
 )");
 
 // A class attribute's type may name a constant of the class through "Self".
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_self_member_in_an_attribute_type, R"(
-    cls A[cmp n: USize] { }
-    cls X { !public a: A[Self::n] }
-    sup X { !public cmp n: USize = 4_uz }
-    fun g() -> Void {
-        let x = X(a=A[4_uz]())
-        std::mem::ops::drop(x)
-    }
+  TestCompKey,
+  test_valid_self_member_in_an_attribute_type, R"(
+  cls A[cmp n: USize] { }
+  cls X { !public a: A[Self::n] }
+  sup X { !public cmp n: USize = 4_uz }
+  fun g() -> Void {
+    let x = X(a=A[4_uz]())
+  }
 )");
 
 // The attribute's type "A[Self::n]" is checked as "A[4_uz]" even before anything else makes that instance.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestCompKey,
-    test_invalid_self_member_in_an_attribute_type_mismatch,
-    SppTypeMismatchError, R"(
-    cls A[cmp n: USize] { }
-    cls X { !public a: A[Self::n] }
-    sup X { !public cmp n: USize = 4_uz }
-    fun g() -> Void {
-        let x = X(a=A[8_uz]())
-        std::mem::ops::drop(x)
-    }
+  TestCompKey,
+  test_invalid_self_member_in_an_attribute_type_mismatch,
+  SppTypeMismatchError, R"(
+  cls A[cmp n: USize] { }
+  cls X { !public a: A[Self::n] }
+  sup X { !public cmp n: USize = 4_uz }
+  fun g() -> Void {
+    let x = X(a=A[8_uz]())
+    std::mem::ops::drop(x)
+  }
 )");
 
 // A right shift of a signed comp argument is arithmetic, as at run time: "-8 >> 1" in an "S32" is -4.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_right_shift_of_a_negative_comp_argument_is_arithmetic, R"(
-    cls A[cmp n: S32] { }
-    fun h[cmp n: S32]() -> A[n >> 1_u32] { ret A[n >> 1_u32]() }
-    fun g() -> Void {
-        let x: A[-4_s32] = h[-8_s32]()
-        std::mem::ops::drop(x)
-    }
+  TestCompKey,
+  test_valid_right_shift_of_a_negative_comp_argument_is_arithmetic, R"(
+  cls A[cmp n: S32] { }
+  fun h[cmp n: S32]() -> A[n >> 1_u32] { ret A[n >> 1_u32]() }
+  fun g() -> Void {
+    let x: A[-4_s32] = h[-8_s32]()
+  }
 )");
 
 // Of an unsigned one it stays logical: "0x80000000 >> 1" in a "U32" is 0x40000000.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_right_shift_of_an_unsigned_comp_argument_is_logical, R"(
-    cls A[cmp n: U32] { }
-    fun h[cmp n: U32]() -> A[n >> 1_u32] { ret A[n >> 1_u32]() }
-    fun g() -> Void {
-        let x: A[1073741824_u32] = h[2147483648_u32]()
-        std::mem::ops::drop(x)
-    }
+  TestCompKey,
+  test_valid_right_shift_of_an_unsigned_comp_argument_is_logical, R"(
+  cls A[cmp n: U32] { }
+  fun h[cmp n: U32]() -> A[n >> 1_u32] { ret A[n >> 1_u32]() }
+  fun g() -> Void {
+    let x: A[1073741824_u32] = h[2147483648_u32]()
+  }
 )");
 
 // "and" and "or" over comp parameters: kept as operations in the template, folded in each instance.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_logical_operators_over_comp_parameters, R"(
-    cls C[cmp b: Bool] { }
-    fun both[cmp x: Bool, cmp y: Bool]() -> C[x and y] { ret C[x and y]() }
-    fun either[cmp x: Bool, cmp y: Bool]() -> C[x or y] { ret C[x or y]() }
-    fun g() -> Void {
-        let a: C[false] = both[true, false]()
-        let b: C[true] = both[true, true]()
-        let c: C[true] = either[false, true]()
-        let d: C[false] = either[false, false]()
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
-        std::mem::ops::drop(c)
-        std::mem::ops::drop(d)
-    }
+  TestCompKey,
+  test_valid_logical_operators_over_comp_parameters, R"(
+  cls C[cmp b: Bool] { }
+  fun both[cmp x: Bool, cmp y: Bool]() -> C[x and y] { ret C[x and y]() }
+  fun either[cmp x: Bool, cmp y: Bool]() -> C[x or y] { ret C[x or y]() }
+  fun g() -> Void {
+    let a: C[false] = both[true, false]()
+    let b: C[true] = both[true, true]()
+    let c: C[true] = either[false, true]()
+    let d: C[false] = either[false, false]()
+  }
 )");
 
 // ".not" on a comp bool is "== false": a literal folds where it is written, and a parameter, or an operation over
 // parameters, in each instance.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_not_over_comp_bools, R"(
-    cls C[cmp b: Bool] { }
-    fun flip[cmp x: Bool]() -> C[x.not] { ret C[x.not]() }
-    fun nand[cmp x: Bool, cmp y: Bool]() -> C[(x and y).not] { ret C[(x and y).not]() }
-    fun g() -> Void {
-        let a: C[false] = C[true.not]()
-        let b: C[false] = flip[true]()
-        let c: C[true] = flip[false]()
-        let d: C[false] = nand[true, true]()
-        let e: C[true] = nand[true, false]()
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
-        std::mem::ops::drop(c)
-        std::mem::ops::drop(d)
-        std::mem::ops::drop(e)
-    }
+  TestCompKey,
+  test_valid_not_over_comp_bools, R"(
+  cls C[cmp b: Bool] { }
+  fun flip[cmp x: Bool]() -> C[x.not] { ret C[x.not]() }
+  fun nand[cmp x: Bool, cmp y: Bool]() -> C[(x and y).not] { ret C[(x and y).not]() }
+  fun g() -> Void {
+    let a: C[false] = C[true.not]()
+    let b: C[false] = flip[true]()
+    let c: C[true] = flip[false]()
+    let d: C[false] = nand[true, true]()
+    let e: C[true] = nand[true, false]()
+  }
 )");
 
 // A "cmp" constant as a comp argument is its value, keyed where it is declared, so "A[k]" is "A[5]": named directly,
 // inside a comp expression, and declared from another constant (open bug 46; "check-comp-args.sh" names one through
 // another module's namespace).
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestCompKey,
-    test_valid_constant_as_a_comp_argument_is_its_value, R"(
-    cmp k: S32 = 5
-    cmp k2: S32 = k * 2
-    cls A[cmp n: S32] { }
-    fun g() -> Void {
-        let a: A[5] = A[k]()
-        let b: A[10] = A[k2]()
-        let c: A[6] = A[k + 1]()
-        std::mem::ops::drop(a)
-        std::mem::ops::drop(b)
-        std::mem::ops::drop(c)
-    }
+  TestCompKey,
+  test_valid_constant_as_a_comp_argument_is_its_value, R"(
+  cmp k: S32 = 5
+  cmp k2: S32 = k * 2
+  cls A[cmp n: S32] { }
+  fun g() -> Void {
+    let a: A[5] = A[k]()
+    let b: A[10] = A[k2]()
+    let c: A[6] = A[k + 1]()
+  }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestCompKey,
-    test_invalid_constant_as_a_comp_argument_of_another_value,
-    SppTypeMismatchError, R"(
-    cmp k: S32 = 5
-    cls A[cmp n: S32] { }
-    fun g() -> Void {
-        let a: A[6] = A[k]()
-    }
+  TestCompKey,
+  test_invalid_constant_as_a_comp_argument_of_another_value,
+  SppTypeMismatchError, R"(
+  cmp k: S32 = 5
+  cls A[cmp n: S32] { }
+  fun g() -> Void {
+    let a: A[6] = A[k]()
+  }
 )");

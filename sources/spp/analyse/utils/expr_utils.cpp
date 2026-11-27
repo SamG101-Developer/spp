@@ -9,9 +9,12 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
+import spp.asts.binary_expression_ast;
 import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.expression_ast;
@@ -22,9 +25,11 @@ import spp.asts.function_call_argument_positional_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
+import spp.asts.is_expression_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.parenthesised_expression_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
@@ -34,15 +39,18 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.lexer;
+import spp.lex.tokens;
 import spp.parse.parser_spp;
 import spp.utils.ice;
 import spp.utils.uid;
+import genex;
 import std;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts, Ast);
 use_alias(spp::asts, CaseExpressionAst);
 use_alias(spp::asts, ExpressionAst);
@@ -95,6 +103,19 @@ auto spp::analyse::utils::expr_utils::ExpandTupleSpread(
   return spread;
 }
 
+auto spp::analyse::utils::expr_utils::BoundWhenTrue(
+  ExpressionAst const &cond) -> Vec<Shared<VariableSymbol>> {
+  if (auto const *const is_expr = cond.To<asts::IsExpressionAst>(); is_expr != nullptr) { return is_expr->Bound(); }
+  if (auto const *const paren = cond.To<asts::ParenthesisedExpressionAst>(); paren != nullptr) {
+    return BoundWhenTrue(*paren->Expr);
+  }
+  auto const *const binary = cond.To<asts::BinaryExpressionAst>();
+  if (binary == nullptr or binary->TokOp->TokenType != lex::SppTokenType::KW_AND) { return {}; }
+  auto bound = BoundWhenTrue(*binary->Lhs);
+  bound.append_range(BoundWhenTrue(*binary->Rhs));
+  return bound;
+}
+
 auto spp::analyse::utils::expr_utils::IsPlace(
   ExpressionAst const &value, Scope const &scope) -> bool {
   return scope.FindVarSymbolOutermost(value).first != nullptr;
@@ -105,19 +126,12 @@ auto spp::analyse::utils::expr_utils::HoistOnce(
   -> Hoisted {
   if (IsPlace(value, *sm->CurrentScope)) { return {}; }
   auto name = MakeShared<asts::IdentifierAst>(value.PosStart(), Str(uid_prefix) + "." + spp::utils::Uid());
+  // Held by the condition around an "and"'s right operand, if it is made in one ("Scope::TemporaryHome").
   auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(nullptr, name, nullptr);
+  var->DeclareIn = sm->CurrentScope->TemporaryHome();
   auto let = MakeUnique<asts::LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, AstClone(&value));
   if (analyse) { let->Stage7_AnalyseSemantics(sm, meta); }
   return {.Let = std::move(let), .Name = std::move(name)};
-}
-
-auto spp::analyse::utils::expr_utils::DropCall(
-  ExpressionAst const &value) -> Unique<asts::PostfixExpressionAst> {
-  auto args = Vec<Unique<asts::FunctionCallArgumentAst>>();
-  args.emplace_back(MakeUnique<asts::FunctionCallArgumentPositionalAst>(nullptr, nullptr, AstClone(&value)));
-  auto call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(
-    nullptr, MakeUnique<asts::FunctionCallArgumentGroupAst>(nullptr, std::move(args), nullptr), nullptr);
-  return MakeUnique<asts::PostfixExpressionAst>(INJECT_CODE("std::mem::ops::drop", ParseExpression), std::move(call));
 }
 
 auto spp::analyse::utils::expr_utils::ElementAccess(
@@ -147,40 +161,47 @@ auto spp::analyse::utils::expr_utils::IsPrimaryExprTypeValid(
   return true;
 }
 
-auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
-  Ast &member, Scope *scope, ScopeManager const &sm,
-  CompilerMetaData *const meta) -> void {
-  using errors::SppDiscardedValueError;
-  using type_predicates::IsTypeVoid;
+auto spp::analyse::utils::expr_utils::MarkValueDiscarded(
+  Ast &member) -> void {
+  // As "DiscardValue" walks in: a bare block's value is
+  // its final statement.
+  if (auto *const case_expr = member.To<CaseExpressionAst>()) {
+    case_expr->ValueDiscarded = true;
+    return;
+  }
+  if (auto *const block = member.To<InnerScopeExpressionAst>(); block != nullptr) {
+    block->ValueDiscarded = true;
+    if (not block->Members.empty()) { MarkValueDiscarded(*block->FinalMember()); }
+  }
+}
 
+auto spp::analyse::utils::expr_utils::DiscardValue(
+  InnerScopeExpressionAst &owner, const std::size_t i,
+  ScopeManager const &sm, CompilerMetaData *const meta) -> void {
+  using errors::SppDiscardedValueError;
+  auto &member = *owner.Members[i];
+  auto *const scope = owner.GetAstScope();
   if (scope == nullptr) { return; }
 
   // A "case" written as a statement discards whatever its branches
-  // end on, so that is where the discard is: reporting the "case"
-  // itself would point at the wrong thing and say nothing about
-  // which branch is at fault.
-  if (auto const *case_expr = member.To<CaseExpressionAst>()) {
+  // end on, each in its own body; a bare block, its final statement.
+  if (auto const *const case_expr = member.To<CaseExpressionAst>()) {
     for (auto const &branch : case_expr->Branches) {
       if (branch->Body == nullptr or branch->Body->Members.empty()) { continue; }
-      ValidateDiscardedValue(*branch->Body->FinalMember(), branch->Body->GetAstScope(), sm, meta);
+      DiscardValue(*branch->Body, branch->Body->Members.size() - 1, sm, meta);
     }
     return;
   }
-
-  // Same for a bare block, whose value is its final statement.
-  if (auto const *block = member.To<InnerScopeExpressionAst>()) {
-    if (block->Members.empty()) { return; }
-    ValidateDiscardedValue(*block->FinalMember(), block->GetAstScope(), sm, meta);
+  if (auto *const block = member.To<InnerScopeExpressionAst>()) {
+    if (not block->Members.empty()) { DiscardValue(*block, block->Members.size() - 1, sm, meta); }
     return;
   }
 
-  // Only an expression produces a value at all; a "let" or an
-  // assignment is a statement and has nothing to discard.
-  const auto expr = member.To<StatementAst>();
-  if (expr == nullptr or expr->To<ExpressionAst>() == nullptr) { return; }
-
-  // Inferred against the scope the statement was written in, which
-  // is not necessarily the one the walk is currently sitting in.
+  // Only an expression produces a value; a "let" or an assignment
+  // has nothing to discard. Inferred against the scope the
+  // statement was written in.
+  const auto expr = member.To<ExpressionAst>();
+  if (expr == nullptr) { return; }
   auto tm = sm.NewManagerAt(scope);
   const auto type = [&] {
     const auto _meta_guard = MetaGuard(meta);
@@ -188,8 +209,24 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
     return expr->InferType(&tm, meta);
   }();
   if (type == nullptr) { Ice(member, *scope, "discarded expression has no inferred type"); }
+  if (type->IsNeverType()) { return; }
 
-  const auto type_name = type->ToString();
-  if (IsTypeVoid(TypeRef::ForKindCheck(*type, *scope), *scope) or type->IsNeverType()) { return; }
-  Raise<SppDiscardedValueError>(ERR_ARGS(member, StrView(type_name)));
+  // A value of a "!must_use" type is there to be looked at, and so is
+  // a variant that may hold one ("Res" may be a "Fail").
+  const auto ref = expr->InferTypeRef(&tm, meta).WithoutConvention();
+  const auto must_use = [](TypeRef const &r) { return r.Symbol != nullptr and r.Symbol->IsMustUse(); };
+  if (must_use(ref) or (type_predicates::IsTypeVariant(ref, *scope)
+    and genex::any_of(type_members::VariantMemberRefs(ref, *scope), must_use))) {
+    const auto type_name = type->ToString();
+    Raise<SppDiscardedValueError>(ERR_ARGS(member, StrView(type_name)));
+  }
+
+  // A temporary nothing takes is dropped once made. A place
+  // ("x", "x.a") written as a statement takes nothing from it, nor
+  // does a field read off a temporary ("mk().a"): the temporary is
+  // dropped whole, as for a borrowed read.
+  if (auto *const field = drop_utils::FieldReadOffTemporary(*expr, tm, meta); field != nullptr) {
+    field->ReadByBorrow = true;
+  }
+  else if (drop_utils::IsTemporary(*expr, tm, meta)) { owner.SetDropsDiscarded(i); }
 }

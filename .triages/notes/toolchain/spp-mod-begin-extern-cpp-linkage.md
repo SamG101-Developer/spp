@@ -1,7 +1,7 @@
 ---
 name: spp-mod-begin-extern-cpp-linkage
 description: "A free function declared in a module whose .cpp uses SPP_MOD_BEGIN must be declared SPP_EXP_CLS, not SPP_EXP_FUN"
-updated: 2026-09-14
+updated: 2026-11-23
 ---
 
 `SPP_MOD_BEGIN` is `extern "C++" {` and `SPP_EXP_CLS` is `export extern "C++"` (headers/spp/macros.hpp). A .cpp
@@ -33,3 +33,6 @@ the trigger is a friend overloaded across modules, not mixed attachment. A non-e
 **Qualify calls to exported free functions from member bodies.** An unqualified `PrecompiledTemplate(tmpl, scope)`
 inside `TypeRef::IsA` (symbols.cpp) hit the same `lookup_mark` ICE (2026-10-08); `spp::analyse::scopes::PrecompiledTemplate`
 compiles. If a tidy drops a qualification and the build ICEs in `lookup_mark`, restore it.
+The same ICE hit unqualified calls (`HeaderOf`, `ArgsOf`, `PackIdOf`) inside lambdas in a free function of the
+same module (`WithoutVoidFnArgs`, type_key.cpp, 2026-11-23): qualify every call to the module's own exported functions
+in new code there, lambdas included.

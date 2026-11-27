@@ -1,6 +1,7 @@
 - [CI gcc from Homebrew](ci-gcc-from-homebrew.md) — PPA is stale; Clang lanes borrow it via clang.cfg; needs brew binutils; specs inject rpath+loader
 - [ccache-action key quirks](ccache-action-key-quirks.md) — append-timestamp:false broken in v1.2.24; keys end in ISO date (prune :3)
 - [ccache serves stale clang module objects](ccache-stale-clang-modules.md) — <4.14.1 ignores BMIs (fixed #1774); CI pins ccache 4.14.2 + sccache; GCC uncacheable
+- [Libs cache keyed on compiler](libs-cache-keyed-on-compiler.md) — label moved compiler (windows-2025 → MSVC 14.52), stale ColEx.lib: undefined $$_A symbols; key holds compiler-id hash
 - [CI runner core topology](ci-runner-core-topology.md) — x86 4 vCPU = 2 cores on a varying CPU pool, ARM 4 real cores; don't lower workers
 - [Cross-run blocker sparc64](cross-run-blockers-sparc64.md) — sparc64 RWX PLT keeps it emit-only; m68k tests overflow 16-bit PIC reach; ppc32 fixed; musl in Alpine; aarch64_be via arm-gnu
 - [GHA parallel steps](gha-parallel-steps-limits.md) — not inside composite actions; actionlint ignore

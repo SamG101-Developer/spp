@@ -545,11 +545,9 @@ auto spp::compiler::CompilerBoot::_GenerateTestHarness(
     + Str(utils::env::NameOf(utils::env::Var::TestOnly))
     + "\").unwrap_or(std::os::os_string::OsStr::new())\n"
     + "  let only = only_os.to_str_lossy()\n"
-    + "  std::mem::ops::drop(only_os)\n"
     + "  let run_all = only.len() == 0_uz\n"
     + body
-    + "  std::console::println(\"[ DONE ]\")\n"
-    + "  std::mem::ops::drop(only)}\n";
+    + "  std::console::println(\"[ DONE ]\")}\n";
 }
 
 auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(

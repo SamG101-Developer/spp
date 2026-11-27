@@ -75,8 +75,7 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Map the pattern to a "let" over the condition, introducing
   // its bindings. Forward analysis to the shared helper.
-  const auto elems = Elems | genex::views::ptr | genex::to<Vec>();
-  AnalyseDestructure(meta->CaseCondition, elems, sm, meta);
+  AnalyseDestructure(meta->CaseCondition, Elems, sm, meta);
 }
 
 auto spp::asts::CasePatternVariantDestructureArrayAst::Stage8_CheckMemory(

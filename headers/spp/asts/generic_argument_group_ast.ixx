@@ -56,8 +56,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
   SPP_ATTR_NODISCARD auto GetCompArgs() const -> Vec<GenericArgumentAst*>;
 
   SPP_ATTR_NODISCARD auto GetKeywordArgs() const -> Vec<GenericArgumentAst*>;
-
-  SPP_ATTR_NODISCARD auto GetAllArgs() const -> Vec<GenericArgumentAst*>;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentGroupAst)

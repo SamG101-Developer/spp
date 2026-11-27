@@ -5,6 +5,7 @@ export module spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.ast_kind;
 import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.interner;
 import spp.utils.types;
 import llvm;
 import std;
@@ -63,7 +64,28 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst fi
   /// invoked on.
   SPP_ATTR_NODISCARD auto GetFwdReceiver() const -> PostfixExpressionAst*;
 
+  /// The whole access as rewritten through forwarding ("x.fwd_ref().n"),
+  /// if it was: what is generated in its place, so what is checked too.
+  SPP_ATTR_NODISCARD auto GetFwdAccess() const -> PostfixExpressionAst*;
+
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+
+  /// Read off a temporary ("mk().a"), the rest of it is dropped as
+  /// its statement ends, less this member if it is moved out (the
+  /// path to it). Set by memory checking ("PostfixExpressionAst").
+  Opt<Vec<Vec<spp::utils::InternedId>>> DropsReceiverRest;
+
+  /// Another member is read off this one's value ("mk().a.b"), so
+  /// this access is no end of a chain: the access at the end checks
+  /// what the temporary is left missing ("PostfixExpressionAst").
+  bool ReadOnwards = false;
+
+  /// The value is only borrowed ("f(&mk().a)", or the receiver of a
+  /// "&self" method) or discarded ("mk().a" as a statement): read off
+  /// a temporary, nothing is moved out of it, so the temporary is
+  /// dropped whole. Set by the call's argument check and by
+  /// "expr_utils::DiscardValue".
+  bool ReadByBorrow = false;
 
 private:
   /// The access rewritten against the forwarded-to value
@@ -83,4 +105,27 @@ private:
   /// The named member, looked up once: Stage 7 sets it in its own
   /// scope, and anything asking before then resolves it here.
   auto _Resolve(ScopeManager *sm, CompilerMetaData *meta) -> VariableSymbol*;
+
+  /// Stage 7 for an element read ("t.0"): the lhs is a tuple or an
+  /// array, and the index within its bounds.
+  auto _CheckIndexAccess(ScopeManager *sm, CompilerMetaData *meta) -> void;
+
+  /// Stage 7 for a named member ("x.name"): found on the lhs's type,
+  /// or reached by forwarding (rewritten, "_MappedFwd"), visible, and
+  /// reached with "." (an attribute or a method, not a constant).
+  auto _CheckNamedAccess(ScopeManager *sm, CompilerMetaData *meta) -> void;
+
+  /// Stage 11: the address of the object the member is in (its lhs,
+  /// whose type is "lhs_ref"), loaded out of a borrow, read off
+  /// another access, or put in a temporary.
+  auto _EmitBasePtr(
+    analyse::scopes::TypeRef const &lhs_ref, Str const &uid, ScopeManager *sm, CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx) -> llvm::Value*;
+
+  /// Stage 11: the member's address within the object at "base_ptr":
+  /// a named field through the layout's field order, an element of a
+  /// tuple or an array by its index.
+  auto _EmitFieldPtr(
+    analyse::scopes::TypeRef const &lhs_ref, llvm::Value *base_ptr, Str const &uid, ScopeManager *sm,
+    codegen::LlvmCtx *ctx) -> llvm::Value*;
 };

@@ -11,3 +11,4 @@
 - [Generic leak into shared instantiations](generic-leak-shared-instantiations.md) — ancestor sweep gone (H18)
 - [Self type resolution](spp-self-type-resolution.md) — Self is stage 3; ~14 sites can't fold into FqName; FqName drops the convention (#54)
 - [Comp keys fold by intrinsics](comp-key-folds-by-intrinsics.md) — FoldBinaryOp op table; key refuses what the call raises (E90/E91)
+- [Comp key structural parts](comp-key-structural-parts.md) — no part = Opaque spelling: no unify, no rewrite; arrays keyed (copies for repeats), objects not yet

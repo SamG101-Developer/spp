@@ -9,9 +9,9 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_values;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
@@ -32,7 +32,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_coerce;
-import spp.codegen.llvm_defer;
+import spp.codegen.llvm_drop;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
@@ -69,9 +69,11 @@ auto spp::asts::RetStatementAst::PosEnd() const -> std::size_t {
 
 auto spp::asts::RetStatementAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<RetStatementAst>(
+  auto r = MakeUnique<RetStatementAst>(
     AstClone(TokRet),
     AstClone(Expr));
+  r->_OwnedAtExit = _OwnedAtExit;
+  return r;
 }
 
 auto spp::asts::RetStatementAst::ToString() const -> Str {
@@ -187,13 +189,12 @@ auto spp::asts::RetStatementAst::Stage8_CheckMemory(
   // closing brace is ever reached for them and their own scope-exit
   // checks never run against this path. Checked after the returned
   // value moves, so returning a value counts as consuming it.
-  linear_utils::CheckLiveUpToFn(
-    *TokRet, "Return", *sm, meta);
+  _OwnedAtExit = drop_utils::OwnedUpToFn(*TokRet, *sm, meta);
 }
 
 auto spp::asts::RetStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  return EmitReturn(Expr.get(), _RetType, *this, sm, meta, ctx);
+  return EmitReturn(Expr.get(), _RetType, *this, sm, meta, ctx, _OwnedAtExit);
 }
 
 auto spp::asts::RetStatementAst::EvaluateCompTime(
@@ -209,7 +210,7 @@ auto spp::asts::RetStatementAst::EvaluateCompTime(
 
 auto spp::asts::RetStatementAst::EmitReturn(
   ExpressionAst *const expr, Shared<TypeAst> const &ret_type_written, Ast const &site, ScopeManager *sm,
-  CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  CompilerMetaData *meta, codegen::LlvmCtx *ctx, analyse::utils::drop_utils::OwnedScopes const &owned) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // A function returning a variant may return any one of its members, or a narrower variant, so the value has to be
   // coerced into the return variant before it leaves the function.
@@ -241,7 +242,8 @@ auto spp::asts::RetStatementAst::EmitReturn(
 
   // Then every scope between here and the function's own runs
   // what it deferred, and control leaves.
-  codegen::EmitScopeExit(meta->EnclosingFnScope->Parent, sm, meta, ctx);
+  codegen::EmitTemporaryDrops(meta->TemporaryBase, sm, meta, ctx);
+  codegen::EmitScopeExit(meta->EnclosingFnScope->Parent, sm, meta, ctx, owned);
 
   // Inside a coroutine, "ret" ends the generator rather than
   // returning anything (stage 7 rejects one carrying a value),

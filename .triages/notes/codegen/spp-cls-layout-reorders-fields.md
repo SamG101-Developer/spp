@@ -1,7 +1,7 @@
 ---
 name: spp-cls-layout-reorders-fields
 description: "a cls is reordered by descending alignment/size unless it is !ffi or !conv(\"C\"); a C struct needs one of them (since 2026-11-10)"
-updated: 2026-11-10
+updated: 2026-11-19
 ---
 
 The default ("spp") convention reorders a `cls`'s fields by descending alignment, then descending size, to minimise
@@ -9,6 +9,12 @@ padding (`SortMembersForSppLayout`, `sources/spp/codegen/llvm_layout.cpp`). `Fie
 correct, so this is invisible from s++, and wrong across the FFI boundary, where C writes the fields in C's order.
 **Since 2026-11-10 an `!ffi` or `!conv("C")` class keeps the order written** ([[abi-conventions-table]]); tuples always
 did. `tests/codegen/check-ffi-layout.sh` checks both orders in the IR.
+
+Until 2026-11-19 a generic class lost both halves of this on its instances: `FindOrMakeClsInstance` did not copy
+`DeclaredAbi`, so `!conv("C")`/`!ffi` instances were sorted; and attribute order came from the var table, where
+re-binding a comp parameter (`RegisterGnCompSymbol`, remove + add) swaps entries, so `Cls[cmp n]`'s attributes came out
+permuted. `CollectAttrSymbols` now walks the class body's attributes in declaration order. The check covers generic and
+comp-generic classes; `Arr`'s `split_at` (a `transmute` into a two-array `!conv("C")` class) depends on both.
 
 Seen 2026-09-09 on `sppc::CStat`: the declared order was wrong *and* the struct was 128 bytes against the real
 `struct stat`'s 144, so every `fstat` overran the caller's frame and the stack canary aborted. Reordering the

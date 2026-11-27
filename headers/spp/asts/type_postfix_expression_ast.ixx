@@ -25,6 +25,9 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
   SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TypePostfixExpressionAst);
 
+  /// "Clone" with the ast and its count in one allocation.
+  SPP_ATTR_NODISCARD auto CloneShared() const -> Shared<Ast> override;
+
   /// The base type on which the postfix operation is applied.
   Shared<TypeAst> Lhs;
 
@@ -79,6 +82,9 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
   SPP_ATTR_NODISCARD auto IsCompilerGeneratedType() const -> bool override;
 
 private:
+  /// Copy what a clone keeps beyond its constructor's arguments.
+  auto _CopyStateTo(TypePostfixExpressionAst &t) const -> void;
+
   /// The nested type's symbol ("B" of "A::B"), found in the left-hand side's scope.
   auto _NestedSymbol(ScopeManager *sm, CompilerMetaData *meta) -> TypeSymbol*;
 };

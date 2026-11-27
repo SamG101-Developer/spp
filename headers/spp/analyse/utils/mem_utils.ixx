@@ -45,8 +45,21 @@ namespace spp::analyse::utils::mem_utils {
     ScopeManager &sm, CompilerMetaData *meta,
     SymbolMemoryOptions const &options = {}) -> void;
 
-  /// Raise if the value "sym" holds has already been moved out,
-  /// reported against "use", the expression reading it.
+  /// "place" (a place of "sym": the whole of it, or one part) taken
+  /// apart by the bindings of a destructure or a pattern written at
+  /// "by". Bound part by part, every owned part taken, it is moved,
+  /// whole or as that part. Otherwise the parts the bindings skipped
+  /// stay with it, partly moved, for its owner to drop: a destructure
+  /// ("disarms") marks it taken apart, so its own "drop" never runs
+  /// and the rest is dropped field by field; a "case" subject's match
+  /// leaves it as the patterns did.
+  SPP_EXP_FUN auto TakeApart(
+    VariableSymbol const &sym, Ast const &place, Ast const &by,
+    bool disarms, ScopeManager const &sm) -> void;
+
+  /// Raise if the value "sym" holds has already been moved out, or is
+  /// held on only some of the paths that met (E8), reported against
+  /// "use", the expression reading it.
   SPP_EXP_FUN auto RaiseIfMoved(
     VariableSymbol const &sym, Ast const &use, Scope const *scope) -> void;
 

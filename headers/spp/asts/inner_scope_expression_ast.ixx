@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.inner_scope_expression_ast;
+import spp.analyse.utils.drop_utils;
 import spp.asts.ast;
 import spp.asts.ast_kind;
 import spp.asts.inner_scope_ast;
@@ -15,6 +16,7 @@ use_common(InnerScopeExpressionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct VariableSymbol);
 
 use_alias(spp::asts, Ast);
 
@@ -30,7 +32,21 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
   /// The "}" token that ends the inner scope.
   Unique<TokenAst> TokR;
 
+  /// Set when nothing takes this block's value (a statement, a
+  /// statement "case"'s branch body: "expr_utils::MarkValueDiscarded").
+  /// Its final member is then not moved out at its end: a place
+  /// written as a statement takes nothing from it.
+  bool ValueDiscarded = false;
+
   static auto NewEmpty() -> Unique<InnerScopeExpressionAst>;
+
+  /// An inner scope records owned values that need to be dropped at the end of
+  /// the scope, and the temporaries that each statement introduces and need to
+  /// be dropped at the end of the statement (but in this scope).
+  struct {
+    Vec<analyse::utils::drop_utils::OwnedValue> End;
+    Vec<Vec<analyse::utils::drop_utils::OwnedValue>> StatementTemporaries;
+  } _Drops;
 
   InnerScopeExpressionAst(
     decltype(TokL) &&tok_l,
@@ -68,5 +84,22 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
 
   SPP_ATTR_NODISCARD auto FinalMember() const -> Ast*;
 
+  /// What the condition leading into this block bound where it is
+  /// true ("expr_utils::BoundWhenTrue"): a loop's, a guard's, a
+  /// boolean "case"'s. Set by it in Stage 7; the block declares them
+  /// on entering its scope, in every walk.
+  auto SetBoundOnEntry(Vec<Shared<VariableSymbol>> bound) -> void;
+
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+
+  /// Member "i" makes a temporary whose value goes nowhere: it is
+  /// dropped once made ("expr_utils::DiscardValue").
+  auto SetDropsDiscarded(std::size_t i) -> void;
+
+protected:
+  /// See "SetBoundOnEntry".
+  Vec<Shared<VariableSymbol>> _BoundOnEntry;
+
+  /// Per member, whether its value is a temporary dropped once made.
+  Vec<bool> _DropsDiscarded;
 };
