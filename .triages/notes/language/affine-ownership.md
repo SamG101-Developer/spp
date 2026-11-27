@@ -1,7 +1,7 @@
 ---
 name: affine-ownership
 description: "Ownership is affine since 2026-11-23: a non-Copy value moves at most once and is dropped by the compiler where its lifetime ends; where each drop point is computed and emitted"
-updated: 2026-11-26
+updated: 2026-11-27
 ---
 
 S++ was linear from 2026-08-26 to 2026-11-23 (every non-`Copy` value consumed exactly once, no implicit drops, E94).
@@ -23,12 +23,12 @@ one line, as some clones are generated without being analysed again (`tests/comp
 | `ret` / `?` (a lowered `ret`), `exit` / `skip` | `OwnedUpToFn`, `OwnedUpToLoop` | `_OwnedAtExit` |
 | Generator frame destroyed at a `gen`, or before its first resume | `OwnedAtSuspend` | `_OwnedAtSuspend`, `_OwnedAtStart` |
 | A lowered `GenOnce`'s by-value `gen` (its return) | the same list, passed to `EmitReturn` | `_OwnedAtSuspend` |
-| Paths meeting that disagree (`case` branches and fall-through, loop exits) | `drop_utils::JoinPaths` | a branch's `_Drops.End`, an `exit`'s `_Drops.AfterExit` (both via `AddDrops`), a `case`'s `_Drops.FallThrough`, a loop's `_Drops.CondEnd` |
-| A guard's moves, on the edges passing its branch over (no match, guard false); its `$` temporaries on the false edge | `case_utils::CarryGuardMoves` (`JoinPaths`), `TemporaryRegion::Held` | `_Drops.NoMatch`, `_Drops.GuardFalse` |
+| Paths meeting that disagree (`case` branches and fall-through, loop exits) | `drop_utils::JoinPaths` | a branch's `_Drops.End`, an `exit`'s `_Drops.AfterJump` (both via `AddDrops`), a `case`'s `_Drops.FallThrough`, a loop's `_Drops.BadCond` |
+| A guard's moves, on the edges passing its branch over (no match, guard false); its `$` temporaries on the false edge | `case_utils::CarryGuardMoves` (`JoinPaths`), `TemporaryRegion::Held` | `_Drops.BadMatch`, `_Drops.BadGuard` |
 | A logical operator's right operand vs its short circuit | `JoinPaths` | `BinaryExpressionAst::_Drops.ShortCircuit`, `_Drops.AfterRhs` |
 | Overwrite (`x = v`, `p.a = v`, through `&mut`, `x@ = v`) | `OwnedOnPath`, `OwnedBeforeWrite` | `AssignmentStatementAst::_Drops.Overwrite` (per target) |
 | Temporary borrowed, read a part off, or `case`d over without being taken | `IsTemporary` sets a flag | pending list, `codegen::PushTemporary` |
-| A lowering's hidden `$` temporary (`$cmp`, `$spread`, `$fold`, `$_dst_`, `$is`) at the end of its region | `drop_utils::TemporaryRegion` | a block's `_Drops.StatementEnd` (per member), `_Drops.RhsTemporaries`, `_Drops.Iteration`, `_Drops.CondEnd`, a `case`'s paths |
+| A lowering's hidden `$` temporary (`$cmp`, `$spread`, `$fold`, `$_dst_`, `$is`) at the end of its region | `drop_utils::TemporaryRegion` | a block's `_Drops.StatementTemporaries` (per member), `_Drops.RhsTemporaries`, `_Drops.CondTemporaries`, `_Drops.BadCond`, a `case`'s paths |
 | Discarded temporary (a statement's value) | `expr_utils::DiscardValue` | `_DropsDiscarded` |
 | A call fold's hoisted temporaries no call took | `OwnedOnPath`, then marked moved | `_Drops.Fold` |
 
@@ -38,7 +38,7 @@ one line, as some clones are generated without being analysed again (`tests/comp
   `drop_utils::PathsOutside`), and after the join those parts are gone (a maybe-moved part counts as moved at the end)
   while what the paths agree on is still held. Earlier than Rust's scope-end drop, static. A loop's head is such a join
   too: the entry, the body's end and each `skip` meet there (every iteration after the first begins from it), and each
-  drops on its way in what another does not hold (`_Drops.Entry`, `_Drops.BackEdge`, a `skip`'s `_Drops.AfterExit`), so
+  drops on its way in what another does not hold (`_Drops.Entry`, `_Drops.BackEdge`, a `skip`'s `_Drops.AfterJump`), so
   in the body it is held on none (E8 on a read; an overwrite drops nothing). An `exit` or `skip` aimed at an enclosing
   loop files itself in that loop's frame on each pass over the inner body, so each inner pass cuts the enclosing frames
   back to where it found them: only the last pass's entries stand.

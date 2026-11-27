@@ -41,20 +41,20 @@ TEST(TestAstCloneDrops, test_loop_conditional) {
   const auto ast = Parse("loop true { }", [](auto &p) { return p.ParseLoopConditionalExpression(); });
   ast->_Drops.Entry = Owned(1);
   ast->_Drops.BackEdge = Owned(2);
-  ast->_Drops.Iteration = Owned(3);
-  ast->_Drops.CondEnd = Owned(4);
+  ast->_Drops.CondTemporaries = Owned(3);
+  ast->_Drops.BadCond = Owned(4);
   const auto clone = spp::asts::AstClone(ast);
   EXPECT_SAME_DROPS(clone, ast, Entry);
   EXPECT_SAME_DROPS(clone, ast, BackEdge);
-  EXPECT_SAME_DROPS(clone, ast, Iteration);
-  EXPECT_SAME_DROPS(clone, ast, CondEnd);
+  EXPECT_SAME_DROPS(clone, ast, CondTemporaries);
+  EXPECT_SAME_DROPS(clone, ast, BadCond);
 }
 
 TEST(TestAstCloneDrops, test_loop_control_flow) {
   const auto ast = Parse("skip", [](auto &p) { return p.ParseSkipStatement(); });
-  ast->_Drops.AfterExit = Owned(1);
+  ast->_Drops.AfterJump = Owned(1);
   const auto clone = spp::asts::AstClone(ast);
-  EXPECT_SAME_DROPS(clone, ast, AfterExit);
+  EXPECT_SAME_DROPS(clone, ast, AfterJump);
 }
 
 TEST(TestAstCloneDrops, test_binary_expression) {
@@ -76,13 +76,13 @@ TEST(TestAstCloneDrops, test_case_and_branch) {
   ast->_Drops.FallThrough = Owned(1);
   auto &branch = *ast->Branches.front();
   branch._Drops.End = Owned(2);
-  branch._Drops.NoMatch = Owned(3);
-  branch._Drops.GuardFalse = Owned(4);
+  branch._Drops.BadMatch = Owned(3);
+  branch._Drops.BadGuard = Owned(4);
   const auto clone = spp::asts::AstClone(ast);
   EXPECT_SAME_DROPS(clone, ast, FallThrough);
   EXPECT_SAME_DROPS(clone->Branches.front(), &branch, End);
-  EXPECT_SAME_DROPS(clone->Branches.front(), &branch, NoMatch);
-  EXPECT_SAME_DROPS(clone->Branches.front(), &branch, GuardFalse);
+  EXPECT_SAME_DROPS(clone->Branches.front(), &branch, BadMatch);
+  EXPECT_SAME_DROPS(clone->Branches.front(), &branch, BadGuard);
 }
 
 TEST(TestAstCloneDrops, test_function_call) {
@@ -100,12 +100,12 @@ TEST(TestAstCloneDrops, test_inner_scope) {
   const auto loop = Parse("loop true { 1\n 2 }", [](auto &p) { return p.ParseLoopConditionalExpression(); });
   auto *const ast = loop->Body.get();
   ast->_Drops.End = Owned(1);
-  ast->_Drops.StatementEnd = {Owned(2), Owned(3)};
+  ast->_Drops.StatementTemporaries = {Owned(2), Owned(3)};
   const auto clone = spp::asts::AstClone(ast);
   EXPECT_SAME_DROPS(clone, ast, End);
-  ASSERT_EQ(clone->_Drops.StatementEnd.size(), 2uz);
-  EXPECT_EQ(DeclaredAt(clone->_Drops.StatementEnd[0]), DeclaredAt(ast->_Drops.StatementEnd[0]));
-  EXPECT_EQ(DeclaredAt(clone->_Drops.StatementEnd[1]), DeclaredAt(ast->_Drops.StatementEnd[1]));
+  ASSERT_EQ(clone->_Drops.StatementTemporaries.size(), 2uz);
+  EXPECT_EQ(DeclaredAt(clone->_Drops.StatementTemporaries[0]), DeclaredAt(ast->_Drops.StatementTemporaries[0]));
+  EXPECT_EQ(DeclaredAt(clone->_Drops.StatementTemporaries[1]), DeclaredAt(ast->_Drops.StatementTemporaries[1]));
 }
 
 TEST(TestAstCloneDrops, test_closure) {

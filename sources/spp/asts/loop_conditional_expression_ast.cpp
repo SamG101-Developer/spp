@@ -509,7 +509,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
   // The "else" block runs whenever the condition ends the loop,
   // however many iterations it took first: it is the loop's value
   // when no "exit" gives one. Without one (or drops to run on
-  // that path first, "_Drops.CondEnd"), the condition ends the
+  // that path first, "_Drops.BadCond"), the condition ends the
   // loop at its end block.
   const auto loop_else_bb = ElseBlock != nullptr or not _Drops.BadCond.empty()
     ? llvm::BasicBlock::Create(*ctx->Context, "loop.else" + uid, func)
